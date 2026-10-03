@@ -1,0 +1,1265 @@
+questions:
+  # ---------------------------------------------------------------- architecture
+  - id: nsx-arch-001
+    type: single
+    kind: architecture
+    difficulty: foundation
+    version: vcf9
+    topics: [nsx-architecture]
+    objective: "2.4"
+    lesson: nsx-architecture
+    section: concept
+    diagnostic: nsx
+    stem: "Which NSX component hosts both the management plane and the central control plane (CCP)?"
+    options:
+      - { id: a, text: "The NSX Manager appliances", correct: true, why: "NSX Manager nodes run the policy/management services, UI/API and the CCP." }
+      - { id: b, text: "The NSX Edge nodes", why: "Edges are transport nodes (data plane) that host SRs; they run an LCP, not the CCP.", confusedWith: nsx-edge }
+      - { id: c, text: "vCenter Server", why: "vCenter is registered as a compute manager for inventory and host preparation; it is not the NSX control plane." }
+      - { id: d, text: "Every ESX host transport node", why: "Hosts run the local control plane (LCP) and data plane, not the CCP.", confusedWith: nsx-transport }
+    explanation:
+      correct: "The NSX Manager appliance hosts the API services, the management plane and the central control plane. Transport nodes run the LCP and the data plane."
+      concept: "Three planes: management (desired state), control (runtime state), data (forwarding)."
+      architecture: "MP + CCP on the three-node NSX Manager cluster; LCP + data plane on ESX hosts and Edges."
+      trap: "vCenter feels central, but it is only a compute manager to NSX."
+  - id: nsx-arch-002
+    type: single
+    kind: scenario
+    difficulty: intermediate
+    version: vcf9
+    topics: [nsx-architecture]
+    objective: "2.4"
+    lesson: nsx-architecture
+    section: why-the-data-plane-survives-a-management-outage
+    context: |
+      In a three-node NSX Manager cluster, two manager VMs are lost when a storage array fails. The third node is up.
+    stem: "What is the impact on running workloads attached to existing overlay segments?"
+    options:
+      - { id: a, text: "Existing traffic keeps flowing; configuration changes are not possible until a majority is restored", correct: true, why: "The data plane forwards with already-programmed state; one node cannot form a majority for changes." }
+      - { id: b, text: "All overlay traffic stops immediately because the CCP is unavailable", why: "Forwarding tables are already on the hosts; the managers are not in the data path." }
+      - { id: c, text: "Only north-south traffic stops because Edges depend on NSX Manager for BGP", why: "BGP runs on the Edge SRs; it doesn't need the managers to stay up.", confusedWith: nsx-routing }
+      - { id: d, text: "Nothing changes; the remaining node accepts changes normally", why: "One of three nodes is not a majority; the cluster cannot accept configuration changes." }
+    explanation:
+      correct: "Managers are not in the data path. Existing flows, DFW rules already pushed and Edge BGP sessions continue; changes and new state (new VMs, vMotion targets) are impacted."
+      concept: "Separation of management/control from data plane."
+      architecture: "Quorum-based NSX Manager cluster: 2 of 3 needed for writes."
+      trap: "Don't confuse 'no management' with 'no forwarding'."
+  - id: nsx-arch-003
+    type: single
+    kind: concept
+    difficulty: intermediate
+    version: vcf9
+    topics: [nsx-architecture]
+    objective: "2.4"
+    lesson: nsx-architecture
+    section: nsx-manager-deployment-models-vcf-9-design
+    stem: "An automation platform makes thousands of NSX API calls per hour. The three-node NSX Manager cluster uses its built-in VIP. Which design change spreads API load across all three managers?"
+    options:
+      - { id: a, text: "Place an external load balancer in front of the three NSX Manager nodes", correct: true, why: "The 'HA with external load balancer' model distributes API calls across nodes." }
+      - { id: b, text: "Nothing – the built-in VIP already load-balances requests across the three nodes", why: "The VIP is owned by one node at a time and routes API requests to that node." }
+      - { id: c, text: "Scale out to five NSX Manager nodes", why: "The NSX Manager cluster model is three nodes; more nodes is not the documented answer." }
+      - { id: d, text: "Deploy NSX Edges as API proxies", why: "Edges are data-plane transport nodes, not API endpoints.", confusedWith: nsx-edge }
+    explanation:
+      correct: "VCF 9 design lists three models: simple (1 node), HA (3 nodes + VIP, VIP routes to a single node) and HA with external load balancer to increase API scale for high-churn environments."
+      concept: "VIP = availability, not load balancing."
+      trap: "'Virtual IP' sounds like a load balancer; in NSX it isn't."
+  - id: nsx-arch-004
+    type: single
+    kind: scenario
+    difficulty: foundation
+    version: vcf9
+    topics: [nsx-architecture]
+    objective: "4.1"
+    lesson: nsx-architecture
+    section: where-nsx-sits-in-a-vcf-instance
+    stem: "While creating a second VI workload domain from VCF Operations, what NSX choice does the wizard offer?"
+    options:
+      - { id: a, text: "Create a new NSX Manager instance or join an existing NSX Manager instance used by another workload domain", correct: true, why: "Documented choice; new instances can be Standard (1 node) or High-Availability (3 nodes)." }
+      - { id: b, text: "Only reuse the management domain's NSX Manager", why: "The wizard offers new or existing instance; it isn't limited to reuse." }
+      - { id: c, text: "Deploy NSX Edges only; NSX Manager is optional in VI workload domains", why: "Every workload domain is backed by an NSX Manager instance; Edges are not deployed by the wizard.", confusedWith: nsx-edge }
+      - { id: d, text: "Choose between NSX Policy mode and Manager mode", why: "VCF 9.0 NSX Manager works only in Policy mode." }
+    explanation:
+      correct: "When creating a workload domain you can reuse an existing NSX Manager instance or create a new one (Standard single node or High-Availability three-node)."
+      concept: "NSX instance per workload domain: dedicated or shared."
+      architecture: "Path: VCF Operations → Inventory → Detailed View → VCF Instances → Add Workload Domain."
+      trap: "Manager mode is gone in VCF 9; don't pick options that rely on it."
+  - id: nsx-arch-005
+    type: multi
+    kind: concept
+    difficulty: intermediate
+    version: vcf9
+    topics: [nsx-architecture, nsx-transport]
+    objective: "2.4"
+    lesson: nsx-architecture
+    section: components
+    select: 2
+    stem: "Which two run on every ESX host transport node? (Choose two.)"
+    options:
+      - { id: a, text: "The local control plane (LCP) agent", correct: true, why: "Every transport node runs the LCP." }
+      - { id: b, text: "The distributed router (DR) instance of connected gateways", correct: true, why: "DRs exist in every transport node's kernel." }
+      - { id: c, text: "The Tier-0 service router (SR)", why: "SRs run only on Edge nodes.", confusedWith: nsx-routing }
+      - { id: d, text: "The central control plane (CCP)", why: "The CCP is on NSX Manager nodes.", confusedWith: nsx-architecture }
+      - { id: e, text: "The gateway firewall", why: "The gateway firewall runs in SRs on Edges.", confusedWith: nsx-security }
+    explanation:
+      correct: "Hosts run the LCP and the kernel data plane: switching, DR, DFW. SRs and the gateway firewall live on Edges; the CCP on managers."
+      concept: "What is distributed vs centralized in NSX."
+      trap: "'Service' things (SR, gateway firewall) are never on plain hosts."
+  - id: nsx-arch-006
+    type: truefalse
+    kind: concept
+    difficulty: foundation
+    version: vcf9
+    topics: [nsx-architecture]
+    objective: "2.4"
+    lesson: nsx-architecture
+    section: concept
+    stem: "True or false: In VCF 9.0, NSX Manager is configured in Policy mode only; the Manager mode UI and Manager API objects are deprecated for configuration."
+    options:
+      - { id: "true", text: "True", correct: true, why: "VCF 9.0 documentation states NSX Manager operates exclusively in Policy mode." }
+      - { id: "false", text: "False", why: "Older NSX-T versions offered both modes; VCF 9.0 does not." }
+    explanation:
+      correct: "Beginning with VCF 9.0 NSX Manager uses Policy mode only; automate with /policy/api/v1."
+      concept: "Policy (intent-based) API vs legacy Manager API."
+      trap: "Old blogs telling you to switch to Manager mode don't apply."
+  - id: nsx-arch-007
+    type: single
+    kind: troubleshooting
+    difficulty: advanced
+    version: vcf9
+    topics: [nsx-architecture, nsx-transport]
+    objective: "2.4"
+    lesson: nsx-architecture
+    section: transport-nodes-and-the-lcp
+    context: |
+      ```shell
+      esx-07> get controllers
+       Controller IP   Port  SSL      Status         Is Physical Master  Session State  Controller FQDN
+       10.0.10.21      1235  enabled  not connected  false               null           nsx-mgr-01.corp.local
+       10.0.10.22      1235  enabled  not connected  false               null           nsx-mgr-02.corp.local
+       10.0.10.23      1235  enabled  not connected  false               null           nsx-mgr-03.corp.local
+      ```
+    stem: "VMs already running on esx-07 work, but a VM newly powered on there cannot reach VMs on other hosts. What does the output indicate?"
+    options:
+      - { id: a, text: "esx-07 has lost its control-plane sessions, so it keeps old forwarding state but receives no new state", correct: true, why: "No controller connected = LCP isolated from CCP." }
+      - { id: b, text: "The NSX Manager cluster is down for every host", why: "The output shows only this host's view; other hosts work normally." }
+      - { id: c, text: "The host's TEP MTU is too small", why: "MTU problems don't show up as controller sessions not connected.", confusedWith: nsx-transport }
+      - { id: d, text: "A DFW rule blocks the new VM", why: "DFW issues don't appear in controller connectivity.", confusedWith: nsx-security }
+    explanation:
+      correct: "The host's LCP has no session with any CCP node. Existing state keeps forwarding; new VMs aren't learned or distributed. Check management network reachability, certificates and services on the host."
+      concept: "LCP–CCP relationship."
+      trap: "Partial symptoms (only new VMs) point to control plane, not data plane."
+  - id: nsx-arch-008
+    type: matching
+    kind: concept
+    difficulty: foundation
+    version: vcf9
+    topics: [nsx-architecture]
+    objective: "2.4"
+    lesson: nsx-architecture
+    section: concept
+    stem: "Match each NSX plane to its job."
+    pairs:
+      - { id: p1, left: "Management plane", right: "Single API/UI entry point; persists desired configuration" }
+      - { id: p2, left: "Central control plane", right: "Computes runtime state and distributes it to transport nodes" }
+      - { id: p3, left: "Local control plane", right: "Agent on each transport node that programs the local data plane" }
+      - { id: p4, left: "Data plane", right: "Forwards, encapsulates and filters packets" }
+    explanation:
+      correct: "MP = intent, CCP = computation/distribution, LCP = local programming, DP = forwarding."
+      concept: "SDN plane separation."
+  # ---------------------------------------------------------------- transport
+  - id: nsx-tn-001
+    type: single
+    kind: concept
+    difficulty: foundation
+    version: vcf9
+    topics: [nsx-transport]
+    objective: "2.4"
+    lesson: nsx-transport-nodes-teps
+    section: transport-zone
+    diagnostic: nsx
+    stem: "What does an NSX transport zone define?"
+    options:
+      - { id: a, text: "Which transport nodes can host which segments", correct: true, why: "A TZ is a scope: overlay or VLAN." }
+      - { id: b, text: "A Layer-2 broadcast domain for VMs", why: "That is a segment.", confusedWith: nsx-segments }
+      - { id: c, text: "The BGP area between Tier-0 and the ToRs", why: "Routing isn't defined by transport zones.", confusedWith: nsx-routing }
+      - { id: d, text: "The set of NSX Manager nodes in a cluster", why: "Unrelated to manager clustering." }
+    explanation:
+      correct: "Transport zones (overlay or VLAN) define the span of segments over transport nodes. A node can be in many TZs; a segment is in exactly one."
+      concept: "Scope vs network."
+      trap: "TZ ≠ broadcast domain."
+  - id: nsx-tn-002
+    type: single
+    kind: concept
+    difficulty: foundation
+    version: vcf9
+    topics: [nsx-transport]
+    objective: "2.4"
+    lesson: nsx-transport-nodes-teps
+    section: mtu-the-numbers-to-memorize
+    stem: "According to NSX MTU guidance in VCF 9.0, what is the minimum MTU required on the underlay for overlay traffic, and what is recommended?"
+    options:
+      - { id: a, text: "Minimum 1600 bytes; 1700 bytes recommended (9000 for best performance)", correct: true, why: "Exactly the documented values; 1700 is also the default Global Tunnel Endpoint MTU." }
+      - { id: b, text: "Minimum 1500 bytes; 1600 recommended", why: "1500 cannot carry 1500-byte VM frames plus Geneve overhead." }
+      - { id: c, text: "Minimum 9000 bytes", why: "9000 is optimal, not required." }
+      - { id: d, text: "Minimum 1550 bytes, like VXLAN in NSX-V", why: "Legacy figure; NSX with Geneve documents 1600 minimum." }
+    explanation:
+      correct: "Minimum 1600, recommended 1700 (the default Global TEP MTU), 9000 if the underlay supports it."
+      concept: "Geneve adds headers; underlay must be larger than VM MTU."
+      trap: "Don't overstate 9000 as a requirement."
+  - id: nsx-tn-003
+    type: cli
+    kind: command
+    difficulty: intermediate
+    version: vcf9
+    topics: [nsx-transport]
+    objective: "2.4"
+    lesson: nsx-transport-nodes-teps
+    section: testing-mtu-properly
+    stem: "From an ESX host shell, write the command that tests reachability to remote TEP 192.168.13.12 for a 1600-byte path MTU using the TEP TCP/IP stack and the don't-fragment bit."
+    answers:
+      - "vmkping ++netstack=vxlan -d -s 1572 192.168.13.12"
+      - "vmkping -d -s 1572 ++netstack=vxlan 192.168.13.12"
+      - "vmkping ++netstack=vxlan -s 1572 -d 192.168.13.12"
+      - "vmkping -S vxlan -d -s 1572 192.168.13.12"
+      - "vmkping -I vmk10 -S vxlan -d -s 1572 192.168.13.12"
+    placeholder: "vmkping ..."
+    explanation:
+      correct: "TEPs live in the vxlan netstack, so ++netstack=vxlan is required; -d sets don't-fragment; -s 1572 = 1600 minus 28 bytes of IP/ICMP headers."
+      concept: "Testing underlay MTU end to end."
+      trap: "Without ++netstack=vxlan you test the management stack; without -d fragmentation hides the problem."
+  - id: nsx-tn-004
+    type: single
+    kind: troubleshooting
+    difficulty: intermediate
+    version: vcf9
+    topics: [nsx-transport]
+    objective: "2.4"
+    lesson: nsx-transport-nodes-teps
+    section: failure-scenarios
+    context: |
+      ```shell
+      [root@esx-11:~] vmkping ++netstack=vxlan 192.168.13.12
+      3 packets transmitted, 3 packets received, 0% packet loss
+      [root@esx-11:~] vmkping ++netstack=vxlan -d -s 1572 192.168.13.12
+      sendto() failed (Message too long)
+      3 packets transmitted, 0 packets received, 100% packet loss
+      ```
+    stem: "VMs on esx-11 can ping VMs on esx-12 (same overlay segment) but SSH sessions hang after login. What is the most likely cause?"
+    options:
+      - { id: a, text: "The MTU on the TEP path (VDS, switch port or router) is below what the overlay needs", correct: true, why: "Small pings pass, 1572-byte don't-fragment pings fail – classic MTU." }
+      - { id: b, text: "The hosts are in different overlay transport zones", why: "Then the segment wouldn't exist on both hosts and small pings would fail too." }
+      - { id: c, text: "A DFW rule blocks SSH", why: "The session starts (login works); DFW wouldn't depend on packet size.", confusedWith: nsx-security }
+      - { id: d, text: "BGP is down on the Tier-0", why: "Same-segment east-west traffic doesn't use the Tier-0.", confusedWith: nsx-routing }
+    explanation:
+      correct: "Reachability works but large packets can't pass with DF set: an MTU mismatch somewhere on the TEP path."
+      concept: "Small packets work, large fail = MTU."
+      architecture: "Geneve overhead requires ≥1600 underlay MTU; VDS MTU overrides the uplink profile."
+      trap: "Don't chase DFW or routing when the symptom is size-dependent."
+  - id: nsx-tn-005
+    type: single
+    kind: architecture
+    difficulty: intermediate
+    version: vcf9
+    topics: [nsx-transport]
+    objective: "2.4"
+    lesson: nsx-transport-nodes-teps
+    section: components
+    stem: "An administrator adds two new hosts to an NSX-prepared vSphere cluster. They are automatically prepared with the same VDS, transport zones and TEP settings. Which object makes this happen?"
+    options:
+      - { id: a, text: "The transport node profile attached to the cluster", correct: true, why: "TNPs apply the same NSX configuration to every host in the cluster, including new ones." }
+      - { id: b, text: "The uplink profile", why: "It defines teaming and transport VLAN, but it is referenced by the TNP; it doesn't prepare hosts by itself." }
+      - { id: c, text: "The edge cluster profile", why: "Edge cluster profiles relate to Edge HA.", confusedWith: nsx-edge }
+      - { id: d, text: "The segment profile", why: "Segment profiles (SpoofGuard, IP discovery…) apply to segment ports.", confusedWith: nsx-segments }
+    explanation:
+      correct: "A transport node profile is attached to a vSphere cluster; NSX prepares every member host consistently."
+      concept: "Cluster-based host preparation."
+      trap: "Uplink profile is a building block inside the TNP, not the mechanism."
+  - id: nsx-tn-006
+    type: single
+    kind: design
+    difficulty: advanced
+    version: vcf9
+    topics: [nsx-transport, nsx-edge]
+    objective: "4.1"
+    lesson: nsx-transport-nodes-teps
+    section: tep-addressing-and-routing
+    stem: "You deploy Edge VMs with the VCF 9 vCenter Network Connectivity workflow onto NSX-prepared hosts and want the Edge TEPs on the same VLAN as the host TEPs. What does the workflow require?"
+    options:
+      - { id: a, text: "'Activate NSX on DVPG' must be enabled when using the same VLAN for Edge and host overlay", correct: true, why: "Documented prerequisite of the centralized connectivity workflow." }
+      - { id: b, text: "It's impossible; Edge TEPs must always use a separate routed VLAN", why: "That was the common legacy rule; VCF 9 documents reusing the host TEP VLAN.", confusedWith: nsx-transport }
+      - { id: c, text: "The Edges must be bare metal", why: "Edge VMs are supported in this design.", confusedWith: nsx-edge }
+      - { id: d, text: "The TEP MTU must be 1500", why: "TEP MTU must be ≥ 1600 regardless." }
+    explanation:
+      correct: "VCF 9's centralized workflow lists 'Activate NSX on DVPG' as a prerequisite when the same VLAN is used for Edge and host overlay, and notes the Edge TEP VLAN can reuse the host TEP VLAN."
+      concept: "Edge TEP placement."
+      trap: "Legacy NSX-T guidance required separate VLANs for Edges on prepared hosts – know the VCF 9 behaviour."
+  - id: nsx-tn-007
+    type: multi
+    kind: concept
+    difficulty: intermediate
+    version: vcf9
+    topics: [nsx-transport]
+    objective: "2.4"
+    lesson: nsx-transport-nodes-teps
+    section: transport-zone
+    select: 2
+    stem: "Which two statements about transport zones are true? (Choose two.)"
+    options:
+      - { id: a, text: "A transport node can belong to multiple transport zones", correct: true, why: "E.g. an Edge is in an overlay TZ and a VLAN TZ." }
+      - { id: b, text: "A segment belongs to exactly one transport zone", correct: true, why: "Documented rule." }
+      - { id: c, text: "A transport zone cannot span more than one vSphere cluster", why: "TZs can span one or more clusters." }
+      - { id: d, text: "Overlay transport zones require multicast on the physical network", why: "NSX replicates BUM traffic in software.", confusedWith: nsx-segments }
+    explanation:
+      correct: "Nodes can be in many TZs; segments in exactly one; TZs can span clusters."
+      concept: "Transport zone scoping rules."
+      trap: "Multicast is not required for NSX overlay."
+  - id: nsx-tn-008
+    type: single
+    kind: log
+    difficulty: advanced
+    version: vcf9
+    topics: [nsx-transport, nsx-edge]
+    objective: "2.4"
+    lesson: nsx-transport-nodes-teps
+    section: bfd-on-tunnels
+    context: |
+      ```shell
+      edge-02> get bfd-sessions
+      Local_address : 192.168.13.22   Remote_address : 192.168.13.11   State : up
+      Local_address : 192.168.13.22   Remote_address : 192.168.13.12   State : up
+      Local_address : 192.168.13.22   Remote_address : 192.168.13.15   State : down   Diag : Control Detection Time Expired
+      ```
+    stem: "Only VMs on host esx-15 (TEP 192.168.13.15) lose north-south connectivity when edge-02 becomes the active Tier-0 SR. What should you check first?"
+    options:
+      - { id: a, text: "Underlay reachability and MTU between esx-15's TEP and edge-02's TEP (VLAN trunk, routing, switch MTU)", correct: true, why: "The BFD tunnel between those two TEPs is down; only that host is affected." }
+      - { id: b, text: "The Tier-1 route advertisement settings", why: "That would affect all hosts equally.", confusedWith: nsx-routing }
+      - { id: c, text: "The DFW rules on esx-15", why: "DFW doesn't take down BFD tunnels.", confusedWith: nsx-security }
+      - { id: d, text: "The NSX Manager cluster status", why: "Tunnel liveness is a data-plane matter." }
+    explanation:
+      correct: "BFD runs inside the Geneve tunnel; a single down session means the underlay path between those two TEPs is broken."
+      concept: "Tunnel health via BFD."
+      architecture: "North-south from a host needs a working tunnel to the Edge hosting the active SR."
+      trap: "A problem limited to one host + one Edge is an underlay pair issue, not a gateway config issue."
+  # ---------------------------------------------------------------- segments
+  - id: nsx-seg-001
+    type: single
+    kind: architecture
+    difficulty: foundation
+    version: vcf9
+    topics: [nsx-segments]
+    objective: "2.4"
+    lesson: nsx-segments-overlay
+    section: case-1-same-segment-same-host
+    diagnostic: nsx
+    diagram: d05-east-west-packet-walk
+    stem: "Two VMs on the same overlay segment run on the same ESX host. How is traffic between them forwarded?"
+    options:
+      - { id: a, text: "Switched locally in the host; it never leaves the host", correct: true, why: "Local MAC = local delivery." }
+      - { id: b, text: "Encapsulated in Geneve and hairpinned through the physical switch", why: "Encapsulation is only for remote TEPs.", confusedWith: nsx-transport }
+      - { id: c, text: "Sent to an NSX Edge for switching", why: "Edges are not involved in L2 east-west.", confusedWith: nsx-edge }
+      - { id: d, text: "Routed by the Tier-1 DR", why: "Same subnet – no routing needed.", confusedWith: nsx-routing }
+    explanation:
+      correct: "The host switching module finds the destination MAC on a local port and delivers it directly."
+      concept: "East-west packet walk, case 1."
+      trap: "Overlay doesn't mean every frame is encapsulated."
+  - id: nsx-seg-002
+    type: ordering
+    kind: architecture
+    difficulty: intermediate
+    version: vcf9
+    topics: [nsx-segments, nsx-transport]
+    objective: "2.4"
+    lesson: nsx-segments-overlay
+    section: case-2-same-segment-different-hosts
+    diagram: d05-east-west-packet-walk
+    stem: "Put the steps of a frame from VM-A (host 1) to VM-C (host 2) on the same overlay segment in order."
+    items:
+      - { id: s1, text: "VM-A sends the frame to VM-C's MAC" }
+      - { id: s2, text: "Host 1 finds VM-C's MAC behind host 2's TEP (learned via the CCP)" }
+      - { id: s3, text: "Host 1 encapsulates the frame in Geneve with the segment's VNI" }
+      - { id: s4, text: "The underlay carries the UDP packet from TEP to TEP" }
+      - { id: s5, text: "Host 2 decapsulates and delivers the frame to VM-C" }
+    explanation:
+      correct: "Lookup → encapsulate with VNI → underlay → decapsulate → deliver."
+      concept: "East-west packet walk, case 2."
+  - id: nsx-seg-003
+    type: single
+    kind: scenario
+    difficulty: intermediate
+    version: vcf9
+    topics: [nsx-segments, nsx-routing]
+    objective: "2.4"
+    lesson: nsx-segments-overlay
+    section: case-3-different-segments-same-tier-1-routed-east-west
+    stem: "VM-A on seg-web (host 1) sends to VM-D on seg-app (host 2). Both segments connect to the same Tier-1, which has no edge cluster. Where is the packet routed?"
+    options:
+      - { id: a, text: "By the Tier-1 DR on host 1, before encapsulation to host 2", correct: true, why: "Routing happens at the source host's DR." }
+      - { id: b, text: "By the Tier-1 SR on an Edge node", why: "There is no SR without an edge cluster.", confusedWith: nsx-routing }
+      - { id: c, text: "By the Tier-0 SR", why: "Traffic between segments of one Tier-1 doesn't go to the Tier-0.", confusedWith: nsx-routing }
+      - { id: d, text: "By the physical router on the TEP VLAN", why: "The underlay only carries tunnels; it doesn't route VM subnets.", confusedWith: nsx-transport }
+    explanation:
+      correct: "VM-A's gateway is answered by the local DR, which routes into seg-app; host 1 then tunnels the frame with the seg-app VNI to host 2."
+      concept: "Distributed routing at the source."
+      architecture: "DR instances exist in every host kernel."
+      trap: "Routed east-west does not need an Edge."
+  - id: nsx-seg-004
+    type: single
+    kind: design
+    difficulty: foundation
+    version: vcf9
+    topics: [nsx-segments]
+    objective: "2.4"
+    lesson: nsx-segments-overlay
+    section: concept
+    stem: "A team needs 40 new isolated networks per month for test environments, and the physical network team can't add VLANs that fast. Which segment type fits?"
+    options:
+      - { id: a, text: "Overlay segments in the overlay transport zone", correct: true, why: "Only the TEP network must exist; new segments need no physical change." }
+      - { id: b, text: "VLAN-backed segments", why: "Each needs a VLAN on every trunk – exactly what the network team can't deliver." }
+      - { id: c, text: "Edge bridges", why: "Bridging extends overlay to VLAN; it's for migrations, not for creating networks.", confusedWith: nsx-edge }
+      - { id: d, text: "Tier-0 VRF gateways", why: "VRFs are routing contexts, not L2 networks.", confusedWith: nsx-routing }
+    explanation:
+      correct: "Overlay segments decouple virtual networks from the physical fabric."
+      concept: "Overlay vs VLAN-backed segments."
+      trap: "VLAN segments still require physical VLAN provisioning."
+  - id: nsx-seg-005
+    type: multi
+    kind: concept
+    difficulty: intermediate
+    version: vcf9
+    topics: [nsx-segments]
+    objective: "2.4"
+    lesson: nsx-segments-overlay
+    section: concept
+    select: 3
+    stem: "Which three are options when creating an NSX segment? (Choose three.)"
+    options:
+      - { id: a, text: "Connected Gateway: None, Tier-1 or Tier-0", correct: true, why: "Documented field." }
+      - { id: b, text: "Transport Zone (overlay or VLAN)", correct: true, why: "Required field." }
+      - { id: c, text: "Subnets / Gateway CIDR", correct: true, why: "Required if connected to a gateway." }
+      - { id: d, text: "BGP neighbor of the segment", why: "BGP is configured on Tier-0 gateways.", confusedWith: nsx-routing }
+      - { id: e, text: "Edge cluster for the segment's DR", why: "DRs are distributed; segments don't take an edge cluster.", confusedWith: nsx-edge }
+    explanation:
+      correct: "Segments take a connected gateway, transport zone, subnets/gateway, VLAN (for VLAN TZ), DHCP and segment profiles."
+      concept: "Segment configuration."
+  - id: nsx-seg-006
+    type: single
+    kind: concept
+    difficulty: advanced
+    version: vcf9
+    topics: [nsx-segments]
+    objective: "2.4"
+    lesson: nsx-segments-overlay
+    section: bum-replication
+    stem: "Which statement about broadcast/unknown-unicast/multicast (BUM) traffic on an NSX overlay segment is correct?"
+    options:
+      - { id: a, text: "NSX replicates it in software, by default sending one copy to a proxy host per remote TEP subnet (hierarchical two-tier)", correct: true, why: "Hierarchical two-tier is the default; head replication is the alternative." }
+      - { id: b, text: "The physical network must run PIM multicast for each VNI", why: "No physical multicast is needed." }
+      - { id: c, text: "BUM is always dropped on overlay segments", why: "ARP and DHCP rely on it; it's replicated, not dropped." }
+      - { id: d, text: "Edges replicate all BUM traffic", why: "Hosts replicate; Edges aren't required.", confusedWith: nsx-edge }
+    explanation:
+      correct: "Software replication with hierarchical two-tier (default) or head mode; ARP suppression via CCP reduces flooding."
+      concept: "BUM handling in overlay."
+      trap: "Multicast-in-the-underlay is a VXLAN/NSX-V-era requirement, not NSX Geneve."
+  - id: nsx-seg-007
+    type: single
+    kind: troubleshooting
+    difficulty: intermediate
+    version: vcf9
+    topics: [nsx-segments, nsx-transport]
+    objective: "2.4"
+    lesson: nsx-segments-overlay
+    section: troubleshooting
+    stem: "A newly created overlay segment appears as a port group on hosts esx-01 to esx-04 but not on esx-05 in the same vCenter. What is the most likely cause?"
+    options:
+      - { id: a, text: "esx-05 isn't an NSX transport node in that overlay transport zone (not prepared or excluded)", correct: true, why: "Segments are realized only on nodes in their TZ." }
+      - { id: b, text: "The segment has no gateway address", why: "Gateway address doesn't control where a segment is visible." }
+      - { id: c, text: "Tier-1 route advertisement is off", why: "Advertisement concerns routes to the Tier-0, not segment presence.", confusedWith: nsx-routing }
+      - { id: d, text: "The DFW default rule is set to drop", why: "Firewall policy doesn't hide port groups.", confusedWith: nsx-security }
+    explanation:
+      correct: "Check System → Fabric → Hosts: esx-05 preparation status and TZ membership (often the transport node profile isn't applied)."
+      concept: "Transport zone membership determines segment span."
+  - id: nsx-seg-008
+    type: single
+    kind: troubleshooting
+    difficulty: intermediate
+    version: vcf9
+    topics: [nsx-segments, nsx-security]
+    objective: "2.4"
+    lesson: nsx-segments-overlay
+    section: troubleshooting
+    stem: "web VMs can't reach app VMs on another segment. You suspect either routing or firewall. Which NSX tool shows, hop by hop, whether the packet was routed by the DR and whether a DFW rule dropped it?"
+    options:
+      - { id: a, text: "Traceflow", correct: true, why: "Injects a synthetic packet and reports each observation including the DFW rule ID." }
+      - { id: b, text: "get cluster status", why: "Shows manager cluster health only." }
+      - { id: c, text: "vmkping ++netstack=vxlan", why: "Tests TEP reachability, not VM-level routing/firewall.", confusedWith: nsx-transport }
+      - { id: d, text: "get bgp neighbor summary", why: "BGP isn't involved in east-west.", confusedWith: nsx-routing }
+    explanation:
+      correct: "Traceflow (Plan & Troubleshoot) shows each logical hop: switch, router, tunnel, firewall decision, delivery or drop."
+      concept: "Path visibility."
+  # ---------------------------------------------------------------- edges
+  - id: nsx-edge-001
+    type: single
+    kind: concept
+    difficulty: foundation
+    version: vcf9
+    topics: [nsx-edge]
+    objective: "2.4"
+    lesson: nsx-edge-nodes-clusters
+    section: concept
+    stem: "Why does NSX need Edge nodes when hosts already route between segments?"
+    options:
+      - { id: a, text: "To run services that can't be distributed: uplinks/BGP to physical routers, NAT, gateway firewall, load balancing, VPN", correct: true, why: "Edges host the SR component of gateways." }
+      - { id: b, text: "To run the central control plane", why: "The CCP runs on NSX Manager.", confusedWith: nsx-architecture }
+      - { id: c, text: "To switch traffic between VMs on the same segment", why: "Hosts do this locally or via Geneve.", confusedWith: nsx-segments }
+      - { id: d, text: "To store the NSX configuration database", why: "Configuration lives on NSX Manager nodes.", confusedWith: nsx-architecture }
+    explanation:
+      correct: "Edges are service appliances for centralized services and north-south connectivity."
+      concept: "Distributed (DR) vs centralized (SR)."
+  - id: nsx-edge-002
+    type: single
+    kind: design
+    difficulty: intermediate
+    version: vcf9
+    topics: [nsx-edge]
+    objective: "4.1"
+    lesson: nsx-edge-nodes-clusters
+    section: sizing-edge-vm
+    stem: "You will enable vSphere Supervisor and need routing plus NAT at under 2 Gbps. Which Edge VM form factor is the smallest sensible choice?"
+    options:
+      - { id: a, text: "Medium (4 vCPU, 8 GB RAM)", correct: true, why: "Medium covers L2–L4 under 2 Gbps and is the smallest size to use for Supervisor." }
+      - { id: b, text: "Small (2 vCPU, 4 GB RAM)", why: "Documented for proof-of-concept only." }
+      - { id: c, text: "Extra Large (16 vCPU, 64 GB RAM)", why: "Over-sized; meant for high-throughput L7, IDS/IPS, TLS inspection." }
+      - { id: d, text: "Any size – Supervisor doesn't use Edges", why: "Supervisor with VPC networking needs an edge cluster with an active/standby Tier-0.", confusedWith: nsx-vpc }
+    explanation:
+      correct: "Small is PoC-only; Medium handles routing/NAT/L4 under 2 Gbps and is the practical minimum for Supervisor (Large for L7 LB/TLS inspection)."
+      concept: "Edge sizing."
+      trap: "'Smallest' isn't 'Small' for production."
+  - id: nsx-edge-003
+    type: multi
+    kind: concept
+    difficulty: intermediate
+    version: vcf9
+    topics: [nsx-edge]
+    objective: "2.4"
+    lesson: nsx-edge-nodes-clusters
+    section: concept
+    select: 2
+    stem: "Which two CPU capabilities must the ESX host expose to run an NSX Edge VM's DPDK data path? (Choose two.)"
+    options:
+      - { id: a, text: "AES-NI", correct: true, why: "Documented requirement." }
+      - { id: b, text: "1 GB huge page support", correct: true, why: "Documented requirement." }
+      - { id: c, text: "Intel VT-d for SR-IOV", why: "Not listed as an Edge VM requirement." }
+      - { id: d, text: "ARM SVE extensions", why: "ARM hosts are not supported for Edge VMs." }
+    explanation:
+      correct: "Edge VM requirements: AES-NI and 1 GB huge pages; VMXNET3 only; Haswell or later if EVC is enabled."
+      concept: "Edge prerequisites – relevant for nested labs (CPU type host on Proxmox)."
+  - id: nsx-edge-004
+    type: single
+    kind: scenario
+    difficulty: intermediate
+    version: vcf9
+    topics: [nsx-edge]
+    objective: "4.1"
+    lesson: nsx-edge-nodes-clusters
+    section: how-it-works
+    stem: "In VCF 9.0, where do you start the guided deployment of an NSX edge cluster and Tier-0 gateway for a workload domain?"
+    options:
+      - { id: a, text: "vSphere Client → Networks > Network Connectivity → Configure Network Connectivity", correct: true, why: "VCF 9 moved the guided workflow into vCenter." }
+      - { id: b, text: "SDDC Manager → Workload Domains → Add Edge Cluster", why: "That was the VCF 4.x/5.x workflow." }
+      - { id: c, text: "VCF Installer → Day-N operations", why: "The installer handles bring-up, not day-N edge deployment." }
+      - { id: d, text: "VCF Automation provider portal", why: "VCF Automation consumes provider networking; it doesn't deploy edge clusters.", confusedWith: nsx-vpc }
+    explanation:
+      correct: "The Network Connectivity workflow in vCenter deploys Edges, the edge cluster, the Tier-0 and VPC external IP blocks."
+      concept: "VCF 9 deployment of networking."
+      trap: "SDDC Manager answers are legacy for this task."
+  - id: nsx-edge-005
+    type: single
+    kind: concept
+    difficulty: foundation
+    version: vcf9
+    topics: [nsx-edge]
+    objective: "2.4"
+    lesson: nsx-edge-nodes-clusters
+    section: components
+    stem: "Which statement about NSX edge clusters is correct?"
+    options:
+      - { id: a, text: "All members must be the same type (all VMs or all bare metal), but Edge VMs of different sizes are allowed", correct: true, why: "Documented rule." }
+      - { id: b, text: "An Edge node can be a member of several edge clusters", why: "An edge transport node belongs to only one cluster." }
+      - { id: c, text: "An edge cluster can back only one gateway", why: "A cluster can back multiple logical routers." }
+      - { id: d, text: "Edge clusters must contain exactly two nodes", why: "VCF's workflow allows 2–10." }
+    explanation:
+      correct: "Same type, sizes may differ (uniform is better), one cluster per Edge, many gateways per cluster; 2–10 nodes in the VCF workflow."
+      concept: "Edge cluster membership rules."
+  - id: nsx-edge-006
+    type: single
+    kind: design
+    difficulty: expert
+    version: vcf9
+    topics: [nsx-edge, nsx-routing]
+    objective: "2.4"
+    lesson: nsx-edge-nodes-clusters
+    section: active-standby-vs-active-active
+    stem: "A design requires SNAT for tenant networks and vSphere Supervisor, and the architect proposes an Active/Active Tier-0 for throughput. What is the correct response?"
+    options:
+      - { id: a, text: "Use Active/Standby: Supervisor requires Centralized Active/Standby, and classic Active/Active doesn't support stateful SNAT/DNAT", correct: true, why: "Both requirements point to A/S." }
+      - { id: b, text: "Keep Active/Active and add more Edges", why: "More Edges don't make A/A acceptable for Supervisor." }
+      - { id: c, text: "Use Active/Active with reflexive NAT; Supervisor works with either mode", why: "Supervisor requires Active/Standby.", confusedWith: nsx-vpc }
+      - { id: d, text: "Use distributed connectivity instead", why: "No SNAT and not supported for Supervisor.", confusedWith: nsx-vpc }
+    explanation:
+      correct: "VCF Automation All Apps and vSphere Supervisor require Centralized Active/Standby; SNAT/DNAT are supported in A/S (or stateful A/A)."
+      concept: "HA mode drives available services."
+      trap: "Throughput isn't the only design criterion."
+  - id: nsx-edge-007
+    type: single
+    kind: troubleshooting
+    difficulty: advanced
+    version: vcf9
+    topics: [nsx-edge]
+    objective: "2.4"
+    lesson: nsx-edge-nodes-clusters
+    section: failure-scenarios
+    stem: "During host maintenance, all north-south traffic drops for several minutes although the edge cluster has two Edges in Active/Standby. What design flaw is most likely?"
+    options:
+      - { id: a, text: "Both Edge VMs were running on the same host (no anti-affinity / host-group design)", correct: true, why: "One host event took out active and standby." }
+      - { id: b, text: "Tier-1 route advertisement was disabled", why: "That wouldn't relate to host maintenance timing.", confusedWith: nsx-routing }
+      - { id: c, text: "The NSX Manager cluster wasn't three nodes", why: "Managers aren't in the data path.", confusedWith: nsx-architecture }
+      - { id: d, text: "The DFW default rule was drop", why: "Unrelated to maintenance timing.", confusedWith: nsx-security }
+    explanation:
+      correct: "Use DRS anti-affinity between Edges, host-group affinity to uplink-capable hosts and failure domains."
+      concept: "Edge placement for HA."
+  - id: nsx-edge-008
+    type: single
+    kind: concept
+    difficulty: advanced
+    version: vcf9
+    topics: [nsx-edge, nsx-routing]
+    objective: "2.4"
+    lesson: nsx-edge-nodes-clusters
+    section: one-tier-0-per-edge
+    stem: "A provider needs three separate routing tables for three tenants on the same pair of Edge nodes. What does NSX documentation say?"
+    options:
+      - { id: a, text: "An Edge node supports only one Tier-0 gateway; use Tier-0 VRF gateways for additional routing contexts", correct: true, why: "One Tier-0 per Edge; VRFs provide separate tables." }
+      - { id: b, text: "Deploy three Tier-0 gateways on the same Edges", why: "Not supported – one Tier-0 per Edge.", confusedWith: nsx-routing }
+      - { id: c, text: "Use three Tier-1 gateways with BGP to the ToRs", why: "Tier-1s don't peer with physical routers.", confusedWith: nsx-routing }
+      - { id: d, text: "Create three transport zones", why: "Transport zones don't create routing tables.", confusedWith: nsx-transport }
+    explanation:
+      correct: "'An Edge node can support only one tier-0 gateway or logical router'; VRF gateways on the Tier-0 provide isolated routing tables."
+      concept: "Tier-0 per Edge limit."
+  # ---------------------------------------------------------------- routing
+  - id: nsx-rt-001
+    type: single
+    kind: architecture
+    difficulty: foundation
+    version: vcf9
+    topics: [nsx-routing]
+    objective: "2.4"
+    lesson: nsx-tier0-tier1-routing
+    section: concept
+    diagnostic: nsx
+    stem: "Where does the Tier-0 service router (SR) run?"
+    options:
+      - { id: a, text: "On NSX Edge nodes in an edge cluster", correct: true, why: "Centralized components live on Edges." }
+      - { id: b, text: "On every ESX transport node", why: "That's the DR.", confusedWith: nsx-transport }
+      - { id: c, text: "On the NSX Manager cluster", why: "Managers are never in the data path.", confusedWith: nsx-architecture }
+      - { id: d, text: "On vCenter", why: "vCenter has no NSX data-plane role." }
+    explanation:
+      correct: "The SR hosts uplinks, BGP, NAT and gateway firewall and therefore runs on Edges."
+      concept: "SR vs DR."
+      trap: "Distributed routing is on hosts, but anything centralized (SR) is on Edges."
+  - id: nsx-rt-002
+    type: single
+    kind: concept
+    difficulty: intermediate
+    version: vcf9
+    topics: [nsx-routing]
+    objective: "2.4"
+    lesson: nsx-tier0-tier1-routing
+    section: concept
+    stem: "An administrator selects an edge cluster on a Tier-1 gateway 'just in case' but configures no services. What is the consequence?"
+    options:
+      - { id: a, text: "A service router is created anyway, so the Tier-1's north-south traffic passes through an Edge", correct: true, why: "Documented: selecting an edge cluster always creates an SR." }
+      - { id: b, text: "Nothing – an SR is created only when NAT or firewall rules are added", why: "The docs explicitly say the SR is always created." }
+      - { id: c, text: "East-west traffic between the Tier-1's segments now goes through the Edge", why: "East-west between its own segments stays in the DR.", confusedWith: nsx-segments }
+      - { id: d, text: "The Tier-1 starts peering with the physical routers", why: "Tier-1s never peer with physical routers." }
+    explanation:
+      correct: "'If an NSX Edge cluster is selected, a service router will always be created … affecting the north/south traffic pattern.'"
+      concept: "When an SR exists."
+      trap: "Attach edge clusters to Tier-1s only when they need services; otherwise use Distributed Only."
+  - id: nsx-rt-003
+    type: ordering
+    kind: architecture
+    difficulty: intermediate
+    version: vcf9
+    topics: [nsx-routing, nsx-edge]
+    objective: "2.4"
+    lesson: nsx-tier0-tier1-routing
+    section: north-south-vm-to-the-internet-tier-1-without-sr
+    diagram: d05-north-south-packet-walk
+    stem: "Order the hops of an outbound packet from a VM on a segment of a Distributed Only Tier-1 to the internet."
+    items:
+      - { id: s1, text: "Tier-1 DR on the VM's host (default gateway)" }
+      - { id: s2, text: "Tier-0 DR on the same host, via the router link" }
+      - { id: s3, text: "Geneve tunnel from the host TEP to the Edge TEP" }
+      - { id: s4, text: "Tier-0 SR on the Edge" }
+      - { id: s5, text: "External interface on the uplink VLAN to the physical router" }
+    explanation:
+      correct: "T1 DR → T0 DR (both local) → Geneve to Edge → T0 SR → uplink → ToR."
+      concept: "North-south packet walk."
+  - id: nsx-rt-004
+    type: single
+    kind: architecture
+    difficulty: expert
+    version: vcf9
+    topics: [nsx-routing]
+    objective: "2.4"
+    lesson: nsx-tier0-tier1-routing
+    section: the-return-path
+    stem: "A reply from the internet arrives at the Tier-0 SR on edge-01 for a VM on host esx-03. Where is it routed into the VM's segment?"
+    options:
+      - { id: a, text: "By the Tier-0 DR and Tier-1 DR instances on edge-01, then tunnelled to esx-03", correct: true, why: "DRs also exist on Edges; return traffic is routed there." }
+      - { id: b, text: "By the Tier-1 DR on esx-03 after the Edge forwards the raw packet over the uplink VLAN", why: "The Edge tunnels on the destination segment; it doesn't use the uplink VLAN to reach hosts.", confusedWith: nsx-transport }
+      - { id: c, text: "By the physical router directly to esx-03's TEP", why: "The physical network doesn't know VM-to-TEP mappings." }
+      - { id: d, text: "By the NSX Manager", why: "Not in the data path.", confusedWith: nsx-architecture }
+    explanation:
+      correct: "SR → T0 DR → T1 DR on the Edge, then Geneve to the host's TEP on the VM's segment VNI."
+      concept: "Asymmetric locality: outbound routed on the host, return routed on the Edge."
+  - id: nsx-rt-005
+    type: single
+    kind: troubleshooting
+    difficulty: advanced
+    version: vcf9
+    topics: [nsx-routing]
+    objective: "2.4"
+    lesson: nsx-tier0-tier1-routing
+    section: getting-routes-from-segments-to-the-physical-network
+    stem: "BGP between the Tier-0 and the ToRs is Established. A new segment on Tier-1 t1-dev isn't reachable from the corporate network, while older segments on the same Tier-1 are. On the Tier-0 SR, get route doesn't show the new prefix. What should you check?"
+    options:
+      - { id: a, text: "The segment's connection to t1-dev and t1-dev's route advertisement of connected segments", correct: true, why: "If the SR doesn't have the prefix, the Tier-1 isn't advertising it (or it isn't connected)." }
+      - { id: b, text: "The BGP password on the ToRs", why: "BGP is Established and other prefixes work." }
+      - { id: c, text: "The TEP MTU", why: "MTU doesn't stop a prefix from appearing in the routing table.", confusedWith: nsx-transport }
+      - { id: d, text: "The edge cluster size", why: "Size doesn't affect route presence.", confusedWith: nsx-edge }
+    explanation:
+      correct: "The route path is Tier-1 advertisement → Tier-0 table → Tier-0 redistribution → BGP. Missing in the SR table points to the Tier-1 side."
+      concept: "Route advertisement vs redistribution."
+      trap: "When BGP is up and only one prefix is missing, it's not a BGP session problem."
+  - id: nsx-rt-006
+    type: single
+    kind: log
+    difficulty: intermediate
+    version: vcf9
+    topics: [nsx-routing]
+    objective: "2.4"
+    lesson: nsx-tier0-tier1-routing
+    section: bgp-on-the-tier-0
+    context: |
+      ```shell
+      edge-01(tier0_sr)> get bgp neighbor summary
+      Neighbor      AS     State   Up/DownTime  BFD  InMsgs  OutMsgs  InPfx  OutPfx
+      10.27.11.1    65000  Active  never        NC   0       0        0      0
+      ```
+    stem: "What does this state tell you?"
+    options:
+      - { id: a, text: "The SR is trying to open the TCP 179 session and failing – check IP reachability, VLAN and ACLs first", correct: true, why: "Active = connection attempts failing; no messages exchanged." }
+      - { id: b, text: "The session is up and actively exchanging routes", why: "Only Established exchanges routes; 'Active' is a common trap." }
+      - { id: c, text: "The neighbor is administratively shut down on the NSX side", why: "Admin-down shows Idle (and BFD AD), not Active." }
+      - { id: d, text: "BFD has failed while BGP is fine", why: "BFD is not configured (NC) and BGP isn't up." }
+    explanation:
+      correct: "BGP states: Idle → Connect → Active → OpenSent → OpenConfirm → Established. 'Active' with zero messages means TCP never came up."
+      concept: "BGP finite state machine."
+      trap: "'Active' sounds healthy; it isn't."
+  - id: nsx-rt-007
+    type: cli
+    kind: command
+    difficulty: intermediate
+    version: vcf9
+    topics: [nsx-routing, nsx-edge]
+    objective: "2.4"
+    lesson: nsx-tier0-tier1-routing
+    section: cli-api
+    stem: "You are logged in to an NSX Edge as admin. Which command lists the gateway instances (SRs and DRs) on the Edge with their VRF numbers, so you can enter the Tier-0 SR context?"
+    answers:
+      - "get logical-routers"
+    placeholder: "get ..."
+    explanation:
+      correct: "`get logical-routers` lists SERVICE_ROUTER_TIER0, DISTRIBUTED_ROUTER_TIER1 etc. with VRF IDs; then `vrf <n>`."
+      concept: "Edge CLI navigation."
+  - id: nsx-rt-008
+    type: cli
+    kind: command
+    difficulty: intermediate
+    version: vcf9
+    topics: [nsx-routing]
+    objective: "2.4"
+    lesson: nsx-tier0-tier1-routing
+    section: cli-api
+    stem: "Inside the Tier-0 SR VRF on an Edge, which command shows each BGP neighbor's state and prefix counts?"
+    answers:
+      - "get bgp neighbor summary"
+    placeholder: "get bgp ..."
+    explanation:
+      correct: "`get bgp neighbor summary` (or `get logical-router <uuid> bgp neighbor summary` outside the VRF)."
+      concept: "BGP verification."
+  - id: nsx-rt-009
+    type: single
+    kind: design
+    difficulty: advanced
+    version: vcf9
+    topics: [nsx-routing]
+    objective: "2.4"
+    lesson: nsx-tier0-tier1-routing
+    section: static-routing
+    stem: "A Tier-0 in Active/Standby uses static routing. Where should the physical router's static routes for the NSX prefixes point?"
+    options:
+      - { id: a, text: "To the Tier-0 HA VIP, so the next hop survives SR failover", correct: true, why: "The VIP moves to the active SR." }
+      - { id: b, text: "To edge-01's uplink IP", why: "Breaks when edge-02 becomes active." }
+      - { id: c, text: "To the Tier-1 router link address (100.64.x.x)", why: "Internal transit addresses aren't reachable from the physical network." }
+      - { id: d, text: "To the NSX Manager VIP", why: "Not a data-plane address.", confusedWith: nsx-architecture }
+    explanation:
+      correct: "Static routing with A/S requires an HA VIP – the VCF 9 workflow asks for it."
+      concept: "Static routing and failover."
+  - id: nsx-rt-010
+    type: matching
+    kind: concept
+    difficulty: intermediate
+    version: vcf9
+    topics: [nsx-routing]
+    objective: "2.4"
+    lesson: nsx-tier0-tier1-routing
+    section: architecture
+    stem: "Match each internal NSX link with its default subnet."
+    pairs:
+      - { id: p1, left: "Tier-0 ↔ Tier-1 router link", right: "100.64.0.0/16" }
+      - { id: p2, left: "Intra-tier transit (DR ↔ SR)", right: "169.254.0.0/24" }
+      - { id: p3, left: "Overlay encapsulation", right: "Geneve over UDP between TEPs" }
+    explanation:
+      correct: "Router links come from 100.64.0.0/16 (/31 per Tier-1); DR–SR transit uses 169.254.0.0/24; overlay is Geneve."
+      concept: "Auto-created transit networks – avoid overlapping them."
+  - id: nsx-rt-011
+    type: single
+    kind: concept
+    difficulty: foundation
+    version: vcf9
+    topics: [nsx-routing]
+    objective: "2.4"
+    lesson: nsx-tier0-tier1-routing
+    section: concept
+    stem: "Which gateway exchanges routes with the physical network using BGP?"
+    options:
+      - { id: a, text: "Tier-0", correct: true, why: "Tier-0 is the provider gateway with uplinks." }
+      - { id: b, text: "Tier-1", why: "Tier-1 advertises to its Tier-0 only; it doesn't run BGP to physical routers.", confusedWith: nsx-routing }
+      - { id: c, text: "The distributed router on each host", why: "DRs don't peer with physical routers." }
+      - { id: d, text: "NSX Manager", why: "Not in the routing path.", confusedWith: nsx-architecture }
+    explanation:
+      correct: "Tier-0 SRs peer (BGP/OSPF/static) with physical routers; Tier-1s connect northbound to one Tier-0."
+      concept: "Tier-0 vs Tier-1 roles."
+  - id: nsx-rt-012
+    type: single
+    kind: concept
+    difficulty: intermediate
+    version: vcf9
+    topics: [nsx-routing]
+    objective: "2.4"
+    lesson: nsx-tier0-tier1-routing
+    section: failover-modes-a-s
+    stem: "A Tier-1 with an SR uses the default failover mode. The preferred Edge fails and later recovers. What happens?"
+    options:
+      - { id: a, text: "It stays standby (non-preemptive is the default)", correct: true, why: "Avoids a second disruption." }
+      - { id: b, text: "It immediately takes back the active role (preemptive is the default)", why: "Preemptive must be selected explicitly." }
+      - { id: c, text: "Both SRs become active", why: "That would be an active/active design.", confusedWith: nsx-edge }
+      - { id: d, text: "The Tier-1 becomes Distributed Only", why: "HA mode doesn't change on failure." }
+    explanation:
+      correct: "Non-preemptive (default): the recovered preferred Edge stays standby."
+      concept: "Failover modes."
+  # ---------------------------------------------------------------- VPC / VCF networking
+  - id: nsx-vpc-001
+    type: single
+    kind: concept
+    difficulty: foundation
+    version: vcf9
+    topics: [nsx-vpc]
+    objective: "2.4"
+    lesson: nsx-vpcs-and-vcf-networking
+    section: the-consumption-stack
+    stem: "How many transit gateways can an NSX project have in VCF 9.0?"
+    options:
+      - { id: a, text: "One – a default transit gateway is created automatically with the project", correct: true, why: "Documented: 'a Project can have only one Transit Gateway'." }
+      - { id: b, text: "One per VPC", why: "Each VPC has its own VPC gateway; the transit gateway is shared by the project's VPCs." }
+      - { id: c, text: "Up to two, one centralized and one distributed", why: "A TGW uses one centralized OR one or more distributed connections; there's still one TGW." }
+      - { id: d, text: "Unlimited", why: "Contradicts the one-per-project rule." }
+    explanation:
+      correct: "One transit gateway per project; it interconnects the project's VPCs and connects to external connections."
+      concept: "VPC consumption model."
+  - id: nsx-vpc-002
+    type: matching
+    kind: concept
+    difficulty: foundation
+    version: vcf9
+    topics: [nsx-vpc]
+    objective: "2.4"
+    lesson: nsx-vpcs-and-vcf-networking
+    section: subnet-types
+    stem: "Match each VPC subnet type with its reachability."
+    pairs:
+      - { id: p1, left: "Public subnet", right: "Addresses from VPC External IP blocks; advertised and reachable outside" }
+      - { id: p2, left: "Private subnet", right: "Reachable only inside its VPC; addresses may overlap other VPCs" }
+      - { id: p3, left: "Private – Transit Gateway subnet", right: "Reachable from other VPCs on the same transit gateway, not advertised outside" }
+    explanation:
+      correct: "Public = external block, advertised. Private = VPC-local. Private-TGW = project-wide via the transit gateway."
+      concept: "VPC subnet types."
+  - id: nsx-vpc-003
+    type: single
+    kind: design
+    difficulty: advanced
+    version: vcf9
+    topics: [nsx-vpc, nsx-edge]
+    objective: "4.1"
+    lesson: nsx-vpcs-and-vcf-networking
+    section: centralized-vs-distributed-connectivity
+    stem: "A customer wants VPC networking from vCenter with no NSX Edge VMs to deploy or patch. All hosts can reach a shared VLAN whose gateway is a physical router. Which connectivity type fits?"
+    options:
+      - { id: a, text: "Distributed connectivity", correct: true, why: "No Edges; transit gateway maps to a VLAN present on all hosts." }
+      - { id: b, text: "Centralized connectivity in Active/Active", why: "Still requires Edges.", confusedWith: nsx-edge }
+      - { id: c, text: "Centralized connectivity in Active/Standby", why: "Requires Edges and a Tier-0.", confusedWith: nsx-edge }
+      - { id: d, text: "A Tier-1 with an edge cluster", why: "Requires Edges.", confusedWith: nsx-routing }
+    explanation:
+      correct: "Distributed connectivity: lightweight, no Edges or dynamic routing; hard requirement that every host attaches to the same VLAN."
+      concept: "Centralized vs distributed connectivity."
+      trap: "Check whether any requirement needs stateful services or Supervisor – then distributed no longer fits."
+  - id: nsx-vpc-004
+    type: multi
+    kind: concept
+    difficulty: intermediate
+    version: vcf9
+    topics: [nsx-vpc]
+    objective: "2.4"
+    lesson: nsx-vpcs-and-vcf-networking
+    section: centralized-vs-distributed-connectivity
+    select: 2
+    stem: "Which two services are NOT available with distributed (edge-less) VPC connectivity? (Choose two.)"
+    options:
+      - { id: a, text: "SNAT/DNAT (other than 1:1 External IPs)", correct: true, why: "Distributed supports only 1:1 External IP NAT." }
+      - { id: b, text: "North-south firewall", correct: true, why: "Not supported in distributed mode." }
+      - { id: c, text: "External IPs (1:1 NAT)", why: "Supported in distributed mode." }
+      - { id: d, text: "Distributed DHCP", why: "Supported in distributed mode." }
+    explanation:
+      correct: "Distributed: on-demand networking, distributed routing, External IP (1:1), distributed DHCP. Missing: SNAT/DNAT, N/S firewall, DHCP relay, stateful services."
+      concept: "Service differences by connectivity type."
+  - id: nsx-vpc-005
+    type: single
+    kind: troubleshooting
+    difficulty: advanced
+    version: vcf9
+    topics: [nsx-vpc, nsx-edge]
+    objective: "4.1"
+    lesson: nsx-vpcs-and-vcf-networking
+    section: failure-scenarios
+    context: |
+      Supervisor enablement validation in the vSphere Client fails with:
+      `No valid edge cluster for VDS ...` and `Cluster domain-c... is missing compatible NSX-T VDS`
+    stem: "The workload domain uses distributed VPC connectivity. What must be done to enable Supervisor with VPC networking?"
+    options:
+      - { id: a, text: "Deploy an NSX edge cluster with an Active/Standby Tier-0 (centralized connectivity)", correct: true, why: "KB 435782 and the WLD docs: Supervisor needs an edge cluster and A/S Tier-0." }
+      - { id: b, text: "Increase the External IP block size", why: "IP space isn't the cause of the edge-cluster error." }
+      - { id: c, text: "Convert the Tier-0 to Active/Active", why: "There's no Tier-0 at all with distributed connectivity; and A/A isn't supported for Supervisor.", confusedWith: nsx-routing }
+      - { id: d, text: "Add a VLAN connection to the distributed transit gateway", why: "Doesn't provide an edge cluster." }
+    explanation:
+      correct: "Supervisor and VCF Automation All Apps require centralized connectivity with an Active/Standby Tier-0 on an NSX edge cluster."
+      concept: "Consumer requirements drive connectivity choice."
+      trap: "Distributed connectivity is simpler but excludes Supervisor."
+  - id: nsx-vpc-006
+    type: single
+    kind: concept
+    difficulty: advanced
+    version: vcf9
+    topics: [nsx-vpc]
+    objective: "4.1"
+    lesson: nsx-vpcs-and-vcf-networking
+    section: vcf-network-gateway
+    stem: "Exam objective 4.1 mentions deploying and configuring a 'VCF Network Gateway'. In the VCF 9.0 product, which workflow does this correspond to?"
+    options:
+      - { id: a, text: "vCenter → Networks > Network Connectivity → Configure Network Connectivity, choosing the gateway type (centralized with Edges + Tier-0, or distributed) and configuring the gateway", correct: true, why: "That workflow creates and configures the gateway that connects VCF networks to the physical network." }
+      - { id: b, text: "Deploying a VCF Edge site with a minimum of 10 remote locations", why: "VCF Edge (formerly Remote Clusters) is a design model for edge sites, not a network gateway.", confusedWith: nsx-edge }
+      - { id: c, text: "Deploying an NSX Global Manager", why: "Global Manager is for NSX Federation.", confusedWith: nsx-architecture }
+      - { id: d, text: "Configuring the vCenter Server default gateway in the VAMI", why: "Appliance management settings are unrelated." }
+    explanation:
+      correct: "'VCF Network Gateway' isn't an object name in TechDocs; the documented equivalent is the Network Connectivity workflow with Gateway Type (Centralized/Distributed) and Gateway settings (name, HA mode, routing type, ASN, uplinks)."
+      concept: "Mapping exam wording to the product."
+      trap: "'VCF Edge' sounds similar but is about remote sites."
+  - id: nsx-vpc-007
+    type: ordering
+    kind: scenario
+    difficulty: advanced
+    version: vcf9
+    topics: [nsx-vpc, nsx-edge]
+    objective: "4.1"
+    lesson: nsx-vpcs-and-vcf-networking
+    section: deploying-a-centralized-gateway-vsphere-client
+    stem: "Order the pages of the vCenter centralized connectivity workflow."
+    items:
+      - { id: s1, text: "Choose gateway type Centralized Connectivity and review prerequisites" }
+      - { id: s2, text: "Define the edge cluster (name, TEP MTU, form factor, passwords)" }
+      - { id: s3, text: "Add and clone the Edge nodes (FQDN, cluster, management IP, uplinks, TEP)" }
+      - { id: s4, text: "Configure Workload Domain Connectivity (Tier-0 name, HA mode, BGP/static, ASN, uplinks)" }
+      - { id: s5, text: "Enter VPC External IP blocks and Private Transit Gateway IP blocks" }
+      - { id: s6, text: "Review the topology and Deploy" }
+    explanation:
+      correct: "Gateway type → edge cluster → edge nodes → workload domain connectivity (Tier-0) → VPC external connectivity → review/deploy."
+      concept: "VCF 9 networking deployment."
+  - id: nsx-vpc-008
+    type: single
+    kind: scenario
+    difficulty: intermediate
+    version: vcf9
+    topics: [nsx-vpc]
+    objective: "2.4"
+    lesson: nsx-vpcs-and-vcf-networking
+    section: subnet-types
+    stem: "A VM on a private VPC subnet must be reachable from the corporate network on a fixed address, without moving it to a public subnet. What do you use?"
+    options:
+      - { id: a, text: "Assign External IP (1:1 NAT) to the VM", correct: true, why: "External IPs publish private VMs and work in both connectivity modes." }
+      - { id: b, text: "Change the subnet to a Private – Transit Gateway subnet", why: "Private-TGW subnets aren't advertised outside the project." }
+      - { id: c, text: "Add the VM's private CIDR to the External IP block", why: "Blocks define address pools, they don't publish VMs." }
+      - { id: d, text: "Create a DFW allow rule", why: "Firewalling doesn't create reachability.", confusedWith: nsx-security }
+    explanation:
+      correct: "External IP gives a private VM a 1:1-NATed address from the external block."
+      concept: "VPC External IPs."
+  - id: nsx-vpc-009
+    type: single
+    kind: concept
+    difficulty: intermediate
+    version: vcf9
+    topics: [nsx-vpc]
+    objective: "4.1"
+    lesson: nsx-vpcs-and-vcf-networking
+    section: vcf-edge-is-not-an-nsx-edge
+    stem: "What does the 'VCF Edge models' page of the VCF 9.0 design guide describe?"
+    options:
+      - { id: a, text: "An optimized VCF configuration for edge/remote sites (formerly Remote Clusters), with requirements like at least 10 sites and a dedicated vCenter", correct: true, why: "VCF Edge = edge locations, not NSX Edges." }
+      - { id: b, text: "NSX Edge VM sizing and edge cluster HA", why: "That's NSX Edge documentation.", confusedWith: nsx-edge }
+      - { id: c, text: "The VPC transit gateway models", why: "Covered in NSX VPC documentation." }
+      - { id: d, text: "Tier-0 BGP design", why: "Not the subject of that page.", confusedWith: nsx-routing }
+    explanation:
+      correct: "'VCF Edge earlier called Remote Clusters is an optimized configuration of VMware Cloud Foundation tailored for edge use cases.'"
+      concept: "Terminology disambiguation."
+      trap: "Same word 'Edge', different products."
+  - id: nsx-vpc-010
+    type: single
+    kind: troubleshooting
+    difficulty: expert
+    version: vcf9
+    topics: [nsx-vpc]
+    objective: "4.1"
+    lesson: nsx-vpcs-and-vcf-networking
+    section: distributed-tgw-behaviour
+    context: |
+      Distributed connectivity: VLAN 400, Gateway CIDR 10.40.0.1/24, VPC External IPv4 block 10.40.0.128/25.
+      VMs in a public subnet on hosts esx-01..04 are reachable; identical VMs on esx-05 and esx-06 are not.
+    stem: "What is the most likely cause?"
+    options:
+      - { id: a, text: "VLAN 400 is not present on the uplinks/ToR ports of esx-05 and esx-06", correct: true, why: "Distributed connectivity requires the same VLAN on every host with VPC workloads." }
+      - { id: b, text: "The External IP block isn't inside the VLAN subnet", why: "10.40.0.128/25 is inside 10.40.0.0/24, and it works on other hosts." }
+      - { id: c, text: "The Tier-0 on esx-05 lost BGP", why: "Distributed mode has no Tier-0 or BGP.", confusedWith: nsx-routing }
+      - { id: d, text: "esx-05 and esx-06 lack Edge nodes", why: "Distributed mode uses no Edges.", confusedWith: nsx-edge }
+    explanation:
+      correct: "The distributed TGW connects to the external VLAN directly on each host; hosts without the VLAN can't reach the external gateway."
+      concept: "Distributed connectivity requirements."
+      trap: "Don't reach for Tier-0/BGP troubleshooting in an edge-less design."
+  # ---------------------------------------------------------------- security
+  - id: nsx-sec-001
+    type: single
+    kind: scenario
+    difficulty: foundation
+    version: vcf9
+    topics: [nsx-security]
+    objective: "2.4"
+    lesson: nsx-security-dfw-gateway-firewall
+    section: concept
+    stem: "You must prevent two web servers on the same segment and same host from talking to each other. Which NSX feature can do this?"
+    options:
+      - { id: a, text: "Distributed firewall", correct: true, why: "Enforced at each vNIC, so it sees same-segment, same-host traffic." }
+      - { id: b, text: "Gateway firewall on the Tier-1", why: "That traffic never crosses a gateway.", confusedWith: nsx-security }
+      - { id: c, text: "Gateway firewall on the Tier-0", why: "North-south only.", confusedWith: nsx-routing }
+      - { id: d, text: "NAT on the Tier-0", why: "NAT doesn't filter.", confusedWith: nsx-routing }
+    explanation:
+      correct: "Only the DFW sees traffic inside a segment; it's instantiated per vNIC in the host kernel."
+      concept: "DFW vs gateway firewall."
+      trap: "Gateway firewalls only see traffic through their gateway's SR."
+  - id: nsx-sec-002
+    type: single
+    kind: concept
+    difficulty: foundation
+    version: vcf9
+    topics: [nsx-security]
+    objective: "2.4"
+    lesson: nsx-security-dfw-gateway-firewall
+    section: concept
+    stem: "In which order are DFW rule categories processed?"
+    options:
+      - { id: a, text: "Ethernet → Emergency → Infrastructure → Environment → Application", correct: true, why: "Documented order." }
+      - { id: b, text: "Application → Environment → Infrastructure → Emergency → Ethernet", why: "Reversed." }
+      - { id: c, text: "Emergency → Ethernet → Application → Infrastructure → Environment", why: "Wrong order." }
+      - { id: d, text: "All categories are evaluated in parallel; the most specific rule wins", why: "DFW is top-down, first match." }
+    explanation:
+      correct: "Categories in that order, rules top-down, first match wins, default rule last."
+      concept: "DFW policy structure."
+  - id: nsx-sec-003
+    type: single
+    kind: concept
+    difficulty: intermediate
+    version: vcf9
+    topics: [nsx-security]
+    objective: "2.4"
+    lesson: nsx-security-dfw-gateway-firewall
+    section: why-applied-to-matters
+    stem: "What does the Applied-To field of a DFW rule control?"
+    options:
+      - { id: a, text: "Which vNICs the rule is programmed on (where it is enforced)", correct: true, why: "Applied-To scopes enforcement points." }
+      - { id: b, text: "Which traffic matches the rule", why: "Source, destination, service and context decide matching." }
+      - { id: c, text: "Which Edge node enforces the rule", why: "DFW isn't on Edges.", confusedWith: nsx-edge }
+      - { id: d, text: "The rule's category", why: "Category is chosen separately." }
+    explanation:
+      correct: "Applied-To = DFW (all vNICs) or specific groups; it limits rule distribution and enforcement."
+      concept: "Applied-To vs match criteria."
+      trap: "Applied-To is not a filter on traffic."
+  - id: nsx-sec-004
+    type: single
+    kind: design
+    difficulty: advanced
+    version: vcf9
+    topics: [nsx-security, nsx-routing]
+    objective: "2.4"
+    lesson: nsx-security-dfw-gateway-firewall
+    section: nat-types-tier-0-tier-1
+    stem: "A Tier-0 runs Active/Active (non-stateful) for ECMP. The team needs to translate a range of tenant addresses 1:1 to public addresses. Which NAT type is appropriate?"
+    options:
+      - { id: a, text: "Reflexive (stateless) NAT", correct: true, why: "Supported on Tier-0 in active-active and active-standby." }
+      - { id: b, text: "SNAT", why: "SNAT/DNAT are supported in active-standby (or stateful active-active).", confusedWith: nsx-edge }
+      - { id: c, text: "DNAT", why: "Same restriction as SNAT.", confusedWith: nsx-edge }
+      - { id: d, text: "NAT is not possible on Tier-0", why: "Tier-0 supports NAT on its SR uplinks." }
+    explanation:
+      correct: "Reflexive NAT rewrites destination inbound and source outbound without state – usable on A/A Tier-0s."
+      concept: "NAT types vs HA mode."
+  - id: nsx-sec-005
+    type: single
+    kind: troubleshooting
+    difficulty: intermediate
+    version: vcf9
+    topics: [nsx-security]
+    objective: "2.4"
+    lesson: nsx-security-dfw-gateway-firewall
+    section: failure-scenarios
+    stem: "In a new VCF 9.0 environment, the NSX UI refuses to let administrators add or edit distributed firewall rules. Core VCF licensing is synced. What is the most likely cause?"
+    options:
+      - { id: a, text: "The vDefend Firewall add-on license key hasn't been applied in NSX Manager", correct: true, why: "KB 430651: add-on keys aren't synced automatically; apply under System > Licenses." }
+      - { id: b, text: "The NSX Manager cluster is in Manager mode", why: "VCF 9.0 is Policy-only.", confusedWith: nsx-architecture }
+      - { id: c, text: "The edge cluster isn't deployed", why: "The DFW doesn't need Edges.", confusedWith: nsx-edge }
+      - { id: d, text: "The hosts lack TEPs", why: "DFW doesn't depend on overlay.", confusedWith: nsx-transport }
+    explanation:
+      correct: "Firewall capabilities are the vDefend add-on; its 25-character key must be added manually (requires a base VCF/vSphere subscription)."
+      concept: "VCF 9 security licensing."
+  - id: nsx-sec-006
+    type: multi
+    kind: architecture
+    difficulty: intermediate
+    version: vcf9
+    topics: [nsx-security]
+    objective: "2.4"
+    lesson: nsx-security-dfw-gateway-firewall
+    section: gateway-firewall-on-north-south
+    select: 2
+    stem: "An internet client connects to a published web VM through a Tier-0 with gateway firewall and DNAT. Which two enforcement points does the flow pass? (Choose two.)"
+    options:
+      - { id: a, text: "The gateway firewall in the Tier-0 SR on the Edge", correct: true, why: "North-south through the SR." }
+      - { id: b, text: "The DFW at the web VM's vNIC", correct: true, why: "DFW applies to all traffic in/out of the vNIC." }
+      - { id: c, text: "The DFW on the Edge node", why: "DFW is enforced on hosts at vNICs, not on Edges.", confusedWith: nsx-edge }
+      - { id: d, text: "A firewall in the NSX Manager", why: "Managers aren't in the path.", confusedWith: nsx-architecture }
+    explanation:
+      correct: "Defence in depth: gateway firewall (and NAT) on the SR, then DFW at the vNIC."
+      concept: "Layered enforcement."
+  - id: nsx-sec-007
+    type: single
+    kind: log
+    difficulty: advanced
+    version: vcf9
+    topics: [nsx-security]
+    objective: "2.4"
+    lesson: nsx-security-dfw-gateway-firewall
+    section: cli-api
+    context: |
+      ```shell
+      esx-02> get firewall 5e9f6a3c-... ruleset rules
+      ruleset mainrs {
+        rule 3073 at 1, inout protocol any from addrset grp-shop to addrset grp-shop drop;
+        rule 3072 at 2, inout protocol tcp from addrset grp-shop-web to addrset grp-shop-app port 8443 accept;
+        rule 2 at 3, inout protocol any from any to any accept;
+      }
+      ```
+    stem: "Web servers can no longer reach app servers on TCP 8443 after a change. Based on the vNIC ruleset, why?"
+    options:
+      - { id: a, text: "The broad drop rule 3073 is above the specific allow rule 3072, and the DFW is first match", correct: true, why: "Order is wrong; move the allow above the drop." }
+      - { id: b, text: "The default rule 2 drops everything", why: "Rule 2 is accept." }
+      - { id: c, text: "TCP 8443 isn't supported by the DFW", why: "Any TCP port works." }
+      - { id: d, text: "The gateway firewall overrides the DFW", why: "This is east-west; no gateway firewall is involved.", confusedWith: nsx-security }
+    explanation:
+      correct: "Top-down first match: grp-shop → grp-shop drop matches web→app before the allow rule."
+      concept: "Rule order."
+  - id: nsx-sec-008
+    type: single
+    kind: design
+    difficulty: expert
+    version: vcf9
+    topics: [nsx-security, nsx-vpc]
+    objective: "2.4"
+    lesson: nsx-security-dfw-gateway-firewall
+    section: gateway-firewall-and-ha-mode
+    stem: "A tenant requires stateful north-south filtering for its VPC and outbound SNAT for private subnets. The provider proposes distributed VPC connectivity to avoid Edges. What is your assessment?"
+    options:
+      - { id: a, text: "Reject it: distributed connectivity has no north-south firewall and no SNAT; use centralized connectivity with a VPC security profile (stateful requires vDefend)", correct: true, why: "Both requirements need centralized mode." }
+      - { id: b, text: "Accept it and use the DFW for north-south", why: "DFW can filter at the vNIC, but the requirement for SNAT still fails, and N/S perimeter policy belongs on the gateway." }
+      - { id: c, text: "Accept it and use External IPs for SNAT", why: "External IP is 1:1, not many-to-one SNAT.", confusedWith: nsx-vpc }
+      - { id: d, text: "Accept it; distributed connectivity supports all VPC services", why: "It supports only stateless services.", confusedWith: nsx-vpc }
+    explanation:
+      correct: "Distributed: External IP (1:1), distributed DHCP/routing only. SNAT, default outbound NAT and N/S firewall need centralized connectivity; stateful VPC gateway firewall requires vDefend."
+      concept: "Security services vs connectivity model."
+  - id: nsx-mix-001
+    type: single
+    kind: troubleshooting
+    difficulty: expert
+    version: vcf9
+    topics: [nsx-routing, nsx-edge]
+    objective: "2.4"
+    lesson: nsx-tier0-tier1-routing
+    section: troubleshooting
+    context: |
+      - VMs on different segments communicate normally.
+      - No VM reaches anything outside NSX.
+      - Traceflow to an external IP: Tunnel to Edge TEP → Received by t0 SR → Dropped, Reason: No route.
+      - `get bgp neighbor summary` on the active Edge: both neighbors Active since 02:13.
+      - The SR cannot ping its directly connected ToR addresses.
+    stem: "Which is the best next diagnostic step?"
+    options:
+      - { id: a, text: "Compare the VLAN IDs of the Tier-0 uplink VLAN segments with the ToR trunk/SVI configuration and check what changed at 02:13", correct: true, why: "Directly connected peers unreachable = Layer-2 uplink problem; check VLAN tagging and recent changes." }
+      - { id: b, text: "Enable Tier-1 route advertisement", why: "Advertisement doesn't affect BGP session state.", confusedWith: nsx-routing }
+      - { id: c, text: "Increase the TEP MTU to 9000", why: "Tunnels to the Edge work (Traceflow reached the SR).", confusedWith: nsx-transport }
+      - { id: d, text: "Restart the NSX Manager cluster", why: "Managers aren't in the data path.", confusedWith: nsx-architecture }
+    explanation:
+      correct: "East-west fine + SR has no route + BGP Active + no ping to connected peers → uplink VLAN / L2 path to the ToR."
+      concept: "Layered isolation of north-south failures."
+      trap: "Route advertisement and MTU are tempting but contradicted by the evidence."
+  - id: nsx-mix-002
+    type: single
+    kind: design
+    difficulty: expert
+    version: vcf9
+    topics: [nsx-routing, nsx-edge, nsx-security]
+    objective: "2.4"
+    lesson: nsx-tier0-tier1-routing
+    section: with-a-tier-1-sr-nat-gateway-firewall-lb
+    stem: "Tenant A needs only routing between its segments and to the Tier-0. Tenant B needs DNAT and a gateway firewall at its boundary. How do you configure their Tier-1 gateways for the most efficient data path?"
+    options:
+      - { id: a, text: "Tenant A: Distributed Only Tier-1 (no edge cluster). Tenant B: Tier-1 with an edge cluster (SR) for DNAT and gateway firewall", correct: true, why: "Only B needs an SR; A stays fully distributed." }
+      - { id: b, text: "Both Tier-1s with an edge cluster for consistency", why: "A gets an SR it doesn't need and all its north-south hairpins through Edges.", confusedWith: nsx-edge }
+      - { id: c, text: "Both Distributed Only; configure B's DNAT on the DR", why: "NAT needs an SR; DRs can't do it.", confusedWith: nsx-security }
+      - { id: d, text: "Put both tenants directly on the Tier-0 and use DFW instead of NAT", why: "DFW doesn't translate addresses.", confusedWith: nsx-security }
+    explanation:
+      correct: "Attach edge clusters only to Tier-1s that need centralized services; the SR is always created when an edge cluster is selected."
+      concept: "SR placement and data-path efficiency."

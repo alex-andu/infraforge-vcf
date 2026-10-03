@@ -1,0 +1,45 @@
+id: d05-sr-dr-components
+title: Gateway components – where the SR and DR of Tier-0 and Tier-1 run
+description: >
+  Logical view on top, physical realization below. Logically a Tier-0 gateway connects to the physical router and to two
+  Tier-1 gateways: t1-dev (Distributed Only, no edge cluster) and t1-prod (with an edge cluster because it runs NAT and
+  gateway firewall). Physically, the DR of every gateway is instantiated on every host transport node and on the Edges;
+  the Tier-0 SR runs only on the Edges; t1-prod also gets an SR on the Edges, so all its north-south traffic passes
+  through an Edge; t1-dev has no SR and stays fully distributed until the Tier-0 SR.
+width: 1000
+height: 600
+groups:
+  - { id: g-logical, x: 20, y: 20, w: 960, h: 230, label: "Logical view", kind: zone }
+  - { id: g-hosts, x: 20, y: 280, w: 460, h: 300, label: "Host transport nodes (DRs only)", kind: compute }
+  - { id: g-edges, x: 520, y: 280, w: 460, h: 300, label: "Edge nodes (SRs + DRs)", kind: nsx }
+nodes:
+  - { id: lrtr, x: 400, y: 40, w: 200, h: 50, label: "Physical router", kind: external, component: physical-network, info: "Peers with the Tier-0 SRs only." }
+  - { id: lt0, x: 400, y: 110, w: 200, h: 50, label: "Tier-0 t0-provider", kind: nsx, info: "Provider gateway: uplinks, BGP, redistribution. Always has SRs on the edge cluster." }
+  - { id: lt1d, x: 150, y: 185, w: 220, h: 50, label: "Tier-1 t1-dev", sublabel: "Distributed Only", kind: nsx, info: "No edge cluster selected, so no SR: pure DR. Most efficient." }
+  - { id: lt1p, x: 630, y: 185, w: 220, h: 50, label: "Tier-1 t1-prod", sublabel: "edge cluster: NAT, GFW", kind: nsx, info: "Edge cluster selected, so an SR is ALWAYS created – even before services are configured." }
+  - { id: hdr0, x: 50, y: 330, w: 190, h: 50, label: "t0 DR", kind: nsx, info: "Tier-0 DR on every host." }
+  - { id: hdr1d, x: 50, y: 410, w: 190, h: 50, label: "t1-dev DR", kind: nsx, info: "Tier-1 DR on every host: east-west routing for dev segments." }
+  - { id: hdr1p, x: 50, y: 490, w: 190, h: 50, label: "t1-prod DR", kind: nsx, info: "Tier-1 DR for prod segments; east-west still distributed." }
+  - { id: hvm, x: 280, y: 410, w: 170, h: 56, label: "Workload VMs", kind: vm, info: "VMs on segments of both Tier-1s." }
+  - { id: esr0, x: 550, y: 330, w: 190, h: 50, label: "t0 SR", sublabel: "uplinks, BGP", kind: nsx, info: "Tier-0 service router: only on Edges." }
+  - { id: esr1p, x: 550, y: 410, w: 190, h: 50, label: "t1-prod SR", sublabel: "NAT, GFW", kind: nsx, info: "Tier-1 service router for t1-prod. All north-south traffic of t1-prod passes through it." }
+  - { id: edrs, x: 550, y: 490, w: 190, h: 50, label: "DR instances", sublabel: "t0, t1-dev, t1-prod", kind: nsx, info: "DRs also exist on Edges for return traffic." }
+  - { id: ecl, x: 780, y: 410, w: 170, h: 56, label: "Edge cluster", sublabel: "edge-01, edge-02", kind: nsx, component: nsx-edge-cluster, info: "Backs both the Tier-0 SRs and the t1-prod SR." }
+edges:
+  - { from: lrtr, to: lt0, kind: north-south, bidirectional: true }
+  - { from: lt0, to: lt1d, label: "router link", kind: data }
+  - { from: lt0, to: lt1p, label: "router link", kind: data }
+  - { from: hvm, to: hdr1d, kind: data }
+  - { from: hvm, to: hdr1p, kind: data }
+  - { from: hdr1d, to: hdr0, kind: data }
+  - { from: hdr0, to: esr0, label: "Geneve", kind: overlay, dashed: true }
+  - { from: hdr1p, to: esr1p, label: "Geneve", kind: overlay, dashed: true }
+  - { from: esr1p, to: esr0, kind: data }
+  - { from: ecl, to: esr0, kind: dependency }
+  - { from: ecl, to: esr1p, kind: dependency }
+steps:
+  - { title: "Logical design", text: "One Tier-0 for the provider, two Tier-1s for tenants. Logically simple; the interesting part is where each piece runs.", highlight: [lrtr, lt0, lt1d, lt1p] }
+  - { title: "DRs everywhere", text: "Every gateway's DR runs on every host transport node (and on Edges). East-west routing never needs an Edge.", highlight: [hdr0, hdr1d, hdr1p, edrs] }
+  - { title: "Tier-0 SR on Edges", text: "The Tier-0 SR holds the uplinks and BGP sessions; it only exists on the edge cluster.", highlight: [esr0, ecl] }
+  - { title: "t1-dev: distributed only", text: "No edge cluster, no SR. North-south goes host DR → Tier-0 DR → Tier-0 SR.", highlight: [hvm, hdr1d, hdr0, esr0] }
+  - { title: "t1-prod: SR in the path", text: "Edge cluster selected → SR created. North-south goes host DR → t1-prod SR (NAT, GFW) → Tier-0 SR. Attach an edge cluster to a Tier-1 only when it needs services.", highlight: [hvm, hdr1p, esr1p, esr0] }

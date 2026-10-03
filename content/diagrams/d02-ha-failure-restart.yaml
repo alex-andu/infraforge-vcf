@@ -1,0 +1,44 @@
+id: d02-ha-failure-restart
+title: vSphere HA failure detection and VM restart
+description: >
+  A four-host cluster with FDM agents. esx01 is the HA primary; esx02 to esx04 are secondaries. Agents exchange network
+  heartbeats every second over the management network (or the vSAN network when vSAN is enabled). Heartbeat datastores on
+  shared non-vSAN storage provide a second signal. When esx03 goes silent, the primary checks datastore heartbeats and pings
+  esx03's management IP. No heartbeat and no ping means the host has failed: its VMs are restarted on esx02 and esx04 in
+  restart-priority order, within the capacity reserved by admission control. If esx03 were still writing datastore heartbeats,
+  it would be isolated or partitioned instead, and would apply its isolation response after failing to ping the isolation
+  address (by default the management gateway).
+width: 1000
+height: 600
+groups:
+  - { id: g-cluster, x: 20, y: 120, w: 760, h: 300, label: "vSphere HA cluster (FDM agent on every host)", kind: compute }
+nodes:
+  - { id: vc, x: 40, y: 30, w: 170, h: 56, label: "vCenter", sublabel: "configures HA", kind: mgmt, component: vcenter, info: "Enables HA and pushes FDM agents; shows HA status. Not needed for the failover itself." }
+  - { id: gw, x: 560, y: 30, w: 200, h: 56, label: "Isolation address", sublabel: "mgmt gateway / das.isolationaddressX", kind: network, info: "A host that stops hearing other agents pings these addresses. If they fail too, it declares itself isolated. On vSAN clusters use addresses reachable on the vSAN network." }
+  - { id: esx01, x: 40, y: 170, w: 160, h: 64, label: "esx01", sublabel: "HA primary", kind: compute, info: "Elected primary (more mounted datastores helps). Monitors secondaries, tracks protected VMs, orchestrates restarts, reports to vCenter." }
+  - { id: esx02, x: 230, y: 170, w: 160, h: 64, label: "esx02", sublabel: "secondary", kind: compute, info: "Runs VMs and reports state to the primary. Receives restarted VMs." }
+  - { id: esx03, x: 420, y: 170, w: 160, h: 64, label: "esx03", sublabel: "FAILED", kind: security, info: "Silent host. Primary checks datastore heartbeats and ICMP. Neither answers → failed. Datastore heartbeats present → isolated or partitioned." }
+  - { id: esx04, x: 610, y: 170, w: 150, h: 64, label: "esx04", sublabel: "secondary", kind: compute, info: "Survivor; receives restarted VMs." }
+  - { id: vmhi, x: 230, y: 320, w: 160, h: 56, label: "vCenter-wld VM", sublabel: "priority Highest", kind: vm, info: "Restarted first. Management VMs (vCenter, NSX Managers) often get High/Highest priority." }
+  - { id: vmlo, x: 610, y: 320, w: 150, h: 56, label: "test VM", sublabel: "priority Low", kind: vm, info: "Restarted after higher tiers satisfy their restart condition (or timeout). Lowest-priority VMs lose out first if capacity is short." }
+  - { id: hbds, x: 820, y: 170, w: 160, h: 64, label: "Heartbeat datastores", sublabel: "2 per host (max 5)", kind: storage, info: "Selected by vCenter; .vSphere-HA folder on each. vSAN datastores cannot be heartbeat datastores." }
+  - { id: ac, x: 820, y: 320, w: 160, h: 56, label: "Admission control", sublabel: "e.g. 25% reserved", kind: ops, info: "Reserves capacity so the restart fits: cluster resource percentage, slot policy, or dedicated failover hosts." }
+  - { id: net, x: 40, y: 470, w: 720, h: 56, label: "Heartbeat network", sublabel: "management network — or vSAN network when vSAN is enabled", kind: network, info: "Network heartbeats every second between primary and secondaries. On vSAN clusters HA inter-agent traffic uses the vSAN network." }
+edges:
+  - { from: vc, to: esx01, label: "configure", kind: mgmt, dashed: true }
+  - { from: esx01, to: esx02, label: "heartbeat 1/s", kind: control, bidirectional: true }
+  - { from: esx01, to: esx03, label: "1. no heartbeat", kind: control, dashed: true }
+  - { from: esx01, to: hbds, label: "2. check DS heartbeat", kind: storage }
+  - { from: esx03, to: gw, label: "isolation test", kind: control, dashed: true }
+  - { from: esx01, to: vmhi, label: "4. restart first", kind: data }
+  - { from: esx01, to: vmlo, label: "5. restart later", kind: data }
+  - { from: ac, to: esx04, label: "capacity", kind: dependency, dashed: true }
+steps:
+  - { title: "Normal operation", text: "FDM agents elect esx01 as primary; heartbeats flow every second over the management (or vSAN) network.", highlight: [esx01, esx02, esx03, esx04, net] }
+  - { title: "1. Heartbeats stop", text: "The primary stops hearing esx03.", highlight: [esx01, esx03] }
+  - { title: "2. Datastore heartbeat check", text: "Is esx03 still updating its heartbeat datastores? If yes, it is alive (isolated/partitioned), not failed.", highlight: [esx01, hbds, esx03] }
+  - { title: "3. Ping check", text: "No datastore heartbeat and no ICMP reply on the management IP: esx03 is declared failed.", highlight: [esx03] }
+  - { title: "4. Restart by priority", text: "Highest-priority VMs restart first on surviving hosts, respecting reservations and required rules.", highlight: [vmhi, esx02] }
+  - { title: "5. Lower tiers", text: "Lower priorities follow once the previous tier meets its restart condition or times out.", highlight: [vmlo, esx04] }
+  - { title: "Capacity was reserved", text: "Admission control kept enough spare capacity for this restart. Afterwards DRS rebalances.", highlight: [ac, esx02, esx04] }
+  - { title: "Isolation instead?", text: "If esx03 were alive but cut off, it would ping the isolation address, fail, declare itself isolated and apply its isolation response.", highlight: [esx03, gw] }

@@ -1,0 +1,37 @@
+id: d-lab-vcf-ops-dashboards-alerts-logical
+title: "Lab topology: VCF Operations dashboards and alerts"
+description: >
+  Nested lab on one Proxmox server. The VCF management domain (nested ESX hosts) runs vCenter, NSX, SDDC Manager,
+  VCF Operations (Simple model, one node), the fleet management appliance and a collector. The learner works from a
+  jump host browser against VCF Operations, builds a view, report, dashboard, custom group, policy and alert, and
+  receives notifications on a lab SMTP server.
+width: 1000
+height: 520
+groups:
+  - { id: g-prox, x: 20, y: 20, w: 960, h: 480, label: "Proxmox VE host (2 x 28 cores, 256 GB RAM)", kind: zone }
+  - { id: g-mgmt, x: 260, y: 70, w: 700, h: 400, label: "Nested VCF management domain (vSAN, nested ESX)", kind: mgmt }
+nodes:
+  - { id: jump, x: 50, y: 100, w: 170, h: 56, label: "Jump host", sublabel: "browser, PowerShell", kind: external, info: "Workstation VM on the lab management VLAN with DNS pointing at the lab DNS server." }
+  - { id: smtp, x: 50, y: 230, w: 170, h: 56, label: "Lab SMTP (optional)", sublabel: "e.g. mail catcher", kind: external, info: "Optional small SMTP server to receive alert notifications and scheduled reports." }
+  - { id: dns, x: 50, y: 360, w: 170, h: 56, label: "DNS + NTP", kind: network, info: "Lab DNS and NTP services; every appliance needs forward and reverse records and correct time." }
+  - { id: ops, x: 290, y: 110, w: 190, h: 56, label: "VCF Operations", sublabel: "Simple, 1 node", kind: ops, component: vcf-operations, info: "Primary node only. Where you build views, reports, dashboards, policies and alerts." }
+  - { id: col, x: 520, y: 110, w: 190, h: 56, label: "Collector", sublabel: "cloud proxy", kind: ops, component: vcf-operations-collector, info: "Runs the vCenter, NSX and vSAN adapters." }
+  - { id: fm, x: 750, y: 110, w: 190, h: 56, label: "Fleet management", kind: mgmt, component: vcf-operations-fleet-management, info: "Present in every model; not used much in this lab." }
+  - { id: vc, x: 290, y: 260, w: 190, h: 56, label: "vCenter (mgmt)", kind: mgmt, component: vcenter, info: "Main data source; its VMs, hosts and datastores are the subjects of your views and alerts." }
+  - { id: nsx, x: 520, y: 260, w: 190, h: 56, label: "NSX Manager", kind: nsx, component: nsx-manager, info: "Second data source." }
+  - { id: sddc, x: 750, y: 260, w: 190, h: 56, label: "SDDC Manager", kind: mgmt, component: sddc-manager, info: "Integrated with VCF Operations." }
+  - { id: test, x: 290, y: 390, w: 190, h: 56, label: "Test VMs", sublabel: "load generator", kind: vm, info: "Two small Linux VMs used to create CPU load and trigger your custom alert." }
+edges:
+  - { from: jump, to: ops, label: "HTTPS", kind: mgmt }
+  - { from: col, to: ops, label: "forward", kind: data }
+  - { from: vc, to: col, label: "poll", kind: data, dashed: true }
+  - { from: nsx, to: col, kind: data, dashed: true }
+  - { from: ops, to: smtp, label: "notifications", kind: mgmt, dashed: true }
+  - { from: test, to: vc, kind: dependency }
+  - { from: dns, to: ops, kind: dependency, dashed: true }
+  - { from: fm, to: ops, kind: mgmt, dashed: true }
+  - { from: sddc, to: ops, kind: dependency, dashed: true }
+steps:
+  - { title: "Data path", text: "vCenter and NSX are polled by adapters on the collector; data goes to the VCF Operations node.", highlight: [vc, nsx, col, ops] }
+  - { title: "Your work", text: "From the jump host you build views, reports, dashboards, a custom group, a policy and an alert.", highlight: [jump, ops] }
+  - { title: "Trigger and notify", text: "Load on the test VMs triggers the alert; the notification goes to the lab SMTP server.", highlight: [test, ops, smtp] }

@@ -1,0 +1,37 @@
+id: d11-api-landscape
+title: VCF API landscape and authentication patterns
+description: >
+  Each VCF component exposes its own REST API with its own authentication pattern. SDDC Manager: POST /v1/tokens
+  returns an access token (1 hour) and refresh token (24 hours), sent as Authorization Bearer. vCenter: POST
+  /api/session with basic credentials returns a session ID sent in the vmware-api-session-id header. NSX: the Policy
+  API under /policy/api/v1 and the management API under /api/v1, commonly called with basic authentication over HTTPS.
+  VCF Operations: POST /suite-api/api/auth/token/acquire returns a token sent in the Authorization header. VCF PowerCLI
+  (module VCF.PowerCLI) wraps these: Connect-VIServer, Connect-VcfSddcManagerServer and SDK-style
+  Initialize-/Invoke- cmdlets.
+width: 1000
+height: 560
+nodes:
+  - { id: script, x: 40, y: 240, w: 180, h: 70, label: "Your script / pipeline", sublabel: "curl, PowerCLI, Terraform", kind: external, info: "Automation client. Store credentials in a secret store, never in the script." }
+  - { id: pcli, x: 280, y: 240, w: 180, h: 70, label: "VCF.PowerCLI", sublabel: "cmdlets + SDK bindings", kind: mgmt, info: "VCF PowerCLI 9.0 module. Connect-VIServer for vCenter/ESX, Connect-VcfSddcManagerServer for SDDC Manager, Get-NsxOperation / Get-vSphereOperation / Get-VcfSddcManagerOperation to find SDK cmdlets for an API path." }
+  - { id: sddc, x: 560, y: 40, w: 200, h: 70, label: "SDDC Manager API", sublabel: "/v1/... Bearer token", kind: mgmt, component: sddc-manager, info: "POST /v1/tokens with username/password returns accessToken (1 h) and refreshToken (24 h). PATCH /v1/tokens/access-token/refresh renews the access token. Examples: GET /v1/domains, /v1/hosts, /v1/clusters." }
+  - { id: vc, x: 560, y: 150, w: 200, h: 70, label: "vCenter REST API", sublabel: "/api/... session id", kind: mgmt, component: vcenter, info: "POST /api/session with basic auth returns a session token; send it as vmware-api-session-id. Example: GET /api/vcenter/vm." }
+  - { id: nsx, x: 560, y: 260, w: 200, h: 70, label: "NSX API", sublabel: "/policy/api/v1, /api/v1", kind: nsx, component: nsx-manager, info: "Policy API (declarative, intent: segments, gateways, DFW) and management API (cluster status, transport nodes). Call the NSX Manager VIP." }
+  - { id: ops, x: 560, y: 370, w: 200, h: 70, label: "VCF Operations API", sublabel: "/suite-api token", kind: ops, component: vcf-operations, info: "POST /suite-api/api/auth/token/acquire with username, password and authSource; send the token in the Authorization header (KB 447072 shows the vRealizeOpsToken prefix)." }
+  - { id: vcfa, x: 560, y: 480, w: 200, h: 60, label: "VCF Automation API", sublabel: "provider + org APIs", kind: ops, component: vcf-automation, info: "Used by Terraform and scripts for organizations, regions and tenant resources (for example creating extra VM Apps organizations, KB 419781)." }
+  - { id: secret, x: 40, y: 420, w: 180, h: 56, label: "Credential store", kind: security, info: "Service accounts with least privilege; rotate tokens; never hard-code passwords." }
+edges:
+  - { from: script, to: pcli, kind: mgmt }
+  - { from: script, to: sddc, label: "Bearer", kind: mgmt }
+  - { from: script, to: vc, label: "session id", kind: mgmt }
+  - { from: script, to: nsx, label: "basic / HTTPS", kind: mgmt }
+  - { from: script, to: ops, label: "token", kind: mgmt }
+  - { from: pcli, to: sddc, kind: mgmt, dashed: true }
+  - { from: pcli, to: vc, kind: mgmt, dashed: true }
+  - { from: pcli, to: nsx, kind: mgmt, dashed: true }
+  - { from: script, to: vcfa, kind: mgmt, dashed: true }
+  - { from: secret, to: script, label: "credentials", kind: dependency, dashed: true }
+steps:
+  - { title: "One API per component", text: "There is no single VCF API: SDDC Manager, vCenter, NSX, VCF Operations and VCF Automation each have their own endpoint and auth.", highlight: [sddc, vc, nsx, ops, vcfa] }
+  - { title: "Token patterns", text: "SDDC Manager: Bearer token from /v1/tokens. vCenter: session id from /api/session. VCF Operations: token from /suite-api/api/auth/token/acquire.", highlight: [script, sddc, vc, ops] }
+  - { title: "PowerCLI wraps the APIs", text: "VCF.PowerCLI provides high-level cmdlets plus generated SDK cmdlets for vSphere, NSX and SDDC Manager.", highlight: [pcli, sddc, vc, nsx] }
+  - { title: "Credentials", text: "Use least-privilege service accounts from a secret store.", highlight: [secret, script] }

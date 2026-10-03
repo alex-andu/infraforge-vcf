@@ -1,0 +1,225 @@
+id: lab-homelab-proxmox-prep
+title: Prepare Proxmox VE for Nested ESX (CPU, Network, Storage)
+level: beginner
+complexity: 2
+minutes: 150
+version: general
+technologies: [Proxmox VE, KVM, ZFS, Linux bridge, ESX 9]
+topics: [hypervisors, cpu-memory-virt, deployment-planning, mtu, l2-l3]
+lessons: [hypervisors-and-esx, cpu-memory-virtualization, deployment-planning-prereqs, network-fundamentals-for-vcf]
+objectives:
+  - Enable and verify nested virtualization on the Proxmox host and confirm the CPU generation against ESX 9 support.
+  - Build the storage layout for a nested VCF lab (SSD mirror, NVMe pool for nested ESX disks, HDD bulk pool) and cap the ZFS ARC.
+  - Configure a VLAN-aware Linux bridge with MTU 9000 end-to-end and prove that tap devices inherit it.
+  - Create a reusable nested ESX VM definition (CPU host, q35/OVMF, SATA boot, emulated NVMe, vmxnet3 trunk NICs) and boot the ESX installer.
+  - Take and verify a pool-level restore point.
+prerequisites:
+  - "Proxmox VE 8.x (current release) installed on the server, ideally on the two 256 GB SSDs as a ZFS mirror (rpool), with root shell access."
+  - "Switch ports to the server configured as trunks for the lab VLANs with jumbo frames (see the Home Lab VLAN plan)."
+  - "ESX 9 installer ISO (needs a Broadcom entitlement). Without it, an ESXi 8.0 ISO lets you practise the same VM settings."
+  - "The Home Lab section open: IP plan, VLAN plan and naming convention."
+topology:
+  logical: d-lab-homelab-proxmox-prep-logical
+requirements:
+  network:
+    - "VLAN-aware bridge vmbr0 on a bond of the physical NICs, MTU 9000, trunked to the switch."
+    - "Proxmox management on VLAN 10 (vmbr0.10, 10.10.10.5/24, gateway 10.10.10.1 – or your existing management network until rtr01 exists)."
+  vms:
+    - "esx01 (VM 201): 2 sockets x 12 cores, CPU type host, NUMA on, 72 GB fixed RAM, SATA 64 GB boot, emulated NVMe 500 GB (vSAN ESA), 2 x vmxnet3."
+    - "Optional now, required before VCF: infra01 (DNS/NTP) and rtr01 (router), see the Network Readiness lab."
+  ip:
+    - "pve01 10.10.10.5, esx01 10.10.10.101 (from the Home Lab IP plan)."
+startingState: |
+  A freshly installed Proxmox VE server: 2 x 28-core CPUs, 256 GB RAM, Proxmox on the SSD mirror, the 1 TB NVMe and the
+  four 2 TB HDDs unused, one default bridge `vmbr0` without VLAN awareness and MTU 1500.
+
+  :::warning
+  Nested ESX on Proxmox/KVM is not supported by Broadcom or Proxmox. It is a learning platform. Changing the network
+  configuration of the host can cut you off: have console access (IPMI/iDRAC/iLO or a monitor) before step 4.
+  :::
+steps:
+  - id: check-cpu
+    title: Identify the CPU and its ESX 9 support status
+    why: >
+      With CPU type host, the nested ESX sees your real CPU model. ESX 9 discontinued some Xeon generations (for example
+      Skylake-SP) and deprecated others (Cascade Lake), which changes how the installer behaves.
+    instructions: |
+      ```shell
+      lscpu | grep -E "Model name|Socket|Core|Thread|NUMA node"
+      grep -m1 -o -w -E "vmx|svm" /proc/cpuinfo
+      grep -m1 -o -w -E "aes|pdpe1gb" /proc/cpuinfo | sort -u
+      ```
+      Compare the model with the table in the Home Lab section (*Your Lab → CPU generation*, from Broadcom KB 318697).
+    hint: 28-core Xeons exist as Skylake-SP (8176/8180), Cascade Lake (8276/8280/6258R) and Ice Lake (6330/6348) parts.
+    validate: Note the model, sockets, cores per socket, NUMA nodes, and whether vmx/svm, aes and pdpe1gb are present.
+    expected: |
+      2 sockets, 28 cores each, 2 threads per core, 2 NUMA nodes; `vmx` (Intel) present; `aes` and `pdpe1gb` present
+      (NSX Edge DPDK needs AES-NI and 1 GB pages). You know whether to expect `allowLegacyCPU` (discontinued generation).
+  - id: enable-nested
+    title: Enable and verify nested virtualization
+    why: Without the KVM nested parameter, the ESX VM cannot use hardware virtualization and cannot power on its own VMs.
+    instructions: |
+      ```shell
+      cat /sys/module/kvm_intel/parameters/nested        # AMD: /sys/module/kvm_amd/parameters/nested
+      ```
+      If it prints `N`/`0`:
+      ```shell
+      echo "options kvm-intel nested=Y" > /etc/modprobe.d/kvm-intel.conf
+      # with ALL VMs stopped:
+      modprobe -r kvm_intel && modprobe kvm_intel
+      ```
+    hint: Reloading the module fails while any VM is running; stop VMs or simply reboot the host.
+    validate: "`cat /sys/module/kvm_intel/parameters/nested`"
+    expected: "`Y` (Intel) or `1` (AMD)."
+  - id: storage-pools
+    title: Build the NVMe and HDD pools and cap the ZFS ARC
+    why: >
+      Nested vSAN ESA latency equals your NVMe latency, so all nested ESX disks go on the NVMe. The HDDs hold the depot and
+      backups. ZFS caches aggressively in RAM; in a 256 GB lab every GB matters.
+    instructions: |
+      1. Find stable device names: `ls -l /dev/disk/by-id/ | grep -v part`.
+      2. NVMe pool and Proxmox storage (thin):
+         ```shell
+         zpool create -o ashift=12 nvmepool /dev/disk/by-id/<nvme-id>
+         zfs set compression=lz4 nvmepool
+         pvesm add zfspool nvme-fast --pool nvmepool --sparse 1 --content images,rootdir
+         ```
+      3. HDD pool (RAID10 = two mirrors) and a directory storage for ISO/backups:
+         ```shell
+         zpool create -o ashift=12 bulk mirror /dev/disk/by-id/<hdd1> /dev/disk/by-id/<hdd2> mirror /dev/disk/by-id/<hdd3> /dev/disk/by-id/<hdd4>
+         zfs create bulk/backup
+         zfs create bulk/depot
+         pvesm add dir bulk-backup --path /bulk/backup --content backup,iso
+         ```
+      4. ARC cap 8 GiB:
+         ```shell
+         echo "options zfs zfs_arc_max=8589934592" > /etc/modprobe.d/zfs.conf
+         update-initramfs -u -k all
+         ```
+         Reboot when convenient.
+    hint: If the NVMe or HDDs have old partitions, wipe them in the GUI (Disks → Wipe Disk) first. Double-check device IDs; zpool create destroys data.
+    validate: |
+      ```shell
+      zpool status
+      pvesm status
+      cat /sys/module/zfs/parameters/zfs_arc_max
+      ```
+    expected: "`nvmepool` and `bulk` ONLINE; storages `nvme-fast` and `bulk-backup` active; `zfs_arc_max` shows 8589934592 after reboot."
+  - id: network-bridge
+    title: Make vmbr0 VLAN-aware with MTU 9000 and move management to VLAN 10
+    why: >
+      Nested ESX hosts tag their own VLANs (management, vMotion, vSAN, TEP), so they need a trunk. Jumbo frames must exist on
+      every hop or vSAN and NSX overlay traffic will silently drop large frames.
+    instructions: |
+      Edit `/etc/network/interfaces` (keep a copy: `cp /etc/network/interfaces /root/interfaces.bak`). Use the example in
+      the Home Lab section *MTU end-to-end*: `mtu 9000` on each physical NIC and `bond0`, `bridge-vlan-aware yes`,
+      `bridge-vids 2-4094` and `mtu 9000` on `vmbr0`, and the host IP on `vmbr0.10` (MTU 1500). Apply with:
+      ```shell
+      ifreload -a
+      ```
+    hint: If you lose access, use the server console and restore /root/interfaces.bak, then ifreload -a.
+    validate: |
+      ```shell
+      ip -d link show vmbr0 | grep -o -E "mtu [0-9]+|vlan_filtering [01]"
+      ip link show bond0 | grep -o "mtu [0-9]*"
+      bridge vlan show dev bond0 | head
+      ping -c2 10.10.10.1
+      ```
+    expected: "`mtu 9000` and `vlan_filtering 1` on vmbr0; bond0 `mtu 9000`; bond0 carries VLANs 2-4094; the gateway (or your current gateway) answers."
+  - id: create-esx-vm
+    title: Define the nested ESX VM
+    why: >
+      ESX has drivers for AHCI (SATA), NVMe and vmxnet3 but none for VirtIO. CPU type host exposes VT-x, AES-NI and 1 GB pages.
+      Fixed memory avoids the KVM balloon driver, which ESX cannot use.
+    instructions: |
+      Upload the ESX ISO to `local` (or `bulk-backup`) ISO storage, then:
+      ```shell
+      qm create 201 --name esx01 --ostype other --machine q35 --bios ovmf \
+        --efidisk0 nvme-fast:1,efitype=4m,pre-enrolled-keys=0 \
+        --cpu host --sockets 2 --cores 12 --numa 1 --memory 73728 --balloon 0 \
+        --sata0 nvme-fast:64,ssd=1,discard=on \
+        --net0 vmxnet3,bridge=vmbr0,firewall=0 --net1 vmxnet3,bridge=vmbr0,firewall=0 \
+        --cdrom local:iso/<ESX-9-installer>.iso --boot "order=sata0;ide2"
+      pvesm alloc nvme-fast 201 vm-201-disk-9 500G
+      qm set 201 --args "-drive file=/dev/zvol/nvmepool/vm-201-disk-9,if=none,id=NVME1,format=raw -device nvme,drive=NVME1,serial=esx01nvme1"
+      ```
+    hint: The Proxmox GUI cannot add NVMe disks; that is why the args line exists. Keep the serial unique per host.
+    validate: "`qm config 201`"
+    expected: |
+      `cpu: host`, `balloon: 0`, `machine: q35`, `bios: ovmf`, two `vmxnet3` NICs on `vmbr0` with `firewall=0` and no `tag=`,
+      `sata0` 64G and an `args:` line with `-device nvme`.
+  - id: install-esx
+    title: Install ESX and check what it sees
+    why: "Proves the VM definition: ESX must detect the SATA boot disk, the NVMe device and both NICs."
+    instructions: |
+      1. `qm start 201`, open the console, install ESX to the **64 GB SATA disk** (never the NVMe device).
+      2. In the DCUI set the management VLAN **10**, IP 10.10.10.101/24, gateway 10.10.10.1, DNS 10.10.10.10, hostname
+         `esx01.vcf.lab`; enable SSH (Troubleshooting Options).
+      3. From SSH:
+         ```shell
+         esxcli network nic list
+         esxcli storage core device list | grep -E "Display Name|Is SSD"
+         vdq -q
+         ```
+    hint: If the installer finds no NIC, the model is not vmxnet3. If it finds no disk, the boot disk is on VirtIO.
+    validate: Output of the three commands, and `vmkping -I vmk0 10.10.10.1` once the gateway exists.
+    expected: |
+      vmnic0 and vmnic1 (vmxnet3) Up; a SATA disk and an NVMe device listed as SSD; `vdq -q` shows the NVMe device as
+      eligible for vSAN (state wording depends on the build).
+  - id: mtu-proof
+    title: Prove MTU 9000 through the bridge
+    why: The tap interface of every VM must inherit the bridge MTU, otherwise jumbo frames die between ESX and the switch.
+    instructions: |
+      On Proxmox:
+      ```shell
+      ip link show | grep -A1 "tap201i0" | grep -o "mtu [0-9]*"
+      ```
+      Later, with a vSAN or vMotion vmknic on a 9000 VLAN on two hosts: `vmkping -I vmk2 -d -s 8972 <peer-ip>`.
+    validate: "`mtu 9000` on `tap201i0` and `tap201i1`."
+    expected: Tap devices show mtu 9000 without any per-NIC mtu option (that option is VirtIO-only).
+  - id: restore-point
+    title: Take a pool-level restore point
+    why: >
+      vSAN devices attached through args are not part of `qm snapshot`. A recursive ZFS snapshot with all lab VMs off
+      captures every disk consistently.
+    instructions: |
+      ```shell
+      qm shutdown 201
+      zfs snapshot -r nvmepool@esx-installed
+      zfs list -t snapshot -o name,used | grep esx-installed
+      ```
+    validate: "`zfs list -t snapshot` shows the snapshot for the boot, EFI and NVMe zvols of VM 201."
+    expected: Snapshots exist with near-zero used space; you can now clone the definition for esx02 and esx03.
+troubleshooting:
+  - symptom: "ESX installer: no network adapters detected"
+    fix: "NIC model is not vmxnet3 (e.g. VirtIO or e1000). Set `--net0 vmxnet3,bridge=vmbr0,firewall=0`."
+  - symptom: "ESX installer: no disks found"
+    fix: "The boot disk is VirtIO SCSI/Block. Recreate it as SATA (`--sata0`) or check the `args` NVMe syntax."
+  - symptom: "Nested ESX cannot power on VMs (hardware virtualization not available)"
+    fix: "Check `nested` = Y/1 on the Proxmox host and CPU type `host` on the VM. On AMD, use a current Proxmox kernel (community reports fixed it from PVE 8.1/kernel 6.5)."
+  - symptom: "ESX ping works but the Host Client shows TLS/SSL errors or hangs"
+    fix: "Community workaround for nested ESX on Proxmox: disable checksum offload on the uplink, `esxcli network nic cso set -e 0 -n vmnic0` (and vmnic1); then verify MTU on the path."
+  - symptom: "vmkping -d -s 8972 fails, -s 1472 works"
+    fix: "A hop is still at 1500: physical NIC, bond, vmbr0, switch port, or router sub-interface. Check `ip link` on Proxmox and the switch."
+  - symptom: "Proxmox host loses network after ifreload"
+    fix: "Use the console, restore /root/interfaces.bak, ifreload -a. Usually the management IP moved to vmbr0.10 while the switch port sends management untagged (or vice versa)."
+challenge: |
+  Script the creation of esx02 and esx03 (VM IDs 202, 203) from the same parameters with unique NVMe serials, then write a
+  one-page "lab bill of materials": vCPU, RAM and thin/used disk per VM and the RAM headroom left on the host. Compare with
+  the RAM budget table in the Home Lab section.
+cleanup: |
+  Keep everything: this is the base of all later labs. If you want to start over, `qm destroy 201 --purge` and
+  `zfs destroy -r nvmepool@esx-installed`. Do not destroy the pools.
+sources:
+  - title: "Proxmox VE wiki – Nested Virtualization"
+    url: https://pve.proxmox.com/wiki/Nested_Virtualization
+  - title: "Proxmox forum – How do you set up a VM with NVMe interface?"
+    url: https://forum.proxmox.com/posts/563618/
+  - title: "Proxmox forum – Nested ESXi 8.0U2 on PVE 8.2 (vmxnet3, checksum offload)"
+    url: https://forum.proxmox.com/threads/nested-esxi-8-0u2-on-pve-8-2-1.163139/
+  - title: "Proxmox qemu-server source – NIC models and MTU option"
+    url: https://github.com/proxmox/qemu-server/blob/master/src/PVE/QemuServer/Network.pm
+  - title: "Broadcom KB 318697 – CPU Support Deprecation and Discontinuation in VCF Releases"
+    url: https://knowledge.broadcom.com/external/article/318697
+  - title: "William Lam – Ultimate lab resource for VCF 9.0"
+    url: https://williamlam.com/2025/06/ultimate-lab-resource-for-vcf-9-0.html

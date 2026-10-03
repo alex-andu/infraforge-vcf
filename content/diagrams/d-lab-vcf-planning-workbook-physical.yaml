@@ -1,0 +1,32 @@
+id: d-lab-vcf-planning-workbook-physical
+title: Proxmox resource budget for the VCF 9 lab
+description: >
+  The single Proxmox server (2 x 28 cores, 256 GB RAM) hosts three management nested ESX hosts of 56 GB each, three
+  workload domain nested hosts of 20 GB each, a temporary utility ESX host for the VCF Installer, infra-01 and nfs-01.
+  The 1 TB NVMe backs the NFS export with the appliance disks, the 256 GB SSDs hold nested ESX boot disks, and the
+  2 TB HDDs hold ISOs, the offline depot and backups. VCF Automation (about 96 GB) is deferred because it does not fit.
+width: 1000
+height: 600
+groups:
+  - { id: g-px, x: 20, y: 20, w: 960, h: 560, label: "Proxmox VE server: 2 x 28 cores, 256 GB RAM", kind: compute }
+nodes:
+  - { id: m1, x: 50, y: 70, w: 200, h: 70, label: "esx-01", sublabel: "16 vCPU / 56 GB", kind: mgmt, component: esx-host, info: "Management domain host." }
+  - { id: m2, x: 280, y: 70, w: 200, h: 70, label: "esx-02", sublabel: "16 vCPU / 56 GB", kind: mgmt, info: "Management domain host." }
+  - { id: m3, x: 510, y: 70, w: 200, h: 70, label: "esx-03", sublabel: "16 vCPU / 56 GB", kind: mgmt, info: "Management domain host. 3 x 56 GB = 168 GB for about 105 GB of management appliances plus about 45 GB for the workload domain vCenter and NSX." }
+  - { id: util, x: 740, y: 70, w: 210, h: 70, label: "esx-util (temporary)", sublabel: "8 vCPU / 24 GB", kind: external, info: "Runs the VCF Installer during deployment only; deleted afterwards." }
+  - { id: w1, x: 50, y: 200, w: 200, h: 70, label: "esx-21", sublabel: "8 vCPU / 20 GB", kind: compute, info: "Workload domain host." }
+  - { id: w2, x: 280, y: 200, w: 200, h: 70, label: "esx-22", sublabel: "8 vCPU / 20 GB", kind: compute, info: "Workload domain host." }
+  - { id: w3, x: 510, y: 200, w: 200, h: 70, label: "esx-23", sublabel: "8 vCPU / 20 GB", kind: compute, info: "Workload domain host." }
+  - { id: aux, x: 740, y: 200, w: 210, h: 70, label: "infra-01 + nfs-01", sublabel: "~3 GB", kind: ops, info: "DNS/NTP and NFS server." }
+  - { id: nvme, x: 50, y: 360, w: 280, h: 70, label: "1 TB NVMe", sublabel: "NFS exports (appliances)", kind: storage, info: "Thin-provisioned appliance disks; William Lam measured about 330 GB used for a full minimal deployment including VCF Automation." }
+  - { id: ssd, x: 360, y: 360, w: 280, h: 70, label: "2 x 256 GB SSD", sublabel: "nested ESX boot disks", kind: storage, info: "Also usable for a small vSAN ESA experiment in the vSAN labs." }
+  - { id: hdd, x: 670, y: 360, w: 280, h: 70, label: "4 x 2 TB HDD", sublabel: "ISOs, depot, backups", kind: storage, info: "Offline depot and backups; too slow for appliance disks." }
+  - { id: gap, x: 200, y: 480, w: 600, h: 64, label: "Not deployed: VCF Automation (~96 GB), HA model, NSX Edge cluster", kind: security, info: "These do not fit alongside the management and workload domains on 256 GB; deploy them only by stopping other parts of the lab." }
+edges:
+  - { from: m1, to: nvme, kind: storage, dashed: true }
+  - { from: w1, to: nvme, kind: storage, dashed: true }
+steps:
+  - { title: "Management domain", text: "Three 56 GB hosts carry the management appliances and the workload domain's vCenter and NSX.", highlight: [m1, m2, m3] }
+  - { title: "Workload domain", text: "Three small hosts on NFS.", highlight: [w1, w2, w3] }
+  - { title: "Storage tiers", text: "NVMe for appliances, SSD for boot, HDD for depot and backups.", highlight: [nvme, ssd, hdd] }
+  - { title: "What does not fit", text: "VCF Automation, HA model and Edge clusters are out of budget.", highlight: [gap] }

@@ -1,0 +1,43 @@
+id: d12-sso-models
+title: VCF Single Sign-On with the VCF Identity Broker
+description: >
+  VCF Single Sign-On puts the VCF Identity Broker between your corporate identity provider and the VCF components.
+  The broker runs either embedded in the management domain vCenter of a VCF instance (no extra appliance, one
+  instance, protected only by vSphere HA) or as a three-node appliance cluster deployed by VCF Operations fleet
+  management (survives a node failure, up to five VCF instances per broker). Components that use VCF SSO include
+  vCenter, NSX, VCF Operations, VCF Automation and VCF Operations for logs and for networks. SDDC Manager UI and ESX
+  do not use VCF SSO. Authentication uses SAML 2.0 or OIDC with a modern IdP, or AD/LDAP directories; users and
+  groups are provisioned by SCIM, JIT or directory sync. Roles are still assigned inside each component.
+width: 1000
+height: 600
+groups:
+  - { id: g-idp, x: 20, y: 20, w: 300, h: 220, label: "Corporate identity", kind: external }
+  - { id: g-broker, x: 360, y: 20, w: 280, h: 300, label: "VCF Identity Broker (choose one model)", kind: security }
+  - { id: g-comps, x: 680, y: 20, w: 300, h: 560, label: "Components using VCF SSO", kind: mgmt }
+  - { id: g-out, x: 20, y: 400, w: 620, h: 180, label: "Outside VCF SSO", kind: zone }
+nodes:
+  - { id: idp, x: 40, y: 70, w: 260, h: 56, label: "Modern IdP", sublabel: "Okta, Entra ID, ADFS, Ping, SAML 2.0", kind: external, info: "Authenticates users with SAML 2.0 or OIDC; MFA is enforced here. Provisioning via SCIM 2.0 or JIT." }
+  - { id: ldap, x: 40, y: 160, w: 260, h: 56, label: "Directory", sublabel: "AD/LDAP, OpenLDAP", kind: external, info: "Users and groups synced at intervals; passwords are never synced." }
+  - { id: emb, x: 380, y: 70, w: 240, h: 70, label: "Embedded broker", sublabel: "in mgmt domain vCenter", kind: security, component: vcf-identity-broker, info: "No extra appliance; HA only through vSphere HA; single point of failure if that vCenter is down. Moving later to the appliance model requires a reset of VCF SSO. Requires vCenter not in Enhanced Linked Mode." }
+  - { id: app, x: 380, y: 180, w: 240, h: 90, label: "Appliance broker", sublabel: "3 nodes, up to 5 instances", kind: security, component: vcf-identity-broker, info: "Deployed by VCF Operations fleet management in the management domain. Tolerates a node failure. TechDocs lists 8 vCPU and 16 GB RAM per node and at least 700 GB storage for the cluster." }
+  - { id: vc, x: 700, y: 70, w: 260, h: 50, label: "vCenter", kind: mgmt, component: vcenter, info: "Its own identity source configuration is overridden once it joins VCF SSO; roles and permissions are still set in vCenter." }
+  - { id: nsx, x: 700, y: 140, w: 260, h: 50, label: "NSX Manager", kind: nsx, component: nsx-manager, info: "Assign NSX roles (for example Enterprise Admin) to SSO groups inside NSX." }
+  - { id: ops, x: 700, y: 210, w: 260, h: 50, label: "VCF Operations", kind: ops, component: vcf-operations, info: "Where VCF SSO is configured: Fleet Management > Identity & Access. Also assign VCF Operations roles to groups." }
+  - { id: vcfa, x: 700, y: 280, w: 260, h: 50, label: "VCF Automation", kind: ops, component: vcf-automation, info: "Provider and organization roles assigned to SSO users and groups." }
+  - { id: logs, x: 700, y: 350, w: 260, h: 50, label: "Ops for logs / networks", kind: ops, info: "VCF Operations for logs and VCF Operations for networks also accept VCF SSO." }
+  - { id: sddc, x: 60, y: 450, w: 240, h: 60, label: "SDDC Manager UI", sublabel: "local accounts only", kind: mgmt, component: sddc-manager, info: "After VCF SSO is configured, the SDDC Manager UI accepts only local admin accounts such as @vsphere.local users; its API accepts VCF SSO users." }
+  - { id: esx, x: 340, y: 450, w: 240, h: 60, label: "ESX hosts", sublabel: "local accounts", kind: compute, component: esx-host, info: "ESX is not part of VCF SSO. Hosts are managed through vCenter; root and service accounts are handled by password management." }
+edges:
+  - { from: idp, to: emb, label: "SAML / OIDC", kind: control }
+  - { from: idp, to: app, kind: control }
+  - { from: ldap, to: app, label: "LDAP sync", kind: control, dashed: true }
+  - { from: emb, to: vc, label: "tokens", kind: mgmt }
+  - { from: app, to: nsx, kind: mgmt }
+  - { from: app, to: ops, kind: mgmt }
+  - { from: app, to: vcfa, kind: mgmt }
+  - { from: app, to: logs, kind: mgmt }
+steps:
+  - { title: "Identity lives in the IdP", text: "Users, passwords and MFA stay in the corporate IdP or directory.", highlight: [idp, ldap] }
+  - { title: "One broker", text: "Embedded in vCenter (simple, single instance) or a 3-node appliance (resilient, up to 5 instances).", highlight: [emb, app] }
+  - { title: "Components trust the broker", text: "vCenter, NSX, VCF Operations, VCF Automation and the Ops add-ons redirect logins to the broker.", highlight: [vc, nsx, ops, vcfa, logs] }
+  - { title: "Exceptions", text: "SDDC Manager UI and ESX stay on local accounts.", highlight: [sddc, esx] }

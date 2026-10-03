@@ -1,0 +1,41 @@
+id: d07-vcf-installer-workflow
+title: VCF Installer wizard and its connections
+description: >
+  The VCF Installer appliance (admin@local) connects to a software depot to download binaries, then walks the
+  deployment wizard: deployment type, existing components, general settings and model, VCF Operations, VCF Automation,
+  vCenter, NSX, storage, hosts, networks, distributed switch, SDDC Manager, review with JSON download, validation and
+  deploy. It talks to DNS, NTP and the ESX hosts during validation and builds the management domain. A JSON
+  specification can be exported and re-imported, and is required for LAG uplinks or different host passwords.
+width: 1000
+height: 600
+groups:
+  - { id: g-wiz, x: 300, y: 20, w: 420, h: 560, label: "Deployment wizard pages", kind: mgmt }
+nodes:
+  - { id: inst, x: 40, y: 270, w: 200, h: 64, label: "VCF Installer", sublabel: "admin@local", kind: mgmt, component: vcf-installer, info: "Same OVA as SDDC Manager. Outside the management domain it can deploy several platforms; on a management host it becomes SDDC Manager." }
+  - { id: depot, x: 40, y: 60, w: 200, h: 56, label: "Software depot", sublabel: "online or offline", kind: external, info: "Online depot needs a Broadcom download token; offline depot is filled by the VCF Download Tool and served over HTTPS by default." }
+  - { id: json, x: 40, y: 470, w: 200, h: 56, label: "JSON spec", kind: external, info: "Download after review, edit, upload. Required for LAG uplinks or hosts with different root passwords." }
+  - { id: p1, x: 320, y: 60, w: 380, h: 44, label: "Type: new fleet / instance in fleet", kind: mgmt, info: "A new VCF fleet, or a VCF instance in an existing VCF fleet." }
+  - { id: p2, x: 320, y: 115, w: 380, h: 44, label: "Existing components + general + model", kind: mgmt, info: "Connect existing VCF Operations or deploy new; instance and domain names; Simple or High Availability; passwords; CEIP." }
+  - { id: p3, x: 320, y: 170, w: 380, h: 44, label: "VCF Operations / VCF Automation", kind: ops, info: "New or existing; VCF Automation can be deferred ('connect later')." }
+  - { id: p4, x: 320, y: 225, w: 380, h: 44, label: "vCenter / NSX Manager", kind: nsx, info: "FQDNs and passwords; no % in the vCenter password." }
+  - { id: p5, x: 320, y: 280, w: 380, h: 44, label: "Storage (fixed forever)", kind: storage, info: "vSAN ESA/OSA, VMFS on FC (pre-created) or NFS v3. Cannot be changed after creation." }
+  - { id: p6, x: 320, y: 335, w: 380, h: 44, label: "ESX hosts + networks + VDS profile", kind: compute, info: "Host FQDNs, one common password, thumbprints; mgmt/vMotion/vSAN ranges; switch profile." }
+  - { id: p7, x: 320, y: 390, w: 380, h: 44, label: "SDDC Manager", kind: mgmt, info: "Pre-filled when the installer is on a management host." }
+  - { id: p8, x: 320, y: 445, w: 380, h: 44, label: "Review -> Validate", kind: security, info: "Warnings can be acknowledged; errors must be fixed (in the wizard or via an uploaded JSON)." }
+  - { id: p9, x: 320, y: 500, w: 380, h: 44, label: "Deploy -> Tasks (retry on failure)", kind: ops, info: "Monitor in Tasks; fix the cause of a failed task and retry." }
+  - { id: dns, x: 770, y: 120, w: 190, h: 56, label: "DNS / NTP", kind: network, component: dns-service, info: "Validated: forward and reverse lookup, time source." }
+  - { id: esx, x: 770, y: 330, w: 190, h: 56, label: "ESX hosts", kind: compute, component: esx-host, info: "Validated: reachability, credentials, version, FQDN, thumbprint, NICs, disks." }
+  - { id: md, x: 770, y: 480, w: 190, h: 64, label: "Management domain", sublabel: "+ fleet services", kind: mgmt, component: management-domain, info: "vCenter, NSX, SDDC Manager, VCF Operations stack and optionally VCF Automation." }
+edges:
+  - { from: inst, to: depot, label: "download", kind: mgmt }
+  - { from: inst, to: p1, kind: mgmt }
+  - { from: inst, to: json, label: "export / import", kind: mgmt, bidirectional: true }
+  - { from: p8, to: dns, label: "checks", kind: control, dashed: true }
+  - { from: p8, to: esx, label: "checks", kind: control, dashed: true }
+  - { from: p9, to: md, label: "builds", kind: mgmt }
+steps:
+  - { title: "Binaries first", text: "Connect the installer to an online or offline depot and download the binaries.", highlight: [inst, depot] }
+  - { title: "Scope and model", text: "Choose fleet vs instance, existing components and Simple vs HA.", highlight: [p1, p2, p3] }
+  - { title: "Infrastructure inputs", text: "vCenter, NSX, storage, hosts, networks, switch profile, SDDC Manager.", highlight: [p4, p5, p6, p7] }
+  - { title: "Validate", text: "Validation checks DNS, NTP and hosts; fix errors, acknowledge warnings.", highlight: [p8, dns, esx] }
+  - { title: "Deploy", text: "Deploy and monitor; retry failed tasks after fixing the cause. Keep the JSON spec.", highlight: [p9, md, json] }

@@ -1,0 +1,41 @@
+id: d05-north-south-packet-walk
+title: North-south packet walk through Tier-1, Tier-0 and an Edge
+description: >
+  A VM on seg-web (172.16.10.11) on host esx-01 sends traffic to an external address. The Tier-1 DR on the host is the
+  default gateway; it routes via the router link (100.64.0.0/16 range) to the Tier-0 DR, also on the host. The Tier-0
+  DR's next hop is the Tier-0 SR on an Edge, reached by Geneve encapsulation from the host TEP to the Edge TEP over the
+  intra-tier transit link (169.254.0.0/24). The Tier-0 SR forwards out its external interface on the uplink VLAN to the
+  physical router, with which it peers using BGP. The return packet enters the Tier-0 SR, is routed by the Tier-0 DR and
+  Tier-1 DR on the Edge and then tunnelled back to the host where the VM lives.
+width: 1000
+height: 620
+groups:
+  - { id: g-host, x: 20, y: 250, w: 450, h: 350, label: "esx-01 (host transport node)", kind: compute }
+  - { id: g-edge, x: 530, y: 250, w: 450, h: 350, label: "edge-01 (edge cluster)", kind: nsx }
+nodes:
+  - { id: rtr, x: 600, y: 40, w: 200, h: 60, label: "Physical router (ToR)", sublabel: "AS 65000", kind: external, component: physical-network, info: "Learns 172.16.10.0/24 from the Tier-0 via BGP (or has a static route to the SR uplink / HA VIP)." }
+  - { id: vm, x: 50, y: 520, w: 170, h: 56, label: "VM web-01", sublabel: "172.16.10.11", kind: vm, info: "Default gateway 172.16.10.1 = Tier-1 downlink on seg-web." }
+  - { id: t1dr, x: 50, y: 420, w: 170, h: 56, label: "Tier-1 DR", sublabel: "gw 172.16.10.1", kind: nsx, info: "Distributed router instance of the Tier-1 in the host kernel. Default route points to the Tier-0 over the router link (100.64.x.x/31)." }
+  - { id: t0dr, x: 270, y: 420, w: 170, h: 56, label: "Tier-0 DR", sublabel: "on host", kind: nsx, info: "The Tier-0 also has a DR on every host. Its default route points to the Tier-0 SR(s) over the intra-tier transit network 169.254.0.0/24." }
+  - { id: tep1, x: 270, y: 520, w: 170, h: 56, label: "Host TEP", kind: nsx, info: "Encapsulates the packet in Geneve toward the Edge TEP because the next hop (SR) lives on the Edge." }
+  - { id: etep, x: 560, y: 520, w: 170, h: 56, label: "Edge TEP", kind: nsx, info: "Decapsulates traffic arriving from hosts." }
+  - { id: t0sr, x: 760, y: 300, w: 190, h: 60, label: "Tier-0 SR", sublabel: "uplink 10.27.11.2", kind: nsx, info: "Service router: external interface on the uplink VLAN, BGP with the ToR, NAT and gateway firewall if configured." }
+  - { id: edr, x: 560, y: 400, w: 190, h: 56, label: "Tier-0 DR + Tier-1 DR", sublabel: "on the Edge", kind: nsx, info: "DR instances also exist on the Edge. Return traffic is routed here, then tunnelled back to the VM's host." }
+  - { id: upl, x: 790, y: 160, w: 160, h: 50, label: "Uplink VLAN 2711", kind: network, info: "VLAN-backed segment connecting the SR external interface to the ToR." }
+edges:
+  - { from: vm, to: t1dr, label: "1 default gw", kind: data }
+  - { from: t1dr, to: t0dr, label: "2 router link", kind: data }
+  - { from: t0dr, to: tep1, label: "3 next hop = SR", kind: data }
+  - { from: tep1, to: etep, label: "4 Geneve", kind: overlay, dashed: true }
+  - { from: etep, to: t0sr, label: "5", kind: data }
+  - { from: t0sr, to: upl, label: "6 external if", kind: north-south }
+  - { from: upl, to: rtr, label: "BGP", kind: north-south, bidirectional: true }
+  - { from: t0sr, to: edr, label: "return", kind: data, dashed: true }
+  - { from: edr, to: etep, kind: data, dashed: true }
+steps:
+  - { title: "1. Default gateway", text: "web-01 sends to 8.8.8.8 via its gateway 172.16.10.1 – the Tier-1 DR in the local host kernel.", highlight: [vm, t1dr] }
+  - { title: "2. Tier-1 DR to Tier-0 DR", text: "The Tier-1 DR's default route points to the Tier-0 over the auto-created router link (100.64.0.0/16 range). The Tier-0 DR is also on the host, so routing stays local.", highlight: [t1dr, t0dr] }
+  - { title: "3. Next hop is the SR", text: "The Tier-0 DR's default route points to the Tier-0 SR(s) over the intra-tier transit 169.254.0.0/24. With active/active, ECMP picks one SR.", highlight: [t0dr, tep1] }
+  - { title: "4. Geneve to the Edge", text: "The SR lives on edge-01, so the host encapsulates the packet in Geneve from its TEP to the Edge TEP.", highlight: [tep1, etep] }
+  - { title: "5–6. Out the uplink", text: "The Tier-0 SR routes using BGP-learned routes and sends the packet out its external interface on VLAN 2711 to the ToR.", highlight: [etep, t0sr, upl, rtr] }
+  - { title: "Return path", text: "The ToR knows 172.16.10.0/24 from BGP (Tier-1 advertised + Tier-0 redistributed). The SR hands the packet to the Tier-0 and Tier-1 DRs on the Edge, which tunnel it back to esx-01.", highlight: [rtr, t0sr, edr, etep, tep1, vm] }

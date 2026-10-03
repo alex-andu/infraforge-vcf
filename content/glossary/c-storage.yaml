@@ -1,0 +1,269 @@
+terms:
+  - id: datastore
+    term: Datastore
+    definition: A logical storage container managed by vCenter/ESX that hides the physical storage behind it and holds VM files (configuration, virtual disks, swap, logs), ISO images and templates. Types are VMFS, NFS, vSAN and vVols.
+    whyItMatters: HA, vMotion and DRS need VM files on a datastore that every host in the cluster can reach. In VCF the first datastore of a cluster is its principal storage.
+    version: general
+    related: [vmfs, nfs-datastore, vsan, vvols, principal-storage]
+    lessons: [storage-fundamentals-datastores]
+
+  - id: vmfs
+    term: VMFS
+    expansion: Virtual Machine File System
+    definition: The clustered file system ESX writes on block devices (local disks, FC, iSCSI or NVMe-oF LUNs) so that several hosts can use the same volume at once. vSphere 9.0 supports VMFS5 and VMFS6.
+    whyItMatters: Fibre Channel VMFS is a valid VCF 9.0 principal storage option; iSCSI and NVMe-oF VMFS datastores are supplemental only. VCF does not provision the LUNs.
+    version: general
+    related: [datastore, principal-storage]
+    lessons: [storage-fundamentals-datastores]
+
+  - id: nfs-datastore
+    term: NFS datastore
+    expansion: Network File System
+    definition: A datastore mounted from a NAS export over a VMkernel adapter. ESX supports NFS 3 and NFS 4.1; the NAS owns the file system and locking.
+    whyItMatters: In VCF 9.0 only NFS v3 can be principal storage (including for the management domain); NFS 4.1 is supplemental. Never mount the same export with both versions.
+    version: vcf9
+    related: [datastore, supplemental-storage, principal-storage]
+    lessons: [storage-fundamentals-datastores]
+
+  - id: vvols
+    term: vVols
+    expansion: vSphere Virtual Volumes
+    definition: A software-defined storage model in which each VM disk maps to an object on a vVols-capable array, managed through VASA and SPBM.
+    whyItMatters: vVols are deprecated beginning with VCF/VVF 9.0 (KB 401070) and will be removed in a future release; they are not a VCF 9 principal storage answer.
+    version: vcf9
+    related: [datastore, spbm]
+    lessons: [storage-fundamentals-datastores]
+
+  - id: spbm
+    term: SPBM
+    expansion: Storage Policy Based Management
+    definition: The vCenter framework in which VM storage policies express requirements (availability, performance, encryption, space efficiency) that datastores advertise as capabilities. vSAN uses the policy to decide how each object is laid out and continuously checks compliance.
+    whyItMatters: On vSAN, the policy — not the datastore — decides protection and capacity cost. Exam scenarios ask which policy meets a requirement.
+    version: general
+    related: [ftt, erasure-coding, vsan-object]
+    lessons: [vsan-storage-policies, storage-fundamentals-datastores]
+    labs: [lab-vsan-storage-policies]
+
+  - id: vsan
+    term: vSAN
+    definition: VMware's object-based software-defined storage that runs in the ESX kernel and pools the local devices of a cluster's hosts into one shared vSAN datastore.
+    whyItMatters: The default principal storage of VCF; the management domain's own appliances usually run on it.
+    version: general
+    related: [vsan-esa, vsan-osa, vsan-storage-cluster, spbm]
+    lessons: [vsan-architecture-esa-osa, storage-fundamentals-datastores]
+    labs: [lab-vsan-esa-cluster]
+
+  - id: vsan-esa
+    term: vSAN ESA
+    expansion: vSAN Express Storage Architecture
+    definition: The single-tier vSAN architecture (since vSAN 8) that uses only NVMe TLC devices grouped into a storage pool per host, with no cache tier. Adds efficient RAID-5/6, default compression, native snapshots and always-on checksums. TechDocs lists at least 128 GB of host memory and recommends 25 GbE or faster.
+    whyItMatters: The recommended choice for new, performance-sensitive VCF clusters and the only architecture for vSAN storage clusters and global deduplication.
+    version: vcf9
+    related: [storage-pool, vsan-osa, adaptive-raid-5, global-deduplication]
+    lessons: [vsan-architecture-esa-osa]
+    labs: [lab-vsan-esa-cluster]
+
+  - id: vsan-osa
+    term: vSAN OSA
+    expansion: vSAN Original Storage Architecture
+    definition: The classic two-tier vSAN architecture in which each host has 1 to 5 disk groups, each with one flash cache device and 1 to 7 capacity devices (SAS, SATA or NVMe; hybrid or all-flash).
+    whyItMatters: Still valid VCF 9.0 principal storage, typically for existing hardware that does not meet ESA requirements. A cache device failure takes the whole disk group offline.
+    version: general
+    related: [disk-group, vsan-esa]
+    lessons: [vsan-architecture-esa-osa]
+
+  - id: storage-pool
+    term: Storage pool (vSAN ESA)
+    definition: The ESA construct that replaces disk groups; all eligible NVMe devices of a host are claimed into one pool that provides both caching and capacity. Each storage pool needs at least one NVMe TLC device.
+    whyItMatters: Explains why ESA has no cache-device single point of failure and why `esxcli vsan storagepool list` (not `storage list`) shows ESA devices.
+    version: general
+    related: [vsan-esa, disk-group]
+    lessons: [vsan-architecture-esa-osa]
+    labs: [lab-vsan-esa-cluster]
+
+  - id: disk-group
+    term: Disk group (vSAN OSA)
+    definition: The OSA unit of one flash cache device plus one to seven capacity devices; up to five per host. Only capacity devices count toward datastore capacity. OSA deduplication works within a disk group.
+    whyItMatters: Classic traps — cache does not add capacity; losing the cache device (or any device when dedup is on) fails the whole disk group.
+    version: general
+    related: [vsan-osa, storage-pool]
+    lessons: [vsan-architecture-esa-osa, vsan-space-efficiency-capacity]
+
+  - id: vsan-object
+    term: vSAN object
+    definition: A logical volume that vSAN stores and protects as a unit, such as the VM home namespace, a VMDK, VM swap, a snapshot delta (OSA only) or a memory object. Each object is built from components according to its storage policy.
+    whyItMatters: Health, compliance and resync are reported per object; "objects with reduced availability" is the core vSAN alarm.
+    version: general
+    related: [vsan-component, spbm]
+    lessons: [vsan-architecture-esa-osa, vsan-storage-policies]
+
+  - id: vsan-component
+    term: vSAN component
+    definition: A piece of a vSAN object placed on a specific host and device — a replica, a RAID-5/6 data/parity segment or a witness. Components of one object are placed on different hosts or fault domains.
+    whyItMatters: Failure handling works at component level (absent, degraded, active), and quorum depends on component votes.
+    version: general
+    related: [vsan-object, vsan-witness-component, absent-component, degraded-component]
+    lessons: [vsan-storage-policies, vsan-resilience-fault-domains]
+
+  - id: vsan-witness-component
+    term: Witness component
+    definition: A metadata-only vSAN component (about 4 MB) that provides an extra vote so that an object keeps more than 50 percent of votes after a failure. In stretched and two-node clusters, witness components live on the witness host.
+    whyItMatters: Explains why FTT=1 RAID-1 needs three hosts (two replicas plus a witness) and why a witness host never stores VM data.
+    version: general
+    related: [vsan-component, witness-host]
+    lessons: [vsan-storage-policies, vsan-resilience-fault-domains]
+
+  - id: witness-host
+    term: Witness host (vSAN witness appliance)
+    definition: A dedicated ESX host, usually deployed as the vSAN witness appliance at a third site, that holds witness components for a stretched cluster or a two-node cluster. It cannot run VMs. One witness serves one stretched cluster, or up to 64 two-node clusters depending on its memory.
+    whyItMatters: It is the tiebreaker that lets a stretched cluster survive a site failure and decide which site keeps running on a partition.
+    version: general
+    related: [stretched-cluster-design, vsan-witness-component, fault-domain]
+    lessons: [vsan-resilience-fault-domains]
+
+  - id: ftt
+    term: FTT
+    expansion: Failures to tolerate
+    definition: The storage-policy rule that sets how many host or fault-domain failures an object must survive (0 to 3), combined with a method — RAID-1 mirroring or RAID-5/6 erasure coding.
+    whyItMatters: Drives host minimums (RAID-1 needs 2 × FTT + 1) and capacity overhead. FTT=0 means any single failure makes the data unavailable.
+    version: general
+    related: [raid-1-mirroring, erasure-coding, spbm]
+    lessons: [vsan-storage-policies]
+    labs: [lab-vsan-storage-policies]
+
+  - id: raid-1-mirroring
+    term: RAID-1 mirroring (vSAN)
+    definition: Failure tolerance by full copies — FTT+1 replicas plus witness components. FTT=1 needs 3 hosts and consumes 2x; FTT=2 needs 5 hosts (3x); FTT=3 needs 7 hosts (4x).
+    whyItMatters: The simplest and most widely compatible method, but the most capacity-hungry; ESA makes erasure coding the usual alternative.
+    version: general
+    related: [ftt, erasure-coding]
+    lessons: [vsan-storage-policies]
+
+  - id: erasure-coding
+    term: Erasure coding (RAID-5/6)
+    definition: Failure tolerance by data plus parity segments. RAID-5 tolerates one failure (OSA 3+1 on 4 hosts ~1.33x; ESA 2+1 ~1.5x or 4+1 ~1.25x); RAID-6 (4+2) tolerates two failures on 6 hosts at 1.5x. OSA requires all-flash.
+    whyItMatters: The biggest capacity lever on vSAN; on ESA it performs close to mirroring.
+    version: general
+    related: [adaptive-raid-5, raid-1-mirroring, ftt]
+    lessons: [vsan-storage-policies, vsan-space-efficiency-capacity]
+
+  - id: adaptive-raid-5
+    term: Adaptive RAID-5 (ESA)
+    definition: ESA's automatic choice of RAID-5 layout — 2+1 on clusters with fewer than six hosts and 4+1 on clusters with six or more — with automatic reconfiguration when the host count changes for a sustained period.
+    whyItMatters: Lets ESA use RAID-5 on a 3-host cluster, which OSA cannot; you choose "RAID-5" in the policy, not 2+1 or 4+1.
+    version: vcf9
+    related: [erasure-coding, vsan-esa]
+    lessons: [vsan-storage-policies]
+
+  - id: object-space-reservation
+    term: Object space reservation
+    definition: The vSAN policy rule that reserves capacity for an object up front — thin (default), 25, 50, 75 percent or thick (100 percent).
+    whyItMatters: Broadcom's VCF 9.0 guidance keeps core management VMs thick so a full datastore cannot lock them out; workloads normally stay thin.
+    version: general
+    related: [spbm, operations-reserve]
+    lessons: [vsan-storage-policies, vsan-space-efficiency-capacity]
+
+  - id: auto-policy-management
+    term: Auto-policy management (ESA)
+    definition: An ESA cluster setting that creates and maintains a cluster-specific "Optimal Datastore Default Policy" matched to the cluster type and size (for example RAID-1 at 3 hosts, RAID-5 2+1 at 4-5, RAID-6 at 6+ without host rebuild reserve).
+    whyItMatters: Avoids leaving every VM on a generic RAID-1 default; the chosen policy changes when hosts are added.
+    version: vcf9
+    related: [spbm, adaptive-raid-5, host-rebuild-reserve]
+    lessons: [vsan-storage-policies]
+
+  - id: absent-component
+    term: Absent component
+    definition: A component that vSAN considers temporarily unavailable (host reboot or disconnect, device removed). vSAN waits for the repair delay — 60 minutes by default — before rebuilding it elsewhere.
+    whyItMatters: Short maintenance does not trigger full rebuilds; when the host returns, only changed data is resynced.
+    version: general
+    related: [degraded-component, resync, vsan-component]
+    lessons: [vsan-resilience-fault-domains, vsan-health-troubleshooting]
+
+  - id: degraded-component
+    term: Degraded component
+    definition: A component that vSAN has detected as permanently failed (for example a failed device); vSAN starts rebuilding it immediately if a suitable host and capacity exist.
+    whyItMatters: Distinguishing degraded from absent tells you whether to wait or to replace hardware.
+    version: general
+    related: [absent-component, resync]
+    lessons: [vsan-resilience-fault-domains, vsan-health-troubleshooting]
+
+  - id: resync
+    term: Resync (vSAN resynchronization)
+    definition: vSAN copying data between components to rebuild after failures, catch up stale components after maintenance, apply policy changes or rebalance. Shown under Monitor > vSAN > Resyncing Objects and by `esxcli vsan debug resync summary get`.
+    whyItMatters: Resync consumes network, device bandwidth and transient capacity; a large displayed resync after maintenance can be normal.
+    version: general
+    related: [absent-component, degraded-component]
+    lessons: [vsan-health-troubleshooting, vsan-resilience-fault-domains]
+
+  - id: vsan-storage-cluster
+    term: vSAN storage cluster
+    definition: A vSAN ESA cluster (formerly vSAN Max) that provides disaggregated storage to client clusters. At least 4 hosts (7+ recommended); up to 10 client clusters and 128 hosts can mount its datastore. Not intended to run VMs directly.
+    whyItMatters: A VCF 9.0 principal storage option for VI workload domains and additional management clusters — but not for the management domain's default cluster.
+    version: vcf9
+    related: [vsan-compute-cluster, vsan-esa, principal-storage]
+    lessons: [vsan-architecture-esa-osa]
+
+  - id: vsan-compute-cluster
+    term: vSAN compute cluster
+    definition: A vSphere cluster without local vSAN storage that mounts a remote vSAN datastore (from a vSAN storage cluster) over a VMkernel adapter tagged for vSAN storage cluster client traffic.
+    whyItMatters: In VCF it must be in the same workload domain as its vSAN storage cluster; lets compute and storage scale independently.
+    version: vcf9
+    related: [vsan-storage-cluster]
+    lessons: [vsan-architecture-esa-osa]
+
+  - id: global-deduplication
+    term: Global deduplication (vSAN ESA)
+    definition: ESA deduplication introduced with VCF 9.0 — post-process, 4 KB granularity, with the whole cluster as one dedup domain. Limited availability through Broadcom's Technical Qualification Request; single-site clusters of 3-16 hosts, 25 GbE+, not with stretched clusters or data-at-rest encryption.
+    whyItMatters: A frequent "what's new" question; do not confuse it with OSA's per-disk-group inline dedup or assume it is on by default.
+    version: vcf9
+    related: [vsan-compression, vsan-esa, disk-group]
+    lessons: [vsan-space-efficiency-capacity]
+
+  - id: vsan-compression
+    term: vSAN compression
+    definition: Block compression that reduces stored data. On ESA it is enabled by default, applied per object via policy, and affects only new writes. On OSA it is optional (compression-only or with deduplication) and all-flash only.
+    whyItMatters: Exam questions test which architecture compresses by default and what disabling compression does to existing data (nothing).
+    version: general
+    related: [global-deduplication, erasure-coding]
+    lessons: [vsan-space-efficiency-capacity]
+
+  - id: operations-reserve
+    term: Operations reserve
+    definition: vSAN capacity set aside for internal operations such as resync, rebalancing and policy changes; enabled under the cluster's vSAN Capacity view, Reservations and Alerts.
+    whyItMatters: Without it, provisioning can consume the space vSAN needs to repair itself.
+    version: general
+    related: [host-rebuild-reserve, resync]
+    lessons: [vsan-space-efficiency-capacity]
+
+  - id: host-rebuild-reserve
+    term: Host rebuild reserve
+    definition: vSAN capacity reserved so that the data of one failed host can be rebuilt on the remaining hosts (N+1). Proportionally larger on small clusters — about 25 percent on 4 nodes, about 3 percent on 32 nodes (KB 326889).
+    whyItMatters: A full cluster survives a host failure but cannot heal; this reserve keeps self-healing possible.
+    version: general
+    related: [operations-reserve, auto-policy-management]
+    lessons: [vsan-space-efficiency-capacity]
+
+  - id: skyline-health
+    term: vSAN Skyline Health
+    definition: The vSAN health service in vCenter that checks hardware compatibility, network configuration, device and object health, capacity and more, and (since vSAN 8 U1) computes a 0-100 cluster health score with findings sorted by impact.
+    whyItMatters: The first place to look in any vSAN incident; silencing a check hides it but does not fix the score.
+    version: general
+    related: [resync, hcl-database, network-partition]
+    lessons: [vsan-health-troubleshooting]
+
+  - id: network-partition
+    term: vSAN network partition
+    definition: A state in which hosts of one vSAN cluster cannot all communicate over the vSAN network, splitting the cluster into sub-clusters; visible as different "Sub-Cluster Member Count" values in `esxcli vsan cluster get`.
+    whyItMatters: Components on the isolated side become absent for the rest of the cluster; causes are usually VLAN, MTU or NIC problems on the vSAN VMkernel path.
+    version: general
+    related: [skyline-health, absent-component]
+    lessons: [vsan-health-troubleshooting]
+
+  - id: hcl-database
+    term: vSAN HCL database
+    definition: The hardware compatibility data vCenter (and VCF) uses to check vSAN controllers, devices, drivers and firmware against the Broadcom Compatibility Guide; ESA additionally validates disks for ESA eligibility.
+    whyItMatters: An outdated HCL DB is a common harmless warning; a failed ESA disk compatibility check blocks VCF from configuring vSAN ESA (nested labs need an unsupported workaround).
+    version: general
+    related: [skyline-health, vsan-esa]
+    lessons: [vsan-health-troubleshooting, vsan-architecture-esa-osa]
+    labs: [lab-vsan-esa-cluster]

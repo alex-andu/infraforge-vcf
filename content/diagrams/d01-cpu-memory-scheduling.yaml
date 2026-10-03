@@ -1,0 +1,42 @@
+id: d01-cpu-memory-scheduling
+title: How ESX shares CPU and memory between VMs
+description: >
+  Three VMs with a total of more vCPUs than the host has logical CPUs are time-sliced by the VMkernel CPU scheduler
+  onto physical cores and hyper-threads. For memory, each VM's guest physical memory is mapped by ESX to machine
+  memory. When the host runs short, ESX reclaims memory in increasing order of cost: transparent page sharing
+  (intra-VM by default), ballooning through VMware Tools, memory compression, and finally swapping to the VM's swap
+  file. Reservations guarantee a minimum, limits cap the maximum, and shares decide priority under contention.
+width: 1000
+height: 600
+groups:
+  - { id: g-cpu, x: 20, y: 20, w: 460, h: 560, label: "CPU", kind: compute }
+  - { id: g-mem, x: 520, y: 20, w: 460, h: 560, label: "Memory", kind: compute }
+nodes:
+  - { id: vma, x: 40, y: 60, w: 130, h: 56, label: "VM A", sublabel: "4 vCPU", kind: vm, info: "vCPUs are scheduled, not pinned. A 4-vCPU VM needs 4 logical CPUs available to make progress efficiently." }
+  - { id: vmb, x: 185, y: 60, w: 130, h: 56, label: "VM B", sublabel: "2 vCPU", kind: vm, info: "Smaller VMs are easier to schedule." }
+  - { id: vmc, x: 330, y: 60, w: 130, h: 56, label: "VM C", sublabel: "8 vCPU", kind: vm, info: "Oversized VMs wait longer for physical CPUs (CPU ready)." }
+  - { id: sched, x: 40, y: 200, w: 420, h: 56, label: "VMkernel CPU scheduler", sublabel: "time-slicing, shares", kind: compute, info: "When vCPUs outnumber logical CPUs, the scheduler time-slices. By default each vCPU gets equal shares." }
+  - { id: pcpu, x: 40, y: 340, w: 420, h: 56, label: "Physical cores / hyper-threads", sublabel: "logical CPUs", kind: external, info: "Hardware virtualization (VT-x / AMD-V) lets guest code run directly on the processor." }
+  - { id: overcommit, x: 40, y: 470, w: 420, h: 56, label: "14 vCPU on 8 logical CPUs", sublabel: "CPU overcommit", kind: ops, info: "Fine for light workloads; contention appears as CPU ready time." }
+  - { id: gmem, x: 540, y: 60, w: 420, h: 56, label: "Guest physical memory", sublabel: "what each VM thinks is RAM", kind: vm, info: "The guest OS manages its own virtual-to-physical page tables." }
+  - { id: map, x: 540, y: 160, w: 420, h: 56, label: "ESX memory mapping", sublabel: "EPT / RVI, 2 MB large pages", kind: compute, info: "With hardware-assisted MMU, the CPU walks two layers of page tables. ESX backs guest memory with 2 MB pages by default." }
+  - { id: tps, x: 540, y: 260, w: 200, h: 56, label: "1. Page sharing", sublabel: "intra-VM by default", kind: storage, info: "Inter-VM transparent page sharing is disabled by default for security." }
+  - { id: balloon, x: 760, y: 260, w: 200, h: 56, label: "2. Ballooning", sublabel: "needs VMware Tools", kind: storage, info: "The vmmemctl driver in the guest gives back the guest's least valuable pages." }
+  - { id: compress, x: 540, y: 360, w: 200, h: 56, label: "3. Compression", sublabel: "on by default", kind: storage, info: "Pages are compressed and kept in RAM instead of swapped." }
+  - { id: swap, x: 760, y: 360, w: 200, h: 56, label: "4. Host swapping", sublabel: ".vswp file", kind: storage, info: "Last resort; very slow. The swap file size equals configured memory minus reservation." }
+  - { id: machine, x: 540, y: 470, w: 420, h: 56, label: "Host machine memory (RAM)", kind: external, info: "Physical RAM. VCF 9 can also add NVMe Memory Tiering as a slower tier (not with nested ESX)." }
+edges:
+  - { from: vma, to: sched, kind: data }
+  - { from: vmb, to: sched, kind: data }
+  - { from: vmc, to: sched, kind: data }
+  - { from: sched, to: pcpu, label: "time slices", kind: data }
+  - { from: gmem, to: map, kind: data }
+  - { from: map, to: machine, kind: data }
+  - { from: tps, to: balloon, kind: dependency, dashed: true }
+  - { from: balloon, to: compress, kind: dependency, dashed: true }
+  - { from: compress, to: swap, kind: dependency, dashed: true }
+steps:
+  - { title: "CPU scheduling", text: "vCPUs are time-sliced onto logical CPUs.", highlight: [vma, vmb, vmc, sched, pcpu] }
+  - { title: "Overcommit", text: "More vCPUs than logical CPUs is normal; contention shows as CPU ready.", highlight: [overcommit] }
+  - { title: "Memory mapping", text: "Guest physical memory is mapped to machine memory by ESX with hardware help.", highlight: [gmem, map, machine] }
+  - { title: "Reclamation order", text: "Sharing, ballooning, compression, then swapping: cheapest first.", highlight: [tps, balloon, compress, swap] }

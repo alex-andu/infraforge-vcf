@@ -1,0 +1,34 @@
+id: d-lab-vcf-planning-workbook-network
+title: Lab VLAN and IP plan for VCF 9
+description: >
+  The physical switch or router trunks VLANs 10, 20, 22, 30, 40, 50 and 60 with jumbo frames to the VLAN-aware
+  Proxmox bridge. VLAN 10 (10.10.10.0/24) carries ESX management and every appliance; infra-01 at 10.10.10.2 provides
+  DNS for lab.internal and NTP. VLAN 20 and 22 are management and workload vMotion, VLAN 30 vSAN, VLAN 40 host TEPs,
+  VLAN 50 NFS storage (nfs-01 at 10.10.50.6) and VLAN 60 the Supervisor network.
+width: 1000
+height: 600
+groups:
+  - { id: g-bridge, x: 20, y: 160, w: 960, h: 420, label: "Proxmox VLAN-aware bridge (trunk, MTU 9000)", kind: network }
+nodes:
+  - { id: rtr, x: 400, y: 30, w: 200, h: 64, label: "Router / L3 switch", sublabel: "gateways .1 on every VLAN", kind: external, component: physical-network, info: "Hosts the VLAN interfaces and default gateways; the installer pings them during validation." }
+  - { id: v10, x: 40, y: 210, w: 290, h: 70, label: "VLAN 10 Management", sublabel: "10.10.10.0/24", kind: mgmt, info: "esx-01..03 .11-.13, esx-21..23 .121-.123, installer .4, nfs-01 .6, vCenter .20, NSX .21/.25, SDDC Manager .30, VCF Operations .40-.42, WLD vCenter .50, WLD NSX .51/.55." }
+  - { id: v20, x: 355, y: 210, w: 290, h: 70, label: "VLAN 20 / 22 vMotion", sublabel: "10.10.20.0/24 mgmt, 10.10.22.0/24 wld", kind: network, info: "Two subnets because network pools cannot overlap: default management pool and wld01-np01." }
+  - { id: v30, x: 670, y: 210, w: 290, h: 70, label: "VLAN 30 vSAN", sublabel: "10.10.30.0/24", kind: storage, info: "Reserved for vSAN clusters (not used when NFS is principal storage)." }
+  - { id: v40, x: 40, y: 320, w: 290, h: 70, label: "VLAN 40 Host TEP", sublabel: "10.10.40.0/24", kind: nsx, info: "NSX host overlay; static pool 10.10.40.11-40 or DHCP." }
+  - { id: v50, x: 355, y: 320, w: 290, h: 70, label: "VLAN 50 NFS", sublabel: "10.10.50.0/24", kind: storage, info: "Workload domain NFS VMkernels from the network pool; nfs-01 second NIC 10.10.50.6." }
+  - { id: v60, x: 670, y: 320, w: 290, h: 70, label: "VLAN 60 Supervisor", sublabel: "10.10.60.0/24", kind: compute, info: "Simplified Supervisor management and workload network; control plane .10-.14." }
+  - { id: infra, x: 200, y: 460, w: 260, h: 70, label: "infra-01 DNS + NTP", sublabel: "10.10.10.2", kind: ops, component: dns-service, info: "BIND zones lab.internal and 10.10.10.in-addr.arpa; chrony." }
+  - { id: nfs, x: 540, y: 460, w: 260, h: 70, label: "nfs-01 NFS v3", sublabel: "10.10.10.6 / 10.10.50.6", kind: storage, info: "Exports /export/mgmt01 (management domain) and /export/wld01 (workload domain) from the NVMe." }
+edges:
+  - { from: rtr, to: v10, kind: north-south, label: "802.1Q trunk" }
+  - { from: rtr, to: v20, kind: north-south }
+  - { from: rtr, to: v30, kind: north-south }
+  - { from: rtr, to: v40, kind: north-south }
+  - { from: rtr, to: v50, kind: north-south }
+  - { from: rtr, to: v60, kind: north-south }
+  - { from: infra, to: v10, kind: dependency, dashed: true }
+  - { from: nfs, to: v50, kind: storage }
+steps:
+  - { title: "Management and services", text: "VLAN 10 holds hosts and appliances; infra-01 provides DNS and NTP.", highlight: [v10, infra] }
+  - { title: "Host networks", text: "vMotion, vSAN and TEP VLANs; separate vMotion subnets per network pool.", highlight: [v20, v30, v40] }
+  - { title: "Storage and Supervisor", text: "NFS VLAN for workload domain storage, VLAN 60 for the Supervisor.", highlight: [v50, nfs, v60] }

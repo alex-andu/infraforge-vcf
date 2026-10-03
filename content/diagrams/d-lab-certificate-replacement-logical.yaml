@@ -1,0 +1,32 @@
+id: d-lab-certificate-replacement-logical
+title: Lab topology - certificate replacement
+description: >
+  A lab certificate authority (ca01: an OpenSSL CA on a Linux VM, or a Windows AD CS VM if you have one) signs a CSR
+  generated in VCF Operations for an instance component. The learner inspects chains with openssl from the workstation
+  and from SDDC Manager, imports the PEM chain in VCF Operations, replaces the certificate and verifies that SDDC Manager
+  and vCenter still trust each other.
+width: 1000
+height: 520
+groups:
+  - { id: g-vcf, x: 300, y: 140, w: 680, h: 360, label: "Nested VCF management domain", kind: mgmt }
+nodes:
+  - { id: ws, x: 40, y: 40, w: 200, h: 56, label: "Workstation", sublabel: "openssl, browser", kind: external, info: "Runs openssl s_client and x509 checks; imports the lab root into the browser at the end." }
+  - { id: ca, x: 40, y: 260, w: 200, h: 64, label: "Lab CA", sublabel: "ca01 (OpenSSL or AD CS)", kind: security, info: "Root plus (ideally) an intermediate. Signs the CSR. Its chain is uploaded with the certificate (intermediate then root, PEM)." }
+  - { id: ops, x: 330, y: 180, w: 200, h: 56, label: "VCF Operations", sublabel: "Fleet Mgmt > Certificates", kind: ops, component: vcf-operations, info: "Generate CSR, Import Certificate, Validate, Replace With Imported Certificate; or Configure CA + Replace With Configured CA Certificate." }
+  - { id: sddc, x: 570, y: 180, w: 200, h: 56, label: "SDDC Manager", kind: mgmt, component: sddc-manager, info: "Client of vCenter/NSX; test trust from here with openssl s_client. Can host the OpenSSL CA option for instance components." }
+  - { id: target, x: 570, y: 300, w: 200, h: 64, label: "Target component", sublabel: "e.g. NSX VIP or SDDC Mgr", kind: nsx, info: "Choose a non-critical instance component for the first replacement. Avoid ESX first (2048-bit only)." }
+  - { id: vc, x: 330, y: 300, w: 200, h: 56, label: "vCenter", sublabel: "VMCA, VECS", kind: mgmt, component: vcenter, info: "Inspect MACHINE_SSL_CERT and TRUSTED_ROOTS with vecs-cli (read-only)." }
+  - { id: hosts, x: 330, y: 410, w: 200, h: 56, label: "Nested ESX hosts", kind: compute, component: esx-host, info: "VMCA-signed by default." }
+edges:
+  - { from: ops, to: target, label: "CSR / replace", kind: mgmt }
+  - { from: ws, to: ca, label: "sign CSR", kind: control, dashed: true }
+  - { from: ca, to: ops, label: "PEM chain", kind: dependency }
+  - { from: sddc, to: target, label: "TLS", kind: control }
+  - { from: sddc, to: vc, label: "TLS", kind: control }
+  - { from: vc, to: hosts, kind: mgmt }
+  - { from: ws, to: target, label: "openssl s_client", kind: control, dashed: true }
+steps:
+  - { title: "Inspect", text: "Record current issuers and expiry dates.", highlight: [ws, target, vc] }
+  - { title: "CSR and sign", text: "Generate the CSR in VCF Operations, sign it with the lab CA.", highlight: [ops, ca] }
+  - { title: "Import and replace", text: "Import the PEM chain, validate, replace.", highlight: [ops, target] }
+  - { title: "Verify trust", text: "Test from SDDC Manager, not only from the browser.", highlight: [sddc, target] }

@@ -1,0 +1,39 @@
+id: d11-org-request-flow
+title: "Inside an organization: catalog request, policies and extensibility"
+description: >
+  A project member requests a catalog item (a blueprint or a published Orchestrator workflow). The request is checked
+  against governance policies: an approval policy may hold it in an approver's Inbox, IaaS resource policies (CEL) can
+  reject or constrain it. Provisioning runs into a namespace inside the project and emits lifecycle events; event
+  subscriptions on those topics run VCF Operations Orchestrator workflows, blocking (synchronous, by priority, can
+  change the payload) or non-blocking. The lease policy later expires the deployment and day-2 action policies limit
+  who can run actions on it.
+width: 1000
+height: 520
+nodes:
+  - { id: user, x: 30, y: 60, w: 160, h: 56, label: "Project member", kind: external, info: "A user in a project; can only see that project's deployments and resources." }
+  - { id: cat, x: 230, y: 60, w: 170, h: 56, label: "Catalog item", sublabel: "blueprint / workflow", kind: storage, info: "Content published by the org admin: blueprints (infrastructure as code) and Orchestrator workflows." }
+  - { id: approval, x: 440, y: 60, w: 170, h: 56, label: "Approval policy", sublabel: "Inbox", kind: security, info: "Requires designated approvers to approve the request before provisioning. Approvers act from the Inbox." }
+  - { id: iaas, x: 650, y: 60, w: 170, h: 56, label: "IaaS resource policy", sublabel: "CEL constraints", kind: security, info: "Policy-as-code with Common Expression Language to constrain VM and Kubernetes cluster requests." }
+  - { id: ns, x: 650, y: 200, w: 170, h: 56, label: "Namespace", sublabel: "in the project", kind: compute, info: "Resources are created in the namespace within its limits." }
+  - { id: event, x: 440, y: 200, w: 170, h: 56, label: "Event topic", sublabel: "lifecycle event", kind: ops, info: "Provisioning and lifecycle stages publish events on predefined event topics." }
+  - { id: sub, x: 230, y: 200, w: 170, h: 56, label: "Event subscription", sublabel: "blocking / non-blocking", kind: ops, info: "Project-scoped. Blocking subscriptions run synchronously in priority order (0 highest) and can include a recovery runnable; non-blocking run asynchronously in no guaranteed order." }
+  - { id: wf, x: 30, y: 200, w: 160, h: 56, label: "Orchestrator workflow", kind: ops, info: "VCF Operations Orchestrator workflow, for example register the VM in IPAM/CMDB or open a ticket." }
+  - { id: deploy, x: 650, y: 340, w: 170, h: 56, label: "Deployment", kind: vm, info: "The resulting deployment owned by the project." }
+  - { id: lease, x: 440, y: 340, w: 170, h: 56, label: "Lease policy", sublabel: "expire + reclaim", kind: security, info: "Maximum lifetime; expired deployments are destroyed and resources reclaimed." }
+  - { id: day2, x: 230, y: 340, w: 170, h: 56, label: "Day 2 action policy", kind: security, info: "Restricts which groups can run which actions (for example resize, delete) on deployments." }
+edges:
+  - { from: user, to: cat, label: "1. request", kind: mgmt }
+  - { from: cat, to: approval, label: "2", kind: control }
+  - { from: approval, to: iaas, label: "3", kind: control }
+  - { from: iaas, to: ns, label: "4. provision", kind: data }
+  - { from: ns, to: event, label: "5. emits", kind: data }
+  - { from: event, to: sub, label: "6. match", kind: control }
+  - { from: sub, to: wf, label: "7. run", kind: mgmt }
+  - { from: ns, to: deploy, kind: data }
+  - { from: lease, to: deploy, label: "expire", kind: control, dashed: true }
+  - { from: day2, to: deploy, label: "limit actions", kind: control, dashed: true }
+steps:
+  - { title: "Request", text: "A project member requests a catalog item.", highlight: [user, cat] }
+  - { title: "Governance", text: "Approval and IaaS resource policies check the request before anything is built.", highlight: [approval, iaas] }
+  - { title: "Provision and extend", text: "Resources are created in a namespace; lifecycle events trigger subscriptions that run Orchestrator workflows.", highlight: [ns, event, sub, wf] }
+  - { title: "Day 2", text: "Lease and day-2 action policies govern the deployment's life and who may change it.", highlight: [deploy, lease, day2] }

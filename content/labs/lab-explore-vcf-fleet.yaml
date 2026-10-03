@@ -1,0 +1,172 @@
+id: lab-explore-vcf-fleet
+title: Explore a VCF Fleet – Map Components, Levels and Dependencies
+level: intermediate
+complexity: 3
+minutes: 120
+version: vcf9
+technologies: [VCF Operations, SDDC Manager, vCenter, NSX, ESX]
+topics: [vcf-fleet, management-domain, fleet-management, component-communication, sddc-manager]
+lessons: [vcf9-architecture-overview, management-domain, workload-domains-architecture, vcf-operations-fleet-management, component-communication, vcf-deployment-models]
+objectives:
+  - Build a complete inventory of a running VCF instance and classify every appliance as fleet-level or instance-level.
+  - Read the fleet/instance/domain hierarchy from VCF Operations and from the SDDC Manager API.
+  - Identify which engine (fleet management appliance or SDDC Manager) lifecycles each component.
+  - Verify the shared dependencies (DNS forward/reverse, NTP) of every management appliance.
+  - Predict the impact of losing each component using your own dependency map.
+prerequisites:
+  - A deployed VCF 9 management domain (lab-deploy-vcf-management-domain), or access to any VCF 9 environment you are allowed to inspect.
+  - Lab DNS/NTP built in lab-network-readiness.
+  - Lessons of phase 6 read, at least vcf9-architecture-overview and management-domain.
+topology:
+  logical: d-lab-explore-vcf-fleet-logical
+requirements:
+  network:
+    - Management VLAN reachable from your workstation (HTTPS to VCF Operations, vCenter and SDDC Manager).
+    - DNS server with forward and reverse zones for all appliances and hosts.
+  vms:
+    - Nested ESX hosts forming the management domain (3 for a simple install, 4 for HA).
+    - The VCF management appliances deployed by the VCF Installer.
+    - A workstation with a browser and curl (or PowerShell).
+  ip:
+    - Use the IP plan from the Home Lab section; record every appliance FQDN and IP in your map.
+startingState: |
+  A VCF 9 instance is running: the management domain and its appliances are deployed and healthy, and VCF Operations
+  shows the instance. No workload domain is required (if you have one, include it).
+
+  **Honest note for the nested Proxmox lab:** everything runs on one physical server, so the "fleet" you explore has
+  a single physical failure domain and nested performance. A full HA install (13 appliances on 4 nested hosts) may
+  not fit comfortably in 256 GB RAM together with the nested overhead — check current appliance sizing in the docs;
+  many home labs use the simple model and may defer VCF Automation. If you do not have VCF running yet, do steps 1–2
+  and 7 as a paper exercise using the official component table and come back after the Home Lab build.
+steps:
+  - id: s1-plan-map
+    title: Prepare the map template
+    why: A written map turns abstract architecture into something you can check and reuse during troubleshooting.
+    instructions: |
+      Create a table (spreadsheet or markdown) with columns:
+      `Component | FQDN | IP | Level (fleet/instance/domain) | Runs on (cluster) | Lifecycled by | Depends on | Talks to | Impact if down`.
+      Pre-fill the rows from the official component list: vCenter, SDDC Manager, NSX Manager, VCF Operations,
+      fleet management appliance, VCF Operations collector, VCF Automation, VCF Operations for logs, VCF Operations
+      for networks, VCF Identity Broker, ESX hosts.
+    hint: Fleet-level = VCF Operations, fleet management, VCF Automation, logs, networks, Identity Broker. Instance-level = SDDC Manager, vCenter, NSX Manager, ESX. Collectors are instance-level.
+    validate: Every component has a row and a predicted "Level" value before you look at the environment.
+    expected: About 11 rows; components you have not deployed are marked "not deployed" later.
+  - id: s2-ops-inventory
+    title: Read the hierarchy in VCF Operations
+    why: VCF Operations is the 9.0 console for the fleet; its inventory shows fleet → instance → domain → cluster.
+    instructions: |
+      Log in to VCF Operations. Open the inventory (Operations → Inventory) and expand the VCF instance down to
+      domains, clusters and hosts. Then open Administration → Integrations → Accounts and find the
+      **VMware Cloud Foundation** account that connects the instance.
+    hint: If a domain shows no children, re-validate the VMware Cloud Foundation account (KB 440502).
+    validate: You can name the instance, its management domain, its cluster(s) and its hosts from the VCF Operations UI.
+    expected: One instance with one management domain (plus any workload domains), the default management cluster and 3 or 4 hosts.
+  - id: s3-vcenter-vms
+    title: List the management appliances in vCenter
+    why: All management appliances run as VMs in the management domain; seeing them confirms where each one physically runs.
+    instructions: |
+      In the vSphere Client of the management vCenter, open the management cluster's VMs view. Record each appliance
+      VM, its host, its network (port group) and its resource pool if any. Fill FQDN/IP and "Runs on" in your map.
+    hint: Fleet components and collectors are on the VM management network by default.
+    validate: Every deployed appliance from your template is found as a VM; nothing unexpected is unaccounted for.
+    expected: 7 appliances for a simple install (vCenter, SDDC Manager, NSX Manager, VCF Operations, fleet management, collector, VCF Automation), more for HA or Day-2 components.
+  - id: s4-sddc-api
+    title: Query the instance through the SDDC Manager API
+    why: The SDDC Manager API is the instance-level source of truth for domains, clusters, vCenter and NSX instances.
+    instructions: |
+      From your workstation request a token and list objects:
+      ```shell
+      TOKEN=$(curl -sk -X POST https://sddc-manager.lab.local/v1/tokens \
+        -H 'Content-Type: application/json' \
+        -d '{"username":"administrator@vsphere.local","password":"<password>"}' | jq -r .accessToken)
+      curl -sk -H "Authorization: Bearer $TOKEN" https://sddc-manager.lab.local/v1/domains | jq '.elements[] | {name, type}'
+      curl -sk -H "Authorization: Bearer $TOKEN" https://sddc-manager.lab.local/v1/v-centers | jq '.elements[].fqdn'
+      curl -sk -H "Authorization: Bearer $TOKEN" https://sddc-manager.lab.local/v1/nsx-t-clusters | jq '.elements[] | {vipFqdn, nodes: [.nodes[].fqdn]}'
+      ```
+      Use the SSO user that your deployment configured for SDDC Manager API access.
+    hint: Field names can differ slightly between API versions; if jq returns null, print the raw JSON first.
+    validate: The API returns the same domains and vCenter/NSX instances you saw in VCF Operations.
+    expected: A domain of type MANAGEMENT, one vCenter FQDN per domain and one NSX cluster with 1 (simple) or 3 (HA) nodes.
+  - id: s5-lifecycle-engines
+    title: Identify the two lifecycle engines
+    why: Fleet management uses the fleet management appliance for management components and SDDC Manager for core components.
+    instructions: |
+      In VCF Operations open Fleet Management → Lifecycle. Look at the VCF Management view (management components)
+      and at the view for VCF instances (core components). Record each component's version and fill "Lifecycled by"
+      in your map. Compare versions with the VCF 9.0 Bill of Materials.
+    validate: Every component row has "fleet management appliance" or "SDDC Manager" as its lifecycle engine.
+    expected: VCF Operations, VCF Automation, Identity Broker, logs, networks → fleet management appliance; SDDC Manager, NSX, vCenter, ESX → SDDC Manager.
+  - id: s6-passwords-certs
+    title: Inspect passwords and certificates scope
+    why: The same split appears in password and certificate management, which you will use in phase 12.
+    instructions: |
+      Open Fleet Management → Passwords and Fleet Management → Certificates. Note which components appear under
+      the VCF Management tab and which under the VCF Instances tab. Do not rotate anything yet.
+    hint: On 9.0.0 with a non-expiring vCenter license the VCF Instances tab can be empty (KB 408116, fixed in 9.0.1).
+    validate: You can explain why SDDC Manager and ESX appear for passwords/certificates even though they are not part of VCF SSO.
+    expected: Management components under VCF Management; vCenter, NSX, ESX and SDDC Manager under VCF Instances.
+  - id: s7-dependencies
+    title: Verify DNS and NTP for every appliance
+    why: DNS (forward and reverse) and NTP are dependencies of every communication flow.
+    instructions: |
+      For each FQDN in your map run a forward and a reverse lookup from a management-network machine:
+      ```shell
+      nslookup vcf-ops.lab.local
+      nslookup 10.0.10.40
+      ```
+      On each ESX host check time with `esxcli system time get` and compare with your NTP server.
+    validate: Every appliance and host resolves forward and reverse to the same name/IP; clocks agree within a second or two.
+    expected: No mismatches. Any mismatch is a latent failure you should fix now (see inc-dns-reverse-lookup).
+  - id: s8-communication
+    title: Check element-management channels on one host
+    why: Confirms the vCenter heartbeat and NSX management/control channels described in Component Communication.
+    instructions: |
+      On one ESX host (SSH or console):
+      ```shell
+      esxcli network ip connection list | grep -E ':1234|:1235|:902'
+      nsxcli -c "get managers"
+      nsxcli -c "get controllers"
+      ```
+      Record the NSX Manager IPs for the management (1234) and control (1235) channels.
+    hint: If nsxcli is not available as a one-shot command on your build, run `nsxcli` and type the commands interactively.
+    validate: The host shows established connections to NSX Manager on 1234 and 1235 and reports managers/controllers as connected.
+    expected: Connected management and control channels; vCenter connection established.
+  - id: s9-impact
+    title: Predict failure impact
+    why: Architecture knowledge is only useful if you can predict blast radius.
+    instructions: |
+      For every row fill "Impact if down" (who loses what, and what keeps running). Then pick two components and,
+      in a maintenance window, gracefully shut down the VCF Operations collector VM for 15 minutes and observe what
+      VCF Operations reports. Power it back on.
+    validate: Your prediction for the collector matches what you observed (stale data for the instance, no impact on workloads).
+    expected: Collection gaps/alerts in VCF Operations only; vCenter, NSX and VMs unaffected.
+troubleshooting:
+  - symptom: VCF Operations shows the instance but domains have no child objects.
+    fix: Re-validate the VMware Cloud Foundation integration account under Administration → Integrations → Accounts (KB 440502).
+  - symptom: The SDDC Manager token request returns 401.
+    fix: Check the user and password, the account's role, and NTP on SDDC Manager (time skew breaks token validation).
+  - symptom: Reverse lookups fail for some appliances.
+    fix: Add PTR records in the reverse zone; never "fix" it with hosts files on appliances.
+  - symptom: Host shows no connection on port 1235.
+    fix: Check the control channel per KB 410581 (nsx-proxy status, firewall, certificates).
+challenge: |
+  Extend your map into a second instance on paper: which appliances would a second VCF instance deploy, which fleet
+  components would it reuse, and which network flows would cross the WAN? Draw it as a copy of d06-fleet-hierarchy.
+cleanup: |
+  Power on anything you shut down, verify VCF Operations collection has resumed, and keep the dependency map —
+  you will reuse it in the troubleshooting phase.
+sources:
+  - title: "VCF 9.0 – VCF Management Appliances and Components"
+    url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/deployment/vcf-management-appliances.html
+  - title: "VCF 9.0 – Lifecycle Management in VMware Cloud Foundation"
+    url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/lifecycle-management/lifecycle-management-in-vmware-cloud-foundation.html
+  - title: "SDDC Manager API 9.0"
+    url: https://developer.broadcom.com/xapis/sddc-manager-api/9.0/
+  - title: "Broadcom KB 440502 – Workload domain inventory tree not displayed in VCF Operations"
+    url: https://knowledge.broadcom.com/external/article/440502
+  - title: "Broadcom KB 408116 – VCF Instances tab empty in Fleet Management"
+    url: https://knowledge.broadcom.com/external/article/408116/unable-to-manage-certificates-or-passwor.html
+  - title: "Broadcom KB 410581 – Troubleshooting control channel to transport nodes"
+    url: https://knowledge.broadcom.com/external/article/410581/troubleshooting-control-channel-to-trans.html
+  - title: "William Lam – Deploying VCF 9.0 on a single ESXi host (unsupported, lab only)"
+    url: https://williamlam.com/2025/06/deploying-vcf-9-0-on-a-single-esxi-host.html

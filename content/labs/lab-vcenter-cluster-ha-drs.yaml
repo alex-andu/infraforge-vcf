@@ -1,0 +1,186 @@
+id: lab-vcenter-cluster-ha-drs
+title: Deploy vCenter, build a cluster, enable HA and DRS (nested on Proxmox)
+level: beginner
+complexity: 3
+minutes: 240
+version: vcf9
+technologies: [ESX 9, vCenter 9, vSphere HA, vSphere DRS, NFS, Proxmox VE, PowerCLI]
+topics: [vcenter, vsphere-cluster, vsphere-ha, drs, esx-host, vsphere-permissions]
+lessons: [esx-architecture-host-management, vcenter-architecture-inventory, vsphere-permissions, vsphere-ha-deep-dive, drs-resource-management]
+objectives:
+  - Deploy a vCenter 9 appliance onto a nested ESX host and log in to the vSphere Client and the management interface.
+  - Create a data center and a cluster, and add three nested ESX hosts by FQDN.
+  - Provide shared NFS storage and a vMotion VMkernel network so HA and DRS have what they need.
+  - Enable DRS (fully automated) and vSphere HA with admission control, then prove both work.
+  - Create a folder, a group-based permission and a resource pool, and test them.
+prerequisites:
+  - "lab-homelab-proxmox-prep completed: Proxmox VMs can run nested ESX (CPU type host, nested virtualization on)."
+  - "lab-esx-host-first-vm completed: you can install ESX 9 in a Proxmox VM and use the Host Client."
+  - "DNS forward and reverse records for vCenter and three ESX hosts (see lab-network-readiness)."
+  - "vCenter 9 installer ISO and ESX 9 ISO available (from your VCF entitlement)."
+topology:
+  logical: d-lab-vcenter-cluster-ha-drs-logical
+requirements:
+  network:
+    - "Management VLAN with gateway, DNS and NTP reachable (use the Home Lab IP plan)."
+    - "vMotion VLAN (or a separate subnet on the same trunk) for vmk1 on each host."
+    - "Proxmox bridge VLAN-aware, trunking both VLANs to the nested ESX VMs."
+  vms:
+    - "3 × nested ESX 9 VMs on Proxmox (esx-lab-01..03): 8 vCPU (type host), 32 GB RAM, 2 × vmxnet3, 1 × 32 GB boot disk each."
+    - "1 × NFS export for shared storage (from Proxmox itself on the HDD pool, or a small Linux VM), about 500 GB."
+    - "vCenter appliance deployed onto esx-lab-01 (pick the smallest deployment size the installer offers; check its CPU/RAM in the installer for your version)."
+  ip:
+    - "vcenter-lab: management VLAN, static IP, A + PTR records"
+    - "esx-lab-01..03: management VLAN, static IPs, A + PTR records"
+    - "esx-lab-01..03 vmk1 (vMotion): vMotion VLAN, static IPs"
+    - "NFS server IP reachable from the management VLAN"
+startingState: |
+  Three nested ESX 9 hosts are installed on Proxmox with management IPs, NTP and DNS configured and verified
+  (`esx-lab-01..03`). Each has the default `vSwitch0` with vmk0. No vCenter exists yet. An NFS export is ready.
+
+  :::note
+  This lab builds **plain vSphere**, not VCF. In VCF, the VCF Installer and the workload domain workflow do these
+  steps for you (deploy vCenter, create the cluster, add commissioned hosts, configure networks, enable HA/DRS).
+  Doing them by hand once is the fastest way to understand what VCF automates and what to check when it fails.
+  Nested ESX on Proxmox is fine for learning HA, DRS and vMotion; it is not a supported production platform and
+  performance will be modest.
+  :::
+steps:
+  - id: deploy-vcenter
+    title: Deploy the vCenter appliance
+    why: Every VCF domain has a vCenter; deploying one yourself shows the two installer stages and the SSO domain choice.
+    instructions: |
+      1. Mount the vCenter installer ISO on your workstation and run the UI installer (`vcsa-ui-installer`).
+      2. **Stage 1 (Deploy):** target `esx-lab-01` (root credentials), VM name `vcenter-lab`, smallest deployment size,
+         datastore = the host's local datastore (thin disk mode), management network, static IP, FQDN `vcenter-lab.<your domain>`.
+      3. **Stage 2 (Set up):** NTP servers, SSH enabled (lab only), **create a new SSO domain** (`vsphere.local` is fine),
+         set the `administrator@vsphere.local` password.
+      4. Wait for completion, then open `https://vcenter-lab.<domain>/ui` and `https://vcenter-lab.<domain>:5480`.
+    hint: If stage 2 fails early, it is almost always DNS (forward or reverse) or NTP. Fix them and redeploy rather than patching a half-configured appliance.
+    validate: |
+      Log in to the vSphere Client as `administrator@vsphere.local`. In the management interface (5480) check
+      **Summary → Health** and **Services**.
+    expected: Health status Good; services running; the vSphere Client shows an empty inventory.
+  - id: create-dc-cluster
+    title: Create a data center and an empty cluster
+    why: The vSphere 9.0 HA procedure creates the cluster first, adds hosts, then turns on HA/DRS.
+    instructions: |
+      1. Right-click the vCenter → **New Datacenter** → `dc-lab`.
+      2. Right-click `dc-lab` → **New Cluster** → `cl-lab01`. Leave **DRS, HA and vSAN off**. If asked about managing
+         the cluster with a single image, accept the image option (vSphere Lifecycle Manager) — VCF clusters are image-managed.
+    validate: Inventory shows `dc-lab` → `cl-lab01` with no hosts.
+    expected: An empty cluster object.
+  - id: add-hosts
+    title: Add the three hosts by FQDN
+    why: vCenter installs vpxa on each host and takes over management; using the FQDN matches what VCF requires.
+    instructions: |
+      1. Right-click `cl-lab01` → **Add Hosts** → add `esx-lab-01..03` by FQDN with root credentials; accept certificates.
+      2. Finish the wizard. Note that `esx-lab-01` runs the vCenter VM — that is fine.
+    hint: "Host shows Not responding? From vCenter's shell: `nslookup esx-lab-02` and check the PTR record."
+    validate: |
+      Each host's **Summary** shows *Connected*. On one host over SSH: `esxcli network ip interface list` shows vmk0.
+    expected: Three connected hosts in `cl-lab01`.
+  - id: shared-storage
+    title: Mount shared NFS storage on all hosts
+    why: HA needs VM files on shared storage to restart them elsewhere, and DRS/vMotion are simplest with shared storage.
+    instructions: |
+      1. Right-click `cl-lab01` → **Storage → New Datastore** → **NFS** → NFS 4.1 or 3 (match your server) →
+         name `nfs-ds01`, server IP, export path.
+      2. Select **all three hosts**.
+    validate: "**Datastores** view: `nfs-ds01` is mounted on 3 hosts."
+    expected: One shared datastore visible to every host. (It can also serve as an HA heartbeat datastore.)
+  - id: vmotion-network
+    title: Create vMotion VMkernel adapters
+    why: DRS migrations and maintenance-mode evacuation use vMotion; each host needs a VMkernel adapter with the vMotion service.
+    instructions: |
+      For each host: **Configure → Networking → VMkernel adapters → Add Networking** → VMkernel Network Adapter →
+      new port group `vMotion` on vSwitch0 (VLAN ID of your vMotion VLAN) → enable **vMotion** service → static IP.
+      (In VCF this is created on the VDS by the workflow; a standard switch is fine for this lab.)
+    validate: |
+      Migrate a small test VM between two hosts (right-click → **Migrate → Change compute resource only**).
+      Connectivity can also be tested with `vmkping -I vmk1 <other host vMotion IP>` (networking phase).
+    expected: The migration completes without a compatibility or network error.
+  - id: enable-drs
+    title: Enable DRS fully automated and create a resource pool
+    why: DRS gives placement, balancing and automatic evacuation — what vSphere Lifecycle Manager relies on during VCF upgrades.
+    instructions: |
+      1. `cl-lab01` → **Configure → Services → vSphere DRS → Edit** → turn on, **Fully automated**, threshold default (3).
+      2. Right-click the cluster → **New Resource Pool** → `rp-prod`, CPU shares **High**.
+      3. Create a VM-VM **anti-affinity** rule for two small test VMs (Configure → VM/Host Rules → *Separate Virtual Machines*).
+      4. Optionally do the same with PowerCLI:
+         `Set-Cluster -Cluster cl-lab01 -DrsEnabled:$true -DrsAutomationLevel FullyAutomated -Confirm:$false`
+    validate: Cluster **Summary** shows the DRS score; **Monitor → vSphere DRS → Recommendations/History** is populated. The two rule VMs run on different hosts.
+    expected: DRS active, VMs separated by the rule, `rp-prod` visible under the cluster.
+  - id: enable-ha
+    title: Enable vSphere HA with admission control
+    why: HA restarts VMs after a host failure; admission control guarantees there is room to do it.
+    instructions: |
+      1. `cl-lab01` → **Configure → Services → vSphere Availability → Edit** → turn on **vSphere HA**.
+      2. **Failures and responses:** Host monitoring on; Host failure response = Restart VMs; host isolation response = leave
+         *Disabled* for now; VM monitoring = VM Monitoring Only.
+      3. **Admission Control:** Cluster resource percentage, host failures cluster tolerates = 1.
+      4. **Heartbeat Datastores:** automatic (with one NFS datastore you will get a "fewer than the required number" warning — read it and decide).
+    validate: |
+      **Monitor → vSphere HA → Summary** shows a primary host and the protected VM count. On a host: `tail /var/log/fdm.log`.
+    expected: One host listed as primary, others as connected secondaries; no agent errors (a heartbeat datastore count warning is expected with one shared datastore).
+  - id: test-maintenance
+    title: Put a host into maintenance mode
+    why: This is exactly what lifecycle remediation does; DRS must evacuate the host.
+    instructions: Right-click `esx-lab-02` → **Maintenance Mode → Enter Maintenance Mode**. Watch the tasks.
+    hint: If it hangs at 2%, check for VMs with local ISO/disks, a must rule, or HA admission control refusing to give up failover capacity in a 3-host cluster.
+    validate: Recent Tasks shows vMotions; the host icon changes to maintenance.
+    expected: All VMs moved off `esx-lab-02`; host in maintenance mode. Exit maintenance mode afterwards.
+  - id: test-ha-failure
+    title: Simulate a host failure
+    why: Seeing HA declare a host failed and restart VMs makes the detection flow concrete.
+    instructions: |
+      1. Make sure a test VM (on `nfs-ds01`) runs on `esx-lab-03`, and that `esx-lab-03` is **not** the host running vCenter.
+      2. In the **Proxmox** UI, **Stop** (hard power off) the `esx-lab-03` VM.
+      3. Watch **Monitor → Events** on the cluster and the test VM.
+    validate: The test VM is powered on again on another host within a few minutes; events mention vSphere HA restarting the VM.
+    expected: Host `esx-lab-03` Not responding; the test VM running on `esx-lab-01` or `esx-lab-02`. Start `esx-lab-03` again in Proxmox afterwards.
+  - id: permissions
+    title: Folder and group-based permission
+    why: Least-privilege permissions on folders are how application teams use a VCF domain safely.
+    instructions: |
+      1. **Administration → Single Sign On → Users and Groups**: in `vsphere.local` create user `appuser` and group `app-operators`; add the user.
+      2. **Administration → Access Control → Roles**: clone *Virtual machine power user (sample)* as `App-VM-Operator`.
+      3. VMs and Templates view: create folder `App-Prod`, move a test VM into it.
+      4. On `App-Prod` → **Permissions → Add**: group `app-operators`, role `App-VM-Operator`, **Propagate to children**.
+      5. Log in as `appuser@vsphere.local` in a private browser window.
+    validate: appuser sees `App-Prod` and its VM and can power it off/on, but cannot see the host's maintenance-mode action or other folders' VMs.
+    expected: Inheritance works through the folder; nothing outside it is manageable.
+troubleshooting:
+  - symptom: "vCenter stage 2 fails or services never start"
+    fix: Check forward and reverse DNS for the vCenter FQDN and NTP on the target host. Redeploy after fixing.
+  - symptom: "Add Hosts fails with a name resolution or certificate error"
+    fix: Use FQDNs that resolve both ways from vCenter; check the host's time; retry and accept the thumbprint.
+  - symptom: "vMotion fails at about 20 %"
+    fix: vMotion vmk IPs/VLAN mismatch or MTU mismatch; verify VLAN IDs on the port group and the Proxmox bridge trunk.
+  - symptom: "HA agent error / cannot complete HA configuration"
+    fix: Right-click the host → **Reconfigure for vSphere HA**; check `/var/log/fdm.log`, DNS and time.
+  - symptom: "Host never finishes entering maintenance mode"
+    fix: Check DRS faults (Monitor → vSphere DRS), required rules, VMs on local storage, and HA admission control in a 3-host cluster.
+  - symptom: "Nested VMs are very slow or fail to power on"
+    fix: Confirm nested virtualization and CPU type host on the Proxmox VMs (lab-homelab-proxmox-prep), and that you did not overcommit Proxmox memory.
+challenge: |
+  1. Change the HA isolation response to *Power off and restart VMs* and set `das.isolationaddress0` to an address
+     that only exists on your management VLAN. Disconnect only the management NIC of a nested host in Proxmox and
+     explain what HA does and why.
+  2. Configure EVC on `cl-lab01` (choose the mode matching your physical CPU) and explain what changes for running VMs.
+  3. Write a PowerCLI script that reports HA/DRS settings for every cluster: `Get-Cluster | Select Name, HAEnabled, HAAdmissionControlEnabled, DrsEnabled, DrsAutomationLevel`.
+cleanup: |
+  Keep vCenter and the cluster for the next lab (`lab-vm-templates-content-library`). If you need resources back,
+  shut down test VMs, put hosts in maintenance mode and power off the nested ESX VMs from Proxmox. Remove `appuser`
+  and the `App-Prod` permission if you will not reuse them.
+sources:
+  - title: "vSphere 9.0 Availability – Create a vSphere HA Cluster in the vSphere Client"
+    url: https://techdocs.broadcom.com/us/en/vmware-cis/vsphere/vsphere/9-0/vsphere-availability/creating-and-using-vsphere-ha-clusters/creating-a-vsphere-ha-cluster/create-vsphere-ha-cluster.html
+  - title: "vSphere 9.0 Availability – vSphere HA Checklist"
+    url: https://techdocs.broadcom.com/us/en/vmware-cis/vsphere/vsphere/9-0/vsphere-availability/creating-and-using-vsphere-ha-clusters/creating-a-vsphere-ha-cluster/vmware-ha-checklist.html
+  - title: "vSphere 9.0 – Create a vSphere DRS Cluster"
+    url: https://techdocs.broadcom.com/us/en/vmware-cis/vsphere/vsphere/9-0/vsphere-resource-management/creating-a-drs-cluster.html
+  - title: "vSphere 9.0 – Host Configuration for vSphere vMotion"
+    url: https://techdocs.broadcom.com/us/en/vmware-cis/vsphere/vsphere/9-0/vcenter-and-host-management/migrating-virtual-machines/migration-with-vmotion/host-configuration-for-vmotion.html
+  - title: "PowerCLI Reference – Set-Cluster"
+    url: https://developer.broadcom.com/powercli/latest/vmware.vimautomation.core/commands/set-cluster

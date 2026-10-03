@@ -1,0 +1,296 @@
+commands:
+  - id: esx-tail-vmkernel-log
+    technology: esxi
+    title: Follow the VMkernel log live
+    purpose: Watch device, storage-path, NIC and vmknic events as they happen while you reproduce a problem (link flaps, path failures, NVMe/vSAN device errors).
+    syntax: tail -f /var/log/vmkernel.log
+    example: tail -f /var/log/vmkernel.log | grep -iE "vmnic|link|nvme|lost"
+    output: |
+      2026-10-03T09:14:02.118Z In(182) vmkernel: cpu12:2097612)<vmnic event lines>
+      2026-10-03T09:14:05.441Z In(182) vmkernel: cpu3:2098011)<storage device / path lines>
+    mistake: Reading only the newest lines after the fact. Note the time the symptom started and search backwards from it for the first relevant event; also remember logs on hosts without persistent scratch or remote syslog are lost on reboot.
+    lesson: troubleshooting-vcf-services
+    version: general
+    source:
+      title: Broadcom KB 306962 – Location and contents of ESXi log files
+      url: https://knowledge.broadcom.com/external/article/306962/location-of-esxi-log-files.html
+
+  - id: esx-tail-hostd-log
+    technology: esxi
+    title: Follow the host agent (hostd) log
+    purpose: See VM and host tasks executed by hostd and why they fail, and check whether hostd is healthy after a restart.
+    syntax: tail -f /var/log/hostd.log
+    example: tail -n 200 /var/log/hostd.log | grep -iE "error|warning"
+    output: |
+      2026-10-03T09:20:11.502Z In(166) Hostd[2099345]: [Originator@6876 sub=Vimsvc.TaskManager] Task Created : haTask-...
+      2026-10-03T09:20:11.890Z Er(163) Hostd[2099345]: [Originator@6876 sub=...] <error text for the failed task>
+    mistake: Restarting hostd before reading its log. If the restart fails, KB 320280 points to /var/log/hostd.log as the place to look, so read it before and after.
+    lesson: troubleshooting-vcf-services
+    version: general
+    source:
+      title: Broadcom KB 320280 – Restarting Management Agents in ESXi
+      url: https://knowledge.broadcom.com/external/article/320280
+
+  - id: esx-grep-vpxa-heartbeat
+    technology: esxi
+    title: Look for heartbeat restarts in vpxa.log
+    purpose: Confirm the classic signature of UDP 902 heartbeat loss when a host keeps going Not Responding in vCenter.
+    syntax: grep -i heartbeat /var/log/vpxa.log
+    example: grep -i "Started heartbeating" /var/log/vpxa.log | tail -5
+    output: |
+      2026-10-03T10:01:12.004Z In(166) Vpxa[2100221]: [Originator@6876 sub=Heartbeat opID=HostSync-host-1012-4ff474ef-5c] Started heartbeating..
+      2026-10-03T10:02:12.117Z In(166) Vpxa[2100221]: [Originator@6876 sub=Heartbeat opID=HostSync-host-1012-51a2c0d3-1e] Started heartbeating..
+    mistake: Concluding vpxa is broken and reinstalling it. Heartbeats restarting every minute usually means vCenter is not receiving them (firewall on UDP 902, wrong vCenter managed IP); prove it with a capture before touching the agent.
+    lesson: troubleshooting-vcf-services
+    version: general
+    source:
+      title: Broadcom KB 323612 – ESXi host disconnects from vCenter Server after adding or connecting it
+      url: https://knowledge.broadcom.com/external/article/323612
+
+  - id: esx-pktcap-heartbeat-902
+    technology: esxi
+    title: Capture outgoing heartbeat packets on a host uplink
+    purpose: Prove whether the host actually sends UDP 902 heartbeats out of its uplink (pair it with a tcpdump on vCenter to see if they arrive).
+    syntax: pktcap-uw --uplink <vmnicX> --capture UplinkSndKernel -o - | tcpdump-uw -r - -nn port 902
+    example: pktcap-uw --uplink vmnic0 --capture UplinkSndKernel -o - | tcpdump-uw -r - -nn port 902
+    output: |
+      10:03:02.114522 IP 10.10.10.103.<port> > 10.10.10.20.902: UDP, length <n>
+      10:03:12.115019 IP 10.10.10.103.<port> > 10.10.10.20.902: UDP, length <n>
+    mistake: Leaving pktcap-uw running in the background. KB 307364 gives a cleanup command; on vCenter the counterpart is "tcpdump src <host IP> and port 902". Packets leaving the host but not arriving at vCenter point at the network in between.
+    lesson: troubleshooting-vcf-services
+    version: general
+    source:
+      title: Broadcom KB 307364 – Verify ESXi host heartbeat to vCenter using packet capture utilities
+      url: https://knowledge.broadcom.com/external/article/307364
+
+  - id: esxcli-syslog-config-get
+    technology: esxi
+    title: Show where the host sends and stores its logs
+    purpose: Check whether logs go to a remote syslog server (for example VCF Operations for logs) and where local logs are kept, before you rely on them in an incident.
+    syntax: esxcli system syslog config get
+    example: esxcli system syslog config get
+    output: |
+         Local Log Output: /scratch/log
+         Local Log Output Is Persistent: true
+         Remote Host: udp://logs01.vcf.lab:514
+         ...
+    mistake: Assuming logs survive a reboot. If the local output is not persistent and no remote host is set, the evidence is gone after the host restarts.
+    lesson: troubleshooting-vcf-services
+    version: general
+    source:
+      title: ESXCLI 9.0.0 Reference – esxcli system
+      url: https://developer.broadcom.com/xapis/esxcli-command-reference/9.0.0/namespace/esxcli_system.html
+
+  - id: esxcli-syslog-set-loghost
+    technology: esxi
+    title: Forward ESX logs to a remote syslog server
+    purpose: Send host logs to VCF Operations for logs (or another collector) so they can be correlated across components and survive reboots.
+    syntax: esxcli system syslog config set --loghost='<proto>://<fqdn>:<port>' && esxcli system syslog reload
+    example: esxcli system syslog config set --loghost='udp://logs01.vcf.lab:514' && esxcli system syslog reload
+    output: |
+      (no output on success; verify with "esxcli system syslog config get")
+    mistake: Forgetting the reload, or forgetting that the ESX firewall must allow outbound syslog. Also prefer configuring log forwarding centrally (VCF Operations integrations or host profiles/images) over hand-editing each host in a VCF environment.
+    lesson: troubleshooting-vcf-services
+    version: general
+    source:
+      title: ESXCLI 9.0.0 Reference – esxcli system
+      url: https://developer.broadcom.com/xapis/esxcli-command-reference/9.0.0/namespace/esxcli_system.html
+
+  - id: esx-restart-hostd-vpxa
+    technology: esxi
+    title: Restart only the ESX management agents (hostd, vpxa)
+    purpose: Recover a hung host agent or vCenter agent without disturbing VMs, vSAN or NSX networking.
+    syntax: /etc/init.d/hostd restart ; /etc/init.d/vpxa restart
+    example: /etc/init.d/vpxa restart
+    output: |
+      (the agent stops and starts; allow 1-2 minutes, then check /var/log/hostd.log or /var/log/vpxa.log)
+    mistake: Using "services.sh restart" or the DCUI "Restart Management Agents" on hosts with vSAN, NSX, LACP or shared graphics, which KB 320280 explicitly warns against. Restart only the agent your evidence points at.
+    lesson: troubleshooting-vcf-services
+    version: general
+    source:
+      title: Broadcom KB 320280 – Restarting Management Agents in ESXi
+      url: https://knowledge.broadcom.com/external/article/320280
+
+  - id: esx-services-sh-restart-caution
+    technology: esxi
+    title: services.sh restart (know when NOT to use it)
+    purpose: Restarts all ESX management services at once. Listed here mainly so you recognise the risk; on VCF hosts prefer restarting individual agents.
+    syntax: services.sh restart
+    example: |
+      # First check whether the host uses vSAN, LACP or NSX (KB 320280):
+      esxcli vsan cluster get
+      esxcli network vswitch dvs vmware lacp status get
+      esxcli software vib list | grep -E 'nsx|vsipfwlib'
+    output: |
+      (if any of the checks shows vSAN membership, LACP or NSX VIBs, do not run services.sh restart)
+    mistake: Running it as a reflex. Every VCF host uses vSAN and/or NSX, so on VCF this command is almost never the right first action.
+    lesson: troubleshooting-methodology
+    version: general
+    source:
+      title: Broadcom KB 320280 – Restarting Management Agents in ESXi
+      url: https://knowledge.broadcom.com/external/article/320280
+
+  - id: sddc-tail-domainmanager-log
+    technology: vcf
+    title: Follow the domain manager log on the VCF Installer / SDDC Manager
+    purpose: Track deployment, workload domain, cluster and host workflows step by step and find the first error behind a generic UI failure.
+    syntax: tail -f /var/log/vmware/vcf/domainmanager/domainmanager.log
+    example: grep -n "ERROR" /var/log/vmware/vcf/domainmanager/domainmanager.log | tail -20
+    output: |
+      ... ERROR ... Failed to get install image for component VCENTER, version 9.0.2.0.25148086
+      ... ERROR ... Failed to get install image for component NSX_T_MANAGER, version 9.0.2.0.25150386
+    mistake: Logging in as root over SSH. Connect as the vcf user and use su to become root. And read the first error at the failure time, not the last line of the file.
+    lesson: troubleshooting-vcf-services
+    version: vcf9
+    source:
+      title: Broadcom KB 439546 – Workload Domain creation fails with "Failed to validate domain spec" in VCF 9
+      url: https://knowledge.broadcom.com/external/article/439546
+
+  - id: sddc-sos-log-bundle
+    technology: vcf
+    title: Collect a log bundle with the SoS utility (VCF 9.0.x)
+    purpose: Preserve SDDC Manager or VCF Installer evidence before remediation or for a support case.
+    syntax: /opt/vmware/sddc-support/sos --sddc-manager-logs --zip   |   /opt/vmware/sddc-support/sos --vcf-installer-logs --zip
+    example: /opt/vmware/sddc-support/sos --vcf-installer-logs --zip --log-location /tmp/sos-installer/
+    output: |
+      (progress messages, then a .zip archive; default location /var/log/vmware/vcf/sddc-support/)
+    mistake: Using the 9.1-only option --vcf-mgmt-svcs-logs on 9.0, or filling the appliance's disk with repeated --collect-all-logs runs; check df -h first.
+    lesson: troubleshooting-vcf-services
+    version: vcf9
+    source:
+      title: Broadcom KB 402476 – Collecting VCF Installer logs and VMSP logs
+      url: https://knowledge.broadcom.com/external/article/402476
+
+  - id: photon-systemctl-journalctl
+    technology: linux
+    title: Check failed services and a unit's journal on a Photon OS appliance
+    purpose: On vCenter, SDDC Manager and other Photon OS based appliances, list failed systemd units and read one unit's recent log.
+    syntax: systemctl --failed ; journalctl -u <unit> --since "<time>"
+    example: |
+      systemctl --failed
+      journalctl -u <unit-name> --since "30 min ago" --no-pager | tail -50
+    output: |
+      UNIT                LOAD   ACTIVE SUB    DESCRIPTION
+      ● <unit>.service    loaded failed failed <description>
+      1 loaded units listed.
+    mistake: Restarting units on vCenter with systemctl. On vCenter use service-control for vCenter services; use systemctl/journalctl to observe. Restart only what the evidence points at.
+    lesson: troubleshooting-vcf-services
+    version: general
+
+  - id: appliance-df-h
+    technology: linux
+    title: Check free disk space on an appliance
+    purpose: Rule out full partitions, a frequent silent cause of failed services, failed log bundles and stuck workflows on Photon OS appliances.
+    syntax: df -h
+    example: df -h | grep -vE "tmpfs|overlay"
+    output: |
+      Filesystem      Size  Used Avail Use% Mounted on
+      /dev/sda3        47G   21G   24G  47% /
+      /dev/sdb1       ...   ...   ...  100% /var/log
+    mistake: Deleting files from log directories by hand to free space. Find what is growing first (for example repeated support bundles) and follow the product's documented clean-up guidance.
+    lesson: troubleshooting-vcf-services
+    version: general
+
+  - id: nsx-get-log-file-syslog
+    technology: nsx
+    title: Follow NSX syslog from the NSX CLI
+    purpose: Watch NSX Manager or Edge syslog in real time from the admin CLI while reproducing a problem.
+    syntax: get log-file <auth.log | controller | controller-error | http.log | kern.log | manager.log | node-mgmt.log | policy.log | syslog> [follow]
+    example: get log-file syslog follow
+    output: |
+      <timestamp> nsxmgr01 NSX <pid> - [nsx@6876 comp="nsx-manager" ...] <message>
+    mistake: Omitting "follow" and then scrolling through the whole stored file. Use follow for live view; without it you get all stored entries.
+    lesson: troubleshooting-network-nsx-vsan
+    version: general
+    source:
+      title: Broadcom KB 425724 – How to check the log file via NSX CLI
+      url: https://knowledge.broadcom.com/external/article/425724/how-to-check-the-logfile-via-nsxcli.html
+
+  - id: pve-check-nested-kvm
+    technology: linux
+    title: Check and enable nested virtualization on a Proxmox host
+    purpose: Nested ESX needs the KVM module's nested parameter enabled on the Proxmox host.
+    syntax: "cat /sys/module/kvm_intel/parameters/nested   (AMD: cat /sys/module/kvm_amd/parameters/nested)"
+    example: |
+      cat /sys/module/kvm_intel/parameters/nested
+      echo "options kvm-intel nested=Y" > /etc/modprobe.d/kvm-intel.conf
+      modprobe -r kvm_intel && modprobe kvm_intel   # only with all VMs stopped
+    output: |
+      Y
+    mistake: Reloading the KVM module while VMs are running (it fails or disrupts them). Stop all VMs first, or set the option and reboot the host.
+    version: general
+    source:
+      title: Proxmox VE wiki – Nested Virtualization
+      url: https://pve.proxmox.com/wiki/Nested_Virtualization
+
+  - id: pve-qm-set-nested-esx
+    technology: linux
+    title: Configure a Proxmox VM for nested ESX (CPU host, vmxnet3 trunk NIC)
+    purpose: Give the nested ESX VM the physical CPU flags and an ESX-native NIC model attached to the VLAN-aware bridge without a tag (trunk).
+    syntax: qm set <vmid> --cpu host --net<n> vmxnet3,bridge=<bridge>,firewall=0
+    example: |
+      qm set 201 --cpu host --numa 1
+      qm set 201 --net0 vmxnet3,bridge=vmbr0,firewall=0 --net1 vmxnet3,bridge=vmbr0,firewall=0
+    output: |
+      update VM 201: -cpu host -numa 1
+      update VM 201: -net0 vmxnet3,bridge=vmbr0,firewall=0 -net1 vmxnet3,bridge=vmbr0,firewall=0
+    mistake: Setting the mtu= NIC option for vmxnet3 (it is VirtIO only). Proxmox sets the tap interface to the bridge MTU when the VM starts, so set MTU 9000 on the physical NIC/bond and the bridge.
+    version: general
+    source:
+      title: Proxmox VE qemu-server source – network device options
+      url: https://github.com/proxmox/qemu-server/blob/master/src/PVE/QemuServer/Network.pm
+
+  - id: pve-qm-config
+    technology: linux
+    title: Show a Proxmox VM's configuration
+    purpose: Verify a nested ESX VM's CPU type, NICs, disks and args (NVMe devices) before booting or while troubleshooting.
+    syntax: qm config <vmid>
+    example: qm config 201
+    output: |
+      args: -drive file=/dev/zvol/nvmepool/vm-201-disk-2,if=none,id=NVME1,format=raw -device nvme,drive=NVME1,serial=esx01nvme1
+      cores: 12
+      cpu: host
+      memory: 73728
+      net0: vmxnet3=BC:24:11:00:02:01,bridge=vmbr0,firewall=0
+      sata0: nvme-fast:vm-201-disk-0,size=64G
+      sockets: 2
+    mistake: Editing /etc/pve/qemu-server/<vmid>.conf while the VM is running and expecting changes to apply immediately; most hardware changes apply at the next cold start.
+    version: general
+    source:
+      title: Proxmox VE qemu-server source – qm CLI commands
+      url: https://github.com/proxmox/qemu-server/blob/master/src/PVE/CLI/qm.pm
+
+  - id: pve-qm-snapshot-rollback
+    technology: linux
+    title: Snapshot and roll back nested lab VMs
+    purpose: Take a consistent restore point of the whole nested lab (all VMs shut down) before risky steps such as a VCF deployment or upgrade, and roll back after a failed experiment.
+    syntax: qm snapshot <vmid> <snapname> [--description <text>] ; qm listsnapshot <vmid> ; qm rollback <vmid> <snapname>
+    example: |
+      for id in 201 202 203; do qm shutdown $id; done
+      for id in 201 202 203; do qm snapshot $id pre-bringup --description "before VCF Installer run"; done
+      qm listsnapshot 201
+    output: |
+      `-> pre-bringup     2026-10-03 11:02:13     before VCF Installer run
+       `-> current                                You are here!
+    mistake: Snapshotting one nested host while the others keep running. vSAN and VCF state span all hosts; snapshot and roll back all lab VMs together, powered off. Snapshots also need storage that supports them (LVM-thin, ZFS, qcow2), and drives attached through args are not managed by Proxmox and are not included in qm snapshots; if your vSAN devices are zvols attached that way, take a recursive ZFS snapshot of the pool instead (zfs snapshot -r <pool>@<name>) with all lab VMs powered off.
+    version: general
+    source:
+      title: Proxmox VE qemu-server source – qm CLI commands
+      url: https://github.com/proxmox/qemu-server/blob/master/src/PVE/CLI/qm.pm
+
+  - id: pvesh-get-qemu-list
+    technology: linux
+    title: List VMs and their state through the Proxmox API shell
+    purpose: Quickly see which nested lab VMs are running and how much memory they use, in JSON for scripting.
+    syntax: pvesh get /nodes/<node>/qemu [--output-format json|json-pretty|text|yaml]
+    example: pvesh get /nodes/pve01/qemu --output-format json-pretty
+    output: |
+      [
+         { "vmid" : 201, "name" : "esx01", "status" : "running", "cpus" : 24, "maxmem" : 77309411328, ... },
+         { "vmid" : 202, "name" : "esx02", "status" : "running", ... }
+      ]
+    mistake: Using the node's FQDN or IP as <node>; it is the Proxmox node name as shown in the GUI (hostname).
+    version: general
+    source:
+      title: Proxmox VE pve-common source – CLI output formats
+      url: https://github.com/proxmox/pve-common/blob/master/src/PVE/CLIFormatter.pm

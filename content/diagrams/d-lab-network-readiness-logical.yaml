@@ -1,0 +1,39 @@
+id: d-lab-network-readiness-logical
+title: Home lab network readiness topology (nested ESX on Proxmox)
+description: >
+  The Proxmox server's physical NIC connects as an 802.1Q trunk with jumbo frames to the learner's VLAN-capable
+  switch, whose router provides a gateway per VLAN. Inside Proxmox a VLAN-aware Linux bridge vmbr1 with MTU 9000
+  carries VLANs 10 (management), 20 (vMotion), 30 (vSAN) and 40 (host TEP) to the nested ESX VMs as trunks (no VLAN
+  tag on the Proxmox vNIC, firewall disabled). An infrastructure VM on VLAN 10 runs DNS with forward and reverse zones
+  and an NTP server. Nested ESX hosts tag VLANs on their own port groups and validate DNS, NTP and MTU with nslookup,
+  ntpq and vmkping.
+width: 1000
+height: 620
+groups:
+  - { id: g-pve, x: 20, y: 20, w: 640, h: 580, label: "Proxmox VE server", kind: compute }
+  - { id: g-phys, x: 700, y: 20, w: 280, h: 580, label: "Physical network", kind: network }
+nodes:
+  - { id: br, x: 220, y: 420, w: 260, h: 60, label: "vmbr1 VLAN-aware bridge", sublabel: "MTU 9000 · VIDs 2-4094", kind: network, info: "Linux bridge with bridge-vlan-aware yes and mtu 9000. Passes tagged frames from nested ESX unchanged." }
+  - { id: nic, x: 220, y: 520, w: 260, h: 56, label: "Physical NIC (enpXsY)", sublabel: "MTU 9000", kind: network, info: "Bridge port. Its MTU must be at least the bridge MTU." }
+  - { id: esx1, x: 40, y: 60, w: 190, h: 120, label: "esx-01 (nested)", sublabel: "vmxnet3 trunk · vmk0/1/2/10", kind: compute, component: esx-host, info: "Nested ESX VM. vNIC without VLAN tag, Proxmox firewall off so the MAC filter does not drop frames from nested VMs/vmks." }
+  - { id: esx2, x: 250, y: 60, w: 190, h: 120, label: "esx-02 (nested)", sublabel: "vmk0/1/2/10", kind: compute, info: "Second nested host for host-to-host vmkping tests." }
+  - { id: infra, x: 460, y: 60, w: 180, h: 120, label: "infra-01 VM", sublabel: "BIND + chrony · VLAN 10", kind: external, component: dns-service, info: "Debian VM with BIND9 forward zone lab.internal and reverse zone 10.10.10.in-addr.arpa, and chrony serving NTP to the lab." }
+  - { id: tests, x: 40, y: 240, w: 400, h: 120, label: "Validation", sublabel: "nslookup fwd+rev · ntpq -p · vmkping -d -s 1472 / 1672 / 8972", kind: ops, info: "The readiness evidence you record before any VCF deployment." }
+  - { id: sw, x: 730, y: 420, w: 220, h: 60, label: "VLAN switch", sublabel: "trunk 10,20,30,40 · jumbo", kind: network, component: physical-network, info: "Port to Proxmox is a trunk with jumbo frames enabled." }
+  - { id: rtr, x: 730, y: 220, w: 220, h: 80, label: "Router / L3 gateway", sublabel: "10.10.10.1 · .20.1 · .30.1 · .40.1", kind: network, info: "Provides the first hop gateway per VLAN and internet access for the NTP server's upstream sync." }
+  - { id: inet, x: 730, y: 60, w: 220, h: 60, label: "Internet NTP pool", kind: external, info: "Upstream for chrony on infra-01 only; ESX hosts sync to infra-01." }
+edges:
+  - { from: esx1, to: br, label: "trunk", kind: data }
+  - { from: esx2, to: br, label: "trunk", kind: data }
+  - { from: infra, to: br, label: "VLAN 10", kind: mgmt }
+  - { from: br, to: nic, kind: data }
+  - { from: nic, to: sw, label: "802.1Q", kind: data }
+  - { from: sw, to: rtr, kind: north-south }
+  - { from: rtr, to: inet, kind: north-south }
+  - { from: esx1, to: infra, label: "DNS 53 · NTP 123", kind: dependency, dashed: true }
+  - { from: esx1, to: esx2, label: "vmkping -d", kind: data, dashed: true }
+steps:
+  - { title: "Physical trunk", text: "Proxmox NIC, switch port and router interfaces carry VLANs 10-40 with jumbo frames.", highlight: [nic, sw, rtr] }
+  - { title: "VLAN-aware bridge", text: "vmbr1 passes tagged frames to nested ESX vNICs that have no Proxmox VLAN tag.", highlight: [br, esx1, esx2] }
+  - { title: "DNS and NTP", text: "infra-01 serves forward/reverse DNS and NTP to the lab; it syncs upstream through the router.", highlight: [infra, rtr, inet] }
+  - { title: "Validate", text: "Prove DNS, NTP and MTU from the nested hosts before touching VCF.", highlight: [tests, esx1, esx2] }

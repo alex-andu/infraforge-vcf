@@ -1,0 +1,39 @@
+id: d08-host-commissioning-flow
+title: Host commissioning lifecycle in VCF 9.0
+description: >
+  A prepared ESX host (FQDN, DNS A and PTR, regenerated certificate, NTP, clean disks, 10 Gbps NICs) is commissioned
+  from the vSphere Client Global Inventory Lists with a storage type and a network pool. VCF temporarily enables SSH to
+  read the host key, the administrator confirms fingerprints, validation marks hosts valid or invalid, and valid hosts
+  become UNASSIGNED. Assigning the host to a domain or cluster consumes IPs from the network pool. Removing it returns it
+  to unassigned; decommissioning removes it from inventory; it must be re-imaged before it is commissioned again.
+width: 1000
+height: 600
+groups:
+  - { id: g-sddc, x: 260, y: 150, w: 720, h: 170, label: "Commission Hosts wizard (vSphere Client > Global Inventory Lists > Hosts)", kind: mgmt }
+nodes:
+  - { id: prep, x: 40, y: 200, w: 190, h: 70, label: "Prepared ESX host", sublabel: "FQDN, DNS, cert, NTP", kind: compute, component: esx-host, info: "Hostname = FQDN, forward and reverse DNS, self-signed certificate regenerated, NTP, empty disks, 10 Gbps NICs, supported ESX build, management VMkernel on the standard switch." }
+  - { id: pool, x: 40, y: 60, w: 190, h: 60, label: "Network pool", sublabel: "vMotion + storage nets", kind: network, info: "Must exist first and contain the network types for the host's storage: vSAN, vSAN Storage Client, NFS or iSCSI, plus vMotion." }
+  - { id: add, x: 280, y: 200, w: 150, h: 70, label: "1. Add hosts", sublabel: "UI or JSON", kind: mgmt, info: "FQDN (exact case), storage type (VSAN_ESA, VSAN, VSAN_MAX, VSAN_REMOTE, NFS, VMFS_FC, VVOL), network pool, root credentials." }
+  - { id: fp, x: 450, y: 200, w: 150, h: 70, label: "2. Confirm fingerprints", kind: security, info: "VCF briefly enables SSH to fetch the host key, then disables it. Confirm All Finger Prints." }
+  - { id: val, x: 620, y: 200, w: 150, h: 70, label: "3. Validate All", kind: security, info: "Each host Valid or Invalid. Fix and re-validate, or remove invalid hosts." }
+  - { id: com, x: 790, y: 200, w: 170, h: 70, label: "4. Commission", sublabel: "skip failed hosts", kind: mgmt, info: "Skip failed hosts during commissioning is on by default." }
+  - { id: un, x: 790, y: 400, w: 170, h: 64, label: "UNASSIGNED", sublabel: "UNASSIGNED_USEABLE", kind: compute, info: "Listed under Unassigned Hosts. Can only join clusters of its storage type." }
+  - { id: as, x: 520, y: 400, w: 190, h: 64, label: "ASSIGNED", sublabel: "in a domain cluster", kind: compute, info: "Pool IPs are consumed when the host is placed in a domain/cluster." }
+  - { id: dec, x: 260, y: 400, w: 190, h: 64, label: "Decommission", kind: mgmt, info: "Only for hosts not assigned to a domain: Unassigned Hosts > Decommission Selected Hosts." }
+  - { id: reimg, x: 40, y: 400, w: 190, h: 64, label: "Re-image", sublabel: "required if it was in a domain", kind: external, info: "A host previously in a VCF domain must be re-imaged before re-commissioning." }
+edges:
+  - { from: pool, to: add, label: "select pool", kind: dependency, dashed: true }
+  - { from: prep, to: add, kind: mgmt }
+  - { from: add, to: fp, kind: mgmt }
+  - { from: fp, to: val, kind: mgmt }
+  - { from: val, to: com, kind: mgmt }
+  - { from: com, to: un, kind: mgmt }
+  - { from: un, to: as, label: "create WLD / add host", kind: mgmt, bidirectional: true }
+  - { from: un, to: dec, label: "after removal", kind: mgmt, dashed: true }
+  - { from: dec, to: reimg, kind: mgmt }
+  - { from: reimg, to: prep, kind: mgmt, dashed: true }
+steps:
+  - { title: "Prerequisites", text: "Prepare the host and make sure a network pool with the right networks exists.", highlight: [prep, pool] }
+  - { title: "Add and identify", text: "Add hosts with storage type and pool, confirm fingerprints.", highlight: [add, fp] }
+  - { title: "Validate and commission", text: "Validate All, then Commission. Valid hosts become unassigned.", highlight: [val, com, un] }
+  - { title: "Use and reuse", text: "Assign to a domain; to reuse elsewhere remove, decommission, re-image and commission again.", highlight: [as, dec, reimg] }

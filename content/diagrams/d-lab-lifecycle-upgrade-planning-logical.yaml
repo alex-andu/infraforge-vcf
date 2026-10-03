@@ -1,0 +1,38 @@
+id: d-lab-lifecycle-upgrade-planning-logical
+title: Lab topology - lifecycle upgrade planning
+description: >
+  Logical view of the lab. The learner's workstation reaches VCF Operations (ops01), SDDC Manager and the management
+  vCenter over the management VLAN. All VCF appliances run on four nested ESX hosts (esx01-esx04) that are VMs on the
+  single Proxmox server. An optional small Linux VM (depot) holds an offline depot built with the VCF Download Tool.
+  The lab is mostly read-only: it inventories versions, runs prechecks and builds a runbook.
+width: 1000
+height: 560
+groups:
+  - { id: g-prox, x: 20, y: 160, w: 960, h: 380, label: "Proxmox VE server (single physical host)", kind: external }
+  - { id: g-mgmt, x: 40, y: 200, w: 680, h: 320, label: "Nested VCF management domain (vSAN cluster)", kind: mgmt }
+nodes:
+  - { id: ws, x: 40, y: 40, w: 180, h: 56, label: "Workstation", sublabel: "browser, ssh, openssl", kind: external, info: "Where you open VCF Operations and SSH to SDDC Manager to read logs." }
+  - { id: internet, x: 760, y: 40, w: 200, h: 56, label: "Broadcom depot", sublabel: "internet (optional)", kind: external, info: "Online depot reached with a download token, if your lab has internet and entitlement." }
+  - { id: ops, x: 60, y: 240, w: 190, h: 56, label: "VCF Operations", sublabel: "ops01", kind: ops, component: vcf-operations, info: "Fleet Management > Lifecycle: VCF Management and VCF Instances views, Binary Management, Precheck, Plan Upgrade." }
+  - { id: fleet, x: 280, y: 240, w: 190, h: 56, label: "Fleet management", kind: ops, component: vcf-operations-fleet-management, info: "Binaries and upgrades for management components." }
+  - { id: sddc, x: 500, y: 240, w: 190, h: 56, label: "SDDC Manager", sublabel: "sddc-manager", kind: mgmt, component: sddc-manager, info: "Core binaries, prechecks, /var/log/vmware/vcf/lcm/lcm-debug.log." }
+  - { id: vc, x: 60, y: 340, w: 190, h: 56, label: "vCenter", sublabel: "vcenter-mgmt + vLCM", kind: mgmt, component: vcenter, info: "Cluster image and compliance view (Updates tab)." }
+  - { id: nsx, x: 280, y: 340, w: 190, h: 56, label: "NSX Manager", sublabel: "nsx-vip", kind: nsx, component: nsx-manager, info: "Version recorded in the inventory." }
+  - { id: hosts, x: 500, y: 340, w: 190, h: 56, label: "esx01-esx04", sublabel: "nested ESX", kind: compute, component: esx-host, info: "Nested hosts; their base image is what vLCM checks." }
+  - { id: vsan, x: 280, y: 440, w: 190, h: 56, label: "vSAN datastore", kind: storage, component: vsan, info: "Nested vSAN backed by Proxmox virtual disks." }
+  - { id: depot, x: 760, y: 280, w: 200, h: 56, label: "depot VM", sublabel: "optional offline depot", kind: storage, info: "Linux VM with an HTTPS web server serving /depot (PROD and umds-patch-store)." }
+edges:
+  - { from: ws, to: ops, label: "HTTPS", kind: mgmt }
+  - { from: ws, to: sddc, label: "SSH (logs)", kind: mgmt, dashed: true }
+  - { from: ops, to: fleet, kind: control }
+  - { from: ops, to: sddc, kind: control }
+  - { from: sddc, to: vc, kind: mgmt }
+  - { from: sddc, to: nsx, kind: mgmt }
+  - { from: vc, to: hosts, label: "vLCM", kind: mgmt }
+  - { from: hosts, to: vsan, kind: storage }
+  - { from: internet, to: sddc, label: "online depot", kind: dependency, dashed: true }
+  - { from: depot, to: sddc, label: "offline depot", kind: dependency, dashed: true }
+steps:
+  - { title: "Inventory", text: "Record versions from VCF Operations, SDDC Manager, vCenter, NSX and hosts.", highlight: [ops, sddc, vc, nsx, hosts] }
+  - { title: "Binaries", text: "Decide online vs offline depot.", highlight: [internet, depot, sddc, fleet] }
+  - { title: "Precheck and runbook", text: "Run a precheck and write the ordered runbook.", highlight: [ops, sddc] }

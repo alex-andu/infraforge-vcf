@@ -1,0 +1,185 @@
+id: lab-nsx-tier0-bgp-edge
+title: Deploy an edge cluster and an active/standby Tier-0 with BGP to a lab router
+level: advanced
+complexity: 5
+minutes: 300
+version: vcf9
+technologies: [NSX 9, NSX Edge, vCenter 9 Network Connectivity, BGP, FRRouting, Proxmox VE]
+topics: [nsx-edge, nsx-routing, nsx-vpc]
+lessons: [nsx-edge-nodes-clusters, nsx-tier0-tier1-routing, nsx-vpcs-and-vcf-networking]
+objectives:
+  - Prepare uplink VLANs and a BGP peer (FRRouting VM) that plays the role of the top-of-rack routers.
+  - Deploy a two-node NSX edge cluster and an active/standby Tier-0 using the VCF 9 vCenter "Configure Network Connectivity" workflow (centralized connectivity).
+  - Verify Edge health, tunnels and BGP from the Edge CLI and from the router.
+  - Link the Tier-1 from lab-nsx-segments-tier1 and make its segments reachable from outside through advertisement and redistribution.
+  - Fail the active Edge and observe failover.
+prerequisites:
+  - "lab-nsx-segments-tier1 completed (t1-lab, seg-web, seg-app exist)."
+  - "Nested VCF 9 environment with NSX and a vCenter cluster whose hosts are NSX-prepared (transport node profile attached)."
+  - "Proxmox CPU type host for nested ESX (Edge VMs need AES-NI and 1 GB huge-page support, i.e. the pdpe1gb flag, visible inside the nested host)."
+  - "Enough capacity: two Medium Edge VMs need 4 vCPU and 8 GB RAM each (memory fully reserved) plus 200 GB thin disk each."
+topology:
+  logical: d-lab-nsx-tier0-bgp-edge-logical
+  network: d-lab-nsx-tier0-bgp-edge-network
+requirements:
+  network:
+    - "Uplink VLAN 2711 (10.27.11.0/24) and uplink VLAN 2712 (10.27.12.0/24) trunked from Proxmox to the nested ESX hosts that will run Edges."
+    - "Edge TEP: reuse the host TEP VLAN (VCF 9 workflow supports it; enable 'Activate NSX on DVPG' if prompted) or a dedicated routed VLAN."
+    - "Management VLAN for the Edge management IPs, with DNS A and PTR records for edge-01 and edge-02."
+    - "MTU 9000 (≥ 1700) end to end for TEP traffic; uplink VLANs can stay at 1500 or match."
+  vms:
+    - "lab-router: Debian/Ubuntu VM on Proxmox with FRRouting, NICs on VLAN 2711, VLAN 2712 and your home LAN (as its 'internet'). 1 vCPU, 1 GB RAM."
+    - "edge-01, edge-02: Medium Edge VMs deployed by the workflow onto the nested cluster (on different nested hosts)."
+  ip:
+    - "lab-router: 10.27.11.1 (VLAN 2711), 10.27.12.1 (VLAN 2712), AS 65000"
+    - "edge-01 Tier-0 uplinks: 10.27.11.2, 10.27.12.2; edge-02: 10.27.11.3, 10.27.12.3; Tier-0 AS 65001"
+    - "edge-01 / edge-02 management IPs on the management VLAN (adapt to your Home Lab IP plan)"
+    - "VPC External IP block (optional VPC part): 10.80.0.0/20; Private TGW block: 172.30.0.0/20"
+startingState: |
+  Hosts are NSX transport nodes, `t1-lab` (Distributed Only) has two segments with test VMs, and there is no edge
+  cluster or Tier-0. VMs can reach each other but nothing outside NSX.
+
+  :::warning
+  This is the heaviest NSX lab. Nested Edges on Proxmox work for learning but their DPDK data path is slow – expect
+  modest throughput and avoid running other big labs at the same time. If the Edge deployment fails CPU checks,
+  confirm the nested ESX VM uses CPU type host (exposes AES-NI and pdpe1gb).
+  :::
+steps:
+  - id: router
+    title: Build the lab router (the "ToR")
+    why: A Tier-0 needs a physical-side BGP peer; FRR on a Linux VM is a realistic, free stand-in.
+    instructions: |
+      1. Create `lab-router` on Proxmox with three NICs: VLAN 2711, VLAN 2712, home LAN. Assign 10.27.11.1/24 and 10.27.12.1/24, enable IP forwarding and NAT out of the home-LAN NIC.
+      2. Install FRRouting, enable `bgpd` in `/etc/frr/daemons`, restart FRR.
+      3. In `vtysh`:
+         ```shell
+         configure terminal
+         router bgp 65000
+          bgp router-id 10.27.11.1
+          no bgp ebgp-requires-policy
+          neighbor 10.27.11.2 remote-as 65001
+          neighbor 10.27.11.3 remote-as 65001
+          neighbor 10.27.12.2 remote-as 65001
+          neighbor 10.27.12.3 remote-as 65001
+          address-family ipv4 unicast
+           neighbor 10.27.11.2 default-originate
+           neighbor 10.27.11.3 default-originate
+           neighbor 10.27.12.2 default-originate
+           neighbor 10.27.12.3 default-originate
+          exit-address-family
+         end
+         write memory
+         ```
+    hint: Recent FRR versions refuse to exchange eBGP routes without policies unless you disable `ebgp-requires-policy` (or add route-maps).
+    validate: "`vtysh -c 'show bgp summary'` lists four neighbors (Active/Idle until NSX is built)."
+    expected: Four neighbors configured with remote AS 65001.
+  - id: prereqs
+    title: Check the workflow prerequisites
+    why: The vCenter workflow validates prerequisites; fixing them first avoids failed Edge deployments.
+    instructions: |
+      1. NSX: compute manager registered, transport node profile attached to the cluster (System → Fabric → Hosts).
+      2. DNS: A and PTR for `edge-01` and `edge-02`.
+      3. vCenter: port groups for the Edge management network exist; uplink VLANs are trunked to the hosts.
+      4. Decide TEP addressing for Edges: same VLAN as host TEPs (IP pool or DHCP).
+    validate: nslookup forward and reverse works for both Edge FQDNs; hosts show Success in NSX.
+    expected: All prerequisites ticked.
+  - id: deploy-edges
+    title: Deploy the edge cluster from vCenter
+    why: This is the VCF 9 way to create the centralized "network gateway" – and exactly what objective 4.1 describes.
+    instructions: |
+      1. vSphere Client → your vCenter → **Networks > Network Connectivity → Configure Network Connectivity**.
+      2. Gateway type **Centralized Connectivity** → review prerequisites → Continue.
+      3. Edge cluster: name `ec-lab`, Tunnel Endpoint MTU as proposed (from Global Fabric Settings).
+      4. Edge Form Factor **Medium**. Set CLI/root passwords (or let VCF manage them).
+      5. **Add** `edge-01.<domain>`: vSphere cluster, datastore, management port group + static IP + gateway; uplinks: **Use the host overlay network configuration** (or map fp-eth0/fp-eth1 to the host uplinks); TEP VLAN and IP allocation. Apply.
+      6. **Clone** for `edge-02` and change the FQDN and management IP.
+    hint: If Add/Clone is greyed out, a prerequisite is missing (DNS, TNP, management port group).
+    validate: Do not deploy yet – continue to the gateway page.
+    expected: Two Edge nodes listed in the wizard.
+  - id: tier0
+    title: Configure the Tier-0 (Workload Domain Connectivity)
+    why: The Tier-0 is the provider router that peers with the lab router.
+    instructions: |
+      1. Gateway Name `t0-lab`, High Availability Mode **Active Standby**, Gateway Routing Type **BGP**, Local Autonomous System **65001**.
+      2. Gateway uplinks for edge-01: VLAN 2711 interface 10.27.11.2/24 → BGP peer 10.27.11.1; VLAN 2712 interface 10.27.12.2/24 → BGP peer 10.27.12.1. Same for edge-02 with .3.
+      3. VPC External Connectivity: External IP Blocks `10.80.0.0/20`, Private – Transit Gateway IP Blocks `172.30.0.0/20`.
+      4. Review the generated topology drawing → **Deploy**. Watch the tasks in vCenter.
+    hint: With Active/Standby only two Edges may carry gateway uplinks – exactly our two.
+    validate: Network Connectivity page shows the edge cluster and gateway as deployed/successful.
+    expected: Edge VMs powered on, edge cluster `ec-lab` and Tier-0 `t0-lab` visible in NSX Manager.
+  - id: verify-edges
+    title: Verify Edges and tunnels
+    why: An Edge that can't reach host TEPs will break north-south even with BGP up.
+    instructions: |
+      1. NSX Manager → System → Fabric → Nodes → Edge Transport Nodes: both Edges Up, tunnels Up.
+      2. SSH to edge-01 as admin: `get edge-cluster status`, `get logical-routers`, `get tunnel-ports`, `get bfd-sessions`.
+      3. Create a DRS anti-affinity rule so edge-01 and edge-02 never share a host.
+    validate: Tunnels from each Edge to every host TEP are up.
+    expected: "`get logical-routers` shows an SR-t0-lab (SERVICE_ROUTER_TIER0) plus DR instances."
+  - id: verify-bgp
+    title: Verify BGP from both sides
+    why: Only Established sessions exchange routes.
+    instructions: |
+      1. On edge-01: `get logical-routers` → note the VRF of SR-t0-lab → `vrf <n>` → `get bgp neighbor summary` → `get route`.
+      2. On lab-router: `vtysh -c 'show bgp summary'` and `vtysh -c 'show ip route bgp'`.
+    hint: "Active state = TCP 179 not reaching the peer. Check VLAN tags on the Edge trunk port groups and Proxmox, and the IPs."
+    validate: Sessions from the active Edge are Established; the SR has a default route from 10.27.11.1/10.27.12.1.
+    expected: "`10.27.11.1  65000  Estab ...` and `b > * 0.0.0.0/0 via 10.27.11.1` in `get route`."
+  - id: link-t1
+    title: Make the segments reachable from outside
+    why: Demonstrates the two switches – Tier-1 advertisement and Tier-0 redistribution.
+    instructions: |
+      1. Edit `t1-lab` → Linked Tier-0 Gateway = `t0-lab`. Save. (It stays Distributed Only.)
+      2. On lab-router: `show ip route bgp` – are 172.16.10.0/24 and 172.16.20.0/24 there?
+      3. Edit `t0-lab` → **Route Re-distribution**: add a rule including Tier-1 **Connected Interfaces & Segments** (and Tier-0 connected). Save.
+      4. Check the router again, then ping 172.16.10.11 from lab-router and 8.8.8.8 (or your home LAN gateway) from web-01.
+    hint: On the Edge, `get bgp neighbor 10.27.11.1 advertised-routes` tells you whether NSX is sending the prefixes.
+    validate: lab-router learns both segment prefixes via BGP; VMs reach the home LAN.
+    expected: "`B>* 172.16.10.0/24 [20/0] via 10.27.11.2` on lab-router; ping succeeds both ways."
+  - id: failover
+    title: Fail the active Edge
+    why: Proves active/standby behaviour and what a north-south interruption looks like.
+    instructions: |
+      1. On edge-01 (inside the Tier-0 SR VRF) run `get high-availability status` to confirm it is active.
+      2. Start a continuous ping from web-01 to the lab router.
+      3. Power off edge-01 in vCenter. Count lost pings. Check edge-02's HA status and BGP summary.
+      4. Power edge-01 back on – with non-preemptive failover it should stay standby.
+    validate: Traffic recovers through edge-02; BGP from edge-02 becomes Established.
+    expected: A short outage (seconds) then recovery; edge-01 returns as standby.
+  - id: vpc-optional
+    title: (Optional) Create a VPC on the centralized gateway
+    why: Connects this lab to the VCF 9 consumption model.
+    instructions: |
+      1. vSphere Client → Networks → create a VPC `vpc-lab` in the Default project.
+      2. Add a public subnet (/28 from 10.80.0.0/20) and a private subnet (/24), with DHCP.
+      3. Attach a VM to each; from lab-router ping the public-subnet VM. Use **Assign External IP** on the private VM and ping that address.
+    validate: Public VM reachable from lab-router; private VM reachable only via its External IP.
+    expected: lab-router learns the 10.80.0.0/20 range (or more specific) via BGP.
+troubleshooting:
+  - symptom: Edge deployment fails or the Edge VM won't start (CPU/feature check).
+    fix: Nested ESX VM needs CPU type host on Proxmox so AES-NI and 1 GB pages are visible; also check memory reservation fits the host.
+  - symptom: BGP stuck in Active.
+    fix: VLAN 2711/2712 not trunked on the Proxmox bridge or nested VDS trunk port groups, wrong interface IP/mask, or FRR not listening; ping 10.27.11.1 from the SR VRF.
+  - symptom: BGP Established but lab-router has no 172.16.x.x routes.
+    fix: Tier-1 not linked to t0-lab, Tier-1 advertisement off, or Tier-0 redistribution missing; check `advertised-routes` on the Edge.
+  - symptom: Router has the routes, VMs still can't get out.
+    fix: Edge TEP can't reach host TEPs (tunnels down) or MTU on the TEP path; check get bfd-sessions and vmkping on the vxlan stack.
+  - symptom: Return traffic missing.
+    fix: lab-router lacks NAT/forwarding to the home LAN or the home LAN has no route back to 172.16.0.0/16 – add a static route on your home router or NAT on lab-router.
+challenge: |
+  Rebuild `t0-lab` as **Active/Active** (or create a second Tier-0 on a second edge cluster if you have the capacity),
+  enable ECMP, and observe that both Edges carry traffic. Then try to configure an SNAT rule on that Tier-0 and explain
+  what the UI allows and why. Write down which mode you would need for vSphere Supervisor.
+cleanup: |
+  Keep the edge cluster and Tier-0 if you plan to enable Supervisor later (it needs Centralized Active/Standby).
+  Otherwise: unlink t1-lab, remove the Tier-0 and edge cluster from the Network Connectivity page (or NSX Manager),
+  delete the DRS rule and power off lab-router.
+sources:
+  - title: VCF 9.0 – Configure Centralized Network Connectivity with Edge Clusters
+    url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/building-your-private-cloud-infrastructure/managing-network-connectivity-in-vcenter/managing-centralized-network-connectivity-with-edge-clusters.html
+  - title: VCF 9.0 – NSX Edge VM System Requirements
+    url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/advanced-network-management/administration-guide/installing-nsx-edge/edge-vm-system-requirements.html
+  - title: Broadcom KB 339392 – Troubleshooting NSX BGP
+    url: https://knowledge.broadcom.com/external/article/339392/
+  - title: William Lam – MS-A2 VCF 9.0 Lab, Configuring NSX VPC
+    url: https://williamlam.com/2025/07/ms-a2-vcf-9-0-lab-configuring-nsx-virtual-private-cloud-vpc.html

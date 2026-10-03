@@ -1,0 +1,34 @@
+id: d-lab-nsx-tier0-bgp-edge-network
+title: Lab – edge cluster and uplinks (network view)
+description: >
+  Network view of lab-nsx-tier0-bgp-edge. On the Proxmox server, two nested ESX hosts each run one Medium Edge VM
+  (edge-01, edge-02, kept apart by an anti-affinity rule). Each Edge has a management interface on the management VLAN
+  and fast-path interfaces on two trunk port groups carrying the Edge TEP VLAN (shared with host TEPs, VLAN 13) and
+  uplink VLANs 2711 and 2712. lab-router is a Proxmox VM with interfaces 10.27.11.1 and 10.27.12.1 and a third NIC on
+  the home LAN for outbound access.
+width: 1000
+height: 600
+groups:
+  - { id: g-px, x: 20, y: 120, w: 960, h: 460, label: "Proxmox VE server", kind: compute }
+nodes:
+  - { id: home, x: 400, y: 30, w: 200, h: 56, label: "Home LAN / internet", kind: external, info: "lab-router NATs or routes the lab toward your home network." }
+  - { id: rtr, x: 400, y: 150, w: 200, h: 60, label: "lab-router VM", sublabel: ".11.1 / .12.1", kind: network, component: physical-network, info: "FRR, AS 65000. NIC1 VLAN 2711, NIC2 VLAN 2712, NIC3 home LAN." }
+  - { id: v2711, x: 120, y: 260, w: 220, h: 50, label: "VLAN 2711", sublabel: "10.27.11.0/24", kind: network, info: "Uplink VLAN 1 on the Proxmox bridge, trunked to nested ESX." }
+  - { id: v2712, x: 660, y: 260, w: 220, h: 50, label: "VLAN 2712", sublabel: "10.27.12.0/24", kind: network, info: "Uplink VLAN 2." }
+  - { id: h1, x: 60, y: 360, w: 300, h: 70, label: "esx-lab-01: edge-01", sublabel: "uplinks .11.2 / .12.2", kind: nsx, component: nsx-edge-cluster, info: "Edge VM, Medium (4 vCPU / 8 GB reserved). fp-eth0/fp-eth1 on auto-created trunk port groups." }
+  - { id: h2, x: 640, y: 360, w: 300, h: 70, label: "esx-lab-02: edge-02", sublabel: "uplinks .11.3 / .12.3", kind: nsx, component: nsx-edge-cluster, info: "Second Edge on another nested host (DRS anti-affinity)." }
+  - { id: tep, x: 350, y: 480, w: 300, h: 56, label: "TEP VLAN 13 (hosts + Edges)", sublabel: "MTU 9000", kind: nsx, info: "Edge TEPs share VLAN 13 with host TEPs; tunnels from every host TEP to every Edge TEP must be up." }
+edges:
+  - { from: home, to: rtr, kind: north-south, bidirectional: true }
+  - { from: rtr, to: v2711, kind: north-south, bidirectional: true }
+  - { from: rtr, to: v2712, kind: north-south, bidirectional: true }
+  - { from: v2711, to: h1, label: "BGP", kind: north-south, bidirectional: true }
+  - { from: v2711, to: h2, kind: north-south, bidirectional: true }
+  - { from: v2712, to: h1, kind: north-south, bidirectional: true }
+  - { from: v2712, to: h2, label: "BGP", kind: north-south, bidirectional: true }
+  - { from: h1, to: tep, label: "Geneve", kind: overlay, dashed: true }
+  - { from: h2, to: tep, kind: overlay, dashed: true }
+steps:
+  - { title: "Uplink VLANs", text: "Two uplink VLANs connect each Edge to lab-router – one BGP session per Edge per VLAN.", highlight: [rtr, v2711, v2712, h1, h2] }
+  - { title: "Overlay side", text: "Edges join the overlay through TEPs on VLAN 13; hosts tunnel north-south traffic to them.", highlight: [h1, h2, tep] }
+  - { title: "Outbound", text: "lab-router forwards (and NATs) to the home LAN so VMs reach the internet.", highlight: [rtr, home] }

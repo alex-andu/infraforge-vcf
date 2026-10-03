@@ -1,0 +1,1087 @@
+questions:
+  # ---------------------------------------------------------------- storage-fundamentals-datastores
+  - id: p03-st-001
+    type: single
+    kind: concept
+    difficulty: foundation
+    topics: [datastores]
+    objective: "2.3"
+    lesson: storage-fundamentals-datastores
+    section: the-four-datastore-types
+    diagnostic: storage
+    stem: "Which datastore type is a clustered file system that ESX writes directly onto a block device such as a Fibre Channel LUN?"
+    options:
+      - { id: a, text: "NFS", why: "NFS is file storage: the NAS owns the file system and ESX only mounts the export." }
+      - { id: b, text: "VMFS", correct: true, why: "VMFS is the clustered file system ESX formats on local, FC, iSCSI or NVMe-oF block devices." }
+      - { id: c, text: "vSAN", why: "vSAN is object-based storage built from the hosts' local devices, not a file system on a LUN.", confusedWith: vsan-architecture }
+      - { id: d, text: "vVols", why: "vVols map VM disks to array objects through VASA; no VMFS is written on a LUN." }
+    explanation:
+      correct: "VMFS (VMFS5/VMFS6) is what ESX writes on block devices; many hosts can mount the same VMFS volume concurrently."
+      concept: "Block (VMFS) vs file (NFS) vs software-defined (vSAN, vVols) datastores."
+      architecture: "The FC HBA presents the LUN, the PSA claims it, and ESX formats it with VMFS; vCenter mounts it on all hosts that see the LUN."
+      trap: "vSAN also uses local block devices, but it does not format them as VMFS."
+
+  - id: p03-st-002
+    type: multi
+    kind: scenario
+    difficulty: intermediate
+    topics: [wld-storage, datastores]
+    objective: "4.1"
+    lesson: storage-fundamentals-datastores
+    section: principal-and-supplemental-storage-in-vcf
+    select: 3
+    context: |
+      You are creating a new VI workload domain in VCF 9.0. The storage team offers several options for the first cluster.
+    stem: "Which options can be selected as **principal** storage for the VI workload domain cluster? (Choose three.)"
+    options:
+      - { id: a, text: "vSAN ESA", correct: true, why: "vSAN ESA is principal storage for every domain type." }
+      - { id: b, text: "NFS v3", correct: true, why: "NFS v3 is listed as principal storage for VI workload domains." }
+      - { id: c, text: "Fibre Channel (VMFS)", correct: true, why: "FC is a principal storage option; provisioning happens outside VCF." }
+      - { id: d, text: "iSCSI", why: "iSCSI is supplemental only in VCF 9.0.", confusedWith: datastores }
+      - { id: e, text: "NFS 4.1", why: "NFS 4.1 is supplemental only; principal NFS is v3." }
+      - { id: f, text: "NVMe/TCP", why: "NVMe/TCP is supplemental only." }
+    explanation:
+      correct: "VCF 9.0 principal storage for VI workload domains: vSAN ESA, vSAN OSA, vSAN storage cluster, vSAN single-rack compute cluster, NFS v3 and Fibre Channel."
+      concept: "Principal storage is chosen at cluster creation; supplemental storage is added afterwards."
+      architecture: "VCF configures vSAN itself; FC and NFS must already be provisioned by the storage team."
+      trap: "iSCSI and every NVMe-oF flavour, plus NFS 4.1, are supplemental only."
+
+  - id: p03-st-003
+    type: single
+    kind: scenario
+    difficulty: intermediate
+    topics: [wld-storage]
+    objective: "4.1"
+    lesson: storage-fundamentals-datastores
+    section: principal-and-supplemental-storage-in-vcf
+    context: |
+      An architect proposes a VCF 9.0 design in which the **default cluster of the management domain** uses a vSAN
+      storage cluster (disaggregated, formerly vSAN Max) as principal storage.
+    stem: "What is wrong with this proposal?"
+    options:
+      - { id: a, text: "Nothing; vSAN storage clusters are allowed for every cluster", why: "The storage models page lists the storage cluster option for additional management clusters and VI workload domains, not the default management cluster." }
+      - { id: b, text: "The default management cluster supports vSAN ESA, vSAN OSA, NFS v3 or FC as principal storage — not a vSAN storage cluster", correct: true, why: "That is the VCF 9.0 list for the management domain default cluster." }
+      - { id: c, text: "vSAN storage clusters require vSAN OSA", why: "Storage clusters are built on ESA only.", confusedWith: vsan-architecture }
+      - { id: d, text: "The management domain must use FC", why: "FC is one option, not a requirement." }
+    explanation:
+      correct: "For the management domain's default cluster VCF 9.0 lists vSAN ESA, vSAN OSA, NFS v3 and Fibre Channel as principal storage."
+      concept: "Allowed principal storage differs between the default management cluster and other clusters."
+      architecture: "The first management cluster hosts vCenter, NSX and VCF Operations; it has to be self-contained."
+      trap: "Storage cluster and compute cluster models are valid for additional management clusters and VI workload domains."
+
+  - id: p03-st-004
+    type: single
+    kind: concept
+    difficulty: foundation
+    topics: [datastores]
+    objective: "2.3"
+    lesson: storage-fundamentals-datastores
+    section: vvols-why-it-still-appears-in-questions
+    stem: "What is the status of vSphere Virtual Volumes (vVols) in VCF 9.0?"
+    options:
+      - { id: a, text: "It is the recommended principal storage for VI workload domains", why: "vVols are not a principal storage option in VCF 9.0." }
+      - { id: b, text: "It is deprecated beginning with VCF 9.0 and will be discontinued in a future release", correct: true, why: "Broadcom KB 401070 announces the deprecation and the end of 9.0 certifications." }
+      - { id: c, text: "It replaced NFS v3 as supported file storage", why: "vVols are not file storage and replaced nothing." }
+      - { id: d, text: "It is required for SPBM to work", why: "SPBM works with vSAN and tag-based policies without vVols.", confusedWith: vsan-policies }
+    explanation:
+      correct: "vVols capabilities are deprecated beginning with VCF/VVF 9.0; vVol certifications for 9.0 were discontinued."
+      concept: "Deprecated features remain for compatibility but should not be chosen for new designs."
+      trap: "vVols and vSAN are both 'software-defined' and both use SPBM, which makes them easy to confuse."
+
+  - id: p03-st-005
+    type: truefalse
+    kind: concept
+    difficulty: foundation
+    topics: [wld-storage]
+    objective: "4.1"
+    lesson: storage-fundamentals-datastores
+    section: principal-and-supplemental-storage-in-vcf
+    stem: "True or false: when you choose Fibre Channel as principal storage for a VCF 9.0 workload domain, VCF zones the SAN and creates the LUN for you."
+    options:
+      - { id: "true", text: "True", why: "VCF documentation states FC and NFS provisioning is not completed by VCF automated workflows." }
+      - { id: "false", text: "False", correct: true, why: "The storage team must zone, mask and present the LUN first; VCF consumes it." }
+    explanation:
+      correct: "False. FC and NFS 'storage provisioning and configuration is not completed by VMware Cloud Foundation automated workflows' and requires additional tools."
+      concept: "Who configures what: VCF automates vSAN; external arrays are configured outside VCF."
+      trap: "Assuming VCF is an array manager."
+
+  - id: p03-st-006
+    type: single
+    kind: troubleshooting
+    difficulty: intermediate
+    topics: [datastores]
+    objective: "2.3"
+    lesson: storage-fundamentals-datastores
+    section: troubleshooting
+    context: |
+      A new FC LUN was presented to all four hosts of a cluster. Three hosts show the new VMFS datastore; on esx-04
+      vMotion to that datastore fails and the datastore is missing from the host's list.
+    stem: "What should you check first on esx-04?"
+    options:
+      - { id: a, text: "Rescan the storage adapters and run esxcli storage core device list to see whether the device is visible", correct: true, why: "If the device is not visible after a rescan, the cause is zoning/masking or paths for that host." }
+      - { id: b, text: "Recreate the VMFS datastore", why: "Reformatting would destroy data the other hosts already use." }
+      - { id: c, text: "Change the VM storage policy", why: "Policies do not make a missing device appear." , confusedWith: vsan-policies }
+      - { id: d, text: "Disable vSphere HA", why: "HA has nothing to do with device discovery." }
+    explanation:
+      correct: "Start at the bottom of the stack: device visibility (rescan, device list), then paths, then mount state."
+      concept: "Disk → adapter → device → datastore chain."
+      architecture: "Each host discovers LUNs independently; masking errors often affect one host only."
+      trap: "Formatting again when the datastore exists on other hosts."
+
+  - id: p03-st-007
+    type: matching
+    kind: concept
+    difficulty: intermediate
+    topics: [datastores]
+    objective: "2.3"
+    lesson: storage-fundamentals-datastores
+    section: device-names-you-will-see
+    stem: "Match each device identifier with what it typically represents."
+    pairs:
+      - { id: p1, left: "naa.600a0980...", right: "NAA ID typical of SAN LUNs and SAS devices" }
+      - { id: p2, left: "eui.0f1e2d3c...", right: "EUI-64 ID common for NVMe namespaces" }
+      - { id: p3, left: "mpx.vmhba0:C0:T0:L0", right: "Path-based name for a device that reports no unique ID" }
+      - { id: p4, left: "vmhba2:C0:T1:L4", right: "Runtime path: adapter, channel, target, LUN" }
+    explanation:
+      correct: "naa and eui are unique device IDs; mpx is a path-derived fallback name; vmhbaX:C:T:L is a runtime path name."
+      concept: "Recognizing devices in esxcli output."
+      trap: "A runtime path (vmhba...) is not a device ID; one device can have several paths."
+
+  - id: p03-st-008
+    type: single
+    kind: design
+    difficulty: advanced
+    topics: [datastores, wld-storage]
+    objective: "2.3"
+    lesson: storage-fundamentals-datastores
+    section: nfs-3-vs-nfs-4-1
+    context: |
+      A NAS exports `/vol/vcf_iso`. The VCF admin mounted it as NFS 4.1 on two hosts for Kerberos support, while an
+      older script mounted the same export as NFS 3 on the other two hosts.
+    stem: "What is the main risk?"
+    options:
+      - { id: a, text: "Only a performance difference", why: "The issue is correctness, not speed." }
+      - { id: b, text: "The two NFS versions use different locking, so mounting one export with both versions risks data corruption", correct: true, why: "Use one NFS version per export across all hosts." }
+      - { id: c, text: "NFS 4.1 cannot be used in VCF at all", why: "NFS 4.1 is valid supplemental storage." }
+      - { id: d, text: "The datastore becomes vSAN", why: "NFS mounts are never converted to vSAN.", confusedWith: vsan-architecture }
+    explanation:
+      correct: "NFS 3 and NFS 4.1 use different locking mechanisms; mixing versions on the same export is unsupported and risks corruption."
+      concept: "NFS version consistency per datastore."
+      trap: "Thinking 'NFS is NFS' because the path is the same."
+
+  # ---------------------------------------------------------------- vsan-architecture-esa-osa
+  - id: p03-ar-001
+    type: single
+    kind: concept
+    difficulty: foundation
+    topics: [vsan-architecture]
+    objective: "2.3"
+    lesson: vsan-architecture-esa-osa
+    section: esa-vs-osa-in-one-table
+    diagnostic: storage
+    stem: "Which construct does vSAN ESA use instead of disk groups?"
+    options:
+      - { id: a, text: "Storage pool", correct: true, why: "ESA replaces disk groups with a storage pool in which every NVMe device provides capacity and performance." }
+      - { id: b, text: "Datastore cluster", why: "Datastore clusters are a Storage DRS construct for VMFS/NFS." , confusedWith: datastores }
+      - { id: c, text: "Cache tier", why: "ESA has no separate cache tier." }
+      - { id: d, text: "Fault domain", why: "Fault domains group hosts, not devices.", confusedWith: vsan-resilience }
+    explanation:
+      correct: "TechDocs: vSAN ESA replaces disk groups with a new logical construct called a storage pool."
+      concept: "ESA single tier vs OSA two tier."
+      trap: "Remembering 'disk group' from older material and applying it to ESA."
+
+  - id: p03-ar-002
+    type: single
+    kind: scenario
+    difficulty: intermediate
+    topics: [vsan-architecture]
+    objective: "2.3"
+    lesson: vsan-architecture-esa-osa
+    section: when-osa-is-still-the-right-answer
+    context: |
+      A customer will reuse six existing servers for a new VCF 9.0 VI workload domain. Each server has 512 GB RAM,
+      2 × 10 GbE NICs and eight SAS SSDs. There is no budget for new drives this year.
+    stem: "Which vSAN architecture fits these servers?"
+    options:
+      - { id: a, text: "vSAN ESA", why: "ESA requires NVMe TLC devices; SAS SSDs are not eligible." }
+      - { id: b, text: "vSAN OSA all-flash", correct: true, why: "OSA supports SAS/SATA SSDs in disk groups, and all-flash OSA works with 10 GbE." }
+      - { id: c, text: "vSAN storage cluster", why: "Storage clusters are ESA only.", confusedWith: wld-storage }
+      - { id: d, text: "vSAN OSA hybrid", why: "Hybrid means magnetic capacity disks; these are all SSDs." }
+    explanation:
+      correct: "Without NVMe devices ESA is not possible; OSA all-flash with disk groups is the supported choice."
+      concept: "ESA/OSA use-case selection from hardware."
+      architecture: "OSA disk group: 1 cache + 1-7 capacity devices; up to 5 per host."
+      trap: "Picking ESA because it is 'newer' even though the hardware does not qualify."
+
+  - id: p03-ar-003
+    type: multi
+    kind: concept
+    difficulty: intermediate
+    topics: [vsan-architecture]
+    objective: "2.3"
+    lesson: vsan-architecture-esa-osa
+    section: why-esa-changed-the-rules
+    select: 3
+    stem: "Which statements describe vSAN ESA? (Choose three.)"
+    options:
+      - { id: a, text: "Compression is enabled by default and controlled per storage policy", correct: true, why: "ESA compresses by default; a policy can opt VMs out." }
+      - { id: b, text: "Snapshots are native; ESA does not create delta disk objects", correct: true, why: "With ESA a virtual disk and its snapshots share one object." }
+      - { id: c, text: "Object checksum is always on and cannot be disabled", correct: true, why: "TechDocs: for ESA object checksum is always on." }
+      - { id: d, text: "Each host needs one flash cache device per disk group", why: "That is OSA.", confusedWith: vsan-architecture }
+      - { id: e, text: "Flash read cache reservation is the main performance setting", why: "Flash read cache reservation applies to hybrid OSA only." }
+    explanation:
+      correct: "ESA: default compression, native snapshots, always-on checksum, no cache tier."
+      concept: "ESA data services differences."
+      trap: "Applying hybrid OSA settings (read cache reservation) to ESA."
+
+  - id: p03-ar-004
+    type: single
+    kind: architecture
+    difficulty: intermediate
+    topics: [vsan-architecture]
+    objective: "2.3"
+    lesson: vsan-architecture-esa-osa
+    section: failure-scenarios
+    stem: "In a vSAN OSA all-flash host, the cache device of disk group 2 fails. What is the impact?"
+    options:
+      - { id: a, text: "Only the cache device's capacity is lost", why: "Cache capacity is not counted in the datastore; the impact is larger." }
+      - { id: b, text: "The entire disk group 2 goes offline, affecting all components on its capacity devices", correct: true, why: "OSA capacity devices depend on their disk group's cache device." }
+      - { id: c, text: "Nothing, because vSAN uses another disk group's cache automatically", why: "Cache devices are not shared between disk groups." }
+      - { id: d, text: "The whole host leaves the vSAN cluster", why: "Other disk groups on the host continue to work." }
+    explanation:
+      correct: "A cache device failure takes its disk group offline; vSAN treats all components on that group as failed."
+      concept: "Failure blast radius OSA vs ESA."
+      architecture: "ESA has no cache tier; a device failure affects only that device."
+      trap: "Thinking cache loss only hurts performance."
+
+  - id: p03-ar-005
+    type: single
+    kind: scenario
+    difficulty: advanced
+    topics: [vsan-architecture, wld-storage]
+    objective: "2.3"
+    lesson: vsan-architecture-esa-osa
+    section: vsan-deployment-models
+    context: |
+      A VCF 9.0 VI workload domain needs to grow storage capacity much faster than compute. The team wants several
+      vSphere clusters to share one pool of vSAN storage.
+    stem: "Which design meets the requirement?"
+    options:
+      - { id: a, text: "A vSAN storage cluster (ESA) serving vSAN compute clusters in the same workload domain", correct: true, why: "Storage clusters provide disaggregated storage; compute clusters mount it remotely." }
+      - { id: b, text: "A vSAN OSA stretched cluster", why: "Stretching adds site resilience, not disaggregation.", confusedWith: vsan-resilience }
+      - { id: c, text: "One large HCI cluster with FTT=0", why: "Removes protection and does not separate storage growth from compute." }
+      - { id: d, text: "vVols on the vSAN datastore", why: "vVols are array-based and deprecated in 9.0." , confusedWith: datastores }
+    explanation:
+      correct: "vSAN storage clusters (formerly vSAN Max, ESA only) scale storage independently and serve up to 10 client clusters / 128 hosts."
+      concept: "HCI vs disaggregated vSAN."
+      architecture: "In VCF a vSAN compute cluster must be co-located in the same workload domain as its storage cluster."
+      trap: "Running VMs directly on the storage cluster is not recommended."
+
+  - id: p03-ar-006
+    type: single
+    kind: concept
+    difficulty: foundation
+    topics: [vsan-architecture]
+    objective: "2.3"
+    lesson: vsan-architecture-esa-osa
+    section: host-count-rules-you-will-be-asked-about
+    stem: "What is the minimum number of hosts contributing capacity in a standard (non-two-node) vSAN cluster?"
+    options:
+      - { id: a, text: "2", why: "Two data hosts are possible only as a two-node cluster with an external witness.", confusedWith: vsan-resilience }
+      - { id: b, text: "3", correct: true, why: "TechDocs: a standard vSAN cluster must contain a minimum of three ESX hosts that contribute capacity." }
+      - { id: c, text: "4", why: "Four is recommended for rebuild (and the VCF HA management option), not the minimum." }
+      - { id: d, text: "6", why: "Six is the RAID-6 minimum." , confusedWith: vsan-policies }
+    explanation:
+      correct: "Three hosts is the minimum for a standard cluster; four allows rebuild after a host failure."
+      concept: "vSAN cluster minimums."
+      trap: "Confusing minimum with recommended."
+
+  - id: p03-ar-007
+    type: single
+    kind: scenario
+    difficulty: advanced
+    topics: [vsan-architecture, management-domain]
+    objective: "2.3"
+    lesson: vsan-architecture-esa-osa
+    section: host-count-rules-you-will-be-asked-about
+    context: |
+      You are planning the VCF 9.0 management domain with vSAN. The business requires that vSAN can restore storage policy
+      compliance automatically after a host failure, without waiting for the failed host to return.
+    stem: "How many hosts should the management domain default cluster have, at minimum?"
+    options:
+      - { id: a, text: "3 (simple install)", why: "VCF documents that three nodes do not support rebuild of vSAN objects to storage policy compliance." }
+      - { id: b, text: "4 (highly available install)", correct: true, why: "Four nodes provide a spare host for rebuild." }
+      - { id: c, text: "2 plus a witness", why: "Not a management domain option." }
+      - { id: d, text: "7", why: "More than necessary for this requirement." }
+    explanation:
+      correct: "VCF 9.0: management default cluster 3 nodes (Simple) or 4 nodes (Highly Available); only the latter can rebuild to compliance."
+      concept: "Survive vs self-heal."
+      architecture: "With FTT=1 RAID-1, three hosts hold two replicas and a witness; the fourth host is the rebuild target."
+      trap: "Three hosts survive a failure, so they look 'highly available' — but they cannot heal."
+
+  - id: p03-ar-008
+    type: cli
+    kind: command
+    difficulty: intermediate
+    topics: [vsan-architecture]
+    objective: "2.3"
+    lesson: vsan-architecture-esa-osa
+    section: cli-api
+    stem: "Type the esxcli command that lists the devices claimed into this host's vSAN ESA storage pool."
+    answers: ["esxcli vsan storagepool list"]
+    placeholder: "esxcli vsan ..."
+    explanation:
+      correct: "`esxcli vsan storagepool list` lists ESA storage pool devices; `esxcli vsan storage list` is for OSA disk groups."
+      concept: "ESA vs OSA CLI namespaces."
+      trap: "Using `esxcli vsan storage list` on ESA."
+
+  - id: p03-ar-009
+    type: ordering
+    kind: scenario
+    difficulty: intermediate
+    topics: [vsan-architecture]
+    objective: "2.3"
+    lesson: vsan-architecture-esa-osa
+    section: deploying-a-vsan-cluster-standalone-vsphere
+    stem: "Put the steps to deploy a vSAN ESA cluster in a standalone vSphere environment in order."
+    items:
+      - { id: i1, text: "Verify hosts meet ESA requirements (NVMe TLC, certified hardware, memory)" }
+      - { id: i2, text: "Create a VMkernel adapter tagged for vSAN traffic on every host" }
+      - { id: i3, text: "Run Configure vSAN on the cluster and choose ESA and single site" }
+      - { id: i4, text: "Claim the eligible NVMe devices into each host's storage pool" }
+      - { id: i5, text: "Verify with Skyline Health and esxcli vsan cluster get" }
+    explanation:
+      correct: "Hardware and network first, then enable vSAN, claim devices and verify."
+      concept: "vSAN cluster deployment workflow (objective 2.3)."
+      trap: "Enabling vSAN before the vSAN VMkernel network exists leads to partitions."
+
+  # ---------------------------------------------------------------- vsan-storage-policies
+  - id: p03-po-001
+    type: single
+    kind: concept
+    difficulty: foundation
+    topics: [vsan-policies]
+    objective: "2.3"
+    lesson: vsan-storage-policies
+    section: policies-as-contracts
+    diagnostic: storage
+    stem: "A VM is deployed on a vSAN datastore without selecting a storage policy. What does the classic vSAN default storage policy provide?"
+    options:
+      - { id: a, text: "FTT=0, thick provisioned", why: "The default keeps redundancy and is thin." }
+      - { id: b, text: "FTT=1, one disk stripe per object, thin provisioned", correct: true, why: "That is the documented default." }
+      - { id: c, text: "FTT=2 with RAID-6", why: "RAID-6 needs six hosts; it is not the generic default." }
+      - { id: d, text: "No policy; the VM cannot be created", why: "vSAN always applies a default policy." }
+    explanation:
+      correct: "Default: Failures to tolerate = 1, a single disk stripe per object, thin-provisioned virtual disk."
+      concept: "Every vSAN object has a policy."
+      architecture: "With ESA auto-policy management, a cluster-specific 'Optimal Datastore Default Policy' can replace it."
+      trap: "Assuming no policy means no protection."
+
+  - id: p03-po-002
+    type: single
+    kind: design
+    difficulty: intermediate
+    topics: [vsan-policies]
+    objective: "2.3"
+    lesson: vsan-storage-policies
+    section: adaptive-raid-5-esa
+    context: |
+      A four-host vSAN ESA cluster must tolerate one host failure for general workloads using the least capacity.
+    stem: "Which policy should you assign, and what layout will vSAN use?"
+    options:
+      - { id: a, text: "FTT=1 RAID-1; two full mirrors", why: "Valid but uses 2x capacity." }
+      - { id: b, text: "FTT=1 RAID-5; ESA uses 2+1 because the cluster has fewer than six hosts", correct: true, why: "1.5x capacity, one failure tolerated." }
+      - { id: c, text: "FTT=1 RAID-5; ESA uses 4+1", why: "4+1 requires six or more hosts." }
+      - { id: d, text: "FTT=2 RAID-6", why: "RAID-6 needs six hosts and tolerates two failures." }
+    explanation:
+      correct: "ESA adaptive RAID-5 uses 2+1 below six hosts (150 %) and 4+1 at six or more (125 %)."
+      concept: "Adaptive RAID-5."
+      architecture: "You choose RAID-5 in the policy; ESA picks the layout from cluster size."
+      trap: "OSA RAID-5 (3+1) needs four hosts; ESA 2+1 needs three."
+
+  - id: p03-po-003
+    type: matching
+    kind: concept
+    difficulty: intermediate
+    topics: [vsan-policies, vsan-capacity]
+    objective: "2.3"
+    lesson: vsan-storage-policies
+    section: failures-to-tolerate-and-the-failure-tolerance-method
+    stem: "Match each policy with the minimum number of hosts (or fault domains) it needs."
+    pairs:
+      - { id: p1, left: "FTT=1, RAID-1", right: "3" }
+      - { id: p2, left: "FTT=1, RAID-5 (OSA 3+1)", right: "4" }
+      - { id: p3, left: "FTT=2, RAID-1", right: "5" }
+      - { id: p4, left: "FTT=2, RAID-6 (4+2)", right: "6" }
+      - { id: p5, left: "FTT=3, RAID-1", right: "7" }
+    explanation:
+      correct: "RAID-1 needs 2 × FTT + 1; OSA RAID-5 needs 4; RAID-6 needs 6."
+      concept: "Policy host minimums."
+      trap: "ESA RAID-5 2+1 works with 3 hosts, unlike OSA RAID-5."
+
+  - id: p03-po-004
+    type: single
+    kind: scenario
+    difficulty: intermediate
+    topics: [vsan-policies]
+    objective: "2.3"
+    lesson: vsan-storage-policies
+    section: troubleshooting
+    context: |
+      On a five-host vSAN ESA cluster, an administrator creates a policy "FTT=2 – RAID-6". On the storage compatibility
+      page, the vsanDatastore is listed as incompatible.
+    stem: "Why?"
+    options:
+      - { id: a, text: "RAID-6 requires at least six hosts or fault domains", correct: true, why: "4+2 places six components on six different hosts." }
+      - { id: b, text: "RAID-6 is not supported on ESA", why: "ESA supports RAID-6." }
+      - { id: c, text: "Compression must be disabled first", why: "Compression does not affect compatibility.", confusedWith: vsan-capacity }
+      - { id: d, text: "The policy must use force provisioning", why: "Force provisioning would create the VM without meeting the policy — not a fix." }
+    explanation:
+      correct: "RAID-6 (4+2) needs six hosts/fault domains; five cannot satisfy it."
+      concept: "Policy compatibility vs cluster resources."
+      trap: "Force provisioning 'fixes' compatibility by ignoring the policy."
+
+  - id: p03-po-005
+    type: single
+    kind: concept
+    difficulty: intermediate
+    topics: [vsan-policies]
+    objective: "2.3"
+    lesson: vsan-storage-policies
+    section: advanced-rules-and-esa-differences
+    stem: "What does the Force provisioning rule do when set to Yes?"
+    options:
+      - { id: a, text: "Guarantees the object meets its FTT even if hosts are missing", why: "It does the opposite." }
+      - { id: b, text: "Allows the object to be provisioned even when the policy cannot currently be satisfied", correct: true, why: "vSAN provisions with reduced protection (FTT=0 layout) and marks it noncompliant." }
+      - { id: c, text: "Reserves 100 % of the object's capacity", why: "That is object space reservation." }
+      - { id: d, text: "Forces compression on the object", why: "Unrelated.", confusedWith: vsan-capacity }
+    explanation:
+      correct: "Force provisioning lets vSAN create objects that do not meet the policy; use only in emergencies."
+      concept: "Advanced policy rules."
+      trap: "The word 'force' suggests stronger protection."
+
+  - id: p03-po-006
+    type: single
+    kind: scenario
+    difficulty: advanced
+    topics: [vsan-policies, vsan-capacity]
+    objective: "2.3"
+    lesson: vsan-storage-policies
+    section: changing-policies-safely
+    context: |
+      An administrator edits the existing policy used by 400 VMs, changing it from RAID-1 to RAID-5, and plans to
+      reapply it to all VMs at once during business hours. The cluster is 82 % used.
+    stem: "What is the best advice?"
+    options:
+      - { id: a, text: "Go ahead; policy changes are metadata-only", why: "vSAN rebuilds objects in the new layout, copying data." }
+      - { id: b, text: "Reapply in small batches outside peak hours and monitor resync and capacity, because each change needs transient capacity", correct: true, why: "Old and new layouts coexist until resync completes." }
+      - { id: c, text: "Restart all VMs to apply the policy", why: "Policies are applied online." }
+      - { id: d, text: "Enable force provisioning first", why: "Irrelevant and risky." }
+    explanation:
+      correct: "Policy changes create new components beside the old ones; at 82 % usage a mass reapply can exhaust capacity."
+      concept: "Transient capacity and resync."
+      architecture: "CLOM builds the new layout, DOM resyncs data, then old components are removed."
+      trap: "Believing RAID-5 saves capacity immediately; it costs capacity during the change."
+
+  - id: p03-po-007
+    type: multi
+    kind: concept
+    difficulty: intermediate
+    topics: [vsan-policies]
+    objective: "2.3"
+    lesson: vsan-storage-policies
+    section: advanced-rules-and-esa-differences
+    select: 2
+    stem: "Which policy rules do NOT apply (or cannot be changed) on vSAN ESA? (Choose two.)"
+    options:
+      - { id: a, text: "Flash read cache reservation", correct: true, why: "Supported only for hybrid configurations, not ESA." }
+      - { id: b, text: "Disable object checksum", correct: true, why: "On ESA checksum is always on and cannot be deactivated." }
+      - { id: c, text: "Failures to tolerate", why: "Core rule on ESA." }
+      - { id: d, text: "IOPS limit for object", why: "Applies on ESA." }
+    explanation:
+      correct: "ESA ignores flash read cache reservation and does not allow checksum to be disabled."
+      concept: "ESA policy differences."
+      trap: "Treating every rule in the wizard as relevant to every architecture."
+
+  - id: p03-po-008
+    type: single
+    kind: scenario
+    difficulty: advanced
+    topics: [vsan-policies]
+    objective: "2.3"
+    lesson: vsan-storage-policies
+    section: auto-policy-management-esa
+    context: |
+      A five-host ESA cluster has auto-policy management enabled and host rebuild reserve disabled. A sixth host is
+      added.
+    stem: "According to the auto-policy management rules, what happens to the cluster's optimal default policy?"
+    options:
+      - { id: a, text: "It stays FTT=1 RAID-5 (2+1)", why: "The optimal default changes at six hosts." }
+      - { id: b, text: "It changes from FTT=1 RAID-5 (2+1) to FTT=2 RAID-6 (4+2)", correct: true, why: "VCF blog table: 4-5 hosts → RAID-5 2+1; 6+ hosts → RAID-6 4+2 (host rebuild reserve off)." }
+      - { id: c, text: "It changes to FTT=1 RAID-1", why: "RAID-1 is the optimal default for three hosts." }
+      - { id: d, text: "Auto-policy management is disabled automatically", why: "No such behaviour." }
+    explanation:
+      correct: "With host rebuild reserve off: 3 hosts RAID-1, 4-5 hosts RAID-5 2+1, 6+ hosts RAID-6 4+2."
+      concept: "ESA auto-policy management."
+      trap: "Expecting 4+1 at six hosts — that is the row for host rebuild reserve on."
+
+  - id: p03-po-009
+    type: cli
+    kind: command
+    difficulty: advanced
+    topics: [vsan-policies]
+    objective: "2.3"
+    lesson: vsan-storage-policies
+    section: cli-api
+    stem: "Type the esxcli command that shows the host-level default vSAN policy for each object class (cluster, vdisk, vmnamespace, vmswap, vmem)."
+    answers: ["esxcli vsan policy getdefault"]
+    placeholder: "esxcli vsan policy ..."
+    explanation:
+      correct: "`esxcli vsan policy getdefault` prints the default policy per object class."
+      concept: "Host-level defaults vs vCenter VM storage policies."
+      trap: "This is not the datastore default VM storage policy set in vCenter."
+
+  - id: p03-po-010
+    type: truefalse
+    kind: concept
+    difficulty: foundation
+    topics: [vsan-policies, vsan-resilience]
+    objective: "2.3"
+    lesson: vsan-storage-policies
+    section: why-compliant-healthy
+    stem: "True or false: a VM whose objects are compliant with an FTT=0 policy is protected against a single host failure."
+    options:
+      - { id: "true", text: "True", why: "FTT=0 means a single component; losing its host makes the data unavailable." }
+      - { id: "false", text: "False", correct: true, why: "Compliance means the object matches its policy — and the policy asks for no redundancy." }
+    explanation:
+      correct: "False. Compliant with FTT=0 still means no redundancy."
+      concept: "Compliance vs protection."
+      trap: "Equating a green compliance icon with safety."
+
+  # ---------------------------------------------------------------- vsan-resilience-fault-domains
+  - id: p03-re-001
+    type: single
+    kind: concept
+    difficulty: foundation
+    topics: [vsan-resilience]
+    objective: "2.3"
+    lesson: vsan-resilience-fault-domains
+    section: component-states
+    diagnostic: storage
+    stem: "A host in a vSAN cluster is rebooted for patching without maintenance mode. How does vSAN treat its components?"
+    options:
+      - { id: a, text: "As degraded, and rebuilds them immediately", why: "Degraded is for permanent failures." , confusedWith: vsan-health }
+      - { id: b, text: "As absent, and waits for the repair delay (60 minutes by default) before rebuilding elsewhere", correct: true, why: "Temporary failures are absent; the host is expected back." }
+      - { id: c, text: "As deleted; the VMs must be restored from backup", why: "Data on other components remains available." }
+      - { id: d, text: "As out of date", why: "Out of date relates to policy changes." }
+    explanation:
+      correct: "Absent components trigger rebuild after 60 minutes; if the host returns earlier only a delta resync is needed."
+      concept: "Absent vs degraded."
+      trap: "Expecting immediate rebuild for every failure."
+
+  - id: p03-re-002
+    type: single
+    kind: architecture
+    difficulty: intermediate
+    topics: [vsan-resilience]
+    objective: "2.3"
+    lesson: vsan-resilience-fault-domains
+    section: quorum-and-votes
+    stem: "An FTT=1 RAID-1 object has replica A on host 1, replica B on host 2 and a witness on host 3. Hosts 2 and 3 fail at the same time. What happens?"
+    options:
+      - { id: a, text: "The object stays accessible because replica A holds all data", why: "Only 1 of 3 votes remains; quorum (>50 %) is lost." }
+      - { id: b, text: "The object becomes inaccessible because fewer than 50 % of its votes remain", correct: true, why: "Two of three components are gone." }
+      - { id: c, text: "vSAN converts the object to FTT=0", why: "No such automatic conversion." }
+      - { id: d, text: "The witness is rebuilt on host 1 automatically", why: "Components of one object cannot share a host, and quorum is already lost." }
+    explanation:
+      correct: "An object needs more than 50 % of votes and a full replica; one replica alone has 1 of 3 votes."
+      concept: "Quorum and witness components."
+      trap: "Thinking a full data copy is always enough."
+
+  - id: p03-re-003
+    type: single
+    kind: design
+    difficulty: advanced
+    topics: [vsan-resilience, design-availability]
+    objective: "2.3"
+    lesson: vsan-resilience-fault-domains
+    section: fault-domains
+    context: |
+      Twelve ESX hosts are spread across four racks (three per rack). The ESA cluster uses FTT=1 RAID-5. The customer
+      wants to survive the loss of an entire rack and return to full compliance afterwards.
+    stem: "What should be configured?"
+    options:
+      - { id: a, text: "Nothing; vSAN spreads components across hosts already", why: "Without fault domains two components of one object may land in the same rack." }
+      - { id: b, text: "Four vSAN fault domains, one per rack", correct: true, why: "RAID-5 2+1 needs three fault domains; the fourth allows rebuild after a rack failure." }
+      - { id: c, text: "A stretched cluster with two sites", why: "Stretched clusters address sites, not racks in one room.", confusedWith: design-availability }
+      - { id: d, text: "Change to FTT=0 to avoid rebuilds", why: "Removes protection." }
+    explanation:
+      correct: "One fault domain per rack makes vSAN place components in different racks; the +1 fault domain enables rebuild."
+      concept: "Rack awareness."
+      architecture: "With fault domains, FTT counts fault-domain failures instead of host failures."
+      trap: "Assuming host-level separation equals rack-level separation."
+
+  - id: p03-re-004
+    type: single
+    kind: concept
+    difficulty: intermediate
+    topics: [vsan-resilience]
+    objective: "2.3"
+    lesson: vsan-resilience-fault-domains
+    section: stretched-clusters
+    stem: "In a vSAN stretched cluster, what does the witness host store?"
+    options:
+      - { id: a, text: "A third full copy of every object", why: "The witness stores no VM data." }
+      - { id: b, text: "Only witness components (metadata) used as tiebreakers", correct: true, why: "TechDocs: it does not store customer data, only metadata." }
+      - { id: c, text: "The vCenter appliance", why: "The witness cannot run VMs." }
+      - { id: d, text: "Swap files of VMs in the secondary site", why: "Swap objects follow VM policies on data sites." }
+    explanation:
+      correct: "The witness host holds witness components and acts as tiebreaker; it cannot run VMs."
+      concept: "Stretched cluster witness."
+      trap: "Treating the witness as a third data site."
+
+  - id: p03-re-005
+    type: single
+    kind: scenario
+    difficulty: advanced
+    topics: [vsan-resilience]
+    objective: "2.3"
+    lesson: vsan-resilience-fault-domains
+    section: stretched-clusters
+    context: |
+      A vSAN stretched cluster has Site A (preferred), Site B (secondary) and a witness at Site C. The network link
+      between Site A and Site B fails; both sites can still reach the witness.
+    stem: "What is the expected behaviour?"
+    options:
+      - { id: a, text: "Both sites keep running all VMs independently", why: "That would be a split brain; vSAN prevents it." }
+      - { id: b, text: "The preferred site keeps running with the witness; VMs from the secondary site are restarted by HA in the preferred site", correct: true, why: "On a partition the preferred site wins." }
+      - { id: c, text: "The secondary site takes over because it is closer to the witness", why: "The preferred site designation decides." }
+      - { id: d, text: "All VMs stop until the link is repaired", why: "The design keeps one site available." }
+    explanation:
+      correct: "During an inter-site partition the preferred site remains operational; HA restarts affected VMs there."
+      concept: "Preferred vs secondary site."
+      architecture: "Three fault domains: preferred, secondary, witness."
+      trap: "Assuming a link failure equals a site failure for both sides."
+
+  - id: p03-re-006
+    type: matching
+    kind: concept
+    difficulty: intermediate
+    topics: [vsan-resilience]
+    objective: "2.3"
+    lesson: vsan-resilience-fault-domains
+    section: maintenance-mode-options
+    stem: "Match each vSAN maintenance mode option with its best use."
+    pairs:
+      - { id: p1, left: "Ensure accessibility", right: "Short reboot for patching (default)" }
+      - { id: p2, left: "Full data migration", right: "Decommissioning the host or long maintenance" }
+      - { id: p3, left: "No data migration", right: "Full cluster shutdown when you accept that FTT=0 objects on the host become inaccessible" }
+    explanation:
+      correct: "Ensure accessibility moves the minimum; full migration evacuates everything; no migration moves nothing."
+      concept: "Maintenance mode data migration options."
+      trap: "Using full data migration for every reboot wastes hours of resync."
+
+  - id: p03-re-007
+    type: multi
+    kind: concept
+    difficulty: intermediate
+    topics: [vsan-resilience]
+    objective: "2.3"
+    lesson: vsan-resilience-fault-domains
+    section: stretched-clusters
+    select: 2
+    stem: "Which round-trip latency limits does vSAN 9.0 document? (Choose two.)"
+    options:
+      - { id: a, text: "Up to 5 ms RTT between the two data sites of a stretched cluster", correct: true, why: "Network requirements table." }
+      - { id: b, text: "Up to 200 ms RTT between a data site and the witness host", correct: true, why: "Network requirements table." }
+      - { id: c, text: "Up to 50 ms RTT between hosts of a single-site cluster", why: "Single-site clusters require 1 ms or less." }
+      - { id: d, text: "Up to 1 ms RTT to the witness", why: "The witness tolerates much higher latency." }
+    explanation:
+      correct: "Single site ≤1 ms, between stretched sites ≤5 ms, to witness ≤200 ms, client to storage cluster ≤5 ms."
+      concept: "vSAN network latency requirements."
+      trap: "Mixing up the site-to-site and site-to-witness numbers."
+
+  - id: p03-re-008
+    type: single
+    kind: concept
+    difficulty: intermediate
+    topics: [vsan-resilience]
+    objective: "2.3"
+    lesson: vsan-resilience-fault-domains
+    section: two-node-clusters
+    stem: "Which statement about witness hosts is correct?"
+    options:
+      - { id: a, text: "One witness host can serve several stretched clusters", why: "A witness serves only one stretched cluster." }
+      - { id: b, text: "One witness host can be shared by up to 64 two-node clusters, depending on its memory", correct: true, why: "TechDocs two-node cluster page." }
+      - { id: c, text: "The witness host must be at the preferred site", why: "It must be at a third location." }
+      - { id: d, text: "Witness hosts can run small VMs", why: "Witness hosts cannot run VMs." }
+    explanation:
+      correct: "Shared witness: up to 64 two-node clusters; stretched clusters need their own witness."
+      concept: "Witness sizing and sharing."
+      trap: "Generalizing two-node witness sharing to stretched clusters."
+
+  - id: p03-re-009
+    type: single
+    kind: concept
+    difficulty: expert
+    topics: [vsan-resilience]
+    objective: "2.3"
+    lesson: vsan-resilience-fault-domains
+    section: stretched-clusters
+    stem: "Which stretched-cluster capability was introduced in VCF 9.0 as generally available, and which as limited availability?"
+    options:
+      - { id: a, text: "Site maintenance mode GA; manual site takeover limited availability (TQR)", correct: true, why: "As described on the VCF blog for 9.0." }
+      - { id: b, text: "Manual site takeover GA; site maintenance mode limited availability", why: "Reversed." }
+      - { id: c, text: "Both limited availability", why: "Site maintenance mode is GA." }
+      - { id: d, text: "Neither exists; stretched clusters were removed", why: "Stretched clusters remain a vSAN topology." }
+    explanation:
+      correct: "VCF 9.0: site maintenance mode places a whole site in maintenance in one operation (GA); manual site takeover recovers from simultaneous loss of a data site and the witness (limited availability via TQR)."
+      concept: "VCF 9 stretched-cluster operations."
+      trap: "Remembering the features but not their availability status."
+
+  # ---------------------------------------------------------------- vsan-space-efficiency-capacity
+  - id: p03-ca-001
+    type: single
+    kind: concept
+    difficulty: foundation
+    topics: [vsan-capacity]
+    objective: "2.3"
+    lesson: vsan-space-efficiency-capacity
+    section: techniques-at-a-glance
+    stem: "Which space-efficiency feature is enabled by default on a vSAN ESA cluster?"
+    options:
+      - { id: a, text: "Compression", correct: true, why: "TechDocs: for vSAN ESA, compression is enabled by default on the cluster." }
+      - { id: b, text: "Global deduplication", why: "Limited availability in 9.0 and not on by default." }
+      - { id: c, text: "Deduplication and compression per disk group", why: "That is OSA and must be enabled." , confusedWith: vsan-architecture }
+      - { id: d, text: "RAID-6 for all objects", why: "RAID level comes from the policy." , confusedWith: vsan-policies }
+    explanation:
+      correct: "ESA compression is on by default and can be turned off per VM via a storage policy."
+      concept: "ESA vs OSA data reduction."
+      trap: "Assuming dedup is also default."
+
+  - id: p03-ca-002
+    type: multi
+    kind: concept
+    difficulty: advanced
+    topics: [vsan-capacity]
+    objective: "2.3"
+    lesson: vsan-space-efficiency-capacity
+    section: esa-global-deduplication-vcf-9-0
+    select: 3
+    stem: "Which statements about vSAN ESA global deduplication in VCF 9.0 are correct? (Choose three.)"
+    options:
+      - { id: a, text: "It is post-process: data is deduplicated after it is persisted and cools down", correct: true, why: "VCF blog description." }
+      - { id: b, text: "The whole cluster is one deduplication domain, at 4 KB granularity", correct: true, why: "Unlike OSA's per-disk-group domain." }
+      - { id: c, text: "It is initially limited availability through Broadcom's Technical Qualification Request program", correct: true, why: "VCF blog." }
+      - { id: d, text: "It is supported on stretched clusters with data-at-rest encryption", why: "Stretched clusters and data-at-rest encryption are not supported at launch." }
+      - { id: e, text: "It runs inline during destage from the cache tier", why: "That describes OSA dedup.", confusedWith: vsan-architecture }
+    explanation:
+      correct: "Global dedup: post-process, 4 KB, cluster-wide, LA via TQR, single-site HCI or storage clusters of 3-16 hosts with 25 GbE+."
+      concept: "VCF 9.0 vSAN what's new."
+      trap: "Mixing OSA inline per-disk-group dedup with ESA global dedup."
+
+  - id: p03-ca-003
+    type: single
+    kind: scenario
+    difficulty: intermediate
+    topics: [vsan-capacity]
+    objective: "2.3"
+    lesson: vsan-space-efficiency-capacity
+    section: esa-compression
+    context: |
+      A backup repository VM on vSAN ESA stores already-compressed, encrypted backup files. The admin creates a policy
+      with "No space efficiency" and applies it to the VM.
+    stem: "What happens to the data already written?"
+    options:
+      - { id: a, text: "It is decompressed immediately", why: "TechDocs: old blocks are left as they are." }
+      - { id: b, text: "Nothing changes for existing blocks; only new writes are stored without compression", correct: true, why: "ESA compression changes apply to new writes." }
+      - { id: c, text: "The VM must be powered off", why: "Policies are applied online." }
+      - { id: d, text: "The object is converted to RAID-1", why: "Space efficiency and RAID level are separate rules." , confusedWith: vsan-policies }
+    explanation:
+      correct: "ESA compression settings only affect new writes; existing blocks stay as written."
+      concept: "Per-object compression control."
+      trap: "Expecting retroactive changes."
+
+  - id: p03-ca-004
+    type: single
+    kind: concept
+    difficulty: intermediate
+    topics: [vsan-capacity]
+    objective: "2.3"
+    lesson: vsan-space-efficiency-capacity
+    section: osa-deduplication-and-compression
+    stem: "Why does enabling deduplication and compression on vSAN OSA increase the impact of a single capacity device failure?"
+    options:
+      - { id: a, text: "Dedup metadata is spread across the disk group, so one device failure fails the entire disk group", correct: true, why: "TechDocs: a single disk failure causes the entire disk group to fail." }
+      - { id: b, text: "Dedup disables all redundancy", why: "Policies still provide redundancy." }
+      - { id: c, text: "Dedup moves data to the cache device", why: "Dedup happens during destage to capacity." }
+      - { id: d, text: "It does not; impact is unchanged", why: "Impact grows to the disk group." }
+    explanation:
+      correct: "With OSA dedup and compression, deduplicated data and metadata span the disk group, so losing any device fails the group."
+      concept: "OSA dedup domain = disk group."
+      trap: "Assuming device failures are always isolated (true for ESA, not OSA with dedup)."
+
+  - id: p03-ca-005
+    type: single
+    kind: design
+    difficulty: advanced
+    topics: [vsan-capacity, design-sizing]
+    objective: "2.3"
+    lesson: vsan-space-efficiency-capacity
+    section: reserves-why-free-is-not-free
+    context: |
+      A four-host vSAN ESA cluster is 74 % used. The team wants to be sure vSAN can rebuild a failed host's data on the
+      other three hosts.
+    stem: "Which setting addresses this directly, and roughly how much capacity does it reserve on four nodes?"
+    options:
+      - { id: a, text: "Host rebuild reserve; about 25 % of capacity", correct: true, why: "KB 326889 example: 4-node cluster reserves about 25 %." }
+      - { id: b, text: "Operations reserve; about 3 %", why: "Operations reserve covers internal operations; ~3 % is the HRR example for 32 nodes." }
+      - { id: c, text: "Object space reservation 100 % for all VMs", why: "Thick provisioning reserves per object, not rebuild headroom.", confusedWith: vsan-policies }
+      - { id: d, text: "Compression", why: "Saves space but does not reserve rebuild capacity." }
+    explanation:
+      correct: "Host rebuild reserve keeps N+1 capacity: about 25 % on 4 nodes, about 3 % on 32 nodes."
+      concept: "Capacity reserves."
+      architecture: "Smaller clusters pay proportionally more for self-healing."
+      trap: "Confusing operations reserve with host rebuild reserve."
+
+  - id: p03-ca-006
+    type: single
+    kind: design
+    difficulty: expert
+    topics: [vsan-capacity, vsan-policies]
+    objective: "2.3"
+    lesson: vsan-space-efficiency-capacity
+    section: sizing-example
+    context: |
+      A vSAN ESA cluster grows from five to six hosts. All VMs use an FTT=1 RAID-5 policy. 40 TB of VM data is written
+      (ignore compression and reserves).
+    stem: "Approximately how much raw capacity do these objects consume before and after the sixth host is added (once vSAN has adapted)?"
+    options:
+      - { id: a, text: "60 TB before (2+1), 50 TB after (4+1)", correct: true, why: "1.5x below six hosts, 1.25x at six or more." }
+      - { id: b, text: "53 TB before and after (3+1)", why: "3+1 is the OSA RAID-5 layout." , confusedWith: vsan-architecture }
+      - { id: c, text: "80 TB before and after", why: "That is RAID-1 FTT=1." }
+      - { id: d, text: "60 TB before and after", why: "ESA adapts the layout to 4+1 when the cluster reaches six hosts." }
+    explanation:
+      correct: "40 TB × 1.5 = 60 TB with 2+1; 40 TB × 1.25 = 50 TB with 4+1."
+      concept: "Adaptive RAID-5 capacity effect."
+      trap: "Using the OSA 1.33x ratio for ESA."
+
+  - id: p03-ca-007
+    type: single
+    kind: troubleshooting
+    difficulty: advanced
+    topics: [vsan-capacity, vsan-health]
+    objective: "2.3"
+    lesson: vsan-space-efficiency-capacity
+    section: failure-scenarios
+    context: |
+      A host failed permanently in a vSAN cluster that was 91 % used. Two hours later, the object health summary shows
+      many objects as "reduced-availability-with-no-rebuild".
+    stem: "What is the most likely reason the rebuild is not happening?"
+    options:
+      - { id: a, text: "There is not enough free capacity on the remaining hosts to rebuild", correct: true, why: "At red-threshold usage, vSAN cannot place new components." }
+      - { id: b, text: "The 60-minute repair delay has not expired", why: "Two hours have passed, and the object state would say delay-timer." }
+      - { id: c, text: "Compression is enabled", why: "Compression does not block rebuilds." }
+      - { id: d, text: "The HCL database is outdated", why: "Noise; unrelated to rebuild placement.", confusedWith: vsan-health }
+    explanation:
+      correct: "Rebuilds need free capacity (and spare hosts/fault domains); a nearly full cluster can survive a failure but not heal."
+      concept: "Capacity as an availability dependency."
+      trap: "Blaming the timer when the state is explicitly 'no-rebuild'."
+
+  - id: p03-ca-008
+    type: truefalse
+    kind: concept
+    difficulty: intermediate
+    topics: [vsan-capacity]
+    objective: "2.3"
+    lesson: vsan-space-efficiency-capacity
+    section: techniques-at-a-glance
+    stem: "True or false: on vSAN OSA, deduplication and compression, as well as RAID-5/6 erasure coding, require an all-flash cluster."
+    options:
+      - { id: "true", text: "True", correct: true, why: "Both are all-flash features on OSA." }
+      - { id: "false", text: "False", why: "Hybrid OSA (magnetic capacity disks) supports neither." }
+    explanation:
+      correct: "True. Dedup/compression and erasure coding on OSA are all-flash only."
+      concept: "OSA feature requirements."
+      trap: "ESA is all-NVMe, so the question only matters for OSA."
+
+  # ---------------------------------------------------------------- vsan-health-troubleshooting
+  - id: p03-he-001
+    type: single
+    kind: troubleshooting
+    difficulty: intermediate
+    topics: [vsan-health]
+    objective: "2.3"
+    lesson: vsan-health-troubleshooting
+    section: network-partition
+    context: |
+      ```log
+      esx-01: Sub-Cluster Member Count: 3
+      esx-02: Sub-Cluster Member Count: 3
+      esx-03: Sub-Cluster Member Count: 3
+      esx-04: Sub-Cluster Member Count: 1
+      ```
+    stem: "What does this output from `esxcli vsan cluster get` indicate?"
+    options:
+      - { id: a, text: "esx-04 is partitioned from the other vSAN hosts", correct: true, why: "It sees only itself while the others see three members." }
+      - { id: b, text: "esx-04 is the vSAN leader", why: "Leader role is unrelated to member count." }
+      - { id: c, text: "The cluster is healthy with 3 + 1 hosts", why: "All hosts should report 4." }
+      - { id: d, text: "A device failed on esx-04", why: "A device failure does not change membership.", confusedWith: vsan-resilience }
+    explanation:
+      correct: "Different member counts mean a network partition; check the vSAN vmk, VLAN, MTU and unicast agents of esx-04."
+      concept: "Partition diagnosis."
+      trap: "Running the command on one host only hides the partition."
+
+  - id: p03-he-002
+    type: single
+    kind: troubleshooting
+    difficulty: intermediate
+    topics: [vsan-health]
+    objective: "2.3"
+    lesson: vsan-health-troubleshooting
+    section: network-partition
+    context: |
+      `vmkping -I vmk2 10.10.30.22` succeeds, but `vmkping -I vmk2 -s 8972 -d 10.10.30.22` fails. vSAN is configured
+      for MTU 9000.
+    stem: "What is the most likely problem?"
+    options:
+      - { id: a, text: "An MTU mismatch somewhere in the vSAN path", correct: true, why: "Small packets pass, jumbo frames with don't-fragment do not." }
+      - { id: b, text: "Wrong VLAN on the vSAN port group", why: "Then even small pings would fail.", confusedWith: vds }
+      - { id: c, text: "DNS failure", why: "vmkping to an IP does not use DNS.", confusedWith: dns }
+      - { id: d, text: "The vSAN service is not tagged on vmk2", why: "Tagging does not affect ICMP reachability." }
+    explanation:
+      correct: "Check VDS/vSwitch, vmk, physical switch and router MTU; 8972 bytes + headers = 9000."
+      concept: "End-to-end MTU validation."
+      trap: "Testing only with default-size pings."
+
+  - id: p03-he-003
+    type: single
+    kind: log
+    difficulty: advanced
+    topics: [vsan-health, vsan-resilience]
+    objective: "2.3"
+    lesson: vsan-health-troubleshooting
+    section: object-health-states
+    context: |
+      ```log
+      Health Status                                     Number Of Objects
+      reduced-availability-with-no-rebuild-delay-timer                 27
+      reduced-availability-with-active-rebuild                          0
+      inaccessible                                                      0
+      healthy                                                         213
+      ```
+    stem: "A host was rebooted 10 minutes ago. What is the best action?"
+    options:
+      - { id: a, text: "Wait for the host to return and monitor; vSAN is in the repair delay window", correct: true, why: "Absent components; a delta resync will follow when the host returns." }
+      - { id: b, text: "Immediately force a rebuild of all 27 objects", why: "Wasteful while the host is expected back." }
+      - { id: c, text: "Restore the 27 VMs from backup", why: "Nothing is inaccessible." }
+      - { id: d, text: "Replace the host's NVMe devices", why: "No device failure is indicated.", confusedWith: vsan-resilience }
+    explanation:
+      correct: "no-rebuild-delay-timer = absent components waiting for the 60-minute repair delay."
+      concept: "Reading object health states."
+      trap: "Treating reduced availability as data loss."
+
+  - id: p03-he-004
+    type: single
+    kind: troubleshooting
+    difficulty: intermediate
+    topics: [vsan-health]
+    objective: "2.3"
+    lesson: vsan-health-troubleshooting
+    section: health-score-and-findings
+    context: |
+      Skyline Health shows a score of 62 with a finding about an outdated HCL database. The admin silences the finding,
+      but the score stays at 62.
+    stem: "Why?"
+    options:
+      - { id: a, text: "Silencing hides the finding but does not restore the health score; fix the cause and RETEST", correct: true, why: "KB 447177." }
+      - { id: b, text: "Silencing requires a vCenter restart", why: "No restart needed." }
+      - { id: c, text: "The score updates only once a week", why: "RETEST recalculates it." }
+      - { id: d, text: "HCL findings cannot be silenced", why: "They can; silencing just doesn't fix the score." }
+    explanation:
+      correct: "Silenced checks keep their weighted penalties until the condition is remediated."
+      concept: "Skyline Health scoring."
+      trap: "Using silence as a fix."
+
+  - id: p03-he-005
+    type: ordering
+    kind: troubleshooting
+    difficulty: advanced
+    topics: [vsan-health, troubleshooting-method]
+    objective: "2.3"
+    lesson: vsan-health-troubleshooting
+    section: how-it-works
+    stem: "Order the steps of an efficient vSAN troubleshooting flow."
+    items:
+      - { id: i1, text: "Read Skyline Health: score and highest-impact finding" }
+      - { id: i2, text: "Scope: compare esxcli vsan cluster get member counts across hosts" }
+      - { id: i3, text: "Classify objects with esxcli vsan debug object health summary get" }
+      - { id: i4, text: "Validate the hypothesis (vmkping, device state, vobd.log, capacity)" }
+      - { id: i5, text: "Remediate the cause" }
+      - { id: i6, text: "Verify: resync reaches zero, objects healthy, RETEST" }
+    explanation:
+      correct: "Observe, scope, classify, validate, remediate, verify."
+      concept: "Structured troubleshooting."
+      trap: "Jumping to remediation from the first red line."
+
+  - id: p03-he-006
+    type: cli
+    kind: command
+    difficulty: intermediate
+    topics: [vsan-health]
+    objective: "2.3"
+    lesson: vsan-health-troubleshooting
+    section: cli-api
+    stem: "Type the esxcli command that shows how many objects are resyncing and how many bytes are left to resync."
+    answers: ["esxcli vsan debug resync summary get"]
+    placeholder: "esxcli vsan debug ..."
+    explanation:
+      correct: "`esxcli vsan debug resync summary get` returns resyncing object count and bytes/GB left."
+      concept: "Monitoring resync from the host."
+      trap: "`esxcli vsan resync` holds throttle/bandwidth settings, not the progress summary."
+
+  - id: p03-he-007
+    type: multi
+    kind: troubleshooting
+    difficulty: expert
+    topics: [vsan-health, vsan-resilience]
+    objective: "2.3"
+    lesson: vsan-health-troubleshooting
+    section: device-failure
+    select: 2
+    context: |
+      Skyline Health on a six-host ESA cluster: vSAN object health red, physical disk health red (one device on
+      esx-03), HCL DB yellow, time sync yellow on esx-05. All hosts report six members. Objects show active rebuild.
+    stem: "Which findings are red herrings for the object health problem? (Choose two.)"
+    options:
+      - { id: a, text: "HCL DB outdated", correct: true, why: "Cannot cause device failure or object degradation." }
+      - { id: b, text: "Time sync warning on esx-05", correct: true, why: "Minor, on another host; does not explain degraded components." }
+      - { id: c, text: "Physical disk health on esx-03", why: "This is the root cause: a failed device produces degraded components and immediate rebuild." }
+      - { id: d, text: "Object health red", why: "This is the main symptom." }
+    explanation:
+      correct: "The device failure on esx-03 explains degraded objects with active rebuild; HCL DB and NTP are separate compliance findings."
+      concept: "Separating root cause from noise."
+      architecture: "On ESA a device failure only affects that device's components."
+      trap: "Fixing the easiest finding first instead of the highest-impact one."
+
+  - id: p03-he-008
+    type: single
+    kind: scenario
+    difficulty: expert
+    topics: [vsan-health, vsan-architecture]
+    objective: "2.3"
+    lesson: vsan-health-troubleshooting
+    section: troubleshooting
+    context: |
+      In a nested home lab, the Configure vSAN wizard (ESA) reports no eligible disks on any host. `esxcli storage core
+      device list` shows the intended vSAN disks as "Local VMware Disk (mpx.vmhba0:C0:T1:L0)", Is SSD: true.
+    stem: "What is the most likely cause?"
+    options:
+      - { id: a, text: "The virtual disks are attached to a SCSI controller, not an NVMe controller, so ESA will not claim them", correct: true, why: "ESA requires NVMe devices; William Lam documents this exact nested failure." }
+      - { id: b, text: "The disks are too small for vSAN", why: "Size is not the issue here; device type is." }
+      - { id: c, text: "vSAN ESA requires hybrid disks", why: "ESA is NVMe only." , confusedWith: vsan-architecture }
+      - { id: d, text: "HA is enabled", why: "HA blocks enabling vSAN, but it would not make disks ineligible." }
+    explanation:
+      correct: "Present the disks via an NVMe controller (on Proxmox, QEMU -device nvme) and, in labs, satisfy the ESA compatibility check with the unsupported mock VIB."
+      concept: "ESA device eligibility."
+      trap: "Marking disks as flash helps OSA, not ESA."

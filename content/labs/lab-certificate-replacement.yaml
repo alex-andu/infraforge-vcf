@@ -1,0 +1,137 @@
+id: lab-certificate-replacement
+title: Replace a VCF Component Certificate with a Lab-CA-Signed Certificate
+level: advanced
+complexity: 4
+minutes: 150
+version: vcf9
+technologies: [VCF Operations, SDDC Manager, vCenter, NSX, OpenSSL]
+topics: [certificates]
+lessons: [certificate-management]
+objectives:
+  - Inspect certificate chains from a client with openssl and read issuer, SAN and validity.
+  - Build a small lab PKI (root and intermediate) with OpenSSL.
+  - Generate a CSR in VCF Operations, sign it, import the PEM chain and replace the certificate.
+  - Verify service-to-service trust from SDDC Manager after the replacement.
+  - Activate auto-renewal and understand its scope.
+prerequisites:
+  - A running VCF 9 management domain.
+  - Lesson certificate-management read.
+  - A Linux VM (or your workstation) with OpenSSL for the lab CA.
+topology:
+  logical: d-lab-certificate-replacement-logical
+requirements:
+  network:
+    - Workstation and lab CA VM can reach VCF Operations and SDDC Manager over HTTPS.
+    - DNS A/PTR for the CA VM if it serves anything over the network (ca01.lab.local).
+  vms:
+    - The VCF management domain appliances.
+    - One small Linux VM for the lab CA (1 vCPU, 1 GB RAM is enough) or OpenSSL on your workstation.
+  ip:
+    - Use the Home Lab IP plan; the CA does not need a fixed IP if it only signs files offline.
+startingState: |
+  VCF 9 management domain healthy; certificates are the defaults from deployment (VMCA-signed for vCenter and hosts,
+  others as deployed). No certificate replacement has been done yet.
+
+  **Honest note for the nested Proxmox lab:** certificate workflows behave the same nested or physical. The risk is
+  breaking trust in a lab you rely on: take file-based backups first and start with one non-critical instance
+  component. Do not start with ESX hosts (2048-bit only, many of them) or with vCenter.
+steps:
+  - id: s1-baseline
+    title: Record the current certificates
+    why: You need a before picture to prove what changed and to spot side effects.
+    instructions: |
+      In VCF Operations > Fleet Management > Certificates, open **VCF Management** and **VCF Instances** (toggle Show
+      ESX Hosts). Record issuer and expiry per component. From your workstation and from SDDC Manager run:
+      ```shell
+      openssl s_client -connect nsx-vip.lab.local:443 -servername nsx-vip.lab.local -showcerts </dev/null | grep -E "s:|i:|Verify return"
+      ```
+      On vCenter (read-only): `/usr/lib/vmware-vmafd/bin/vecs-cli entry list --store MACHINE_SSL_CERT --text | less`.
+    hint: Compare the verify result on your laptop and on SDDC Manager; they can differ.
+    validate: A table of component, issuer, expiry, and verify result from SDDC Manager.
+    expected: Default issuers (VMCA for vCenter/hosts) and successful verification from SDDC Manager.
+  - id: s2-pki
+    title: Build a lab root and intermediate CA
+    why: A realistic chain (root plus intermediate) exercises the chain-order rules VCF enforces.
+    instructions: |
+      On the CA VM create a root key and self-signed root certificate, then an intermediate key, CSR and certificate
+      signed by the root (with CA:TRUE basic constraints). Keep keys private. Concatenate `chain.pem` as
+      intermediate first, then root.
+    hint: Use `openssl req -x509` for the root and `openssl x509 -req -CA root.crt -CAkey root.key -extfile ...` for the intermediate.
+    validate: "`openssl verify -CAfile root.crt intermediate.crt` returns OK."
+    expected: root.crt, intermediate.crt, chain.pem (PEM, intermediate then root).
+  - id: s3-csr
+    title: Generate the CSR in VCF Operations
+    why: The private key is created on the component; you only ever move the CSR and the signed certificate.
+    instructions: |
+      Fleet Management > Certificates > VCF Instances > your domain > select the target (for example NSX Manager or
+      SDDC Manager) > three-dot menu > **Generate CSR**. Fill CN, organisation fields (state spelled out), host name,
+      SANs (the FQDNs clients use) and key size 2048. Wait until generation succeeds, then **download** the CSR.
+      Inspect it: `openssl req -in target.csr -noout -text`.
+    hint: Missing SANs are the most common reason clients reject a new certificate.
+    validate: The CSR shows the expected subject, SAN entries and key size.
+    expected: A PEM CSR file containing every FQDN clients use for the component.
+  - id: s4-sign
+    title: Sign the CSR with the intermediate
+    why: The CA's job is to bind the component's public key to its names.
+    instructions: |
+      Sign with the intermediate, adding server-auth extended key usage and copying the SANs into the certificate
+      (extfile with `subjectAltName` and `extendedKeyUsage = serverAuth`). Check:
+      `openssl verify -CAfile chain.pem target.crt` and `openssl x509 -in target.crt -noout -text`.
+    hint: OpenSSL does not copy CSR extensions by default; put the SAN in the extfile.
+    validate: Verification returns OK and the certificate has the SANs and validity you expect.
+    expected: target.crt signed by the intermediate.
+  - id: s5-import-replace
+    title: Import, validate and replace
+    why: This is the documented external-CA flow; validation catches chain mistakes before anything changes.
+    instructions: |
+      Three-dot menu > **Import Certificate**: name it, paste the PEM certificate and the chain (intermediate, then root)
+      or upload files. Click **Validate**, then **Save**. Then **Replace With Imported Certificate**, choose it and
+      confirm. Watch the task in VCF Operations.
+    hint: If validation fails, check PEM format and chain order before anything else.
+    validate: The task completes; the component shows your lab CA as issuer in Fleet Management > Certificates.
+    expected: Replacement succeeded; the component restarted services as needed.
+  - id: s6-verify-trust
+    title: Verify trust from the clients
+    why: A replacement is only successful when every client still trusts the component.
+    instructions: |
+      From SDDC Manager: `openssl s_client -connect <target-fqdn>:443 -servername <target-fqdn> -showcerts </dev/null`.
+      Run a lifecycle precheck on the management domain and check VCF Operations alerts for collection errors.
+      Open the component in your browser: expect a warning until you import the lab root on your workstation (this is
+      expected and harmless).
+    hint: The browser warning is a red herring; SDDC Manager and VCF Operations are the clients that matter.
+    validate: Precheck shows no certificate errors for the target; no new collection alerts.
+    expected: Services trust the new certificate; only the browser warns until you trust the lab root locally.
+  - id: s7-autorenew
+    title: Activate auto-renewal (and understand it)
+    why: Expired certificates cause outages; renewal 60 days ahead removes a recurring risk.
+    instructions: |
+      Fleet Management > Certificates > VCF Instances > **Activate Auto-renewal** > Confirm. Note: certificates from an
+      external CA you imported manually are renewed only by repeating the CSR/import flow; auto-renewal works for VMCA,
+      Microsoft CA, OpenSSL (configured) and self-signed certificates on eligible components.
+    hint: Configure VCF Management and each VCF instance separately.
+    validate: The toggle shows active for the instance.
+    expected: Auto-renewal active; you have a calendar reminder for your manually imported certificate.
+troubleshooting:
+  - symptom: Import validation fails.
+    fix: Ensure PEM encoding, the leaf matches the CSR generated by VCF (same public key), and the chain is intermediate first, then root.
+  - symptom: After replacement, SDDC Manager tasks fail with certificate errors.
+    fix: Run openssl s_client from SDDC Manager; if the issuer is unknown, the chain was not distributed. Re-check the imported chain and the KB for trust import procedures for your version.
+  - symptom: Clients report a name mismatch.
+    fix: The SAN list lacks the FQDN the client uses. Generate a new CSR with the correct SANs and repeat.
+  - symptom: Certificates appear "not yet valid".
+    fix: Check NTP on the CA VM and appliances; clock skew breaks validity checks.
+challenge: |
+  Configure the OpenSSL CA option in VCF Operations (VCF Instances > Configure CA) and replace a second instance
+  component with **Replace With Configured CA Certificate**. Then explain in two sentences why this option is not
+  available for VCF Operations itself.
+cleanup: |
+  Keep the new certificates if everything works; otherwise replace back using the configured CA flow or restore from
+  backup. Store the lab CA keys securely (or destroy them if the lab is torn down). Import the lab root into your
+  workstation trust store to remove browser warnings.
+sources:
+  - title: "VCF 9.0 TechDocs - Install third-party CA-signed certificates"
+    url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/fleet-management/certificate-management-9-0/install-third-party-ca-signed-certificates-using-server-certificate-and-certificate-authority-files_9-0.html
+  - title: "VCF 9.0 TechDocs - Configure a Certificate Authority"
+    url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/fleet-management/certificate-management-9-0/configure-a-certificate-authority_9-0.html
+  - title: "VCF 9.0 TechDocs - Set up automatic renewal of certificates"
+    url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/fleet-management/certificate-management-9-0/set-up-automatic-renewal-of-certificates-in-vmware-cloud-foundation.html

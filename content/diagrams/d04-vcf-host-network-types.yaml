@@ -1,0 +1,40 @@
+id: d04-vcf-host-network-types
+title: VCF network types per cluster and the switch models that carry them
+description: >
+  A VCF 9 management domain cluster carries ESX management, VM management, vMotion, vSAN and host TEP networks, and
+  usually hosts NSX Edge nodes with edge TEP and uplink networks. A workload domain cluster carries ESX management,
+  vMotion, vSAN or IP storage, host TEP and workload networks. In the single distributed switch model all of these
+  share one VDS with two NICs; in the storage separation model storage moves to a second VDS on its own NICs; in the
+  workload separation model NSX workload traffic moves to a second VDS. The management domain hosts the vCenter and
+  NSX Managers of the workload domains.
+width: 1000
+height: 620
+groups:
+  - { id: g-mgmt, x: 20, y: 20, w: 470, h: 380, label: "Management domain cluster", kind: mgmt }
+  - { id: g-wld, x: 510, y: 20, w: 470, h: 380, label: "Workload domain cluster", kind: compute }
+  - { id: g-models, x: 20, y: 420, w: 960, h: 180, label: "Distributed switch models (VCF 9)", kind: network }
+nodes:
+  - { id: m-esx, x: 40, y: 60, w: 200, h: 50, label: "ESX management", sublabel: "1500", kind: mgmt, info: "vmk0 on every host. VLAN/subnet/gateway per cluster." }
+  - { id: m-vmm, x: 260, y: 60, w: 210, h: 50, label: "VM management", sublabel: "1500", kind: mgmt, info: "vCenter, NSX Manager, SDDC Manager, VCF Operations and the workload domain vCenters. Can share the ESX management VLAN or be separate." }
+  - { id: m-vmo, x: 40, y: 130, w: 200, h: 50, label: "vMotion", sublabel: "9000", kind: compute, info: "vMotion stack vmk." }
+  - { id: m-vsan, x: 260, y: 130, w: 210, h: 50, label: "vSAN", sublabel: "9000", kind: storage, info: "Principal storage for the management domain (vSAN, or external storage where supported)." }
+  - { id: m-tep, x: 40, y: 200, w: 200, h: 50, label: "Host TEP", sublabel: "≥1600 · 1700 min design · 9000", kind: nsx, info: "NSX host overlay. Installer rejects < 1600." }
+  - { id: m-edge, x: 260, y: 200, w: 210, h: 50, label: "Edge TEP + uplinks", sublabel: "9000 · BGP to ToR", kind: nsx, component: nsx-edge-cluster, info: "Edge nodes (if placed here) need edge TEP and uplink VLANs for north-south routing." }
+  - { id: m-wvc, x: 120, y: 290, w: 260, h: 60, label: "WLD vCenter + NSX Managers", sublabel: "run in the management domain", kind: mgmt, component: vcenter, info: "Each workload domain's vCenter (and a dedicated NSX Manager cluster if not shared) is deployed into the management domain." }
+  - { id: w-esx, x: 530, y: 60, w: 200, h: 50, label: "ESX management", sublabel: "1500", kind: mgmt, info: "Own VLAN/subnet per cluster (per rack for layer 3 multi-rack)." }
+  - { id: w-vmo, x: 750, y: 60, w: 210, h: 50, label: "vMotion", sublabel: "9000", kind: compute, info: "Per cluster; per rack in layer 3 multi-rack; extra port group for AZ2 in stretched clusters." }
+  - { id: w-sto, x: 530, y: 130, w: 200, h: 50, label: "vSAN / NFS / iSCSI", sublabel: "9000", kind: storage, info: "Principal storage network of the workload domain cluster." }
+  - { id: w-tep, x: 750, y: 130, w: 210, h: 50, label: "Host TEP", sublabel: "9000", kind: nsx, info: "Geneve overlay between hosts and edges; DF bit set." }
+  - { id: w-app, x: 600, y: 230, w: 300, h: 60, label: "Workload networks", sublabel: "VPCs · NSX segments · VLAN port groups", kind: vm, info: "Overlay segment MTU must be at most TEP MTU minus 200." }
+  - { id: sds, x: 40, y: 470, w: 280, h: 100, label: "Single VDS", sublabel: "all traffic · 2 NICs", kind: network, info: "Default and simplest model. Redundancy from two NICs to two ToRs, no traffic separation onto another fabric." }
+  - { id: ss, x: 360, y: 470, w: 280, h: 100, label: "Storage separation", sublabel: "VDS1 mgmt/vMotion/workload · VDS2 storage · 4–6 NICs", kind: storage, info: "Storage on dedicated NICs, optionally an air-gapped storage fabric." }
+  - { id: ws, x: 680, y: 470, w: 280, h: 100, label: "Workload separation", sublabel: "VDS1 mgmt/vMotion/storage · VDS2 workload · 4–6 NICs", kind: nsx, info: "Workload/NSX traffic on dedicated NICs. Other models: storage+workload (3 VDS, 6 NICs), dedicated edge cluster, vSAN storage cluster separation." }
+edges:
+  - { from: m-wvc, to: w-esx, label: "manages", kind: mgmt, dashed: true }
+  - { from: m-tep, to: w-tep, label: "Geneve (same or routed TEP subnets)", kind: overlay, dashed: true }
+  - { from: w-app, to: w-tep, label: "encapsulated", kind: overlay }
+steps:
+  - { title: "Management domain networks", text: "ESX management, VM management, vMotion, vSAN and host TEP; edges add edge TEP and uplinks.", highlight: [m-esx, m-vmm, m-vmo, m-vsan, m-tep, m-edge] }
+  - { title: "Workload domain networks", text: "Each workload cluster has its own infrastructure networks plus workload networks.", highlight: [w-esx, w-vmo, w-sto, w-tep, w-app] }
+  - { title: "Management of the WLD", text: "The workload domain vCenter and NSX Managers live in the management domain.", highlight: [m-wvc, w-esx] }
+  - { title: "Switch models", text: "The same networks can ride on one VDS or be split across VDS and NIC pairs for separation.", highlight: [sds, ss, ws] }

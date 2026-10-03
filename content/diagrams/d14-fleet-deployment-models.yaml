@@ -1,0 +1,40 @@
+id: d14-fleet-deployment-models
+title: The four VCF 9 fleet deployment models
+description: >
+  All four models share a single VCF Operations and VCF Automation for the fleet. The Basic design places the fleet
+  in one availability zone and relies on vSphere HA. The Site High Availability design spans two availability zones
+  in one region with stretched clusters and a vSAN witness at a third site, surviving an AZ power, cooling or network
+  failure with zero data loss. The Disaster Recovery design adds a second VCF instance in another region protected by
+  replication or backup and restore, surviving regional disasters and cyber attacks with a non-zero RPO. The Fault
+  Domains and Disaster Recovery design combines both.
+width: 1000
+height: 620
+groups:
+  - { id: g-r1, x: 20, y: 80, w: 600, h: 520, label: "Region A", kind: zone }
+  - { id: g-az1, x: 40, y: 120, w: 270, h: 330, label: "Availability zone 1", kind: compute }
+  - { id: g-az2, x: 330, y: 120, w: 270, h: 330, label: "Availability zone 2", kind: compute }
+  - { id: g-r2, x: 660, y: 80, w: 320, h: 520, label: "Region B", kind: zone }
+nodes:
+  - { id: fleet, x: 300, y: 10, w: 400, h: 56, label: "One fleet: VCF Operations + VCF Automation", kind: ops, component: vcf-fleet, info: "Common to all four models: centralized management and automation across instances." }
+  - { id: mgmt1, x: 60, y: 170, w: 230, h: 60, label: "Management domain", sublabel: "instance A", kind: mgmt, component: management-domain, info: "Basic design: single-rack management cluster in one AZ. Site HA: management cluster can be stretched." }
+  - { id: wld1, x: 60, y: 270, w: 230, h: 60, label: "Workload cluster (AZ1 half)", kind: compute, component: workload-domain, info: "In the Site HA model, the stretched cluster has hosts in both AZs, each AZ a vSAN fault domain." }
+  - { id: wld2, x: 350, y: 270, w: 230, h: 60, label: "Workload cluster (AZ2 half)", kind: compute, info: "Second half of the stretched cluster. Needs < 5 ms RTT to AZ1 for vSAN, AZ2 port groups and a gateway available in both AZs." }
+  - { id: mgmt2, x: 350, y: 170, w: 230, h: 60, label: "Stretched mgmt (Site HA)", kind: mgmt, info: "Management components can restart in AZ2 after an AZ1 failure when the management cluster is stretched." }
+  - { id: wit, x: 200, y: 500, w: 240, h: 60, label: "vSAN witness (3rd site)", kind: storage, component: vsan, info: "Tie-breaker for the stretched cluster, at a third location, not in either data AZ." }
+  - { id: basic, x: 60, y: 370, w: 230, h: 56, label: "Basic = AZ1 only", sublabel: "vSphere HA", kind: compute, info: "Basic design: single AZ/region; AZ or region failure means downtime." }
+  - { id: inst2, x: 690, y: 170, w: 260, h: 60, label: "VCF instance B", sublabel: "management + workload domains", kind: mgmt, component: vcf-instance, info: "Second instance in another region for DR. Fleet components protected by replication or backup/restore." }
+  - { id: dr, x: 690, y: 300, w: 260, h: 70, label: "Recovered workloads", sublabel: "RPO > 0 · longer RTO", kind: vm, info: "Workloads recovered from replicated copies or backups after a regional disaster or cyber attack." }
+  - { id: fddr, x: 690, y: 450, w: 260, h: 70, label: "Fault Domains + DR", sublabel: "AZ1/AZ2 stretched + region B", kind: security, info: "Most comprehensive and most expensive: local zero-RPO HA plus regional DR." }
+edges:
+  - { from: fleet, to: mgmt1, kind: mgmt }
+  - { from: fleet, to: inst2, kind: mgmt }
+  - { from: wld1, to: wld2, label: "sync vSAN < 5 ms", kind: storage, bidirectional: true }
+  - { from: wld1, to: wit, kind: storage, dashed: true }
+  - { from: wld2, to: wit, kind: storage, dashed: true }
+  - { from: mgmt1, to: inst2, label: "replication / backup", kind: dependency, dashed: true }
+  - { from: wld2, to: dr, label: "async replication", kind: dependency, dashed: true }
+steps:
+  - { title: "Basic", text: "One AZ, vSphere HA for host failures. Simplest starting point.", highlight: [fleet, mgmt1, wld1, basic] }
+  - { title: "Site HA across zones", text: "Stretch clusters across two AZs with a witness at a third site: survives an AZ failure with RPO 0.", highlight: [wld1, wld2, mgmt2, wit] }
+  - { title: "DR across regions", text: "Add a second instance in another region: survives regional disasters and cyber attacks, with RPO > 0.", highlight: [inst2, dr, mgmt1] }
+  - { title: "Fault domains + DR", text: "Combine both for mission-critical environments.", highlight: [wld1, wld2, wit, inst2, fddr] }

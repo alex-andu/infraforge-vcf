@@ -1,0 +1,52 @@
+id: d05-nsx-planes
+title: NSX management, control and data planes
+description: >
+  Three horizontal layers. Top: the management plane – the NSX Manager cluster of three appliances behind a cluster
+  VIP, with vCenter registered as a compute manager and admins/automation using the UI or Policy API. Middle: the
+  central control plane (CCP), which also runs inside the NSX Manager nodes. Bottom: the data plane – two ESX host
+  transport nodes and one NSX Edge transport node, each running a local control plane (LCP) agent and data-plane
+  modules, connected to each other by Geneve tunnels between their TEPs. Management and control are not in the
+  packet path; VMs keep forwarding when managers are unavailable.
+width: 1000
+height: 620
+groups:
+  - { id: g-mp, x: 20, y: 20, w: 960, h: 170, label: "Management plane (NSX Manager cluster)", kind: mgmt }
+  - { id: g-cp, x: 20, y: 205, w: 960, h: 110, label: "Central control plane (inside NSX Manager nodes)", kind: control }
+  - { id: g-dp, x: 20, y: 330, w: 960, h: 270, label: "Data plane (transport nodes)", kind: compute }
+nodes:
+  - { id: admin, x: 40, y: 70, w: 150, h: 56, label: "Admin / automation", sublabel: "UI, Policy API", kind: external, info: "People and tools talk only to the management plane: the NSX UI, the vSphere Client (VPCs, Network Connectivity) or the Policy API (/policy/api/v1)." }
+  - { id: vip, x: 230, y: 70, w: 140, h: 56, label: "Cluster VIP", sublabel: "nsx-vip", kind: mgmt, info: "A virtual IP owned by one manager node at a time. It does not load-balance; an external load balancer is needed to spread API calls." }
+  - { id: mgr1, x: 420, y: 50, w: 140, h: 56, label: "NSX Manager 1", kind: mgmt, component: nsx-manager, info: "NSX Manager appliance: policy/management services, UI, API, replicated datastore, and the CCP." }
+  - { id: mgr2, x: 590, y: 50, w: 140, h: 56, label: "NSX Manager 2", kind: mgmt, component: nsx-manager, info: "Second cluster member. A majority (2 of 3) is needed to accept configuration changes." }
+  - { id: mgr3, x: 760, y: 50, w: 140, h: 56, label: "NSX Manager 3", kind: mgmt, component: nsx-manager, info: "Third member. Place the three on different hosts (anti-affinity) so one host failure cannot cost the majority." }
+  - { id: vc, x: 420, y: 125, w: 160, h: 50, label: "vCenter", sublabel: "compute manager", kind: mgmt, component: vcenter, info: "Registered in NSX as a compute manager. NSX uses it to discover clusters/hosts and install NSX on them. It is not the NSX control plane." }
+  - { id: ccp, x: 420, y: 240, w: 300, h: 56, label: "CCP", sublabel: "computes and distributes runtime state", kind: nsx, info: "Central control plane: turns configuration into runtime state (VNIs, MAC/IP-to-TEP tables, routes, firewall rules) and pushes it to the LCP on each transport node. Learns topology reported by hosts." }
+  - { id: lcp1, x: 60, y: 370, w: 150, h: 50, label: "LCP", sublabel: "esx-01", kind: nsx, info: "Local control plane agent on the host. Receives state from the CCP and programs the kernel modules." }
+  - { id: dp1, x: 60, y: 450, w: 150, h: 56, label: "Kernel data plane", sublabel: "switch, DR, DFW", kind: compute, component: esx-host, info: "ESX kernel modules: segment switching, distributed routing (DR), distributed firewall. Forward packets using tables from the CCP." }
+  - { id: lcp2, x: 400, y: 370, w: 150, h: 50, label: "LCP", sublabel: "esx-02", kind: nsx, info: "Local control plane agent on the second host." }
+  - { id: dp2, x: 400, y: 450, w: 150, h: 56, label: "Kernel data plane", sublabel: "switch, DR, DFW", kind: compute, component: esx-host, info: "Same modules on every prepared host." }
+  - { id: lcp3, x: 760, y: 370, w: 150, h: 50, label: "LCP", sublabel: "edge-01", kind: nsx, info: "The Edge is also a transport node with its own LCP." }
+  - { id: dp3, x: 760, y: 450, w: 150, h: 56, label: "DPDK fast path", sublabel: "SR, DR", kind: nsx, component: nsx-edge-cluster, info: "Edge data path: hosts service routers (SRs) for uplinks, BGP, NAT, gateway firewall, plus DR instances." }
+  - { id: phys, x: 400, y: 540, w: 150, h: 50, label: "TEP network", sublabel: "Geneve over IP", kind: network, component: physical-network, info: "Underlay carrying Geneve tunnels between TEPs. Needs MTU of at least 1600 (1700 recommended)." }
+edges:
+  - { from: admin, to: vip, label: "HTTPS UI/API", kind: mgmt }
+  - { from: vip, to: mgr1, kind: mgmt }
+  - { from: mgr1, to: mgr2, label: "cluster sync", kind: mgmt, bidirectional: true }
+  - { from: mgr2, to: mgr3, kind: mgmt, bidirectional: true }
+  - { from: mgr1, to: vc, label: "inventory", kind: mgmt, bidirectional: true }
+  - { from: mgr2, to: ccp, label: "config", kind: control }
+  - { from: ccp, to: lcp1, label: "runtime state", kind: control, bidirectional: true }
+  - { from: ccp, to: lcp2, kind: control, bidirectional: true }
+  - { from: ccp, to: lcp3, kind: control, bidirectional: true }
+  - { from: lcp1, to: dp1, kind: control }
+  - { from: lcp2, to: dp2, kind: control }
+  - { from: lcp3, to: dp3, kind: control }
+  - { from: dp1, to: phys, label: "Geneve", kind: overlay, dashed: true }
+  - { from: dp2, to: phys, kind: overlay, dashed: true }
+  - { from: dp3, to: phys, kind: overlay, dashed: true }
+steps:
+  - { title: "Management plane", text: "Admins and automation talk to the NSX Manager cluster through its VIP. The managers validate and store desired configuration; vCenter is only a compute manager.", highlight: [admin, vip, mgr1, mgr2, mgr3, vc] }
+  - { title: "Central control plane", text: "The CCP, running in the same manager nodes, computes runtime state from the configuration and the topology reported by hosts.", highlight: [ccp, mgr2] }
+  - { title: "Local control plane", text: "Each transport node runs an LCP agent that receives state from the CCP and reports local MACs/IPs back up.", highlight: [ccp, lcp1, lcp2, lcp3] }
+  - { title: "Data plane", text: "Host kernels and Edge fast paths forward packets and tunnel overlay traffic between TEPs. No manager is in this path.", highlight: [dp1, dp2, dp3, phys] }
+  - { title: "Managers fail", text: "If the manager cluster is down, the data plane keeps forwarding with the state it has. You lose changes, UI/API and new state (new VMs, vMotion targets, new rules).", highlight: [dp1, dp2, dp3, mgr1, mgr2, mgr3] }

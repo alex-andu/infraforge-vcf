@@ -1,0 +1,248 @@
+commands:
+  - id: esxcli-vsan-cluster-get
+    technology: vsan
+    title: Show this host's vSAN cluster membership
+    purpose: Confirm vSAN is enabled, the host's role (leader/backup/agent), how many members it sees, maintenance state and whether the cluster is ESA. Comparing the member count on every host is the quickest partition check.
+    syntax: esxcli vsan cluster get
+    example: esxcli vsan cluster get
+    output: |
+      Cluster Information
+         Enabled: true
+         Local Node Type: NORMAL
+         Local Node State: AGENT
+         Local Node Health State: HEALTHY
+         Sub-Cluster Member Count: 4
+         Unicast Mode Enabled: true
+         Maintenance Mode State: OFF
+         vSAN ESA Enabled: true
+      (trimmed)
+    mistake: Running it on one host only. A partitioned host reports a member count of 1 (or a smaller sub-cluster) while the others report the full count — you only see it by comparing hosts.
+    lesson: vsan-architecture-esa-osa
+    version: general
+    source:
+      title: ESXCLI 9.0.0 Reference – esxcli vsan
+      url: https://developer.broadcom.com/xapis/esxcli-command-reference/9.0.0/namespace/esxcli_vsan.html
+
+  - id: esxcli-vsan-network-list
+    technology: vsan
+    title: List the VMkernel adapters used for vSAN
+    purpose: Verify which vmk carries vSAN traffic (and, for stretched/two-node clusters, witness traffic) before testing connectivity with vmkping.
+    syntax: esxcli vsan network list
+    example: esxcli vsan network list
+    output: |
+      Interface
+         VmkNic Name: vmk2
+         IP Protocol: IP
+         Interface UUID: 5f3c...e1
+         Traffic Type: vsan
+      (trimmed)
+    mistake: Testing vSAN connectivity with plain ping or from vmk0; use vmkping -I with the vmk listed here and a payload that matches the vSAN MTU.
+    lesson: vsan-health-troubleshooting
+    version: general
+    source:
+      title: ESXCLI 9.0.0 Reference – esxcli vsan
+      url: https://developer.broadcom.com/xapis/esxcli-command-reference/9.0.0/namespace/esxcli_vsan.html
+
+  - id: esxcli-vsan-storagepool-list
+    technology: vsan
+    title: List devices in the vSAN ESA storage pool
+    purpose: Show which NVMe devices this host has claimed into its ESA storage pool and whether they are in use and mounted. Applicable only to vSAN ESA clusters.
+    syntax: esxcli vsan storagepool list
+    example: esxcli vsan storagepool list
+    output: |
+      eui.0f1e2d3c4b5a69780000000000000001
+         Device: eui.0f1e2d3c4b5a69780000000000000001
+         Display Name: Local NVMe Disk (eui.0f1e2d3c4b5a6978...)
+         vSAN UUID: 52a1c0de-7f3b-9a44-1c2d-3e4f5a6b7c8d
+         Used by this host: true
+         In CMMDS: true
+         Is Mounted: true
+      (trimmed; one block per device)
+    mistake: Using `esxcli vsan storage list` on ESA and concluding no disks are claimed — that command describes OSA disk groups; ESA uses storagepool.
+    lesson: vsan-architecture-esa-osa
+    version: vcf9
+    source:
+      title: vSphere 8.0 – Using esxcli commands with vSAN
+      url: https://docs.vmware.com/en/VMware-vSphere/8.0/vsan-monitoring-troubleshooting/GUID-7799D2D7-2513-4372-92EA-4A1FB510E012.html
+
+  - id: esxcli-vsan-storage-list
+    technology: vsan
+    title: List devices claimed by vSAN OSA
+    purpose: Show OSA cache and capacity devices, their disk group membership and whether dedup/compression is active. Use storagepool list for ESA.
+    syntax: esxcli vsan storage list
+    example: esxcli vsan storage list | grep -E "Device:|Is Capacity Tier|VSAN Disk Group UUID"
+    output: |
+         Device: naa.5000c500a1b2c3d4
+         Is Capacity Tier: false
+         VSAN Disk Group UUID: 52e0...9b
+         Device: naa.5000c500a1b2c3e5
+         Is Capacity Tier: true
+         VSAN Disk Group UUID: 52e0...9b
+    mistake: Expecting the cache device's capacity to appear in the datastore size — only capacity-tier devices count in OSA.
+    lesson: vsan-architecture-esa-osa
+    version: legacy
+    source:
+      title: vSphere 8.0 – Using esxcli commands with vSAN
+      url: https://docs.vmware.com/en/VMware-vSphere/8.0/vsan-monitoring-troubleshooting/GUID-7799D2D7-2513-4372-92EA-4A1FB510E012.html
+
+  - id: esxcli-vsan-health-cluster-list
+    technology: vsan
+    title: List vSAN health check results from a host
+    purpose: Read Skyline Health check results from the ESX shell, useful when vCenter is unavailable (for example when vCenter itself runs on the affected vSAN datastore).
+    syntax: esxcli vsan health cluster list
+    example: esxcli vsan health cluster list
+    output: |
+      Health Test Name                                    Status
+      --------------------------------------------------  ------
+      Overall health                                      red (Physical disk issue)
+      Network                                             green
+        vSAN cluster partition                            green
+      Physical disk                                       red
+        Operation health                                  red
+      Data                                                yellow
+        vSAN object health                                yellow
+      (trimmed)
+    mistake: Treating every non-green line as the root cause; compatibility/HCL lines are often noise in labs. Drill into one test with `esxcli vsan health cluster get -t "<test name>"`.
+    lesson: vsan-health-troubleshooting
+    version: general
+    source:
+      title: ESXCLI 9.0.0 Reference – esxcli vsan
+      url: https://developer.broadcom.com/xapis/esxcli-command-reference/9.0.0/namespace/esxcli_vsan.html
+
+  - id: esxcli-vsan-debug-object-health-summary-get
+    technology: vsan
+    title: Count vSAN objects by health state
+    purpose: Classify object problems — waiting on the repair delay, actively rebuilding, unable to rebuild, or inaccessible — to decide whether to wait, watch or act.
+    syntax: esxcli vsan debug object health summary get
+    example: esxcli vsan debug object health summary get
+    output: |
+      Health Status                                     Number Of Objects
+      ------------------------------------------------  -----------------
+      reduced-availability-with-no-rebuild-delay-timer                 18
+      reduced-availability-with-active-rebuild                          0
+      reduced-availability-with-no-rebuild                              0
+      inaccessible                                                      0
+      healthy                                                         246
+      (trimmed)
+    mistake: Forcing rebuilds when objects are only in the no-rebuild-delay-timer state; that usually means a host is rebooting and will be back within the 60-minute repair delay.
+    lesson: vsan-health-troubleshooting
+    version: general
+    source:
+      title: Broadcom KB 438821 – vSAN massive resync and degraded object health alerts after exiting Maintenance Mode
+      url: https://knowledge.broadcom.com/external/article/438821/vsan-massive-resync-and-degraded-object.html
+
+  - id: esxcli-vsan-debug-resync-summary-get
+    technology: vsan
+    title: Show vSAN resync progress
+    purpose: See how many objects are resyncing and how much data is left after a failure, maintenance or policy change.
+    syntax: esxcli vsan debug resync summary get
+    example: esxcli vsan debug resync summary get
+    output: |
+         Total Number Of Resyncing Objects: 14
+         Total Bytes Left To Resync: 412316860416
+         Total GB Left To Resync: 384.00
+    mistake: Panicking at a multi-TB figure right after a host exits maintenance mode; the value reflects the size of affected objects and should fall steadily (KB 438821).
+    lesson: vsan-health-troubleshooting
+    version: general
+    source:
+      title: Broadcom KB 438821 – vSAN massive resync and degraded object health alerts after exiting Maintenance Mode
+      url: https://knowledge.broadcom.com/external/article/438821/vsan-massive-resync-and-degraded-object.html
+
+  - id: esxcli-vsan-faultdomain-get
+    technology: vsan
+    title: Show this host's vSAN fault domain
+    purpose: Confirm that a host is in the intended fault domain (rack or stretched-cluster site) before relying on rack-aware placement.
+    syntax: esxcli vsan faultdomain get
+    example: esxcli vsan faultdomain get
+    output: |
+         Fault Domain Id: 9a1f5c2e-0b6d-4e1a-9f0c-3d2b7a6e5f10
+         Fault Domain Name: rack-a
+    mistake: Defining fault domains with unequal host counts or capacity, which leaves some policies unable to place or rebuild components.
+    lesson: vsan-resilience-fault-domains
+    version: general
+    source:
+      title: ESXCLI 9.0.0 Reference – esxcli vsan
+      url: https://developer.broadcom.com/xapis/esxcli-command-reference/9.0.0/namespace/esxcli_vsan.html
+
+  - id: esxcli-vsan-policy-getdefault
+    technology: vsan
+    title: Show the host-level default vSAN policy per object class
+    purpose: Display the default policy vSAN applies to object classes (cluster, vdisk, vmnamespace, vmswap, vmem) when no SPBM policy is supplied.
+    syntax: esxcli vsan policy getdefault
+    example: esxcli vsan policy getdefault
+    output: |
+      Policy Class  Policy Value
+      ------------  --------------------------------------------------------
+      cluster       (("hostFailuresToTolerate" i1))
+      vdisk         (("hostFailuresToTolerate" i1))
+      vmnamespace   (("hostFailuresToTolerate" i1))
+      vmswap        (("hostFailuresToTolerate" i1) ("forceProvisioning" i1))
+      vmem          (("hostFailuresToTolerate" i1) ("forceProvisioning" i1))
+    mistake: Confusing this host-level default with the datastore default VM storage policy in vCenter, which is what VMs normally get; change policies in vCenter, not with setdefault.
+    lesson: vsan-storage-policies
+    version: general
+    source:
+      title: ESXCLI 9.0.0 Reference – esxcli vsan
+      url: https://developer.broadcom.com/xapis/esxcli-command-reference/9.0.0/namespace/esxcli_vsan.html
+
+  - id: esxcli-vsan-cluster-unicastagent-list
+    technology: vsan
+    title: List the vSAN unicast peers known to this host
+    purpose: vSAN uses unicast; each host keeps a list of peer IPs. A missing or stale entry (after re-IP or a failed reconfiguration) causes partitions.
+    syntax: esxcli vsan cluster unicastagent list
+    example: esxcli vsan cluster unicastagent list
+    output: |
+      NodeUuid                              IsWitness  Supports Unicast  IP Address    Port   Iface Name
+      ------------------------------------  ---------  ----------------  ------------  -----  ----------
+      6650a1b2-3c4d-5e6f-7a8b-0c1d2e3f4a5b          0              true  10.10.30.12  12321
+      6650a1b2-3c4d-5e6f-7a8b-0c1d2e3f4a5c          0              true  10.10.30.13  12321
+      6650a1b2-3c4d-5e6f-7a8b-0c1d2e3f4a5d          0              true  10.10.30.14  12321
+      (trimmed)
+    mistake: Editing the list by hand on a vCenter-managed cluster; vCenter normally maintains it, so fix the underlying network/vCenter issue instead.
+    lesson: vsan-health-troubleshooting
+    version: general
+    source:
+      title: ESXCLI 9.0.0 Reference – esxcli vsan
+      url: https://developer.broadcom.com/xapis/esxcli-command-reference/9.0.0/namespace/esxcli_vsan.html
+
+  - id: esxcli-storage-core-device-list
+    technology: esxi
+    title: List storage devices seen by the host
+    purpose: Show every block device (local SSD/NVMe, SAN LUN, virtual disk in a nested host) with size, multipath plugin and whether ESX treats it as local and SSD — the first check when a disk is not eligible for vSAN or a LUN is missing.
+    syntax: esxcli storage core device list [-d <device>]
+    example: esxcli storage core device list | grep -E "^(t10|eui|naa|mpx)|Display Name|Size:|Is SSD|Is Local"
+    output: |
+      eui.0f1e2d3c4b5a69780000000000000001
+         Display Name: Local NVMe Disk (eui.0f1e2d3c4b5a6978...)
+         Size: 204800
+         Is Local: true
+         Is SSD: true
+      mpx.vmhba0:C0:T0:L0
+         Display Name: Local VMware Disk (mpx.vmhba0:C0:T0:L0)
+         Size: 40960
+         Is Local: true
+         Is SSD: false
+    mistake: In nested labs, attaching the intended vSAN ESA disks to a SCSI/SATA controller — they then appear as non-NVMe devices and ESA will not claim them.
+    lesson: storage-fundamentals-datastores
+    version: general
+    source:
+      title: ESXCLI 9.0.0 Reference – esxcli storage
+      url: https://developer.broadcom.com/xapis/esxcli-command-reference/9.0.0/namespace/esxcli_storage.html
+
+  - id: esxcli-storage-filesystem-list
+    technology: esxi
+    title: List mounted file systems (VMFS, NFS, vSAN)
+    purpose: Show every datastore mounted on the host with its type, UUID, size and free space — useful to check that a datastore is mounted on all hosts of a cluster.
+    syntax: esxcli storage filesystem list
+    example: esxcli storage filesystem list
+    output: |
+      Mount Point                                        Volume Name     UUID                                 Mounted  Type   Size          Free
+      -------------------------------------------------  --------------  -----------------------------------  -------  -----  ------------  ------------
+      /vmfs/volumes/vsan:52a1c0de7f3b9a44-1c2d3e4f5a6b7c8d  vsanDatastore   vsan:52a1c0de7f3b9a44-1c2d3e4f5a6b7c8d  true  vsan   1649267441664  1203779780608
+      /vmfs/volumes/66a0f1b2-0c3d4e5f-6a7b-000c29a1b2c3   datastore1      66a0f1b2-0c3d4e5f-6a7b-000c29a1b2c3   true  VMFS-6  33554432000   31138512896
+    mistake: Assuming a datastore visible in vCenter is mounted on every host; check each host (or the cluster Datastores view) before blaming HA or vMotion.
+    lesson: storage-fundamentals-datastores
+    version: general
+    source:
+      title: ESXCLI 9.0.0 Reference – esxcli storage
+      url: https://developer.broadcom.com/xapis/esxcli-command-reference/9.0.0/namespace/esxcli_storage.html

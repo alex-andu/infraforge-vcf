@@ -1,0 +1,35 @@
+id: d-lab-deploy-vcf-management-domain-logical
+title: Deployment lab – resulting management domain
+description: >
+  After deployment the lab has one VCF fleet with one instance (lab-inst01) and its management domain lab-m01: a
+  three-host cluster on NFS v3 with one VDS, running vCenter, a single NSX Manager, SDDC Manager, VCF Operations, the
+  fleet management appliance and a collector. VCF Automation is deferred. The VCF Installer is no longer needed.
+width: 1000
+height: 600
+groups:
+  - { id: g-fleet, x: 20, y: 20, w: 960, h: 560, label: "VCF fleet / instance lab-inst01", kind: ops }
+  - { id: g-md, x: 50, y: 160, w: 900, h: 390, label: "Management domain lab-m01 (cluster on NFS v3, Default VDS profile)", kind: mgmt }
+nodes:
+  - { id: ops, x: 60, y: 60, w: 220, h: 64, label: "VCF Operations", sublabel: "vcf-ops-01 .40", kind: ops, component: vcf-operations, info: "Fleet console: inventory, licensing, workload domain creation." }
+  - { id: fm, x: 310, y: 60, w: 220, h: 64, label: "Fleet management", sublabel: "vcf-fleet-01 .41", kind: ops, component: vcf-operations-fleet-management, info: "Lifecycle of the VCF Operations-level components." }
+  - { id: col, x: 560, y: 60, w: 200, h: 64, label: "Collector", sublabel: "vcf-opscol-01 .42", kind: ops, info: "Collects data from the instance's components." }
+  - { id: auto, x: 780, y: 60, w: 180, h: 64, label: "VCF Automation", sublabel: "deferred", kind: external, component: vcf-automation, info: "Not deployed in the lab (memory)." }
+  - { id: vc, x: 80, y: 220, w: 200, h: 64, label: "vCenter", sublabel: "vcenter-01 .20", kind: mgmt, component: vcenter, info: "Manages the management cluster." }
+  - { id: nsx, x: 310, y: 220, w: 200, h: 64, label: "NSX Manager", sublabel: "1 node, VIP .25", kind: nsx, component: nsx-manager, info: "Simple model: single node." }
+  - { id: sddc, x: 540, y: 220, w: 200, h: 64, label: "SDDC Manager", sublabel: ".30", kind: mgmt, component: sddc-manager, info: "Executes domain, host and lifecycle workflows." }
+  - { id: h1, x: 80, y: 360, w: 200, h: 64, label: "esx-01", kind: compute, component: esx-host, info: "Assigned host." }
+  - { id: h2, x: 310, y: 360, w: 200, h: 64, label: "esx-02", kind: compute, info: "Assigned host." }
+  - { id: h3, x: 540, y: 360, w: 200, h: 64, label: "esx-03", kind: compute, info: "Assigned host." }
+  - { id: ds, x: 770, y: 360, w: 160, h: 64, label: "NFS v3 datastore", kind: storage, info: "Principal storage; cannot be changed." }
+  - { id: pool, x: 310, y: 470, w: 430, h: 56, label: "Default network pool (vMotion range)", kind: network, info: "Created by the deployment; cannot be deleted." }
+edges:
+  - { from: ops, to: sddc, kind: mgmt }
+  - { from: vc, to: h1, kind: mgmt }
+  - { from: vc, to: h2, kind: mgmt }
+  - { from: vc, to: h3, kind: mgmt }
+  - { from: nsx, to: h2, label: "transport nodes", kind: control, dashed: true }
+  - { from: h3, to: ds, kind: storage }
+steps:
+  - { title: "Fleet services", text: "VCF Operations, fleet management and collector; VCF Automation deferred.", highlight: [ops, fm, col, auto] }
+  - { title: "Core management", text: "vCenter, NSX and SDDC Manager in the management domain.", highlight: [vc, nsx, sddc] }
+  - { title: "Infrastructure", text: "Three hosts on NFS v3 with the default network pool.", highlight: [h1, h2, h3, ds, pool] }

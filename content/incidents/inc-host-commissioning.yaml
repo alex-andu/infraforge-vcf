@@ -1,0 +1,209 @@
+id: inc-host-commissioning
+title: Host is reachable but VCF refuses to commission it
+difficulty: advanced
+version: vcf9
+topics: [host-commissioning, certificates, dns, deployment-validation]
+lessons: [host-commissioning-wld-creation, deployment-validation-failures, cluster-host-expansion]
+summary: >
+  A new host for workload domain wld01 pings, the Host Client works and DNS looks fine, yet the Commission Hosts
+  wizard marks it Invalid. Find the real cause among DNS, NTP, certificates, network pool, storage type and noise.
+symptoms:
+  - "In the vSphere Client Commission Hosts wizard, esx-24.lab.internal is marked Invalid after Validate All; the other two hosts in the same batch are Valid."
+  - "The host answers ping on 10.10.10.124 and the Host Client login works with the root password entered in the wizard."
+  - "The fingerprint shown in the wizard for esx-24 does not match the value the junior admin noted from the host's DCUI last week."
+  - "The admin says the host was installed from a USB stick with a temporary name and 'renamed later'."
+environment: |
+  VCF 9.0 instance lab-inst01 with workload domain wld01 (NFS principal storage, network pool `wld01-np01` with
+  vMotion and NFS networks). Three new nested ESX 9 hosts (esx-24..26) are being commissioned with storage type **NFS**
+  and pool `wld01-np01` to expand cluster wld01-cl01. DNS/NTP: infra-01 (10.10.10.2). The hosts were installed by a
+  junior administrator; esx-25 and esx-26 were prepared from the runbook, esx-24 was installed earlier as `esx-temp`.
+evidence:
+  - id: wizard-result
+    category: logs
+    action: Expand the Invalid row for esx-24 in the Commission Hosts wizard (validation result)
+    output: |
+      ```log
+      esx-24.lab.internal   Invalid
+        - Host reachability ..................... Passed
+        - ESX version compatibility ............. Passed
+        - Host credentials ...................... Passed
+        - Host FQDN and DNS resolution .......... Passed
+        - Host SSL certificate validation ....... Failed
+            Certificate presented by host does not match host FQDN esx-24.lab.internal
+        - Network pool IP availability .......... Passed
+      ```
+    relevance: key
+    note: Points straight at the certificate layer while showing DNS, credentials and pool are fine. Wording is illustrative; real messages vary by build, but the failed check names the layer.
+  - id: dns-forward-reverse
+    category: dns
+    action: Run nslookup for esx-24 forward and reverse from the SDDC Manager appliance
+    output: |
+      ```shell
+      $ nslookup esx-24.lab.internal
+      Name:   esx-24.lab.internal
+      Address: 10.10.10.124
+      $ nslookup 10.10.10.124
+      124.10.10.10.in-addr.arpa  name = esx-24.lab.internal.
+      ```
+    relevance: useful
+    note: Forward and reverse agree, so DNS is not the cause. Always rule it out early because it is the most common one.
+  - id: host-hostname
+    category: hosts
+    action: "Run `esxcli system hostname get` on esx-24"
+    output: |
+      ```shell
+      Domain Name: lab.internal
+      Fully Qualified Domain Name: esx-24.lab.internal
+      Host Name: esx-24
+      ```
+    relevance: useful
+    note: The host now has the right FQDN — but this says nothing about when its certificate was generated.
+  - id: cert-subject
+    category: certificates
+    action: Read the certificate the host presents on port 443 with openssl from the SDDC Manager appliance
+    output: |
+      ```shell
+      $ openssl s_client -connect esx-24.lab.internal:443 </dev/null 2>/dev/null | openssl x509 -noout -subject -dates
+      subject=CN = esx-temp.localdomain
+      notBefore=... (install date)
+      notAfter=...
+      ```
+    relevance: key
+    note: The certificate was generated at install time for the temporary name and never regenerated after the rename. This is the root cause.
+  - id: cert-good-host
+    category: certificates
+    action: Compare with the certificate presented by esx-25
+    output: |
+      ```shell
+      subject=CN = esx-25.lab.internal
+      ```
+    relevance: useful
+    note: The hosts prepared from the runbook (FQDN set, then /sbin/generate-certificates) present the correct name.
+  - id: ntp-check
+    category: ntp
+    action: "Check time on esx-24 (`esxcli system ntp get` and the time compared to infra-01)"
+    output: |
+      ```shell
+      Enabled: true
+      Servers: 10.10.10.2
+      host time offset vs infra-01: 0.4 s
+      ```
+    relevance: useful
+    note: Time is in sync; certificate validity errors from skew would show 'not yet valid', not a name mismatch.
+  - id: pool-capacity
+    category: network
+    action: Look at network pool wld01-np01 details
+    output: |
+      ```text
+      wld01-np01
+        VMOTION  VLAN 22  10.10.22.11-10.10.22.20  used 3 / 10
+        NFS      VLAN 50  10.10.50.11-10.10.50.20  used 3 / 10
+      ```
+    relevance: noise
+    note: Plenty of free IPs and the right network types for NFS hosts — not the problem (IPs are only consumed when hosts are assigned anyway).
+  - id: local-partitions
+    category: storage
+    action: Check local disks on esx-24 in the Host Client
+    output: |
+      ```text
+      Local VMware Disk (mpx.vmhba0:C0:T1:L0)  20 GB  Partition table: GPT (2 partitions, old VMFS)
+      ```
+    relevance: noise
+    note: Leftover partitions matter for vSAN hosts; this host is commissioned as NFS, so they do not block commissioning.
+  - id: vobd-uplink
+    category: logs
+    action: Read recent host events on esx-24
+    output: |
+      ```log
+      vobd: [netCorrelator] ... [vob.net.dvport.uplink.transition.down] Uplink: vmnic1 is down
+      vobd: [netCorrelator] ... Lost uplink redundancy on virtual switch "vSwitch0"
+      ```
+    relevance: noise
+    note: The second vNIC was disconnected in Proxmox earlier for testing. Worth fixing before the host joins a cluster, but it does not make the certificate check fail.
+  - id: ssh-service
+    category: services
+    action: Check the SSH service state on esx-24
+    output: |
+      ```text
+      TSM-SSH  Stopped  Policy: Start and stop manually
+      ```
+    relevance: noise
+    note: VCF temporarily enables SSH itself during commissioning to read the host key and disables it afterwards; a stopped SSH service is normal.
+idealSequence: [wizard-result, dns-forward-reverse, host-hostname, cert-subject, cert-good-host]
+rootCause:
+  - id: rc-cert
+    text: The host's self-signed certificate was generated for the temporary install name and was not regenerated after the FQDN was set.
+    correct: true
+    why: The certificate CN is esx-temp.localdomain while the host FQDN is esx-24.lab.internal; VCF requires a certificate regenerated based on the FQDN.
+  - id: rc-dns
+    text: The PTR record for 10.10.10.124 is missing or wrong.
+    why: Forward and reverse lookups both return esx-24.lab.internal and the DNS check passed.
+  - id: rc-ntp
+    text: NTP skew makes the host certificate appear not yet valid.
+    why: Offset is 0.4 s and the failure is a name mismatch, not a validity-period error.
+  - id: rc-pool
+    text: Network pool wld01-np01 has no free IPs for a third host.
+    why: The pool shows 7 free addresses per network and the pool check passed.
+  - id: rc-storage
+    text: The host has old partitions, so it cannot be commissioned with storage type NFS.
+    why: Partition cleanup is a vSAN requirement; NFS hosts are not blocked by it.
+nextStep:
+  - id: ns-regen
+    text: On esx-24 run /sbin/generate-certificates, restart hostd and vpxa, then in the wizard remove and re-add esx-24 and confirm its new fingerprint.
+    correct: true
+    why: Fixes the cause on the host and makes the wizard read the new certificate and thumbprint.
+  - id: ns-skip
+    text: Commission with 'Skip failed hosts' enabled and add esx-24 to the cluster later from the vSphere Client.
+    why: Skipping only leaves esx-24 out; it still cannot be commissioned, and SDDC clusters accept only commissioned hosts.
+  - id: ns-reimage
+    text: Re-image esx-24 immediately.
+    why: Would work if followed by the full preparation, but it is far slower than regenerating the certificate and does not teach the root cause.
+remediation:
+  - id: rem-regen
+    text: "esxcli system hostname set --fqdn=esx-24.lab.internal (already correct), /sbin/generate-certificates, /etc/init.d/hostd restart && /etc/init.d/vpxa restart; add the step 'regenerate certificate after rename' to the build runbook."
+    correct: true
+    why: Corrects this host and prevents the next one from failing the same way.
+  - id: rem-hosts-file
+    text: Add esx-temp.localdomain to SDDC Manager's /etc/hosts pointing at 10.10.10.124.
+    why: Makes the wrong name resolvable but the certificate still does not match the host FQDN that VCF validates; unsupported hack.
+  - id: rem-skip-thumb
+    text: Disable thumbprint/certificate validation for commissioning.
+    why: Hides an identity problem instead of fixing it; not a supported fix for commissioning.
+  - id: rem-vsan
+    text: Change the host's storage type to vSAN to bypass the check.
+    why: Storage type is unrelated to certificate validation and the cluster is NFS-based.
+validation:
+  - id: val-valid
+    text: The openssl subject on esx-24 shows CN = esx-24.lab.internal, the wizard shows a new fingerprint that you confirm, Validate All marks esx-24 Valid, and after Commission it is listed as UNASSIGNED_USEABLE.
+    correct: true
+    why: Proves the certificate is fixed and the host is usable for the cluster.
+  - id: val-ping
+    text: esx-24 still answers ping and the Host Client login works.
+    why: That was true before the fix; it proves nothing about the failed check.
+hints:
+  - "The wizard tells you which check failed — believe it before you test everything else."
+  - "DNS and the hostname are correct today. What on the host was created before the name was correct?"
+  - "Look at the subject of the certificate the host presents on port 443 and compare it with a host built from the runbook."
+debrief: |
+  The host was installed as `esx-temp`, and ESX generated its self-signed certificate at that moment. Renaming the
+  host later fixed DNS-facing identity (`esxcli system hostname get` shows the FQDN, forward and reverse lookups are
+  correct) but not the certificate, which still says `esx-temp.localdomain`. VCF's commissioning prerequisites
+  explicitly require the self-signed certificate to be **regenerated based on the FQDN**, so validation fails at the
+  certificate step even though the host is reachable and the credentials are right.
+
+  An efficient engineer reads the failed check first, rules out the most common cause (DNS) in one command, confirms
+  the hostname, then inspects the presented certificate and compares it with a known-good host. The pool, local
+  partitions, the uplink event and the stopped SSH service are real observations but irrelevant to this failure:
+  pools are only consumed on assignment, partitions matter for vSAN, the uplink should be fixed separately, and VCF
+  enables SSH itself while it reads the host key.
+
+  The fix is `/sbin/generate-certificates` plus restarting hostd and vpxa, then re-adding the host in the wizard so
+  that the new thumbprint is read and confirmed. The lasting fix is the runbook order: **set FQDN → regenerate
+  certificate → NTP/DNS checks → commission**.
+sources:
+  - title: "VCF 9.0 – Commission ESX Hosts (prerequisites)"
+    url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/building-your-private-cloud-infrastructure/host-management/commission-hosts.html
+  - title: "Broadcom KB 411694 – Regenerating self-signed certificates on standalone ESXi hosts"
+    url: https://knowledge.broadcom.com/external/article/411694/
+  - title: "Broadcom KB 307780 – Change the hostname of an ESXi host"
+    url: https://knowledge.broadcom.com/external/article/307780/

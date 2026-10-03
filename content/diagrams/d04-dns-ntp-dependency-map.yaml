@@ -1,0 +1,41 @@
+id: d04-dns-ntp-dependency-map
+title: DNS and NTP dependency map for a VCF instance
+description: >
+  Two external services sit outside the VCF management domain: a DNS service with forward (A) and reverse (PTR)
+  zones, and an internal NTP service that itself syncs to an upstream reference. The VCF Installer, ESX hosts,
+  vCenter, NSX Managers and edges, SDDC Manager and VCF Operations all resolve names through DNS and synchronize time
+  from NTP. The VCF Installer validates forward and reverse records and NTP reachability before deployment. SDDC
+  Manager depends on correct host time when installing certificates during host commissioning.
+width: 1000
+height: 600
+groups:
+  - { id: g-ext, x: 20, y: 20, w: 300, h: 560, label: "External services (outside VCF)", kind: external }
+  - { id: g-vcf, x: 380, y: 20, w: 600, h: 560, label: "VCF instance", kind: mgmt }
+nodes:
+  - { id: dns, x: 60, y: 90, w: 220, h: 70, label: "DNS servers (2+)", sublabel: "A + PTR zones", kind: external, component: dns-service, info: "Authoritative for the VCF domain and every reverse zone of the management subnets. One IP must map to exactly one FQDN and back. Reached on UDP/TCP 53." }
+  - { id: ntp, x: 60, y: 300, w: 220, h: 70, label: "Internal NTP (2+)", sublabel: "UDP 123", kind: external, component: ntp-service, info: "Internal time source (VCF-NET-REQD-NTP-001), configured to start automatically on every component (NTP-002)." }
+  - { id: upstream, x: 60, y: 470, w: 220, h: 60, label: "Upstream reference", sublabel: "internet pool / GPS", kind: external, info: "The internal NTP servers sync to a reliable upstream; VCF components only talk to the internal servers." }
+  - { id: inst, x: 410, y: 60, w: 170, h: 60, label: "VCF Installer", kind: mgmt, component: vcf-installer, info: "Validates that each FQDN resolves forward and reverse to the same single answer and that NTP is usable, before it deploys anything." }
+  - { id: esx, x: 410, y: 200, w: 170, h: 60, label: "ESX hosts", kind: compute, component: esx-host, info: "Configured with DNS servers, search domain and NTP before deployment. ntpq -p reach 377 means healthy sync." }
+  - { id: vc, x: 610, y: 60, w: 170, h: 60, label: "vCenter", kind: mgmt, component: vcenter, info: "Precheck fails if its IP has no PTR or resolves to an alias (KB 437102)." }
+  - { id: nsx, x: 610, y: 200, w: 170, h: 60, label: "NSX Managers + VIP", kind: nsx, component: nsx-manager, info: "Each node and the cluster VIP need A and PTR records. Edges need DNS too, or upgrade prechecks fail." }
+  - { id: sddc, x: 800, y: 130, w: 160, h: 60, label: "SDDC Manager", kind: mgmt, component: sddc-manager, info: "Commissions hosts by FQDN and installs certificates; a host clock far off produces 'Time validation failed' (KB 448781)." }
+  - { id: ops, x: 610, y: 340, w: 170, h: 60, label: "VCF Operations", kind: ops, component: vcf-operations, info: "Cluster nodes, cloud proxies and load-balancer names need DNS; unreachable NTP fails deployment tasks." }
+  - { id: certs, x: 800, y: 340, w: 160, h: 60, label: "Certificates + SSO", kind: security, info: "Certificates are issued to FQDNs and are only valid within notBefore/notAfter; tokens have validity windows. Both depend on DNS and time." }
+edges:
+  - { from: inst, to: dns, label: "fwd + rev check", kind: dependency }
+  - { from: esx, to: dns, kind: dependency, dashed: true }
+  - { from: vc, to: dns, kind: dependency, dashed: true }
+  - { from: nsx, to: dns, kind: dependency, dashed: true }
+  - { from: esx, to: ntp, label: "UDP 123", kind: dependency }
+  - { from: vc, to: ntp, kind: dependency, dashed: true }
+  - { from: nsx, to: ntp, kind: dependency, dashed: true }
+  - { from: ops, to: ntp, kind: dependency, dashed: true }
+  - { from: ntp, to: upstream, label: "sync", kind: dependency }
+  - { from: sddc, to: esx, label: "commission by FQDN", kind: mgmt }
+  - { from: certs, to: sddc, label: "time + name", kind: control, dashed: true }
+steps:
+  - { title: "Outside VCF", text: "DNS and NTP are external services that must exist before the VCF Installer runs and must not depend on the domain being built.", highlight: [dns, ntp, upstream] }
+  - { title: "Validation", text: "The VCF Installer checks forward and reverse DNS and NTP for every component in the spec.", highlight: [inst, dns] }
+  - { title: "Everyone syncs time", text: "Hosts and appliances use the same internal NTP servers. Skew breaks certificates and authentication.", highlight: [esx, vc, nsx, ops, ntp] }
+  - { title: "Day 2 dependency", text: "Commissioning, certificate replacement and upgrades depend on names and time long after deployment.", highlight: [sddc, esx, certs] }

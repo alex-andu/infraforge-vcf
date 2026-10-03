@@ -1,0 +1,900 @@
+questions:
+  # ---------------------------------------------------------------- methodology
+  - id: ts-method-001
+    type: ordering
+    kind: troubleshooting
+    difficulty: foundation
+    version: general
+    topics: [troubleshooting-method]
+    objective: "4.3"
+    lesson: troubleshooting-methodology
+    section: concept
+    stem: "Put the steps of the troubleshooting method used in this course in the correct order."
+    items:
+      - { id: a, text: "Observe – write a precise, timestamped symptom statement" }
+      - { id: b, text: "Scope – determine breadth, plane and timing (blast radius)" }
+      - { id: c, text: "Hypothesize – list and rank possible causes" }
+      - { id: d, text: "Validate – run discriminating tests to confirm one cause" }
+      - { id: e, text: "Remediate – apply the smallest safe change" }
+      - { id: f, text: "Verify – re-test the original symptom through the original path" }
+    explanation:
+      correct: "Observe → Scope → Hypothesize → Validate → Remediate → Verify. Each step produces an output the next one needs: you cannot rank hypotheses before you know the scope, and you must not remediate before a cause is validated."
+      concept: "A repeatable method replaces guessing and restarting."
+      architecture: "Scoping maps the symptom onto the VCF layers (physical, host, cluster, domain, instance, fleet) before any change."
+      trap: "Remediating straight after Observe (reboot, restart) destroys evidence and rarely fixes the cause."
+    diagnostic: troubleshooting
+
+  - id: ts-method-002
+    type: single
+    kind: scenario
+    difficulty: foundation
+    topics: [troubleshooting-method]
+    objective: "4.3"
+    lesson: troubleshooting-methodology
+    section: architecture
+    context: |
+      At 03:00 UTC VCF Operations starts raising alerts for vCenter collection, the NSX Manager adapter and the SDDC
+      Manager integration at the same time. VMs keep running. Nobody changed any VCF component.
+    stem: "Which area should the administrator investigate first?"
+    options:
+      - { id: a, text: "Restart the VCF Operations cluster", why: "VCF Operations is reporting the failures; restarting it changes nothing about the integrations and destroys evidence.", confusedWith: vcf-ops-architecture }
+      - { id: b, text: "Shared dependencies such as NTP, DNS, certificates or the identity source", correct: true, why: "Many unrelated components failing at the same minute is the classic signature of a shared dependency underneath them." }
+      - { id: c, text: "The NSX Manager cluster health", why: "NSX is only one of several failing integrations; it cannot explain the vCenter and SDDC Manager failures." }
+      - { id: d, text: "The vSAN object health of the management cluster", why: "VMs run normally and the symptoms are integration/authentication failures, not storage." , confusedWith: vsan-health }
+    explanation:
+      correct: "When several components fail at the same moment without a change to them, look down the stack at what they all depend on: time, name resolution, trust and identity."
+      concept: "Scoping by breadth and time points to the lowest unhealthy layer."
+      architecture: "DNS, NTP, the CA and the identity provider are external services every VCF component relies on."
+      trap: "The UI that shows the alerts (VCF Operations) is rarely the component that is broken."
+    diagnostic: troubleshooting
+
+  - id: ts-method-003
+    type: single
+    kind: troubleshooting
+    difficulty: intermediate
+    topics: [troubleshooting-method, esx-host]
+    objective: "2.2"
+    lesson: troubleshooting-methodology
+    section: troubleshooting
+    context: |
+      An ESX host in a vSAN cluster with NSX shows Not Responding in vCenter. A colleague proposes running
+      `services.sh restart` on the host "to restart all management agents".
+    stem: "What is the best response?"
+    options:
+      - { id: a, text: "Agree; services.sh restart is the standard non-disruptive fix", why: "Broadcom KB 320280 warns against services.sh restart on hosts using vSAN, NSX, LACP or shared graphics." }
+      - { id: b, text: "First gather evidence; if an agent restart is justified, restart only hostd and/or vpxa with /etc/init.d/<agent> restart", correct: true, why: "Evidence first, and the targeted restart avoids the side effects of restarting every service on a vSAN/NSX host." }
+      - { id: c, text: "Reboot the host immediately", why: "Disruptive (vSAN data, running VMs) and skips diagnosis; VMs on a Not Responding host are usually still running.", confusedWith: vsphere-ha }
+      - { id: d, text: "Remove the host from vCenter and add it again", why: "Disruptive in VCF (vSAN, NSX, inventory) and does not address an unknown cause." }
+    explanation:
+      correct: "Collect evidence (vpxa.log, Host Client reachability, heartbeat captures) and, when an agent is at fault, restart only that agent."
+      concept: "Smallest safe change; know which actions are explicitly discouraged."
+      architecture: "hostd is the host agent, vpxa the vCenter agent; services.sh restarts far more, including services vSAN and NSX depend on."
+      trap: "'Restart all agents' sounds harmless; on VCF hosts it is the wrong reflex."
+
+  - id: ts-method-004
+    type: multi
+    select: 3
+    kind: concept
+    difficulty: intermediate
+    topics: [health-diagnostics, troubleshooting-method]
+    objective: "4.3"
+    lesson: troubleshooting-methodology
+    section: components
+    stem: "Which areas does VCF Health in VCF Operations diagnostics summarise? (Choose three.)"
+    options:
+      - { id: a, text: "Certificates health", correct: true, why: "Certificates health is one of the VCF Health cards." }
+      - { id: b, text: "NTP and DNS health", correct: true, why: "VCF Health has an NTP and DNS card to catch time drift and reverse lookup failures." }
+      - { id: c, text: "vSphere vMotion health", correct: true, why: "vMotion health identifies root causes of vMotion failures." }
+      - { id: d, text: "Physical switch firmware compliance", why: "Not one of the documented VCF Health areas.", confusedWith: compliance-drift }
+      - { id: e, text: "VCF Automation blueprint versioning", why: "Not a VCF Health card; unrelated to diagnostics.", confusedWith: vcf-automation }
+    explanation:
+      correct: "The documented VCF Health areas are Certificates, NTP and DNS, vCenter, Virtual Machine operations, vSphere vMotion and Virtual Machine snapshots."
+      concept: "VCF Health gives the Observe/Scope view of the stack."
+      architecture: "Part of VCF Operations diagnostics, alongside Diagnostics Findings and Log Assist."
+      trap: "Do not confuse VCF Health with compliance/drift features, which are separate VCF Operations capabilities."
+
+  - id: ts-method-005
+    type: single
+    kind: concept
+    difficulty: intermediate
+    topics: [health-diagnostics, logs-locations]
+    objective: "4.3"
+    lesson: troubleshooting-methodology
+    section: components
+    stem: "An administrator wants to send log bundles from vCenter, ESX, SDDC Manager and NSX to Broadcom Support for an open case, including the currently active diagnostic findings, without using an FTP client. Which feature should be used?"
+    options:
+      - { id: a, text: "Log Assist in VCF Operations diagnostics", correct: true, why: "Log Assist generates bundles for these components, adds active findings and uploads them without external FTP clients." }
+      - { id: b, text: "The Troubleshooting Workbench", why: "The Workbench investigates objects and alerts over a time range; it does not upload bundles." }
+      - { id: c, text: "VCF Operations for logs dashboards", why: "Central log search, not support-bundle generation and upload.", confusedWith: vcf-ops-logs }
+      - { id: d, text: "The sos utility on each ESX host", why: "sos runs on SDDC Manager/VCF Installer, not on ESX hosts, and does not cover all listed components." }
+    explanation:
+      correct: "Log Assist is reached from the Diagnostics Findings tab and supports VCF Operations, vCenter, ESX, SDDC Manager, NSX, VCF Operations for logs and fleet management."
+      concept: "Preserve and share evidence with the documented tool."
+      architecture: "Bundles are collected through the VCF Operations collector; Log Assist validates connectivity to the collector, the component and the support portal first."
+      trap: "sos is real but SDDC Manager/installer specific."
+
+  - id: ts-method-006
+    type: single
+    kind: scenario
+    difficulty: intermediate
+    topics: [troubleshooting-method]
+    objective: "4.1"
+    lesson: troubleshooting-methodology
+    section: deep-dive
+    context: |
+      Host commissioning failed for esx-07. You corrected the stale PTR record for its IP on the DNS server, and
+      `nslookup 10.10.10.107` from SDDC Manager now returns esx-07.vcf.lab.
+    stem: "What completes the Verify step?"
+    options:
+      - { id: a, text: "Close the ticket because the lookup now succeeds", why: "The lookup proves the fix to the dependency, not that the original workflow succeeds." }
+      - { id: b, text: "Retry the commissioning validation for esx-07 from the vCenter workflow and confirm it passes, then document the root cause", correct: true, why: "Verification re-tests the original symptom through the original path and records the result." }
+      - { id: c, text: "Reboot SDDC Manager to clear its DNS cache", why: "An unnecessary disruptive step; the lookup already shows the correct answer." }
+      - { id: d, text: "Run a full sos bundle and send it to support", why: "Evidence collection belongs before remediation; it does not verify the fix." }
+    explanation:
+      correct: "Verify = repeat the original action (commissioning validation in vCenter's Unassigned Hosts workflow) and confirm no new alarms, then write symptom, scope, cause, fix and prevention."
+      concept: "Verification against the original symptom path."
+      architecture: "In VCF 9.0, commissioning starts in vCenter (Global Inventory List > Hosts > Unassigned Hosts)."
+      trap: "A healthy dependency is necessary, not sufficient."
+
+  - id: ts-method-007
+    type: truefalse
+    kind: concept
+    difficulty: foundation
+    topics: [nsx-architecture, troubleshooting-method]
+    objective: "2.4"
+    lesson: troubleshooting-methodology
+    section: deep-dive
+    stem: "True or false: if the NSX Manager cluster becomes unavailable, all overlay traffic between running VMs stops immediately."
+    options:
+      - { id: t, text: "True", why: "NSX Manager is management and control plane; established forwarding state lives on the transport nodes.", confusedWith: nsx-architecture }
+      - { id: f, text: "False", correct: true, why: "Data-plane forwarding on ESX transport nodes and edges continues; configuration changes and new control-plane updates are what stop." }
+    explanation:
+      correct: "False. A management/control-plane outage stops changes, not existing data-plane forwarding."
+      concept: "Separate management, control and data planes when scoping."
+      architecture: "Distributed routing and firewalling run in the kernel of each transport node."
+      trap: "Treating a management-plane outage as a workload outage leads to panicked, disruptive actions."
+
+  - id: ts-method-008
+    type: single
+    kind: concept
+    difficulty: foundation
+    topics: [troubleshooting-method]
+    objective: "4.3"
+    lesson: troubleshooting-methodology
+    section: concept
+    stem: "Which statement is a root cause rather than a symptom?"
+    options:
+      - { id: a, text: "esx-04 shows Not Responding in vCenter", why: "That is what is observed, not why it happens." }
+      - { id: b, text: "A new firewall rule pushed at 14:02 drops UDP 902 heartbeats from esx-04 to vCenter", correct: true, why: "Names the mechanism (heartbeats dropped) and the trigger (firewall change)." }
+      - { id: c, text: "The vSphere Client is slow", why: "A symptom, and a vague one." }
+      - { id: d, text: "vpxa.log contains repeated 'Started heartbeating' lines", why: "Evidence supporting a hypothesis, not the cause itself." }
+    explanation:
+      correct: "A root cause statement explains the mechanism and the trigger so both the fix and prevention are obvious."
+      concept: "Symptom vs evidence vs cause vs trigger."
+      trap: "Log lines are evidence; do not stop at quoting them."
+
+  - id: ts-method-009
+    type: single
+    kind: concept
+    difficulty: intermediate
+    topics: [health-diagnostics]
+    objective: "4.3"
+    lesson: troubleshooting-methodology
+    section: components
+    stem: "Where is the Troubleshooting Workbench opened in VCF Operations 9.0?"
+    options:
+      - { id: a, text: "Infrastructure Operations > Troubleshooting Workbench", correct: true, why: "This is the documented menu path." }
+      - { id: b, text: "Fleet Management > Lifecycle > Troubleshooting", why: "Fleet Management Lifecycle handles upgrades, depots and backups.", confusedWith: fleet-management }
+      - { id: c, text: "The SDDC Manager UI > Developer Center", why: "Not where the Workbench lives." }
+      - { id: d, text: "vCenter > Monitor > Troubleshooting Workbench", why: "The Workbench is a VCF Operations feature, not a vCenter tab.", confusedWith: vcenter }
+    explanation:
+      correct: "Infrastructure Operations > Troubleshooting Workbench. Sessions do not persist after logout; they reappear under Recent Searches."
+      concept: "Investigation of an object or alert with adjustable scope and time range."
+      trap: "Fleet Management is the lifecycle/certificates/passwords area, not troubleshooting."
+
+  - id: ts-method-010
+    type: single
+    kind: troubleshooting
+    difficulty: advanced
+    topics: [troubleshooting-method, logs-locations]
+    objective: "4.3"
+    lesson: troubleshooting-methodology
+    section: failure-scenarios
+    context: |
+      A workload domain task fails at the same step on every retry. The domain manager log contains hundreds of ERROR
+      lines from several services in the ten minutes before the failure.
+    stem: "Which approach is most effective?"
+    options:
+      - { id: a, text: "Retry the task until it succeeds", why: "Retries without a fix just add noise to the log." }
+      - { id: b, text: "Start at the failure timestamp and search backwards for the first error related to the failed step, then check that error's dependency", correct: true, why: "Cascading failures produce many secondary errors; the first one is closest to the cause." }
+      - { id: c, text: "Read the last ERROR line in the file and fix that", why: "The last line is usually a consequence (e.g. task rollback), not the cause." }
+      - { id: d, text: "Redeploy SDDC Manager", why: "A massive change with no validated cause." }
+    explanation:
+      correct: "First relevant error at the failure time, then validate its dependency (DNS, NTP, credentials, depot)."
+      concept: "Reading logs efficiently during Validate."
+      architecture: "In VCF 9, domain workflows are executed by SDDC Manager services logging to /var/log/vmware/vcf/domainmanager/domainmanager.log."
+      trap: "The noisiest error is not necessarily the root cause."
+
+  # ---------------------------------------------------------------- core dependencies
+  - id: ts-deps-001
+    type: single
+    kind: troubleshooting
+    difficulty: foundation
+    topics: [dns, host-commissioning]
+    objective: "4.1"
+    lesson: troubleshooting-core-dependencies
+    section: deep-dive
+    context: |
+      Commissioning validation fails for one new host only. From SDDC Manager:
+      ```shell
+      $ nslookup esx-07.vcf.lab
+      Address: 10.10.10.107
+      $ nslookup 10.10.10.107
+      ** server can't find 107.10.10.10.in-addr.arpa: NXDOMAIN
+      ```
+    stem: "What is the most likely cause?"
+    options:
+      - { id: a, text: "Missing PTR (reverse) record for the host's IP", correct: true, why: "Forward lookup works, reverse fails with NXDOMAIN: the reverse record is missing." }
+      - { id: b, text: "The host's NTP server is unreachable", why: "Nothing in the evidence concerns time.", confusedWith: ntp }
+      - { id: c, text: "The host certificate has expired", why: "Certificates are not involved in an NXDOMAIN answer.", confusedWith: certificates }
+      - { id: d, text: "The forward A record is wrong", why: "The forward lookup returns the expected IP." }
+    explanation:
+      correct: "VCF validations require forward and reverse records that agree. NXDOMAIN on the reverse lookup proves the PTR is missing."
+      concept: "Forward + reverse DNS as a hard dependency."
+      architecture: "Run the test from the component that validates (SDDC Manager / installer), not from a laptop."
+      trap: "A working forward lookup tempts you to declare DNS healthy."
+    diagnostic: troubleshooting
+
+  - id: ts-deps-002
+    type: single
+    kind: log
+    difficulty: intermediate
+    topics: [ntp, certificates]
+    objective: "4.2"
+    lesson: troubleshooting-core-dependencies
+    section: deep-dive
+    context: |
+      ```log
+      ERROR ... SSLHandshakeException: certificate not yet valid (notBefore: 2026-10-03T10:00:00Z)
+      ```
+      The certificate was issued ten minutes ago. `date -u` on the calling appliance shows 2026-10-03T09:52:10Z.
+    stem: "What should be fixed?"
+    options:
+      - { id: a, text: "Reissue the certificate with a longer validity period", why: "Validity length is irrelevant; the client thinks it is earlier than notBefore.", confusedWith: certificates }
+      - { id: b, text: "The time source of the calling appliance (NTP), so its clock matches the rest of the environment", correct: true, why: "The client clock is behind; the certificate is fine." }
+      - { id: c, text: "Add the CA to the trust store", why: "An untrusted issuer gives a path-building error, not 'not yet valid'." }
+      - { id: d, text: "Replace the certificate SAN with the IP address", why: "Name mismatch produces a hostname verification error." }
+    explanation:
+      correct: "'Not yet valid' with a recently issued certificate means the client's clock is behind. Fix NTP at the source and let the client resync."
+      concept: "Time skew masquerades as certificate errors."
+      architecture: "TLS validity checks and SSO tokens both rely on synchronized time."
+      trap: "Reading 'certificate' in the error and debugging PKI."
+
+  - id: ts-deps-003
+    type: ordering
+    kind: troubleshooting
+    difficulty: intermediate
+    topics: [dns, ntp, certificates, identity-sso]
+    objective: "4.2"
+    lesson: troubleshooting-core-dependencies
+    section: how-it-works
+    stem: "An integration between two VCF components fails with a generic connection error. Order the checks from first to last as recommended in this course."
+    items:
+      - { id: a, text: "Forward and reverse DNS from the complaining component" }
+      - { id: b, text: "Time on both ends (NTP)" }
+      - { id: c, text: "Certificate presented by the target (validity, SAN, issuer trust)" }
+      - { id: d, text: "Authentication / identity source" }
+      - { id: e, text: "Service status and service logs" }
+      - { id: f, text: "Retry the workflow and verify" }
+    explanation:
+      correct: "DNS → NTP → certificates → identity → services → workflow. Each later check depends on the earlier ones being healthy."
+      concept: "The dependency chain."
+      architecture: "Components call each other by FQDN over TLS with time-bound tokens."
+      trap: "Starting with service logs: when a dependency is broken every service logs errors."
+
+  - id: ts-deps-004
+    type: single
+    kind: scenario
+    difficulty: intermediate
+    topics: [identity-sso]
+    objective: "4.2"
+    lesson: troubleshooting-core-dependencies
+    section: deep-dive
+    context: |
+      Users from the corporate directory cannot log in to vCenter or VCF Operations. The local administrator account of
+      vCenter logs in normally. Time is synchronized everywhere.
+    stem: "Where should the investigation focus next?"
+    options:
+      - { id: a, text: "Reachability and health of the identity source used by the VCF Identity Broker", correct: true, why: "Local accounts working while directory users fail scopes the problem to the external identity path." }
+      - { id: b, text: "vSAN health of the management cluster", why: "Storage problems would not spare local logins.", confusedWith: vsan-health }
+      - { id: c, text: "Regenerating all machine certificates", why: "No evidence of certificate issues; a disruptive guess.", confusedWith: certificates }
+      - { id: d, text: "Rebuilding the NSX Manager cluster", why: "Unrelated to authentication." }
+    explanation:
+      correct: "A local account is a quick scoping test: if it works, vCenter and the UI are fine and the identity source (or path to it) is the suspect."
+      concept: "Scoping identity failures."
+      architecture: "VCF SSO is provided by the VCF Identity Broker (embedded in vCenter or as an appliance) federated with an identity source."
+      trap: "Assuming the broker is down without testing a local account."
+
+  - id: ts-deps-005
+    type: matching
+    kind: architecture
+    difficulty: intermediate
+    topics: [identity-sso]
+    objective: "4.2"
+    lesson: troubleshooting-core-dependencies
+    section: architecture
+    stem: "Match each VCF Identity Broker model with its characteristic."
+    pairs:
+      - { id: p1, left: "Embedded model", right: "Runs as part of vCenter; availability through vSphere HA; no extra appliance" }
+      - { id: p2, left: "Appliance model", right: "Three-node cluster that tolerates an ESX host failure, at extra resource cost" }
+      - { id: p3, left: "Moving from embedded to external broker", right: "Requires an SSO reset" }
+    explanation:
+      correct: "Embedded = inside vCenter, protected by vSphere HA; appliance = three-node cluster; switching from embedded to external requires an SSO reset."
+      concept: "Identity broker deployment models."
+      architecture: "Placement can be fleet-wide, cross-instance or per instance, trading unified SSO against blast radius."
+      trap: "Thinking the embedded broker is more resilient because it has no extra appliance."
+
+  - id: ts-deps-006
+    type: single
+    kind: concept
+    difficulty: intermediate
+    topics: [dns, ntp]
+    objective: "4.2"
+    lesson: troubleshooting-core-dependencies
+    section: configuration
+    stem: "In VCF 9.0, where does an administrator change the DNS and NTP servers used by a VCF instance?"
+    options:
+      - { id: a, text: "VCF Operations: Inventory > VCF Instance > Actions > Manage VCF Instance Settings > Network Settings", correct: true, why: "Documented VCF 9.0 location (moved from SDDC Manager)." }
+      - { id: b, text: "SDDC Manager UI: Administration > Network Settings", why: "That is the VCF 5.x location.", confusedWith: sddc-manager }
+      - { id: c, text: "vCenter: Global Inventory List > Hosts > Network Pools", why: "Network pools are configured there, not DNS/NTP.", confusedWith: host-commissioning }
+      - { id: d, text: "NSX Manager: System > Settings > DNS", why: "Not the VCF instance-wide setting." }
+    explanation:
+      correct: "VCF 9.0 moved instance DNS/NTP settings to VCF Operations (Manage VCF Instance Settings > Network Settings)."
+      concept: "Day-2 workflow locations in VCF 9."
+      architecture: "VCF Operations orchestrates; SDDC Manager services still execute behind the scenes."
+      trap: "Answering with the VCF 5.x SDDC Manager path."
+
+  - id: ts-deps-007
+    type: single
+    kind: log
+    difficulty: advanced
+    topics: [vcf-installer, dns, deployment-validation]
+    objective: "4.1"
+    lesson: troubleshooting-core-dependencies
+    section: deep-dive
+    context: |
+      VCF Installer specification validation fails. In /var/log/vmware/vcf/domainmanager/domainmanager.log:
+      ```log
+      SSH: Failed to establish SSH session to sddcm01.vcf.lab Auth fail
+      ```
+      During OVA deployment the "DNS Domain Name" field was set to `sddcm01.vcf.lab` and "Host Name" to `sddcm01.vcf.lab`.
+    stem: "What is the documented resolution?"
+    options:
+      - { id: a, text: "Redeploy the VCF Installer with DNS Domain Name = vcf.lab (domain only) and Host Name = the FQDN; optionally export and reuse the JSON spec", correct: true, why: "Matches Broadcom KB 418890: the domain field must contain only the domain name." }
+      - { id: b, text: "Reset the vcf user's password on the installer", why: "The auth failure is a consequence of the naming input, not a wrong password." }
+      - { id: c, text: "Enable root SSH login on all ESX hosts", why: "The failing SSH session is to the installer itself, not to hosts." }
+      - { id: d, text: "Add a second DNS server to the spec", why: "DNS server redundancy does not change the misconfigured domain field." }
+    explanation:
+      correct: "KB 418890: power off, deploy a new installer with the domain name only in 'DNS Domain Name' (FQDN in 'Host Name'), and continue — the previous IP can be reused and the JSON spec can be imported."
+      concept: "Naming inputs are dependency inputs."
+      architecture: "The installer validates by connecting to itself and other components by FQDN."
+      trap: "'Auth fail' suggests credentials, but the cause is naming."
+
+  - id: ts-deps-008
+    type: multi
+    select: 2
+    kind: troubleshooting
+    difficulty: expert
+    topics: [certificates, troubleshooting-method]
+    objective: "4.2"
+    lesson: troubleshooting-core-dependencies
+    section: deep-dive
+    context: |
+      After a vCenter machine certificate was replaced directly in vCenter with one from a new enterprise CA, SDDC Manager
+      prechecks and the VCF Operations adapter for that vCenter fail with "unable to find valid certification path".
+    stem: "Which two actions best address the problem? (Choose two.)"
+    options:
+      - { id: a, text: "Verify from SDDC Manager with openssl s_client which issuer the vCenter presents and whether it verifies", correct: true, why: "Validates the hypothesis from the failing client." }
+      - { id: b, text: "Make the new CA chain trusted by the VCF clients and perform future replacements through VCF Operations certificate management", correct: true, why: "Fixes trust where it is broken and keeps future changes on the path that distributes trust." }
+      - { id: c, text: "Disable certificate validation on SDDC Manager", why: "Unsupported and removes TLS protection." }
+      - { id: d, text: "Set all appliance clocks manually to the CA's time", why: "The error is about trust, not validity time; manual clocks cause new problems.", confusedWith: ntp }
+    explanation:
+      correct: "Prove the trust failure from the client, then distribute trust and use the VCF workflow (Fleet Management > Certificates)."
+      concept: "Certificates fail on the client side."
+      architecture: "SDDC Manager, VCF Operations and NSX are TLS clients of vCenter."
+      trap: "A browser padlock on an admin laptop proves nothing about service-to-service trust."
+
+  # ---------------------------------------------------------------- VCF services
+  - id: ts-svc-001
+    type: single
+    kind: concept
+    difficulty: foundation
+    topics: [host-commissioning]
+    objective: "4.1"
+    lesson: troubleshooting-vcf-services
+    section: concept
+    stem: "In VCF 9.0, where does an administrator start host commissioning?"
+    options:
+      - { id: a, text: "In vCenter: Global Inventory List > Hosts > Unassigned Hosts", correct: true, why: "VCF 9.0 moved commissioning into vCenter." }
+      - { id: b, text: "In the SDDC Manager UI: Inventory > Hosts", why: "That was the VCF 5.x location.", confusedWith: sddc-manager }
+      - { id: c, text: "In VCF Operations: Fleet Management > Passwords", why: "That is password management." , confusedWith: passwords }
+      - { id: d, text: "In the VCF Installer UI", why: "The installer deploys the initial fleet/instance; it is not the day-2 commissioning UI.", confusedWith: vcf-installer }
+    explanation:
+      correct: "Commissioning and decommissioning are done in vCenter (Global Inventory List > Hosts > Unassigned Hosts) in VCF 9.0."
+      concept: "VCF 9 day-2 workflow locations."
+      architecture: "The UI moved; SDDC Manager services still perform validation and inventory work behind it."
+      trap: "Answering with the SDDC Manager path from VCF 5.x material."
+
+  - id: ts-svc-002
+    type: single
+    kind: concept
+    difficulty: foundation
+    topics: [workload-domains, fleet-management]
+    objective: "4.1"
+    lesson: troubleshooting-vcf-services
+    section: concept
+    stem: "In VCF 9.0, from which interface is a new VI workload domain deployed?"
+    options:
+      - { id: a, text: "VCF Operations (Inventory > VCF Instance)", correct: true, why: "Workload domain deployment moved to VCF Operations." }
+      - { id: b, text: "SDDC Manager UI (Inventory > Workload Domains)", why: "VCF 5.x location.", confusedWith: sddc-manager }
+      - { id: c, text: "NSX Manager (System > Fabric)", why: "NSX does not create workload domains.", confusedWith: nsx-architecture }
+      - { id: d, text: "vCenter > Hosts and Clusters > New Cluster", why: "That path creates SDDC clusters in an existing domain, not a new domain.", confusedWith: cluster-expansion }
+    explanation:
+      correct: "New workload domains are deployed through VCF Operations: Inventory > VCF Instance."
+      concept: "Where workflows start vs where they execute."
+      architecture: "Execution is performed by SDDC Manager services (domain manager), whose log holds the evidence."
+      trap: "Clusters are created from vCenter in 9.0, domains from VCF Operations."
+
+  - id: ts-svc-003
+    type: single
+    kind: troubleshooting
+    difficulty: intermediate
+    topics: [esx-host, vcenter]
+    objective: "2.2"
+    lesson: troubleshooting-vcf-services
+    section: components
+    context: |
+      Host esx-05 shows Not Responding in vCenter. The VMware Host Client at https://esx-05/ui works, VMs are running and
+      can be managed locally.
+    stem: "Which component is the most likely focus?"
+    options:
+      - { id: a, text: "vpxa or the heartbeat path between the host and vCenter", correct: true, why: "hostd works (Host Client), so the vCenter relationship (vpxa, UDP 902 heartbeat) is the suspect." }
+      - { id: b, text: "hostd", why: "A hung hostd would also break the Host Client.", confusedWith: esx-host }
+      - { id: c, text: "The VMkernel storage stack", why: "VMs run and are manageable; no storage symptom." }
+      - { id: d, text: "vSphere HA (FDM)", why: "HA does not decide vCenter's connection state.", confusedWith: vsphere-ha }
+    explanation:
+      correct: "hostd = host agent (Host Client/API). vpxa = vCenter agent and heartbeat sender. Host Client OK + vCenter disconnected → vpxa/heartbeat path."
+      concept: "hostd vs vpxa."
+      architecture: "vCenter's vpxd talks to vpxa, which relays to hostd; vpxa sends UDP 902 heartbeats to vCenter."
+      trap: "Restarting hostd because it is the more famous agent."
+
+  - id: ts-svc-004
+    type: single
+    kind: concept
+    difficulty: intermediate
+    topics: [esx-host, vcenter]
+    objective: "2.2"
+    lesson: troubleshooting-vcf-services
+    section: components
+    stem: "According to Broadcom, how do ESX hosts prove liveness to vCenter, and when does vCenter mark a host Not Responding?"
+    options:
+      - { id: a, text: "UDP heartbeats to port 902 every 10 seconds; Not Responding after 60 seconds without heartbeats", correct: true, why: "Matches KB 323612 / KB 307364." }
+      - { id: b, text: "TCP 443 keepalives every second; Not Responding after 3 seconds", why: "Not the documented mechanism." }
+      - { id: c, text: "Datastore heartbeats every 5 seconds; Not Responding after 15 seconds", why: "Datastore heartbeats are a vSphere HA mechanism.", confusedWith: vsphere-ha }
+      - { id: d, text: "ICMP pings from vCenter every 30 seconds", why: "vCenter does not use ICMP for host connection state." }
+    explanation:
+      correct: "vpxa sends UDP heartbeats on 902 every 10 s; vCenter allows a 60 s window."
+      concept: "The host connection heartbeat."
+      architecture: "Firewalls between host management networks and vCenter must allow UDP 902."
+      trap: "Confusing vCenter heartbeats with HA network/datastore heartbeats."
+
+  - id: ts-svc-005
+    type: single
+    kind: log
+    difficulty: intermediate
+    topics: [logs-locations, esx-host]
+    objective: "2.2"
+    lesson: troubleshooting-vcf-services
+    section: deep-dive
+    context: |
+      ```log
+      2026-10-03T10:01:12.004Z In(166) Vpxa[2100221]: [Originator@6876 sub=Heartbeat opID=HostSync-host-1012-4ff474ef-5c] Started heartbeating..
+      2026-10-03T10:02:12.117Z In(166) Vpxa[2100221]: [Originator@6876 sub=Heartbeat opID=HostSync-host-1012-51a2c0d3-1e] Started heartbeating..
+      2026-10-03T10:03:12.230Z In(166) Vpxa[2100221]: [Originator@6876 sub=Heartbeat opID=HostSync-host-1012-a83e9c71-04] Started heartbeating..
+      ```
+    stem: "What does this vpxa.log pattern most likely indicate, and what is the best next test?"
+    options:
+      - { id: a, text: "Heartbeats are not reaching vCenter; capture UDP 902 on the host uplink and on vCenter", correct: true, why: "Repeated restarts every minute are the KB 323612 signature; a two-ended capture locates the loss." }
+      - { id: b, text: "vpxa is upgrading itself; wait for it to finish", why: "No upgrade is indicated." }
+      - { id: c, text: "hostd crashed; restart hostd", why: "The log is vpxa's heartbeat, not a hostd failure.", confusedWith: esx-host }
+      - { id: d, text: "DNS is failing; recreate the A record", why: "DNS failures do not produce a one-minute heartbeat restart cycle.", confusedWith: dns }
+    explanation:
+      correct: "vpxa restarts heartbeating whenever vCenter drops and reconnects the host; the usual cause is UDP 902 being blocked or lost."
+      concept: "Log interpretation for host disconnects."
+      architecture: "pktcap-uw on the host uplink + tcpdump on vCenter show where packets disappear."
+      trap: "Treating the agent as broken when the path is."
+
+  - id: ts-svc-006
+    type: single
+    kind: log
+    difficulty: expert
+    topics: [lcm-concepts, workload-domains, logs-locations]
+    objective: "4.2"
+    lesson: troubleshooting-vcf-services
+    section: deep-dive
+    context: |
+      Workload domain creation fails with "Failed to validate domain spec". domainmanager.log shows:
+      ```log
+      Failed to get install image for component VCENTER, version 9.0.2.0.25148086
+      Failed to get install image for component NSX_T_MANAGER, version 9.0.2.0.25150386
+      ```
+      The offline depot connection test reports "Depot Unknown Error" on port 80.
+    stem: "Which remediation matches Broadcom's guidance?"
+    options:
+      - { id: a, text: "Seed the depot with the required binaries, set the depot port to 443 in Fleet Management > Lifecycle > Depot Settings, download the bundles, then retry", correct: true, why: "Matches KB 439546: missing binaries plus wrong depot port." }
+      - { id: b, text: "Redeploy the management vCenter", why: "The management vCenter is not the problem; binaries for the new domain are missing." }
+      - { id: c, text: "Reduce the workload domain to two hosts", why: "Host count is unrelated to missing install images.", confusedWith: workload-domains }
+      - { id: d, text: "Restart all SDDC Manager services and retry immediately", why: "Retrying without the binaries fails again." }
+    explanation:
+      correct: "The domain manager needs install images for the target versions; they must be in the depot, reachable on the correct port, and downloaded before the retry."
+      concept: "Workflow failure → executor log → missing dependency."
+      architecture: "VCF Operations fleet management lifecycle settings define the depot; SDDC Manager services consume the binaries."
+      trap: "Seeing a validation error and assuming the spec values are wrong."
+
+  - id: ts-svc-007
+    type: cli
+    kind: command
+    difficulty: intermediate
+    topics: [logs-locations]
+    objective: "4.3"
+    lesson: troubleshooting-vcf-services
+    section: deep-dive
+    stem: "On a VCF 9.0.x SDDC Manager appliance (as root), type the command that collects SDDC Manager logs into a zip bundle using the SoS utility."
+    answers:
+      - "/opt/vmware/sddc-support/sos --sddc-manager-logs --zip"
+      - "/opt/vmware/sddc-support/sos --zip --sddc-manager-logs"
+    placeholder: "/opt/vmware/sddc-support/sos ..."
+    explanation:
+      correct: "/opt/vmware/sddc-support/sos --sddc-manager-logs --zip. Output goes to /var/log/vmware/vcf/sddc-support/ unless --log-location is given."
+      concept: "Preserve evidence before remediation."
+      architecture: "SSH as the vcf user, then su to root. --vcf-installer-logs collects installer logs; 9.1 adds --vcf-mgmt-svcs-logs."
+      trap: "sos runs on SDDC Manager/VCF Installer, not on ESX or vCenter."
+
+  - id: ts-svc-008
+    type: matching
+    kind: concept
+    difficulty: intermediate
+    topics: [logs-locations]
+    objective: "4.3"
+    lesson: troubleshooting-vcf-services
+    section: components
+    stem: "Match each log file with what you mainly find in it."
+    pairs:
+      - { id: p1, left: "/var/log/vmkernel.log (ESX)", right: "Device discovery, storage paths, NIC and vmknic events" }
+      - { id: p2, left: "/var/log/hostd.log (ESX)", right: "Host agent tasks and events for VMs and the host" }
+      - { id: p3, left: "/var/log/vpxa.log (ESX)", right: "vCenter agent communication and heartbeats" }
+      - { id: p4, left: "/var/log/vmware/vcf/domainmanager/domainmanager.log", right: "Deployment, workload domain, cluster and host workflows" }
+    explanation:
+      correct: "vmkernel = kernel/devices/network; hostd = host agent tasks; vpxa = vCenter agent; domainmanager = SDDC Manager/installer domain workflows."
+      concept: "Workflow → executor → evidence."
+      architecture: "Central syslog (VCF Operations for logs) lets you correlate these by time."
+      trap: "Looking for vCenter-relationship problems in hostd.log instead of vpxa.log."
+
+  - id: ts-svc-009
+    type: ordering
+    kind: troubleshooting
+    difficulty: advanced
+    topics: [troubleshooting-method, logs-locations]
+    objective: "4.1"
+    lesson: troubleshooting-vcf-services
+    section: how-it-works
+    stem: "A VCF workflow (e.g. adding a cluster) failed. Order the actions as recommended."
+    items:
+      - { id: a, text: "Read the failed task in the UI where it started: step, error text, timestamp" }
+      - { id: b, text: "Identify the executing component and open its log at that timestamp" }
+      - { id: c, text: "Find the first relevant error and check its dependency (DNS, NTP, certs, credentials, binaries)" }
+      - { id: d, text: "Collect a support bundle before changing anything significant" }
+      - { id: e, text: "Fix the cause and retry the workflow from the same UI" }
+      - { id: f, text: "Verify the end state in the target product" }
+    explanation:
+      correct: "UI task → executor log → first error + dependency → bundle → fix and retry → verify."
+      concept: "Workflow troubleshooting flow."
+      architecture: "VCF 9 starts workflows in vCenter/VCF Operations; SDDC Manager services execute them."
+      trap: "Retrying before fixing, or collecting evidence after a destructive step."
+
+  - id: ts-svc-010
+    type: single
+    kind: concept
+    difficulty: intermediate
+    topics: [certificates, passwords, fleet-management]
+    objective: "4.2"
+    lesson: troubleshooting-vcf-services
+    section: concept
+    stem: "A password rotation and a certificate replacement for VCF 9.0 components must be investigated. Where are these workflows managed?"
+    options:
+      - { id: a, text: "VCF Operations: Fleet Management > Passwords and Fleet Management > Certificates", correct: true, why: "Both moved to VCF Operations Fleet Management in 9.0." }
+      - { id: b, text: "SDDC Manager UI: Security > Password Management / Certificate Management", why: "VCF 5.x location.", confusedWith: sddc-manager }
+      - { id: c, text: "vCenter: Administration > Certificates only", why: "vCenter-local management bypasses VCF's distribution of trust.", confusedWith: vcenter }
+      - { id: d, text: "VCF Automation: Organization settings", why: "VCF Automation is the consumption layer.", confusedWith: vcf-automation }
+    explanation:
+      correct: "Fleet Management > Passwords and Fleet Management > Certificates (including Configure CA) in VCF Operations."
+      concept: "VCF 9 day-2 locations."
+      trap: "Using vCenter's own certificate tools for VCF-managed components."
+
+  - id: ts-svc-011
+    type: single
+    kind: troubleshooting
+    difficulty: expert
+    topics: [host-commissioning, vcf-ops-architecture]
+    objective: "4.2"
+    lesson: troubleshooting-vcf-services
+    section: deep-dive
+    context: |
+      In a VCF 9.1 environment two hosts appear in the workload domain vCenter cluster and run VMs, but VCF Operations
+      shows them blank or missing on the lifecycle page for the domain. They were added with vCenter's "Add Host" wizard
+      during an urgent capacity request.
+    stem: "What is the correct long-term fix?"
+    options:
+      - { id: a, text: "Remove the hosts from vCenter, reinstall ESX and commission them through the VCF workflow, then add them to the cluster", correct: true, why: "KB 427267: hosts added outside commissioning are not in the VCF inventory; the fix is proper commissioning." }
+      - { id: b, text: "Restart VCF Operations so it discovers the hosts", why: "An inventory sync may refresh mappings, but hosts never commissioned remain outside VCF lifecycle." }
+      - { id: c, text: "Add the hosts to a vSphere Lifecycle Manager baseline", why: "VCF uses image-based lifecycle and its own inventory; baselines do not commission hosts.", confusedWith: vlcm }
+      - { id: d, text: "Edit the SDDC Manager database to insert the hosts", why: "Unsupported and dangerous." }
+    explanation:
+      correct: "Hosts must enter VCF through commissioning (vCenter Unassigned Hosts in 9.x) so SDDC Manager and VCF Operations track them for lifecycle."
+      concept: "VCF inventory vs vCenter inventory."
+      architecture: "vCenter is not the source of truth for VCF lifecycle; the VCF inventory is."
+      trap: "A host that works in vCenter is not necessarily a VCF-managed host."
+
+  # ---------------------------------------------------------------- network / NSX / vSAN
+  - id: ts-net-001
+    type: cli
+    kind: command
+    difficulty: intermediate
+    topics: [mtu, vsan-health]
+    objective: "2.4"
+    lesson: troubleshooting-network-nsx-vsan
+    section: deep-dive
+    stem: "From an ESX host, type the vmkping command that tests a 9000-byte MTU path without fragmentation from vmk2 to 10.10.30.102."
+    answers:
+      - "vmkping -I vmk2 -d -s 8972 10.10.30.102"
+      - "vmkping -d -s 8972 -I vmk2 10.10.30.102"
+      - "vmkping -I vmk2 -s 8972 -d 10.10.30.102"
+    placeholder: "vmkping ..."
+    explanation:
+      correct: "vmkping -I vmk2 -d -s 8972 10.10.30.102: -d forbids fragmentation, -s 8972 = 9000 − 28 bytes of IP/ICMP headers."
+      concept: "MTU testing."
+      architecture: "Choose the vmknic of the traffic type you are testing (vSAN, vMotion) with -I."
+      trap: "Using -s 9000 (too big) or forgetting -d (fragmentation makes it 'pass')."
+
+  - id: ts-net-002
+    type: single
+    kind: troubleshooting
+    difficulty: intermediate
+    topics: [mtu, nsx-segments]
+    objective: "2.4"
+    lesson: troubleshooting-network-nsx-vsan
+    section: deep-dive
+    context: |
+      VMs on an overlay segment on different hosts can ping each other and open SSH sessions, but web pages and file
+      copies between them hang. From host A: `vmkping ++netstack=vxlan -d -s 1472 <TEP-B>` succeeds;
+      `vmkping ++netstack=vxlan -d -s 1572 <TEP-B>` fails.
+    stem: "What is the most likely cause?"
+    options:
+      - { id: a, text: "A hop between the TEPs has an MTU below the 1600 bytes NSX overlay needs", correct: true, why: "1472 works, 1572 fails: the path supports 1500 but not the Geneve overhead." }
+      - { id: b, text: "The TEP VLAN is missing on the switch", why: "Then even the 1472-byte test would fail.", confusedWith: l2-l3 }
+      - { id: c, text: "A distributed firewall rule blocks HTTP", why: "DFW would not cause the TEP vmkping difference.", confusedWith: nsx-security }
+      - { id: d, text: "The Tier-0 BGP session is down", why: "East-west traffic on one segment does not traverse the Tier-0.", confusedWith: nsx-routing }
+    explanation:
+      correct: "Small packets fit, encapsulated large ones do not. Raise MTU on the offending hop (switch port, inter-switch link, router)."
+      concept: "MTU symptoms are hangs, not hard failures."
+      architecture: "Geneve adds headers; NSX requires at least 1600 bytes on the underlay, many designs use 9000."
+      trap: "Blaming the application or firewall because 'ping works'."
+
+  - id: ts-net-003
+    type: single
+    kind: command
+    difficulty: advanced
+    topics: [nsx-transport]
+    objective: "2.4"
+    lesson: troubleshooting-network-nsx-vsan
+    section: cli-api
+    stem: "Why does an administrator use `++netstack=vxlan` when testing TEP-to-TEP connectivity with vmkping?"
+    options:
+      - { id: a, text: "Because NSX TEP vmknics live in a separate TCP/IP stack, so the test must be sent from that stack", correct: true, why: "Without it, vmkping uses the default stack and may test the wrong interface or route." }
+      - { id: b, text: "Because NSX uses VXLAN encapsulation in VCF 9", why: "NSX uses Geneve; the netstack name is historical.", confusedWith: nsx-segments }
+      - { id: c, text: "To force jumbo frames", why: "Packet size is controlled by -s and -d." }
+      - { id: d, text: "To bypass the distributed firewall", why: "vmkping from the TEP stack is not about DFW." }
+    explanation:
+      correct: "TEPs use their own netstack; ++netstack=vxlan sends from it."
+      concept: "VMkernel TCP/IP stacks."
+      trap: "Reading 'vxlan' as the encapsulation protocol; NSX overlay uses Geneve."
+
+  - id: ts-net-004
+    type: matching
+    kind: concept
+    difficulty: advanced
+    topics: [vsan-health, vsan-resilience]
+    objective: "2.3"
+    lesson: troubleshooting-network-nsx-vsan
+    section: deep-dive
+    stem: "Match each vSAN condition with its meaning."
+    pairs:
+      - { id: p1, left: "Network partition", right: "Hosts cannot reach each other over the vSAN network and form more than one group" }
+      - { id: p2, left: "Reduced availability / degraded object", right: "A component is missing but the object is still accessible and can be rebuilt" }
+      - { id: p3, left: "Inaccessible object", right: "Not enough components are available to satisfy the policy; data cannot be accessed" }
+    explanation:
+      correct: "Partition = network; degraded = still accessible, rebuildable; inaccessible = policy cannot be satisfied with what is reachable."
+      concept: "vSAN health states."
+      architecture: "Check membership with esxcli vsan cluster get and the vSAN vmknic with esxcli vsan network list."
+      trap: "Rebooting more hosts while objects are inaccessible makes it worse."
+
+  - id: ts-net-005
+    type: single
+    kind: troubleshooting
+    difficulty: intermediate
+    topics: [nsx-routing, nsx-edge]
+    objective: "2.4"
+    lesson: troubleshooting-network-nsx-vsan
+    section: how-it-works
+    context: |
+      Overlay VMs connected to a Tier-1 gateway can reach each other and the Tier-1's interfaces, but nothing outside.
+      The Tier-0 BGP sessions with the physical routers are Established. The physical router has no routes for the
+      overlay subnets.
+    stem: "What should be checked first?"
+    options:
+      - { id: a, text: "Route advertisement of connected segments on the Tier-1 (and redistribution on the Tier-0)", correct: true, why: "If the overlay subnets are not advertised up and redistributed into BGP, the router never learns them." }
+      - { id: b, text: "MTU on the host TEP VLAN", why: "East-west works; the missing routes on the router point to advertisement.", confusedWith: mtu }
+      - { id: c, text: "The NSX Manager cluster status", why: "Management plane health does not explain a missing route on an established BGP session.", confusedWith: nsx-architecture }
+      - { id: d, text: "vSAN health", why: "Unrelated.", confusedWith: vsan-health }
+    explanation:
+      correct: "North-south needs Tier-1 route advertisement, Tier-0 redistribution into BGP and BGP sessions; here only the first two can explain the evidence."
+      concept: "Routing chain from segment to physical router."
+      architecture: "Tier-1 DR on hosts, Tier-0 SR on edges peering with the physical network."
+      trap: "An established BGP session does not mean the right prefixes are advertised."
+
+  - id: ts-net-006
+    type: ordering
+    kind: troubleshooting
+    difficulty: intermediate
+    topics: [troubleshooting-method, mtu, l2-l3]
+    objective: "2.4"
+    lesson: troubleshooting-network-nsx-vsan
+    section: troubleshooting
+    stem: "Order these data-path checks bottom-up for 'VMs on different hosts cannot communicate'."
+    items:
+      - { id: a, text: "Physical link up and correct VLAN trunked on every host port" }
+      - { id: b, text: "IP addressing and reachability of the vmknic/TEP (vmkping -s 1472)" }
+      - { id: c, text: "MTU end-to-end (vmkping -d -s 1572 / 8972)" }
+      - { id: d, text: "NSX tunnel and segment realization status" }
+      - { id: e, text: "Distributed firewall rules for the flow" }
+      - { id: f, text: "Application test with real payload sizes" }
+    explanation:
+      correct: "Link/VLAN → IP → MTU → overlay state → security policy → application."
+      concept: "Bottom-up walk with a proof at each layer."
+      trap: "Starting with the application or the firewall before proving the underlay."
+
+  - id: ts-net-007
+    type: single
+    kind: scenario
+    difficulty: expert
+    topics: [mtu, vsan-health, nsx-transport]
+    objective: "2.3"
+    lesson: troubleshooting-network-nsx-vsan
+    section: real-world-scenario
+    context: |
+      After a switch replacement, all hosts report vSAN network health warnings and NSX tunnels down. The vSphere Client
+      and SSH to hosts work. Management uses MTU 1500; vSAN and TEP networks use 9000. `vmkping -I vmk2 -d -s 1472`
+      succeeds between hosts; `-s 8972` fails.
+    stem: "Which action resolves the root cause?"
+    options:
+      - { id: a, text: "Enable jumbo frames (≥9000, e.g. 9216) on the new switch ports carrying vSAN and TEP VLANs", correct: true, why: "Exactly the traffic types at 9000 fail; 1472 works, 8972 fails: the new switch is at 1500." }
+      - { id: b, text: "Lower the vSAN vmknic MTU to 1500 on every host and the TEP MTU to 1500", why: "TEP needs ≥1600; lowering everything breaks NSX and only hides the switch misconfiguration.", confusedWith: nsx-transport }
+      - { id: c, text: "Restart the vSAN health service on vCenter", why: "The health service correctly reports a real network problem.", confusedWith: vsan-health }
+      - { id: d, text: "Recreate the NSX transport node profile", why: "Configuration on hosts did not change; the switch did." }
+    explanation:
+      correct: "The split between working (1500) and failing (9000) traffic types plus the vmkping sizes points to the new switch's MTU."
+      concept: "Scoping by traffic type and test size."
+      architecture: "MTU must be consistent on every hop: switch, Proxmox/VDS, vmknic, TEP."
+      trap: "Lowering host MTUs instead of fixing the fabric."
+
+  - id: ts-net-008
+    type: single
+    kind: command
+    difficulty: advanced
+    topics: [vsan-health]
+    objective: "2.3"
+    lesson: troubleshooting-network-nsx-vsan
+    section: cli-api
+    context: |
+      On esx-03: `esxcli vsan cluster get` shows `Sub-Cluster Member Count: 1` while the other two hosts show 2.
+    stem: "Which command on esx-03 is the most useful next check?"
+    options:
+      - { id: a, text: "esxcli vsan network list", correct: true, why: "Shows whether a vmknic is configured/tagged for vSAN traffic on that host — a common cause of a single-host partition." }
+      - { id: b, text: "esxcli system version get", why: "Version mismatch is possible but far less likely and not the first test." }
+      - { id: c, text: "esxcli hardware cpu list", why: "CPU inventory does not explain a partition." }
+      - { id: d, text: "services.sh restart", why: "Explicitly discouraged on vSAN hosts (KB 320280) and not a check." }
+    explanation:
+      correct: "A host alone in its partition → verify its vSAN vmknic (esxcli vsan network list), then vmkping -I <vsan-vmk> -d to peers."
+      concept: "vSAN partition diagnosis."
+      architecture: "vSAN membership communication uses the vSAN-tagged vmknic."
+      trap: "Jumping to disruptive restarts."
+
+  # ---------------------------------------------------------------- exam strategy
+  - id: ex-strat-001
+    type: single
+    kind: concept
+    difficulty: foundation
+    version: vcf9
+    topics: [vcf-overview]
+    lesson: exam-strategy-2v0-17-25
+    section: concept
+    stem: "Which set of facts matches the official 2V0-17.25 exam guide?"
+    options:
+      - { id: a, text: "60 items, 135 minutes, passing score 300 (scaled), based on VCF 9.0", correct: true, why: "Exactly what the exam guide states." }
+      - { id: b, text: "70 items, 130 minutes, passing score 300, based on VCF 5.2", why: "Wrong item count, duration and version." }
+      - { id: c, text: "60 items, 90 minutes, passing score 70%", why: "Duration wrong; the guide uses a scaled score, not a percentage." }
+      - { id: d, text: "50 items, 135 minutes, passing score 350 (scaled)", why: "Wrong item count and passing score." }
+    explanation:
+      correct: "60 items, 135 minutes, 300 using a scaled method, content based on VCF 9.0, proctored by Pearson VUE."
+      concept: "Know the exam format."
+      trap: "Converting the scaled 300 into a percentage; Broadcom does not publish the conversion."
+
+  - id: ex-strat-002
+    type: multi
+    select: 2
+    kind: concept
+    difficulty: foundation
+    topics: [vcf-overview]
+    lesson: exam-strategy-2v0-17-25
+    section: concept
+    stem: "Which exam guide sections have no testable objectives? (Choose two.)"
+    options:
+      - { id: a, text: "Section 1 – IT Architectures, Technologies, Standards", correct: true, why: "Marked as having no testable objectives." }
+      - { id: b, text: "Section 2 – VMware Cloud Foundation Fundamentals", why: "Contains objectives 2.1–2.4." }
+      - { id: c, text: "Section 3 – Plan and Design VMware by Broadcom Solution", correct: true, why: "Marked as having no testable objectives." }
+      - { id: d, text: "Section 4 – Deploy, Configure, and Operate VMware Cloud Foundation", why: "Contains objectives 4.1–4.4." }
+    explanation:
+      correct: "Sections 1 and 3 have no testable objectives; Sections 2 and 4 are tested."
+      concept: "Focus preparation on testable objectives."
+      trap: "Spending study time on design theory that is not directly tested — though design reasoning still helps with scenarios."
+
+  - id: ex-strat-003
+    type: single
+    kind: scenario
+    difficulty: intermediate
+    topics: [vcf-overview, vcf-terminology]
+    objective: "4.1"
+    lesson: exam-strategy-2v0-17-25
+    section: common-exam-traps
+    context: |
+      An exam question asks which tool performs the initial deployment of a new VCF 9.0 fleet. A study guide written for
+      VCF 5.2 says "Cloud Builder".
+    stem: "How should the candidate answer?"
+    options:
+      - { id: a, text: "VCF Installer, because the exam is based on VCF 9.0", correct: true, why: "The exam guide states content is based on VCF 9.0, where the VCF Installer replaces Cloud Builder." }
+      - { id: b, text: "Cloud Builder, because it is still the bring-up tool", why: "That is VCF 5.x behaviour.", confusedWith: vcf-installer }
+      - { id: c, text: "SDDC Manager UI, because it deploys everything", why: "SDDC Manager is what the installer can become; it does not perform the initial fleet deployment in 9.0.", confusedWith: sddc-manager }
+      - { id: d, text: "VCF Operations, because it manages the fleet", why: "VCF Operations manages and orchestrates day-2; it is deployed by the installer.", confusedWith: fleet-management }
+    explanation:
+      correct: "Answer for 9.0: VCF Installer."
+      concept: "Avoid mixing generations."
+      trap: "Older study material silently describing VCF 5.x."
+
+  - id: ex-strat-004
+    type: single
+    kind: concept
+    difficulty: foundation
+    version: general
+    topics: [vcf-overview]
+    lesson: exam-strategy-2v0-17-25
+    section: how-it-works
+    stem: "On this platform, why is the readiness score capped until you complete a full mock exam?"
+    options:
+      - { id: a, text: "Because readiness must include performance under exam conditions (60 questions, 135 minutes), not only topic quizzes", correct: true, why: "The cap prevents one good quiz from signalling readiness." }
+      - { id: b, text: "Because Broadcom requires a mock exam before booking", why: "Broadcom has no such requirement; this is the platform's design." }
+      - { id: c, text: "Because lesson completion does not count at all", why: "Curriculum progress is one of the readiness signals." }
+      - { id: d, text: "Because the estimated scaled score is official", why: "The estimated scaled score is the platform's own estimate." }
+    explanation:
+      correct: "The readiness score combines several signals and stays capped at 60 without a mock exam; it also decays slightly when the last mock is older than 21 days."
+      concept: "Honest self-assessment."
+      trap: "Treating the estimated scaled score or one quiz as proof of readiness."

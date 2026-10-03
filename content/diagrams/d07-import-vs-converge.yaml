@@ -1,0 +1,33 @@
+id: d07-import-vs-converge
+title: Convergence vs import of an existing vCenter
+description: >
+  Two brownfield paths. Convergence: a standalone vCenter with its hosts (and optionally Aria components) is converged
+  by the VCF Installer into the management domain of a new VCF instance; the installer deploys the missing pieces such
+  as SDDC Manager, NSX and VCF Operations. Import: in an existing VCF instance, VCF Operations runs the Import a vCenter
+  wizard, SDDC Manager prechecks the brownfield vCenter (vLCM images, fully automated DRS, VDS, static IPs, FQDN hosts,
+  no ELM) and the vCenter becomes a VI workload domain, with a new or existing NSX Manager and DFW set to allow-all.
+width: 1000
+height: 600
+groups:
+  - { id: g-conv, x: 20, y: 20, w: 460, h: 560, label: "Convergence -> new management domain", kind: mgmt }
+  - { id: g-imp, x: 520, y: 20, w: 460, h: 560, label: "Import -> new VI workload domain", kind: compute }
+nodes:
+  - { id: bvc1, x: 60, y: 70, w: 380, h: 60, label: "Standalone vCenter + clusters", sublabel: "no VCF yet", kind: external, info: "Existing vSphere (optionally Aria Operations/Automation). Minimum 3 hosts with vSAN or 2 with external storage (simple), 4 for HA." }
+  - { id: inst, x: 60, y: 200, w: 380, h: 60, label: "VCF Installer", sublabel: "Existing Components: select vCenter", kind: mgmt, component: vcf-installer, info: "Convergence is a VCF Installer workflow. ELM must be broken first; no VCHA." }
+  - { id: add1, x: 60, y: 330, w: 380, h: 60, label: "Deploy SDDC Manager, NSX, VCF Operations...", kind: ops, info: "The missing VCF components are deployed around the running vCenter. NSX convergence: not in 9.0.0, supported for non-ELM NSX from 9.0.1." }
+  - { id: md, x: 60, y: 460, w: 380, h: 60, label: "Management domain of new VCF instance", kind: mgmt, component: management-domain, info: "All clusters of the vCenter become part of the management domain." }
+  - { id: ops, x: 560, y: 70, w: 380, h: 60, label: "VCF Operations", sublabel: "Add Workload Domain > Import a vCenter", kind: ops, component: vcf-operations, info: "Inventory > Detailed View > VCF Instances > instance > Add Workload Domain > Import a vCenter." }
+  - { id: pre, x: 560, y: 200, w: 380, h: 60, label: "Thumbprints + prechecks", sublabel: "via SDDC Manager", kind: security, component: sddc-manager, info: "vCenter/ESX 8.0 U1+, SSH on vCenter, FQDN hosts, vLCM images, fully automated DRS, VDS 8.0+, static VMkernel IPs, no ELM, no vVols." }
+  - { id: nsx, x: 560, y: 330, w: 380, h: 60, label: "NSX: reuse existing or deploy new", sublabel: "Standard 1 node / HA 3 nodes", kind: nsx, component: nsx-manager, info: "New NSX is deployed if the vCenter has none. DFW enabled with allow-all; NSX activated on distributed port groups." }
+  - { id: wld, x: 560, y: 460, w: 380, h: 60, label: "VI workload domain", sublabel: "hosts of imported clusters via vSphere Client", kind: compute, component: workload-domain, info: "Imported clusters: add/remove hosts in the vSphere Client; new SDDC clusters can use commissioned hosts." }
+edges:
+  - { from: bvc1, to: inst, kind: mgmt }
+  - { from: inst, to: add1, kind: mgmt }
+  - { from: add1, to: md, kind: mgmt }
+  - { from: ops, to: pre, kind: mgmt }
+  - { from: pre, to: nsx, kind: mgmt }
+  - { from: nsx, to: wld, kind: mgmt }
+steps:
+  - { title: "Convergence", text: "No VCF yet: the VCF Installer converges a vCenter into a new management domain.", highlight: [bvc1, inst, add1, md] }
+  - { title: "Import", text: "VCF exists: VCF Operations imports a vCenter as a workload domain after prechecks.", highlight: [ops, pre] }
+  - { title: "NSX and result", text: "NSX reused or deployed; DFW allow-all; imported clusters keep vSphere Client host management.", highlight: [nsx, wld] }

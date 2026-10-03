@@ -1,0 +1,104 @@
+# Objectives of exam 2V0-17.25 "VMware Cloud Foundation 9.0 Administrator", copied from the official exam guide:
+# https://docs.broadcom.com/doc/vmware-cloud-foundation-administrator-exam-guide
+# Sections 1 and 3 have no testable objectives.
+# Each item gets an id <objective>.<n> so lessons and questions can tag a specific item.
+objectives:
+  - id: "2.1"
+    section: "Section 2 – VMware Cloud Foundation Fundamentals"
+    title: Private Cloud Vision
+    topics: [private-cloud, sddc, vcf-overview]
+    items:
+      - Describe the principles of Private Cloud
+      - Identify the use cases for Private Cloud
+      - Identify the value proposition for Private Cloud
+  - id: "2.2"
+    section: "Section 2 – VMware Cloud Foundation Fundamentals"
+    title: VMware Compute Fundamentals
+    topics: [hypervisors, esx-host, vcenter, vsphere-cluster, vsphere-ha, drs, vm-management, cpu-memory-virt, virtual-hardware]
+    items:
+      - Given a scenario, deploy and configure VCF compute components (vCenter and ESX)
+      - Given a scenario, configure a vSphere Cluster
+      - Given a scenario, deploy and configure virtual machines
+      - Given a scenario, manage a virtual machine through vCenter
+  - id: "2.3"
+    section: "Section 2 – VMware Cloud Foundation Fundamentals"
+    title: VMware Storage Fundamentals
+    topics: [datastores, vsan-architecture, vsan-policies, vsan-resilience, vsan-capacity, vsan-health]
+    items:
+      - Given a scenario, configure vSphere storage
+      - Given a scenario, describe the use cases for VMware vSAN ESA or VMware vSAN OSA
+      - Given a scenario, deploy a VMware vSAN cluster
+      - Given a scenario, configure vSAN Storage policies
+      - Given a scenario, identify the options for Resilience and Data Availability in VMware vSAN
+      - Given a scenario, describe the purpose of vSAN Space Efficiency
+  - id: "2.4"
+    section: "Section 2 – VMware Cloud Foundation Fundamentals"
+    title: VMware Network Fundamentals
+    topics: [l2-l3, mtu, vds, vcf-network-design, nsx-architecture, nsx-transport, nsx-segments, nsx-edge, nsx-routing, nsx-vpc, nsx-security]
+    items:
+      - Given a scenario, differentiate between VCF networking components
+      - Given a scenario, configure virtual networking fabrics and features
+      - Given a scenario, configure virtual networking connectivity and routing
+      - Given a scenario, configure virtual networking services
+  - id: "4.1"
+    section: "Section 4 – Deploy, Configure, and Operate VMware Cloud Foundation"
+    title: "VCF: Deploy and Configure"
+    topics: [vcf-fleet, management-domain, deployment-models, deployment-planning, vcf-installer, deployment-validation, workload-domains, host-commissioning, wld-storage, supervisor, nsx-vpc, nsx-edge]
+    items:
+      - Identify the components of a VCF Deployment
+      - Given a scenario identify the appropriate VMware Cloud Foundation deployment models
+      - Given a scenario, describe the deployment of a VMware Cloud Foundation-based private cloud
+      - Given a scenario, identify the additional components required to complete the deployment of a VMware Cloud Foundation-based private cloud
+      - Given a scenario, describe the deployment of and configure a VMware Cloud Foundation (VCF) Network Gateway
+      - Given a scenario, describe the deployment of VMware Cloud Foundation (VCF) Networking
+      - Given a scenario, describe the deployment of a Workload Domain in VMware Cloud Foundation (VCF)
+      - Given a scenario, configure Workload Domain storage
+      - Given a scenario, configure Supervisor within a Workload Domain
+  - id: "4.2"
+    section: "Section 4 – Deploy, Configure, and Operate VMware Cloud Foundation"
+    title: "VCF: Manage"
+    topics: [fleet-management, identity-sso, rbac, licensing, certificates, passwords, vcenter-import, lcm-concepts, lcm-workflow, lcm-recovery, vlcm]
+    items:
+      - Given a scenario, differentiate between the Fleet Management capabilities in VCF Operations
+      - Given a scenario, configure Identity Management and Role-based Access Control (RBAC) in VMware Cloud Foundation
+      - Given a scenario, configure license management within VMware Cloud Foundation
+      - Given a scenario, configure certificate management within VMware Cloud Foundation
+      - Given a scenario, configure Password Management within VMware Cloud Foundation
+      - Given a scenario, identify the tasks and processes required to complete the import of an existing vCenter into VMware Cloud Foundation
+      - Given a scenario, manage the lifecycle of VMware Cloud Foundation
+  - id: "4.3"
+    section: "Section 4 – Deploy, Configure, and Operate VMware Cloud Foundation"
+    title: "VCF: Operations"
+    topics: [vcf-ops-architecture, metrics-properties, dashboards-alerts, vcf-ops-logs, network-ops, health-diagnostics, compliance-drift]
+    items:
+      - Given a scenario, identify the use case for VCF Network Operations and VCF Operations (Logs)
+      - Given a scenario, describe the cluster components and deployment options of VCF Operations
+      - Given a scenario, differentiate between metrics and properties
+      - Given a scenario, create custom Views and Reports in VCF Operations
+      - Given a scenario, create and share dashboards in VCF Operations
+      - Given a scenario, configure Alerting in VCF Operations
+      - Given a scenario, monitor log events in VCF Operations
+      - Given a scenario, monitor VMware Cloud Foundation components using VCF Health and Diagnostics
+      - Given a scenario, monitor networks using VCF Network Operations
+      - Given a scenario, monitor vSAN storage using VCF Storage Operations
+      - Given a scenario, configure VCF Operations policies
+      - Given a scenario, monitor application using VCF Operations
+      - Given a scenario, monitor security hardening and compliance using VCF Operations
+      - Given a scenario, configure configuration drift in VCF Operations
+  - id: "4.4"
+    section: "Section 4 – Deploy, Configure, and Operate VMware Cloud Foundation"
+    title: "VCF: Consume and Automate"
+    topics: [vcf-automation, vcfa-tenancy, vcfa-org-admin, supervisor, apis-powercli]
+    items:
+      - Given a scenario, identify the use case for VCF Automation
+      - Given a scenario, describe the components and deployment options of VCF Automation
+      - Given a scenario, configure a Region in VCF Automation
+      - Given a scenario, configure multi-organizational tenancy in VCF Automation
+      - Given a scenario, configure Provider Networking in VCF Automation
+      - Given a scenario, configure a provider content library in VCF Automation
+      - Given a scenario, complete tasks as an organizational administrator in VCF Automation
+      - Given a scenario, configure organizational networks in VCF Automation
+      - Given a scenario, create and manage content in VCF Automation
+      - Given a scenario, use extensibility to automate business processes in VCF Automation
+      - Given a scenario, create and manage organizational governance policies in VCF Automation
+      - Given a scenario, describe the deployment of Supervisor-based Services in VMware Cloud Foundation

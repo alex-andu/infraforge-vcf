@@ -1,0 +1,37 @@
+id: d-lab-vsan-esa-cluster-logical
+title: "Lab: nested vSAN ESA cluster on Proxmox"
+description: >
+  One Proxmox VE server hosts four nested ESX VMs (esx-lab-01 to esx-lab-04) and the vCenter appliance from the earlier
+  vCenter lab. Each nested ESX VM has a boot disk and two virtual NVMe disks created with QEMU NVMe emulation and
+  backed by the physical 1 TB NVMe SSD. Each nested host has VMkernel adapters for management, vMotion and vSAN; the
+  vSAN VLAN uses MTU 9000 end to end (Proxmox bridge, physical switch, nested VDS). vCenter manages the cluster
+  lab-vsan, which builds one vSAN ESA storage pool per host and one vSAN datastore. The vSAN ESA mock hardware VIB
+  is installed on each nested host so the ESA compatibility check passes; this is unsupported and lab-only.
+width: 1000
+height: 600
+groups:
+  - { id: g-pve, x: 20, y: 20, w: 960, h: 560, label: "Proxmox VE server (2 × 28-core, 256 GB RAM)", kind: external }
+  - { id: g-cl, x: 40, y: 170, w: 920, h: 250, label: "vSphere cluster lab-vsan (vSAN ESA)", kind: compute }
+nodes:
+  - { id: vc, x: 400, y: 60, w: 200, h: 60, label: "vCenter", sublabel: "from lab-vcenter-cluster-ha-drs", kind: mgmt, component: vcenter, info: "Manages the cluster and the vSAN configuration, health service and storage policies." }
+  - { id: e1, x: 60, y: 220, w: 200, h: 80, label: "esx-lab-01", sublabel: "boot + 2 × virtual NVMe", kind: compute, info: "Nested ESX VM. Disks for vSAN must be on an NVMe controller for ESA. Mock VIB installed." }
+  - { id: e2, x: 290, y: 220, w: 200, h: 80, label: "esx-lab-02", sublabel: "boot + 2 × virtual NVMe", kind: compute, info: "Nested ESX VM." }
+  - { id: e3, x: 520, y: 220, w: 200, h: 80, label: "esx-lab-03", sublabel: "boot + 2 × virtual NVMe", kind: compute, info: "Nested ESX VM." }
+  - { id: e4, x: 740, y: 220, w: 200, h: 80, label: "esx-lab-04", sublabel: "boot + 2 × virtual NVMe", kind: compute, info: "Nested ESX VM. The fourth host lets vSAN rebuild after one host failure." }
+  - { id: ds, x: 300, y: 330, w: 400, h: 60, label: "vsanDatastore (ESA)", sublabel: "one storage pool per host", kind: storage, component: vsan, info: "Shared datastore built from the 8 virtual NVMe devices." }
+  - { id: nvme, x: 60, y: 460, w: 260, h: 70, label: "Physical 1 TB NVMe", sublabel: "LVM-thin / dir backing", kind: storage, info: "Backs the virtual NVMe disks. Capacity and endurance are shared by all nested hosts — keep test VMs small." }
+  - { id: br, x: 380, y: 460, w: 260, h: 70, label: "Proxmox bridge vmbr1", sublabel: "VLAN-aware, MTU 9000", kind: network, info: "Trunk carrying management (VLAN 10), vMotion (VLAN 20) and vSAN (VLAN 30) VLANs to the nested ESX VMs." }
+  - { id: sw, x: 700, y: 460, w: 240, h: 70, label: "Physical switch", sublabel: "jumbo frames enabled", kind: network, info: "Only needed if vSAN traffic leaves the server; inside one Proxmox host the bridge MTU matters most." }
+edges:
+  - { from: vc, to: g-cl, label: "manages", kind: mgmt }
+  - { from: e1, to: ds, kind: storage }
+  - { from: e2, to: ds, kind: storage }
+  - { from: e3, to: ds, kind: storage }
+  - { from: e4, to: ds, kind: storage }
+  - { from: nvme, to: g-cl, label: "virtual NVMe disks", kind: storage, dashed: true }
+  - { from: br, to: g-cl, label: "mgmt / vMotion / vSAN VLANs", kind: data }
+  - { from: br, to: sw, kind: data, dashed: true }
+steps:
+  - { title: "Proxmox layer", text: "The physical NVMe backs the nested disks; a VLAN-aware bridge with MTU 9000 carries the networks.", highlight: [nvme, br] }
+  - { title: "Nested hosts", text: "Four ESX VMs with virtual NVMe devices and the mock hardware VIB.", highlight: [e1, e2, e3, e4] }
+  - { title: "vSAN ESA", text: "vCenter enables vSAN ESA; each host's NVMe devices form a storage pool and one datastore appears.", highlight: [vc, ds] }

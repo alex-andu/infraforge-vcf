@@ -1,0 +1,190 @@
+id: inc-dns-reverse-lookup
+title: VCF Installer validation fails on the vCenter FQDN
+difficulty: intermediate
+version: vcf9
+topics: [dns, deployment-validation, deployment-planning]
+lessons: [dns-ntp-dependencies]
+summary: A greenfield VCF 9 deployment stops at validation with a DNS error about the vCenter FQDN. Forward lookups look fine, the network team swears DNS "works", and several unrelated warnings compete for attention.
+symptoms:
+  - "VCF Installer validation fails with: Please ensure there are no DNS aliases configured for vCenter FQDN. vCenter IP 172.16.10.20 ..."
+  - All four ESX hosts pass their own DNS checks in the same validation run.
+  - The DNS team migrated the lab.internal zones to new DNS servers two weeks ago.
+  - The deployment engineer notices the VCF Installer web UI shows a certificate warning in the browser.
+environment: |
+  Greenfield VCF 9.0 fleet deployment with the VCF Installer appliance (`vcf-installer.lab.internal`, 172.16.10.4).
+  Four ESX 9 hosts esx-01..04 (172.16.11.11-14), management VM network 172.16.10.0/24. Two DNS servers
+  172.16.0.10 (dns-a) and 172.16.0.11 (dns-b), NTP 172.16.0.10. vCenter `vcenter-01.lab.internal` is planned
+  at 172.16.10.20 and does not exist yet.
+evidence:
+  - id: ev-validation
+    category: logs
+    action: Open the failed validation result in the VCF Installer
+    output: |
+      ```log
+      Validation failed with the following errors:
+        VcManager vcenterFQDN vcenter-01.lab.internal:
+        Please ensure there are no DNS aliases configured for vCenter FQDN. vCenter IP 172.16.10.20 ...
+      ESX host DNS validation ............ PASSED (4/4)
+      NTP server validation .............. PASSED
+      ```
+    relevance: key
+    note: The check that failed is the reverse/uniqueness check for the vCenter IP, not general DNS. Hosts passing proves DNS servers are reachable.
+  - id: ev-fwd
+    category: dns
+    action: Run nslookup vcenter-01.lab.internal from the VCF Installer appliance
+    output: |
+      ```shell
+      $ nslookup vcenter-01.lab.internal
+      Server:   172.16.0.10
+      Address:  172.16.0.10#53
+
+      Name:     vcenter-01.lab.internal
+      Address:  172.16.10.20
+      ```
+    relevance: useful
+    note: Forward lookup is correct. The failing direction must be reverse.
+  - id: ev-rev
+    category: dns
+    action: Run nslookup 172.16.10.20 from the VCF Installer appliance (repeat it three times)
+    output: |
+      ```shell
+      $ nslookup 172.16.10.20
+      20.10.16.172.in-addr.arpa   name = vc01-old.lab.internal.
+      20.10.16.172.in-addr.arpa   name = vcenter-01.lab.internal.
+      ```
+    relevance: key
+    note: Two PTR records for the same IP. The IP does not uniquely resolve to the vCenter FQDN – exactly what the validation message describes.
+  - id: ev-dig-both
+    category: dns
+    action: Run dig +short -x 172.16.10.20 against each DNS server
+    output: |
+      ```shell
+      $ dig +short -x 172.16.10.20 @172.16.0.10
+      vc01-old.lab.internal.
+      vcenter-01.lab.internal.
+      $ dig +short -x 172.16.10.20 @172.16.0.11
+      vc01-old.lab.internal.
+      vcenter-01.lab.internal.
+      ```
+    relevance: key
+    note: Both servers carry the duplicate (zone replicated from the migration). Fixing one server only would cause intermittent failures.
+  - id: ev-zone
+    category: dns
+    action: Ask the DNS team for the reverse zone records of 172.16.10.0/24
+    output: |
+      ```log
+      ; zone 10.16.172.in-addr.arpa (exported from dns-a)
+      4   IN PTR vcf-installer.lab.internal.
+      20  IN PTR vcenter-01.lab.internal.
+      20  IN PTR vc01-old.lab.internal.      ; migrated from legacy server
+      21  IN PTR nsx-01.lab.internal.
+      ```
+    relevance: useful
+    note: Confirms the stale record imported during the migration – an old vCenter that used the same IP.
+  - id: ev-ping
+    category: network
+    action: Ping 172.16.10.20 from the VCF Installer
+    output: |
+      ```shell
+      $ ping -c 3 172.16.10.20
+      3 packets transmitted, 0 received, 100% packet loss
+      ```
+    relevance: noise
+    note: Expected – vCenter has not been deployed yet. It also shows the IP is not in use by another device, which is good.
+  - id: ev-cert
+    category: certificates
+    action: Inspect the browser certificate warning on the VCF Installer UI
+    output: |
+      ```log
+      Issuer: CN=vcf-installer.lab.internal (self-signed)
+      Valid from: 2026-09-28  Valid to: 2028-09-27
+      ```
+    relevance: noise
+    note: A self-signed appliance certificate is normal for a fresh installer and unrelated to DNS validation.
+  - id: ev-ntp
+    category: ntp
+    action: Check time on the VCF Installer and one ESX host
+    output: |
+      ```shell
+      $ date -u
+      Thu Oct  1 09:14:03 UTC 2026
+      [root@esx-01:~] esxcli system time get
+      2026-10-01T09:14:04Z
+      ```
+    relevance: noise
+    note: Clocks agree within a second; time is not the problem.
+  - id: ev-esx-dns
+    category: hosts
+    action: Run esxcli network ip dns server list on esx-01
+    output: |
+      ```shell
+      DNSServers: 172.16.0.10, 172.16.0.11
+      ```
+    relevance: useful
+    note: Hosts use the same DNS servers as the installer; the issue is the data in DNS, not which server is queried.
+idealSequence: [ev-validation, ev-fwd, ev-rev, ev-dig-both, ev-zone]
+rootCause:
+  - id: rc-a
+    text: The reverse zone holds two PTR records for 172.16.10.20 (a stale vc01-old record), so the vCenter IP does not uniquely resolve to its FQDN.
+    correct: true
+    why: The validation message, the double nslookup answer and the zone export all point to the duplicate PTR.
+  - id: rc-b
+    text: The A record for vcenter-01.lab.internal is missing.
+    why: Forward lookup returns 172.16.10.20 correctly.
+  - id: rc-c
+    text: The VCF Installer clock is out of sync with the ESX hosts.
+    why: Time matches within a second and NTP validation passed.
+  - id: rc-d
+    text: The IP 172.16.10.20 is already used by another device.
+    why: The ping fails, showing nothing answers on that IP; the message is about DNS aliases, not IP conflicts.
+nextStep:
+  - id: ns-a
+    text: Query the reverse lookup for 172.16.10.20 against each configured DNS server and review the reverse zone.
+    correct: true
+    why: Confirms the scope (both servers) and the exact records to remove.
+  - id: ns-b
+    text: Restart the VCF Installer services and rerun validation.
+    why: The installer reports DNS data accurately; restarting changes nothing.
+  - id: ns-c
+    text: Replace the VCF Installer certificate with a CA-signed certificate.
+    why: Unrelated to DNS validation.
+remediation:
+  - id: rm-a
+    text: Delete the stale vc01-old PTR record so 172.16.10.20 has exactly one PTR (vcenter-01.lab.internal), make sure the change is on both DNS servers, then rerun validation.
+    correct: true
+    why: Fixes the data at the source and satisfies the uniqueness check for every future workflow.
+  - id: rm-b
+    text: Add a CNAME vc01-old pointing to vcenter-01.
+    why: Adds another alias; the IP would still have two PTRs and aliases are exactly what the check rejects.
+  - id: rm-c
+    text: Add an /etc/hosts entry for the vCenter on the VCF Installer.
+    why: A local hack that does not fix DNS for other components and may not be honoured by the validation; certificates and later workflows still use DNS.
+  - id: rm-d
+    text: Change the planned vCenter IP in the deployment spec to 172.16.10.29.
+    why: Works around the symptom but leaves stale records in the zone and diverges from the design; only acceptable if the IP plan itself was wrong.
+validation:
+  - id: vl-a
+    text: dig +short -x 172.16.10.20 returns exactly one line (vcenter-01.lab.internal.) from both DNS servers and from the installer, and the VCF Installer validation passes.
+    correct: true
+    why: Proves the data is consistent everywhere and that the installer accepts it.
+  - id: vl-b
+    text: nslookup vcenter-01.lab.internal returns 172.16.10.20.
+    why: That was already true before the fix; it does not test reverse lookup.
+hints:
+  - The message mentions aliases. What would make one IP look like it has more than one name?
+  - Forward lookups are fine. Test the other direction.
+  - Run the reverse lookup a few times, against each DNS server. How many names come back?
+debrief: |
+  VCF requires forward **and** reverse DNS for every management component, and validation checks that the vCenter IP
+  **uniquely** resolves back to its FQDN (KB 437102). The migration copied an old PTR for a decommissioned vCenter that
+  used the same IP, so reverse lookup returned two names. The red herrings were typical: the unreachable vCenter IP
+  (it does not exist yet), the self-signed installer certificate and time (both healthy).
+
+  Efficient path: read the exact validation message → test forward (OK) → test reverse (two names) → confirm on both
+  DNS servers → fix the zone → verify with `dig +short -x` returning one line → rerun validation. Prevention: include
+  reverse-zone checks and "one IP, one PTR" in the readiness checklist and in DNS migration plans.
+sources:
+  - title: "Broadcom KB 437102 – VCF Installer precheck failure: DNS aliases for vCenter FQDN"
+    url: https://knowledge.broadcom.com/external/article/437102/vcf-installer-precheck-failure-please-en.html
+  - title: "VCF 9.0 Design Library – Network Fabric Detailed Design (VCF-NET-REQD-IPA-002)"
+    url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/design/design-library/external-services-design/datacenter-network-requirements/network-fabric-design.html

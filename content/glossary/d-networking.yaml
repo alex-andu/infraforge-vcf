@@ -1,0 +1,218 @@
+terms:
+  - id: vlan
+    term: VLAN
+    expansion: Virtual Local Area Network (IEEE 802.1Q)
+    definition: A logical layer 2 broadcast domain carved out of a physical switch. Frames carry a 12-bit VLAN ID (1–4094) in an 802.1Q tag. Hosts in one VLAN normally share one IP subnet.
+    whyItMatters: VCF puts each infrastructure traffic type (ESX management, vMotion, vSAN, host TEP, edge uplinks) in its own VLAN per cluster. A VLAN missing from a trunk is a classic cause of failed validation or commissioning.
+    version: general
+    related: [vlan-trunk, first-hop-gateway, mtu]
+    lessons: [network-fundamentals-for-vcf, vcf-network-design]
+    labs: [lab-network-readiness]
+  - id: vlan-trunk
+    term: 802.1Q trunk
+    definition: A switch port that carries frames of many VLANs, each identified by its 802.1Q tag. The opposite is an access port carrying one untagged VLAN.
+    whyItMatters: VCF 9 recommends host-facing switch ports in trunk mode with 802.1Q tagging (VCF-NET-RCMD-SWT-001) and PortFast trunk (SWT-002). The VLAN ID is applied by the VDS port group on the ESX side.
+    version: general
+    related: [vlan, uplink]
+    lessons: [network-fundamentals-for-vcf]
+    labs: [lab-network-readiness]
+  - id: mtu
+    term: MTU
+    expansion: Maximum Transmission Unit
+    definition: The largest IP packet a link forwards without fragmentation. Standard Ethernet is 1500 bytes; larger frames are jumbo frames. Every hop on a path (vmk, VDS, switch port, gateway) must support the size used.
+    whyItMatters: "VCF 9: host TEP overlay needs at least 1600 (installer-enforced), 1700 as design minimum and 9000 recommended; vMotion and vSAN 9000 recommended; ESX management 1500. Geneve packets have the DF bit set, so an MTU mismatch drops packets instead of fragmenting them."
+    version: vcf9
+    related: [jumbo-frame, tep, vds]
+    lessons: [network-fundamentals-for-vcf, vcf-network-design]
+    labs: [lab-network-readiness]
+  - id: jumbo-frame
+    term: Jumbo frame
+    definition: An Ethernet frame larger than the standard 1500-byte MTU, typically 9000 bytes on hosts (switches often set to 9216 to allow for header overhead).
+    whyItMatters: Jumbo frames reduce per-packet overhead for vMotion, vSAN and overlay traffic. Test them with vmkping -d -s 8972 (9000 minus 28 bytes of IP and ICMP headers).
+    version: general
+    related: [mtu]
+    lessons: [network-fundamentals-for-vcf]
+    labs: [lab-network-readiness]
+  - id: first-hop-gateway
+    term: First hop gateway
+    definition: The first router a packet meets when it leaves its VLAN/subnet, i.e. the default gateway, usually an SVI on the top-of-rack switches made highly available with VRRP or HSRP.
+    whyItMatters: VCF 9 requires a gateway for every infrastructure VLAN (VCF-NET-REQD-GTW-001) with matching MTU (GTW-002), recommends a floating VRRP/HSRP IP, and for stretched clusters a gateway available in both availability zones on the same IP.
+    version: vcf9
+    related: [vlan, availability-zone]
+    lessons: [network-fundamentals-for-vcf, vcf-network-design]
+  - id: vmkernel-adapter
+    term: VMkernel adapter (vmk)
+    definition: A network interface of the ESX host itself (not of a VM), connected to a port group, with its own IP, MTU and TCP/IP stack. Examples are vmk0 management, vMotion, vSAN and the NSX host TEPs (vmk10/vmk11).
+    whyItMatters: Every VCF infrastructure service runs over a vmk. Tests must use the right one (vmkping -I vmkX) and, for vMotion or TEP, the right netstack (-S vmotion, -S vxlan).
+    version: general
+    related: [vds, tep, mtu]
+    lessons: [network-fundamentals-for-vcf, vsphere-distributed-switch, vcf-network-design]
+    labs: [lab-network-readiness]
+  - id: network-fabric
+    term: Network fabric
+    definition: The physical data center network (switches, links, routing) connecting ESX hosts and VCF components. Common topologies are three-tier, leaf-spine and hardware SDN (for example BGP-EVPN).
+    whyItMatters: VCF 9 defines single-rack, multi-rack and multi-AZ network fabric models; the fabric model must match the vSphere cluster model (single-rack, L2/L3 multi-rack, stretched).
+    version: vcf9
+    related: [fault-domain, availability-zone]
+    lessons: [network-fundamentals-for-vcf, vcf-network-design]
+  - id: dns
+    term: DNS
+    expansion: Domain Name System
+    definition: The service that resolves names to IP addresses (forward lookup, A records) and IP addresses to names (reverse lookup, PTR records).
+    whyItMatters: VCF 9 requires forward and reverse DNS records for all management components (VCF-NET-REQD-IPA-002). DNS faults show up as validation failures, certificate mismatches and failed upgrades.
+    version: general
+    related: [a-record, ptr-record, fqdn]
+    lessons: [dns-ntp-dependencies]
+    labs: [lab-network-readiness]
+  - id: fqdn
+    term: FQDN
+    expansion: Fully Qualified Domain Name
+    definition: The complete name of a host including its domain, for example esx-01.lab.internal.
+    whyItMatters: VCF registers hosts and appliances by FQDN and issues certificates to FQDNs. Always enter FQDNs (lowercase) in the deployment spec.
+    version: general
+    related: [dns, a-record, ptr-record]
+    lessons: [dns-ntp-dependencies]
+  - id: a-record
+    term: A record
+    definition: A DNS record mapping a name to an IPv4 address (forward lookup).
+    whyItMatters: Every VCF host and appliance needs one, and it must match the PTR record for the same IP.
+    version: general
+    related: [ptr-record, dns]
+    lessons: [dns-ntp-dependencies]
+    labs: [lab-network-readiness]
+  - id: ptr-record
+    term: PTR record
+    definition: A DNS record in a reverse zone (for example 10.10.10.in-addr.arpa) mapping an IP address back to a name (reverse lookup).
+    whyItMatters: Missing or duplicate PTR records are the classic VCF validation failure; the VCF Installer checks that the vCenter IP uniquely resolves back to its FQDN.
+    version: general
+    related: [a-record, dns]
+    lessons: [dns-ntp-dependencies]
+    labs: [lab-network-readiness]
+  - id: ntp
+    term: NTP
+    expansion: Network Time Protocol
+    definition: The protocol (UDP 123) that synchronizes clocks to a reference time source.
+    whyItMatters: VCF 9 requires an internal NTP source for all management components (VCF-NET-REQD-NTP-001). Clock skew breaks certificates, SSO tokens and Kerberos, and causes host commissioning failures.
+    version: general
+    related: [time-skew, dns]
+    lessons: [dns-ntp-dependencies]
+    labs: [lab-network-readiness]
+  - id: time-skew
+    term: Time skew
+    definition: The difference between two clocks, for example between an ESX host and SDDC Manager or the NTP server.
+    whyItMatters: More than about 5 minutes breaks Kerberos and violates the precondition of Broadcom's NTP change procedure; hours or days make certificates appear not yet valid or expired.
+    version: general
+    related: [ntp]
+    lessons: [dns-ntp-dependencies]
+  - id: vds
+    term: vSphere Distributed Switch
+    expansion: VDS
+    definition: A virtual switch configured once in vCenter (management plane) and enforced by a proxy switch on every member ESX host (data plane). Carries port groups, uplinks, teaming, NIOC and MTU settings; NSX attaches to it directly.
+    whyItMatters: Every VCF cluster uses a VDS created by VCF workflows. VCF 9 recommends MTU 9000, load-based teaming and one VDS per cluster, and offers six distributed switch models.
+    version: vcf9
+    related: [distributed-port-group, uplink, nic-teaming, nioc]
+    lessons: [vsphere-distributed-switch, vcf-network-design]
+    labs: [lab-network-readiness]
+  - id: distributed-port-group
+    term: Distributed port group
+    definition: A policy template on a VDS (VLAN ID, teaming and failover, security, port binding) applied to the ports VMs and VMkernel adapters connect to.
+    whyItMatters: VCF creates port groups for ESX management, VM management, vMotion and storage; layer 3 multi-rack and stretched clusters need extra per-rack or per-AZ port groups.
+    version: general
+    related: [vds, port-binding]
+    lessons: [vsphere-distributed-switch]
+  - id: uplink
+    term: Uplink
+    definition: A logical uplink slot on a VDS (uplink1, uplink2, ...) to which each host maps one physical NIC (vmnic).
+    whyItMatters: Teaming policies refer to uplink names, so hosts can use different vmnic numbers. Two uplinks to two different top-of-rack switches give redundancy.
+    version: general
+    related: [vds, nic-teaming]
+    lessons: [vsphere-distributed-switch]
+  - id: nic-teaming
+    term: NIC teaming
+    definition: Using several physical NICs together for one switch or port group, with a load-balancing policy and a failover order (active, standby, unused).
+    whyItMatters: Policies are originating port, source MAC hash, IP hash, physical NIC load and explicit failover. IP hash needs matching switch configuration; VCF 9 recommends physical NIC load for infrastructure port groups.
+    version: general
+    related: [load-based-teaming, lag, uplink]
+    lessons: [vsphere-distributed-switch]
+  - id: load-based-teaming
+    term: Load-based teaming (Route based on physical NIC load)
+    expansion: LBT
+    definition: A VDS-only teaming policy that starts like originating-port teaming and moves ports to another uplink when an uplink stays above 75% utilisation for 30 seconds.
+    whyItMatters: Needs no physical switch configuration, so a switch misconfiguration cannot break it. It is the VCF 9 recommendation for management, vMotion and storage port groups.
+    version: general
+    related: [nic-teaming, nioc]
+    lessons: [vsphere-distributed-switch]
+  - id: lag
+    term: LAG / LACP
+    expansion: Link Aggregation Group / Link Aggregation Control Protocol
+    definition: Bundling several physical links into one logical link; LACP negotiates the bundle dynamically, static EtherChannel does not.
+    whyItMatters: In VCF 9 static link aggregation is unsupported; LACP is allowed only with conditions, and independent uplinks are the recommended design.
+    version: vcf9
+    related: [nic-teaming, uplink]
+    lessons: [vsphere-distributed-switch]
+  - id: nioc
+    term: Network I/O Control
+    expansion: NIOC (version 3)
+    definition: A VDS feature that divides uplink bandwidth by traffic type using shares (High 100, Normal 50, Low 25), reservations and limits, applied only under contention.
+    whyItMatters: VCF enables it by default with VM and principal storage traffic at High, management Normal and vMotion Low. The dedicated edge cluster switch model requires disabling it manually after deployment.
+    version: general
+    related: [vds, load-based-teaming]
+    lessons: [vsphere-distributed-switch, vcf-network-design]
+  - id: port-binding
+    term: Port binding (static / ephemeral)
+    definition: How a distributed port is assigned. Static binding assigns a persistent port when the VM is connected; ephemeral binding creates a port at power-on without needing vCenter.
+    whyItMatters: VCF 9 recommends ephemeral binding for the VM management port group so a vCenter VM can be reconnected when vCenter itself is down, and static binding elsewhere.
+    version: general
+    related: [distributed-port-group, vds]
+    lessons: [vsphere-distributed-switch]
+  - id: fault-domain
+    term: Fault domain (failure domain)
+    definition: A set of components that can fail together because they share power, network, cooling or location, for example a host, a rack, an availability zone or a region. vSAN also uses the term for groups of hosts it places replicas across.
+    whyItMatters: Availability design maps each failure domain the business must survive to a construct (HA, multi-rack, stretched cluster, DR). Shared components widen the failure domain.
+    version: general
+    related: [availability-zone, stretched-cluster-design, blast-radius]
+    lessons: [design-availability-failure-domains, design-sizing-scalability]
+  - id: availability-zone
+    term: Availability zone (AZ)
+    definition: In VCF design, a physically separate location (data hall or building) close enough to another for synchronous replication — VCF describes AZs as under 10 ms RTT apart with high-bandwidth, layer 2 capable connectivity.
+    whyItMatters: The Site High Availability (across zones) fleet model and stretched clusters span two AZs; anything that must survive an AZ outage needs resources and networks in both.
+    version: vcf9
+    related: [fault-domain, stretched-cluster-design]
+    lessons: [design-availability-failure-domains]
+  - id: stretched-cluster-design
+    term: Stretched cluster design
+    definition: A vSphere/vSAN cluster with hosts in two availability zones (two storage fault domains) and a witness at a third site, keeping synchronous copies of data in both zones.
+    whyItMatters: Survives an AZ failure with RPO 0. Requires < 5 ms RTT between data sites for vSAN, AZ2 port groups, a gateway available in both AZs, enough capacity per AZ; layer 3 multi-rack clusters cannot be stretched. It is HA, not DR.
+    version: vcf9
+    related: [availability-zone, fault-domain, rpo]
+    lessons: [design-availability-failure-domains, vcf-network-design]
+  - id: rpo
+    term: RPO
+    expansion: Recovery Point Objective
+    definition: The maximum acceptable amount of data loss, measured in time, after a failure.
+    whyItMatters: Synchronous stretched clusters give RPO 0; asynchronous replication or backups across regions give RPO greater than zero. The requirement decides the fleet deployment model.
+    version: general
+    related: [rto, stretched-cluster-design]
+    lessons: [design-availability-failure-domains]
+  - id: rto
+    term: RTO
+    expansion: Recovery Time Objective
+    definition: The maximum acceptable time to restore a service after a failure.
+    whyItMatters: vSphere HA restarts take minutes; regional DR takes longer and must be tested. RTO drives whether HA alone is enough.
+    version: general
+    related: [rpo]
+    lessons: [design-availability-failure-domains]
+  - id: n-plus-one
+    term: N+1
+    definition: Sizing with at least one host more than needed to carry the load, so one host can fail or enter maintenance without losing capacity.
+    whyItMatters: Without N+1, HA admission control blocks restarts and lifecycle upgrades cannot evacuate hosts. Stretched clusters need an even larger reserve (each AZ must run the protected load).
+    version: general
+    related: [fault-domain]
+    lessons: [design-sizing-scalability]
+  - id: blast-radius
+    term: Blast radius
+    definition: The set of services affected when one shared component fails or is compromised.
+    whyItMatters: Sharing an NSX Manager, edge cluster or SSO scope saves resources but widens the blast radius; dedicated components shrink it at a cost. VCF 9 SSO models call out fleet-wide scope as a single point of failure.
+    version: general
+    related: [fault-domain]
+    lessons: [design-network-security-tradeoffs, design-availability-failure-domains]

@@ -1,0 +1,156 @@
+id: lab-troubleshooting-drill
+title: "Troubleshooting Drill: Five Injected Faults in the Nested Lab"
+level: challenge
+complexity: 4
+minutes: 180
+version: vcf9
+technologies: [ESX 9, vCenter, vSAN, Proxmox VE, DNS, NTP, esxcli]
+topics: [troubleshooting-method, logs-locations, dns, ntp, mtu, esx-host, vsan-health]
+lessons: [troubleshooting-methodology, troubleshooting-core-dependencies, troubleshooting-vcf-services, troubleshooting-network-nsx-vsan]
+objectives:
+  - Apply Observe, Scope, Hypothesize, Validate, Remediate, Verify to five independent faults and write a root cause for each.
+  - Prove dependency faults (reverse DNS, NTP) from the component that reports them.
+  - Prove a jumbo-MTU fault with vmkping don't-fragment tests and restore it.
+  - Diagnose an ESX host that disconnects from vCenter through the vpxa heartbeat path, and a host with a stopped hostd, without services.sh restart.
+prerequisites:
+  - "Home Lab built to at least: infra01 (DNS + NTP), three nested ESX 9 hosts (esx01-03) and a vCenter managing them in a cluster (labs lab-homelab-proxmox-prep and lab-vcenter-cluster-ha-drs). vSAN on the cluster makes fault 3 more visible; a full VCF management domain is optional."
+  - "A pool snapshot taken before the drill (zfs snapshot -r nvmepool@pre-drill) with all lab VMs powered off."
+  - "Ideally a partner who injects the faults in random order. Alone: inject one fault, wait a day, then troubleshoot it as if you did not know."
+topology:
+  logical: d-lab-troubleshooting-drill-logical
+requirements:
+  network:
+    - "Lab VLANs 10 (management) and 30 (vSAN) or 20 (vMotion) with MTU 9000 on the jumbo VLAN."
+  vms:
+    - "infra01 (DNS/NTP), esx01-esx03 (nested ESX), vc01 (vCenter). Optional: VCF Operations if the management domain is deployed."
+  ip:
+    - "From the Home Lab IP plan: esx01-03 = 10.10.10.101-103, vc01 = 10.10.10.20, infra01 = 10.10.10.10; vSAN vmknics 10.10.30.101-103."
+startingState: |
+  A healthy lab: all three hosts connected in vCenter, no alarms, DNS forward and reverse correct, NTP synchronised,
+  `vmkping -d -s 8972` working on the jumbo VLAN between all hosts.
+
+  **Fault injection (partner or "future you"; do not read the debrief before solving):**
+
+  | # | Inject with | Where |
+  |---|---|---|
+  | 1 | Change the PTR of 10.10.10.103 to `esx13.vcf.lab` and reload DNS | infra01 |
+  | 2 | Stop the NTP service (`systemctl stop chronyd` or your NTP daemon) and move esx01's clock 5 minutes ahead (`esxcli system time set`, see `--help` for the flags) | infra01, esx01 |
+  | 3 | `ip link set tap202i0 mtu 1500 && ip link set tap202i1 mtu 1500` | Proxmox (esx02's tap devices) |
+  | 4 | `esxcli network firewall ruleset set --ruleset-id vpxHeartbeats --enabled false` | esx03 |
+  | 5 | `/etc/init.d/hostd stop` | esx02 (inject after fault 3 is solved, or on another day) |
+
+  :::warning
+  Inject only in the lab. Fault 4 simulates a network firewall blocking UDP 902; in real incidents the block is usually
+  on a firewall between hosts and vCenter, not on the host.
+  :::
+steps:
+  - id: baseline
+    title: Record a healthy baseline (before injection)
+    why: You cannot recognise abnormal without normal. Baselines turn vague symptoms into measurable differences.
+    instructions: |
+      Save to a text file:
+      ```shell
+      # from each host
+      esxcli system ntp get ; esxcli system time get
+      esxcli network ip interface ipv4 get
+      vmkping -I vmk2 -d -s 8972 10.10.30.102     # adjust vmk/IPs to your jumbo VLAN
+      # from infra01
+      for i in 101 102 103; do dig +short -x 10.10.10.$i; done
+      ```
+      Screenshot vCenter's host list and alarms.
+    validate: The file exists with outputs from every host.
+    expected: All hosts synchronised, all PTRs correct, jumbo pings succeed, no alarms.
+  - id: fault-dns
+    title: "Incident A: a host fails validation / shows a name mismatch"
+    why: Reverse DNS problems are the most common VCF deployment and commissioning failure.
+    instructions: |
+      Symptom you may see: a validation or name-mismatch error for esx03 (for example when re-adding the host or running a
+      VCF pre-validation), or simply a monitoring check failing. Work the method:
+      1. **Observe**: exact error and object.
+      2. **Scope**: only esx03? All hosts?
+      3. **Hypothesize**: list at least three causes.
+      4. **Validate** from vCenter's appliance shell or the VCF Installer, *not* your laptop: `nslookup esx03.vcf.lab`, `nslookup 10.10.10.103`.
+      5. **Remediate** the record on infra01. 6. **Verify** both lookups and the original action.
+    hint: Forward lookup working proves nothing about the PTR.
+    validate: Your incident note has symptom, scope, root cause, fix and verification.
+    expected: Reverse lookup returned `esx13.vcf.lab`; after fixing the PTR both lookups agree and the original action succeeds.
+  - id: fault-ntp
+    title: "Incident B: time-related oddities on one host"
+    why: Time skew rarely says "time"; it shows up as TLS, token and validation errors.
+    instructions: |
+      Symptoms vary: NTP alarms in vCenter, VCF Health NTP card warnings, odd log timestamps on esx01. Work the method;
+      compare `date -u` on esx01, another host and infra01; check `esxcli system ntp get` and the NTP server status on
+      infra01 (`systemctl status chronyd`, `chronyc tracking`).
+    hint: Fix the source first, then let the client resync. Do not just set the clock by hand and walk away.
+    validate: "`esxcli system time get` on all hosts within a second of infra01; chronyc tracking shows sync."
+    expected: Root cause = NTP service stopped on infra01 (plus esx01 drifted/was offset). Fix = start and enable the service, confirm esx01 resynchronises (restart ntpd on the host if needed through the documented NTP settings).
+  - id: fault-mtu
+    title: "Incident C: vSAN (or vMotion) warnings involving one host"
+    why: MTU faults break large frames only, so management keeps working and the fault hides.
+    instructions: |
+      Observe the vSAN health/network warnings or a vMotion that hangs. Scope: which host pairs fail? Test from each host:
+      ```shell
+      vmkping -I vmk2 -d -s 1472 <peer>
+      vmkping -I vmk2 -d -s 8972 <peer>
+      ```
+      Map which host is involved in every failure, then walk the path: nested VDS/vmknic MTU → Proxmox tap → vmbr0 → bond →
+      switch (`ip link show | grep -E "tap20[123]i"` on Proxmox).
+    hint: If 1472 works and 8972 fails, it is MTU, not VLAN or IP.
+    validate: "`vmkping -d -s 8972` succeeds between all three hosts after the fix."
+    expected: Both tap devices of VM 202 at mtu 1500. Fix with `ip link set tap202i0 mtu 9000` (and i1) or restart VM 202 (Proxmox re-applies the bridge MTU). vSAN health returns to green after resync.
+  - id: fault-heartbeat
+    title: "Incident D: esx03 keeps going Not Responding"
+    why: The host-to-vCenter heartbeat path (vpxa, UDP 902, 60-second window) is a frequent cause of flapping hosts.
+    instructions: |
+      1. Observe: how long after a reconnect does it drop? Do VMs keep running? Does the Host Client work?
+      2. On esx03: `grep -i "Started heartbeating" /var/log/vpxa.log | tail` — repeating every minute?
+      3. Capture: on esx03 `pktcap-uw --uplink vmnic0 --capture UplinkSndKernel -o - | tcpdump-uw -r - -nn port 902`;
+         on vCenter `tcpdump src 10.10.10.103 and port 902`.
+      4. If nothing leaves the host, check the host firewall: `esxcli network firewall ruleset list | grep -i vpx`.
+    hint: Restarting vpxa will not fix a blocked path, and services.sh restart is the wrong tool on vSAN/NSX hosts.
+    validate: Host stays Connected for more than 5 minutes after the fix; heartbeat packets visible on vCenter.
+    expected: The vpxHeartbeats ruleset was disabled. Re-enable it (`--enabled true`); in the debrief note how the same symptom looks when a network firewall drops UDP 902 (packets leave the host but never reach vCenter).
+  - id: fault-hostd
+    title: "Incident E: esx02 cannot be managed, VMs still running"
+    why: Distinguishing hostd from vpxa problems decides which single agent to restart.
+    instructions: |
+      Observe: vCenter tasks on esx02 fail; is the Host Client reachable (https://esx02.vcf.lab/ui)? SSH works?
+      Check `/etc/init.d/hostd status` and the end of `/var/log/hostd.log`. Before remediation, check the host uses vSAN
+      (`esxcli vsan cluster get`): that rules out `services.sh restart`.
+    hint: Host Client down + VMs running + SSH working points at hostd.
+    validate: Host Client loads; vCenter operations on esx02 succeed; no new alarms.
+    expected: hostd was stopped. `/etc/init.d/hostd start` (or restart) fixes it; you documented why you did not use services.sh restart (KB 320280).
+  - id: report
+    title: Write the five incident notes and compare with the debrief
+    why: Writing the root cause is what turns a fix into learning — and it is exactly what scenario exam questions test.
+    instructions: |
+      For each incident: symptom statement (with timestamps), scope, ranked hypotheses, the one test that proved the cause,
+      the fix, the verification, and prevention. Then roll back nothing — the lab should be healthy again. Compare your
+      baseline file with a new capture.
+    validate: Five notes; a fresh baseline capture identical to the original (except timestamps).
+    expected: All five faults found, each with a test that would have failed before the fix and passes after.
+troubleshooting:
+  - symptom: "The lab does not return to healthy after the drill"
+    fix: "Shut down all lab VMs and roll back to the pre-drill pool snapshot: zfs rollback on each nvmepool zvol to @pre-drill (newest snapshot), then start infra01 first."
+  - symptom: "esx01 does not resync after NTP is restored"
+    fix: "Check esxcli system ntp get (server list, enabled); disable/enable NTP in the host's time configuration so the daemon restarts; large offsets may need the documented manual step before NTP takes over."
+  - symptom: "Tap MTU reverts or is wrong after VM restart"
+    fix: "Proxmox applies the bridge MTU at VM start. If it comes back as 1500, the bridge itself is at 1500: fix /etc/network/interfaces and ifreload -a."
+  - symptom: "Cannot find the vpxHeartbeats ruleset"
+    fix: "List rulesets with esxcli network firewall ruleset list and look for the vCenter heartbeat entry on your build; ruleset names can differ between versions."
+challenge: |
+  Ask your partner for a sixth, unannounced fault anywhere in the stack (for example a missing VLAN on the router
+  sub-interface, a full log partition on vCenter, or an expired certificate on a test web server). Solve it in under 30
+  minutes and present the evidence chain in five sentences, as you would in a real post-incident review.
+cleanup: |
+  Verify the fresh baseline matches the original. Delete the pre-drill snapshot when you are satisfied:
+  `zfs destroy -r nvmepool@pre-drill`.
+sources:
+  - title: "Broadcom KB 323612 – ESXi host disconnects from vCenter Server after adding or connecting it"
+    url: https://knowledge.broadcom.com/external/article/323612
+  - title: "Broadcom KB 307364 – Verify ESXi host heartbeat to vCenter using packet capture utilities"
+    url: https://knowledge.broadcom.com/external/article/307364
+  - title: "Broadcom KB 320280 – Restarting Management Agents in ESXi"
+    url: https://knowledge.broadcom.com/external/article/320280
+  - title: "VCF 9.0 – Monitor Your Environment and Prevent Issues with VCF Health"
+    url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/infrastructure-operations/using-vcf-operations-diagnostics/monitor-your-environment-and-prevent-issues-with-vcf-health.html

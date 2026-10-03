@@ -1,0 +1,2266 @@
+# Phase 6 - VCF Architecture questions (author F)
+questions:
+- id: f06-ov-001
+  type: single
+  kind: concept
+  difficulty: foundation
+  version: vcf9
+  topics:
+  - vcf-fleet
+  objective: '4.1'
+  lesson: vcf9-architecture-overview
+  section: the-hierarchy-in-one-table
+  stem: In VCF 9.0, what defines a VCF fleet?
+  options:
+  - id: a
+    text: A single vCenter Single Sign-On domain shared by all vCenter instances
+    why: SSO domains are per vCenter/workload domain; a fleet is defined by its shared management components.
+    confusedWith: identity-sso
+  - id: b
+    text: An environment managed by a single set of fleet-level management components (VCF Operations and VCF Automation),
+      containing one or more VCF instances
+    correct: true
+    why: This is the TechDocs taxonomy definition.
+  - id: c
+    text: A management domain plus its workload domains
+    why: That is a VCF instance.
+    confusedWith: management-domain
+  - id: d
+    text: All ESX hosts commissioned in one SDDC Manager
+    why: Commissioned hosts belong to one instance, not a fleet.
+    confusedWith: sddc-manager
+  explanation:
+    correct: A fleet is everything managed by one VCF Operations / VCF Automation set; it contains one or more VCF instances
+      (and can include standalone vCenter instances).
+    concept: Fleet vs instance vs domain
+    architecture: Fleet-level components run once, in the management domain of the first instance.
+    trap: Do not equate fleet with SSO domain or with a single instance.
+  diagnostic: vcf
+- id: f06-ov-002
+  type: single
+  kind: concept
+  difficulty: foundation
+  version: vcf9
+  topics:
+  - vcf-fleet
+  - management-domain
+  objective: '4.1'
+  lesson: vcf9-architecture-overview
+  section: the-hierarchy-in-one-table
+  stem: What does a VCF instance consist of?
+  options:
+  - id: a
+    text: Exactly one management domain and, optionally, additional workload domains
+    correct: true
+    why: 'TechDocs: "A VCF Instance consists of VCF domains - a management domain and, optionally, additional workload domains."'
+  - id: b
+    text: One or more management domains and at least one workload domain
+    why: There is one management domain per instance and workload domains are optional.
+    confusedWith: workload-domains
+  - id: c
+    text: A single vSphere cluster managed by SDDC Manager
+    why: An instance has at least one domain with its own vCenter, not just a cluster.
+  - id: d
+    text: VCF Operations and VCF Automation
+    why: Those define the fleet, not the instance.
+    confusedWith: fleet-management
+  explanation:
+    correct: A VCF instance = one management domain (created at deployment/convergence) + optional workload domains, with
+      one SDDC Manager.
+    concept: VCF instance composition
+    architecture: The management domain hosts instance management; workload domains run consumer workloads.
+    trap: Workload domains are optional; a minimal instance is just the management domain.
+  diagnostic: vcf
+- id: f06-ov-003
+  type: multi
+  kind: architecture
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - vcf-fleet
+  - fleet-management
+  objective: '4.1'
+  lesson: vcf9-architecture-overview
+  section: fleet-level-vs-instance-level-components
+  stem: Which components are fleet-level management components in VCF 9.0? (Choose three.)
+  options:
+  - id: a
+    text: VCF Operations
+    correct: true
+    why: One per fleet; the central console.
+  - id: b
+    text: VCF Operations fleet management appliance
+    correct: true
+    why: Lifecycles fleet components; one per fleet.
+  - id: c
+    text: VCF Automation
+    correct: true
+    why: Fleet-level consumption layer.
+  - id: d
+    text: SDDC Manager
+    why: One per VCF instance - an instance-level core component.
+    confusedWith: sddc-manager
+  - id: e
+    text: Management domain vCenter
+    why: Instance-level core component.
+    confusedWith: vcenter
+  - id: f
+    text: NSX Manager
+    why: Domain/instance-level core component.
+    confusedWith: nsx-architecture
+  select: 3
+  explanation:
+    correct: 'Management (fleet-level) components: VCF Operations, fleet management, VCF Automation, Operations for logs and
+      networks, Identity Broker. Core (instance-level): SDDC Manager, vCenter, NSX Manager, ESX.'
+    concept: Management vs core components
+    architecture: Fleet components run in the first instance management domain; core components exist in every instance.
+    trap: SDDC Manager feels "central" but is per instance.
+- id: f06-ov-004
+  type: single
+  kind: scenario
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - vcf-fleet
+  - deployment-models
+  objective: '4.1'
+  lesson: vcf9-architecture-overview
+  section: how-it-works
+  stem: A company with a VCF 9 fleet in its Bucharest data center wants a second data center in Cluj, managed from the same
+    console. Which outcome matches VCF 9 architecture?
+  options:
+  - id: a
+    text: Deploy a new VCF instance into the existing fleet; Cluj gets its own management domain, SDDC Manager and VCF Operations
+      collector, and uses the existing VCF Operations and VCF Automation
+    correct: true
+    why: This is the "new instance in existing fleet" pathway of the VCF Installer.
+  - id: b
+    text: Add the Cluj hosts as a workload domain of the Bucharest instance
+    why: Possible only for very short distances; a separate site is normally a separate instance with its own management domain.
+    confusedWith: workload-domains
+  - id: c
+    text: Deploy a new fleet in Cluj with its own VCF Operations and link the two VCF Operations
+    why: That creates two consoles, contrary to the requirement.
+  - id: d
+    text: Deploy only a second SDDC Manager in Cluj that manages the Cluj hosts from Bucharest vCenter
+    why: Each instance needs its own management domain with vCenter and NSX Manager.
+    confusedWith: sddc-manager
+  explanation:
+    correct: The VCF Installer can deploy a new VCF instance into an existing fleet; the new instance gets instance-level
+      components (management domain, SDDC Manager, collector) and reuses fleet-level ones.
+    concept: Fleet expansion
+    architecture: Collectors in each instance feed the single VCF Operations.
+    trap: Additional instances do not get their own VCF Operations.
+- id: f06-ov-005
+  type: matching
+  kind: concept
+  difficulty: foundation
+  version: vcf9
+  topics:
+  - vcf-fleet
+  - fleet-management
+  objective: '4.1'
+  lesson: vcf9-architecture-overview
+  section: deep-dive
+  stem: Match each VCF 5.x product or appliance to its VCF 9.0 equivalent.
+  pairs:
+  - id: p1
+    left: VMware Aria Operations
+    right: VCF Operations
+  - id: p2
+    left: VMware Aria Suite Lifecycle
+    right: VCF Operations fleet management
+  - id: p3
+    left: Cloud Builder
+    right: VCF Installer
+  - id: p4
+    left: VMware Aria Automation
+    right: VCF Automation
+  - id: p5
+    left: ESXi
+    right: ESX
+  explanation:
+    correct: These renames come from the VCF 9.0 component table and product support notes; Workspace ONE Access has no direct
+      successor - VCF Identity Broker is new.
+    concept: VCF 9 naming
+    architecture: Fleet management appliance = former Aria Suite Lifecycle role.
+    trap: Aria Suite Lifecycle is not renamed to VCF Operations itself.
+- id: f06-ov-006
+  type: truefalse
+  kind: concept
+  difficulty: foundation
+  version: vcf9
+  topics:
+  - sddc-manager
+  objective: '4.2'
+  lesson: vcf9-architecture-overview
+  section: common-exam-traps
+  stem: 'True or false: SDDC Manager no longer exists in VCF 9.0 because VCF Operations replaced it.'
+  options:
+  - id: a
+    text: 'True'
+    why: Only the SDDC Manager UI is deprecated.
+    confusedWith: fleet-management
+  - id: b
+    text: 'False'
+    correct: true
+    why: SDDC Manager is deployed with every instance and executes core-component work driven from VCF Operations.
+  explanation:
+    correct: 'Release notes: "SDDC Manager UI is now deprecated, to be removed in a future major release." The appliance still
+      provides lifecycle, domain deployment, vCenter import, certificate and password automation.'
+    concept: SDDC Manager in 9.0
+    architecture: One SDDC Manager per instance in the management domain.
+    trap: Deprecated UI is not the same as removed appliance.
+- id: f06-ov-007
+  type: ordering
+  kind: concept
+  difficulty: foundation
+  version: vcf9
+  topics:
+  - vcf-fleet
+  objective: '4.1'
+  lesson: vcf9-architecture-overview
+  section: the-hierarchy-in-one-table
+  stem: Order the VCF 9 constructs from the largest to the smallest.
+  items:
+  - id: i1
+    text: VCF private cloud
+  - id: i2
+    text: VCF fleet
+  - id: i3
+    text: VCF instance
+  - id: i4
+    text: VCF domain
+  - id: i5
+    text: vSphere cluster
+  - id: i6
+    text: ESX host
+  explanation:
+    correct: Private cloud contains fleets; a fleet contains instances; an instance contains domains; a domain contains clusters;
+      clusters contain hosts.
+    concept: VCF 9 hierarchy
+    architecture: Each level has its own management scope.
+    trap: Do not place the domain above the instance.
+- id: f06-ov-008
+  type: single
+  kind: architecture
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - vcf-fleet
+  - fleet-management
+  objective: '4.1'
+  lesson: vcf9-architecture-overview
+  section: architecture
+  diagram: d06-fleet-hierarchy
+  stem: Look at the diagram. Which component exists in the management domain of instance 1 but has no equivalent in instance
+    2, because it is fleet-level?
+  options:
+  - id: a
+    text: SDDC Manager
+    why: Every instance has its own SDDC Manager.
+    confusedWith: sddc-manager
+  - id: b
+    text: VCF Operations collector
+    why: Every instance has its own collector.
+  - id: c
+    text: VCF Operations
+    correct: true
+    why: One per fleet, in the first instance; instance 2 only has a collector.
+  - id: d
+    text: NSX Manager
+    why: Each instance has its own management NSX Manager.
+    confusedWith: nsx-architecture
+  explanation:
+    correct: VCF Operations (and fleet management, VCF Automation, Identity Broker) are fleet-level and appear only once.
+    concept: Fleet-level placement
+    architecture: Instance 2 is managed remotely through its collector and SDDC Manager.
+    trap: A collector is not a VCF Operations instance.
+- id: f06-ov-009
+  type: single
+  kind: scenario
+  difficulty: advanced
+  version: vcf9
+  topics:
+  - vcf-fleet
+  - component-communication
+  objective: '4.1'
+  lesson: vcf9-architecture-overview
+  section: failure-scenarios
+  stem: The VCF Operations analytics node of a simple-model fleet is down for two hours. What is the impact?
+  options:
+  - id: a
+    text: All workload VMs in every instance stop until VCF Operations returns
+    why: The data plane does not depend on VCF Operations.
+    confusedWith: component-communication
+  - id: b
+    text: Monitoring and fleet management are unavailable, but workloads keep running and vCenter/NSX can still be managed
+      directly
+    correct: true
+    why: Fleet services are a management layer above the instances.
+  - id: c
+    text: vCenter logins fail fleet-wide because VCF Operations issues SSO tokens
+    why: SSO is brokered by the Identity Broker, not by VCF Operations.
+    confusedWith: identity-sso
+  - id: d
+    text: SDDC Manager automatically takes over the VCF Operations role
+    why: There is no such failover.
+    confusedWith: sddc-manager
+  explanation:
+    correct: Losing VCF Operations removes visibility and the fleet management console; instances, vCenter, NSX and VMs continue
+      to run.
+    concept: Failure impact of fleet services
+    architecture: Simple model relies on vSphere HA restart of the single node.
+    trap: Management-plane outage is not data-plane outage.
+- id: f06-ov-010
+  type: single
+  kind: architecture
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - workload-domains
+  - management-domain
+  objective: '4.1'
+  lesson: vcf9-architecture-overview
+  section: where-things-physically-run
+  diagram: d06-fleet-hierarchy
+  stem: In the diagram, where does the vCenter of the prod workload domain run?
+  options:
+  - id: a
+    text: On the ESX cluster of the prod workload domain
+    why: The WLD cluster runs workloads and edges, not its own vCenter.
+    confusedWith: workload-domains
+  - id: b
+    text: In the management domain of the same VCF instance
+    correct: true
+    why: SDDC Manager deploys workload domain vCenter instances into the management domain.
+  - id: c
+    text: In the management domain of instance 2
+    why: Each instance hosts its own workload domain management appliances.
+  - id: d
+    text: Embedded in SDDC Manager
+    why: vCenter is a separate appliance.
+    confusedWith: sddc-manager
+  explanation:
+    correct: Workload domain vCenter (and NSX Manager) appliances run in the management domain of their instance.
+    concept: Placement of WLD management
+    architecture: Keeps the management plane off workload clusters.
+    trap: The vCenter manages the WLD hosts but does not run on them.
+- id: f06-md-001
+  type: single
+  kind: concept
+  difficulty: foundation
+  version: vcf9
+  topics:
+  - management-domain
+  objective: '4.1'
+  lesson: management-domain
+  section: minimum-hosts-and-storage
+  stem: What is the minimum number of ESX hosts in the management domain default cluster for a VCF 9.0 simple install?
+  options:
+  - id: a
+    text: '2'
+    why: Below the documented minimum.
+  - id: b
+    text: '3'
+    correct: true
+    why: 'Storage Models page: three hosts for a simple install.'
+  - id: c
+    text: '4'
+    why: Four is the minimum for the highly available install.
+    confusedWith: deployment-models
+  - id: d
+    text: '6'
+    why: Not a documented minimum.
+  explanation:
+    correct: 'Management default cluster: 3 hosts (simple), 4 hosts (highly available). Workload domain clusters: 3.'
+    concept: Management domain sizing
+    architecture: Three vSAN hosts tolerate one failure without automatic rebuild.
+    trap: The 4-host rule is legacy (5.x) or the 9.0 HA install.
+  diagnostic: vcf
+- id: f06-md-002
+  type: single
+  kind: design
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - management-domain
+  - deployment-models
+  - vsan-resilience
+  objective: '4.1'
+  lesson: management-domain
+  section: minimum-hosts-and-storage
+  stem: Why does the highly available install require four hosts in the management default cluster on vSAN rather than three?
+  options:
+  - id: a
+    text: Because NSX Manager needs one host per node plus a spare for the VIP
+    why: The VIP needs no host; anti-affinity needs 3 hosts.
+    confusedWith: nsx-architecture
+  - id: b
+    text: Because with four hosts vSAN can automatically rebuild objects to policy compliance after a host failure
+    correct: true
+    why: Three hosts tolerate a failure but cannot rebuild to compliance.
+  - id: c
+    text: Because VCF Operations requires a dedicated host
+    why: No dedicated host is required.
+  - id: d
+    text: Because SDDC Manager must run alone on a host
+    why: No such rule.
+    confusedWith: sddc-manager
+  explanation:
+    correct: 'Storage Models: 3 nodes tolerate one host failure but "does not support rebuild of vSAN objects to storage policy
+      compliance"; 4 nodes support automatic rebuild.'
+    concept: Host count vs resilience
+    architecture: HA install hosts 3-node clusters with anti-affinity on a 4-host cluster.
+    trap: Do not attribute the fourth host to NSX.
+- id: f06-md-003
+  type: multi
+  kind: design
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - management-domain
+  - wld-storage
+  objective: '4.1'
+  lesson: management-domain
+  section: minimum-hosts-and-storage
+  stem: Which storage types can be principal storage for the management domain default cluster in VCF 9.0? (Choose three.)
+  options:
+  - id: a
+    text: vSAN ESA
+    correct: true
+    why: Supported (as is vSAN OSA).
+  - id: b
+    text: Fibre Channel (VMFS)
+    correct: true
+    why: Principal or supplemental.
+  - id: c
+    text: NFS v3
+    correct: true
+    why: Principal with v3; v4.1 only supplemental.
+  - id: d
+    text: iSCSI
+    why: Supplemental only.
+    confusedWith: datastores
+  - id: e
+    text: vSAN compute cluster
+    why: Not supported for the default management cluster.
+    confusedWith: vsan-architecture
+  - id: f
+    text: NVMe/TCP
+    why: Supplemental only.
+    confusedWith: datastores
+  select: 3
+  explanation:
+    correct: 'Default management cluster principal storage: vSAN ESA, vSAN OSA, FC, NFS v3. vSAN storage/compute clusters
+      only in additional clusters.'
+    concept: Principal vs supplemental storage
+    architecture: Principal storage is chosen at cluster creation.
+    trap: iSCSI and NVMe are always supplemental.
+- id: f06-md-004
+  type: single
+  kind: design
+  difficulty: advanced
+  version: vcf9
+  topics:
+  - management-domain
+  - design-availability
+  objective: '4.1'
+  lesson: management-domain
+  section: cluster-models
+  stem: An architect wants the management domain default cluster spread across four racks with a separate L2 broadcast domain
+    (subnets per rack). Which statement is correct?
+  options:
+  - id: a
+    text: Use the Layer 3 multi-rack cluster model for the default management cluster
+    why: L3 multi-rack is not supported for the management default cluster.
+    confusedWith: vcf-network-design
+  - id: b
+    text: Use the Layer 2 multi-rack model for the default cluster; L3 multi-rack is only possible for additional clusters
+    correct: true
+    why: 'TechDocs: L3 multi-rack - "Management domain default cluster not supported."'
+  - id: c
+    text: Multi-rack models are only available for workload domains
+    why: L2 multi-rack is supported for the default management cluster.
+  - id: d
+    text: Use a stretched cluster during initial deployment
+    why: Stretching the default management cluster is a Day-2 action and is for availability zones, not racks.
+    confusedWith: design-availability
+  explanation:
+    correct: 'Default management cluster: single-rack, L2 multi-rack, or stretched (Day 2). L3 multi-rack only for additional
+      clusters/workload domains.'
+    concept: Cluster models
+    architecture: L3 multi-rack needs per-rack subnets/VLANs.
+    trap: Per-rack L3 is attractive but not allowed for the first cluster.
+- id: f06-md-005
+  type: single
+  kind: scenario
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - management-domain
+  objective: '4.1'
+  lesson: management-domain
+  section: running-business-workloads-in-the-management-domain
+  stem: A small company wants to run a few business VMs in the management domain to save hardware. What does VCF 9.0 guidance
+    say?
+  options:
+  - id: a
+    text: Not supported; business workloads must always run in a workload domain
+    why: The management domain model allows business workloads.
+    confusedWith: workload-domains
+  - id: b
+    text: Supported; create resource pools such as <cluster>-rp-sddc-mgmt and <cluster>-rp-user-vm so management components
+      keep priority
+    correct: true
+    why: Recommendation VCF-WLD-RCMD-CFG-001.
+  - id: c
+    text: Supported only if VCF Operations is removed
+    why: VCF Operations is mandatory.
+    confusedWith: fleet-management
+  - id: d
+    text: Supported only with the HA install
+    why: No such restriction.
+  explanation:
+    correct: The management domain can run business workloads; VCF-WLD-RCMD-CFG-001 recommends resource pools for sddc-mgmt,
+      sddc-edge, user-edge and user-vm.
+    concept: Business workloads in management domain
+    architecture: Management appliances share the cluster with workloads.
+    trap: Allowed but needs resource pools.
+- id: f06-md-006
+  type: single
+  kind: architecture
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - management-domain
+  - vcf-fleet
+  objective: '4.1'
+  lesson: management-domain
+  section: what-it-hosts
+  diagram: d06-management-domain-components
+  stem: Using the diagram, which group of appliances would be absent from the management domain of a second VCF instance in
+    the same fleet?
+  options:
+  - id: a
+    text: Instance components (SDDC Manager, vCenter, NSX Manager, collector)
+    why: Every instance has these.
+    confusedWith: sddc-manager
+  - id: b
+    text: Fleet components (VCF Operations, fleet management, VCF Automation, logs, networks, Identity Broker appliance)
+    correct: true
+    why: Fleet components exist once, in the first instance.
+  - id: c
+    text: Workload-domain management appliances
+    why: Any instance with workload domains hosts their vCenter/NSX here.
+    confusedWith: workload-domains
+  - id: d
+    text: ESX hosts and principal storage
+    why: Every management domain needs hosts and storage.
+  explanation:
+    correct: Additional instances contain instance-level components and VCF Operations collectors only.
+    concept: First vs additional instance
+    architecture: Fleet components run in the first instance management domain.
+    trap: The collector is the only VCF Operations piece in other instances.
+- id: f06-md-007
+  type: multi
+  kind: architecture
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - management-domain
+  - vcf-fleet
+  objective: '4.1'
+  lesson: management-domain
+  section: what-it-hosts
+  stem: A second VCF instance is deployed into an existing fleet. Which appliances are deployed in its management domain?
+    (Choose four.)
+  options:
+  - id: a
+    text: SDDC Manager
+    correct: true
+    why: One per instance.
+  - id: b
+    text: Management vCenter
+    correct: true
+    why: Every domain has a vCenter.
+  - id: c
+    text: NSX Manager for the management domain
+    correct: true
+    why: Dedicated NSX for the management domain.
+  - id: d
+    text: VCF Operations collector
+    correct: true
+    why: Instance-level collector.
+  - id: e
+    text: VCF Operations analytics node
+    why: Fleet-level; reused from the first instance.
+    confusedWith: fleet-management
+  - id: f
+    text: VCF Operations fleet management appliance
+    why: Fleet-level; one per fleet.
+    confusedWith: fleet-management
+  - id: g
+    text: VCF Automation
+    why: Fleet-level.
+    confusedWith: vcf-automation
+  select: 4
+  explanation:
+    correct: Additional instance = SDDC Manager, vCenter, NSX Manager, collector(s) on its own hosts.
+    concept: Instance-level components
+    architecture: The new collector forwards data to the existing VCF Operations.
+    trap: Do not duplicate fleet components.
+- id: f06-md-008
+  type: single
+  kind: design
+  difficulty: expert
+  version: vcf9
+  topics:
+  - management-domain
+  - design-sizing
+  - workload-domains
+  objective: '4.1'
+  lesson: management-domain
+  section: why-workload-domain-management-lives-here
+  stem: 'One VCF instance uses the HA model everywhere (3-node NSX Manager clusters). It has three workload domains: "pci"
+    with dedicated NSX, and "prod" and "dev" sharing one NSX instance. How many vCenter appliances and NSX Manager nodes run
+    in the management domain?'
+  options:
+  - id: a
+    text: 4 vCenter, 9 NSX Manager nodes
+    correct: true
+    why: 'vCenter: mgmt + 3 WLDs = 4. NSX: mgmt (3) + pci (3) + shared prod/dev (3) = 9.'
+  - id: b
+    text: 4 vCenter, 12 NSX Manager nodes
+    why: Counts a separate NSX for dev although it shares with prod.
+    confusedWith: nsx-architecture
+  - id: c
+    text: 2 vCenter, 6 NSX Manager nodes
+    why: Each workload domain has its own vCenter.
+    confusedWith: workload-domains
+  - id: d
+    text: 1 vCenter, 9 NSX Manager nodes
+    why: Workload domains never share the management vCenter.
+    confusedWith: vcenter
+  explanation:
+    correct: Every domain adds a vCenter in the management domain; NSX nodes are added per NSX instance (dedicated or shared).
+    concept: Management domain capacity planning
+    architecture: WLD management appliances are deployed into the management domain.
+    trap: Shared NSX counts once.
+- id: f06-md-009
+  type: truefalse
+  kind: concept
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - management-domain
+  - design-availability
+  objective: '4.1'
+  lesson: management-domain
+  section: cluster-models
+  stem: 'True or false: the management domain default cluster can be deployed as a stretched cluster directly by the VCF Installer
+    during initial bring-up.'
+  options:
+  - id: a
+    text: 'True'
+    why: Stretching the first management cluster is listed as Day 2.
+    confusedWith: design-availability
+  - id: b
+    text: 'False'
+    correct: true
+    why: The management domain model lists "Stretched Cluster Model (Day 2)" for the first cluster.
+  explanation:
+    correct: The default management cluster is deployed as single-rack or L2 multi-rack and can be stretched afterwards (Day
+      2).
+    concept: Stretched management cluster
+    architecture: Stretch configuration is an SDDC Manager capability exposed through VCF Operations.
+    trap: Initial vs Day-2 options.
+- id: f06-md-010
+  type: single
+  kind: concept
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - management-domain
+  - vcf-installer
+  - sddc-manager
+  objective: '4.1'
+  lesson: management-domain
+  section: components
+  stem: An administrator deploys the VCF Installer appliance on one of the hosts that will form the new management domain.
+    What happens?
+  options:
+  - id: a
+    text: The deployment fails because the installer must be outside
+    why: It is allowed but changes the appliance role.
+    confusedWith: vcf-installer
+  - id: b
+    text: The appliance switches into SDDC Manager mode and can no longer be used in installer mode
+    correct: true
+    why: Quoted from "What Is the VCF Installer?".
+  - id: c
+    text: The installer deploys a second SDDC Manager next to itself
+    why: It becomes the SDDC Manager.
+  - id: d
+    text: It becomes the VCF Operations fleet management appliance
+    why: Different appliance.
+    confusedWith: fleet-management
+  explanation:
+    correct: The VCF Installer ships in the SDDC Manager OVA; deployed inside the management infrastructure it becomes SDDC
+      Manager.
+    concept: VCF Installer vs SDDC Manager
+    architecture: Outside the management domain it can deploy multiple platforms.
+    trap: Same OVA, two modes.
+- id: f06-wld-001
+  type: single
+  kind: concept
+  difficulty: foundation
+  version: vcf9
+  topics:
+  - workload-domains
+  objective: '4.1'
+  lesson: workload-domains-architecture
+  section: attributes-of-the-workload-domain-model
+  stem: Which component is always dedicated to each VI workload domain in VCF 9.0?
+  options:
+  - id: a
+    text: NSX Manager
+    why: NSX can be shared between workload domains.
+    confusedWith: nsx-architecture
+  - id: b
+    text: vCenter
+    correct: true
+    why: Each workload domain is assigned its own vCenter.
+  - id: c
+    text: NSX Edge cluster
+    why: Edge clusters can be shared between domains sharing NSX.
+    confusedWith: nsx-edge
+  - id: d
+    text: SDDC Manager
+    why: One SDDC Manager per instance serves all its domains.
+    confusedWith: sddc-manager
+  explanation:
+    correct: A workload domain always has a dedicated vCenter (and SSO domain); NSX and edge clusters may be shared.
+    concept: Workload domain composition
+    architecture: The vCenter runs in the management domain.
+    trap: Shared NSX is common; shared vCenter never.
+  diagnostic: vcf
+- id: f06-wld-002
+  type: single
+  kind: concept
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - workload-domains
+  - identity-sso
+  objective: '4.1'
+  lesson: workload-domains-architecture
+  section: attributes-of-the-workload-domain-model
+  stem: A new VI workload domain is created in a greenfield VCF 9.0 instance. How is its vCenter Single Sign-On configured?
+  options:
+  - id: a
+    text: It joins the management domain SSO domain with Enhanced Linked Mode
+    why: That was the classic VCF 4.x/5.x default; ELM is deprecated in 9.0.
+    confusedWith: identity-sso
+  - id: b
+    text: It gets a dedicated vCenter SSO domain
+    correct: true
+    why: 'Workload domain model: vCenter SSO domain = Dedicated.'
+  - id: c
+    text: It uses SDDC Manager as its identity source
+    why: SDDC Manager is not an identity provider.
+    confusedWith: sddc-manager
+  - id: d
+    text: It has no SSO domain; only VCF SSO is used
+    why: vCenter still has its own SSO domain; VCF SSO is layered on top.
+  explanation:
+    correct: Each workload domain has a dedicated vCenter SSO domain; cross-component single sign-on comes from VCF SSO with
+      the Identity Broker. Upgraded instances may still have shared SSO domains.
+    concept: WLD identity isolation
+    architecture: Dedicated SSO adds password-management overhead.
+    trap: Legacy ELM behaviour.
+- id: f06-wld-003
+  type: single
+  kind: design
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - workload-domains
+  - nsx-edge
+  objective: '4.1'
+  lesson: workload-domains-architecture
+  section: shared-vs-dedicated-nsx
+  stem: Two workload domains must use the same NSX Edge cluster for north-south traffic. What is the prerequisite?
+  options:
+  - id: a
+    text: Both domains must share the same vCenter
+    why: Domains never share vCenter.
+    confusedWith: vcenter
+  - id: b
+    text: Both domains must share the same NSX Manager instance
+    correct: true
+    why: Edge nodes can be shared across workload domains that share the same NSX Manager cluster.
+  - id: c
+    text: Both domains must be in the management domain
+    why: They are workload domains.
+    confusedWith: management-domain
+  - id: d
+    text: The edge cluster must be bare metal
+    why: Form factor is irrelevant.
+    confusedWith: nsx-edge
+  explanation:
+    correct: Sharing an edge cluster requires a shared NSX Manager instance.
+    concept: Edge cluster sharing
+    architecture: Edges are managed by exactly one NSX Manager.
+    trap: You cannot share edges across different NSX instances.
+- id: f06-wld-004
+  type: single
+  kind: design
+  difficulty: advanced
+  version: vcf9
+  topics:
+  - workload-domains
+  - design-tradeoffs
+  objective: '4.1'
+  lesson: workload-domains-architecture
+  section: shared-vs-dedicated-nsx
+  stem: A PCI environment requires separate administration, separate network policy and an upgrade schedule independent from
+    other environments. What is the best fit?
+  options:
+  - id: a
+    text: A new cluster in the existing production workload domain
+    why: Shares vCenter, SSO, NSX and lifecycle.
+    confusedWith: vsphere-cluster
+  - id: b
+    text: A new workload domain that shares NSX with production
+    why: Shared NSX means shared policy space and NSX lifecycle.
+    confusedWith: nsx-architecture
+  - id: c
+    text: A new workload domain with a dedicated NSX instance
+    correct: true
+    why: Dedicated vCenter, SSO, NSX and independent lifecycle.
+  - id: d
+    text: Resource pools in the management domain
+    why: No isolation of administration or policy.
+    confusedWith: management-domain
+  explanation:
+    correct: Dedicated NSX gives separate NSX policy and lifecycle; the new domain gives separate vCenter/SSO and domain lifecycle.
+    concept: Isolation design
+    architecture: More appliances in the management domain.
+    trap: Sharing NSX saves resources but weakens isolation.
+- id: f06-wld-005
+  type: single
+  kind: scenario
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - workload-domains
+  - cluster-expansion
+  objective: '4.1'
+  lesson: workload-domains-architecture
+  section: domain-vs-cluster
+  stem: The production team needs 8 more hosts with a different CPU generation. Same admins, same upgrade schedule. What should
+    you create?
+  options:
+  - id: a
+    text: A new workload domain
+    why: Adds a vCenter, SSO domain and lifecycle overhead you do not need.
+    confusedWith: workload-domains
+  - id: b
+    text: A new cluster in the existing production workload domain
+    correct: true
+    why: Capacity without new isolation boundaries.
+  - id: c
+    text: A new VCF instance
+    why: Far too much for extra capacity.
+    confusedWith: vcf-fleet
+  - id: d
+    text: A new fleet
+    why: Unrelated to capacity.
+  explanation:
+    correct: Use a new cluster for capacity/hardware differences; a new domain for isolation or separate lifecycle.
+    concept: Domain vs cluster
+    architecture: Clusters in a domain share vCenter and are upgraded together.
+    trap: Over-isolating increases management overhead.
+- id: f06-wld-006
+  type: multi
+  kind: architecture
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - workload-domains
+  - management-domain
+  objective: '4.1'
+  lesson: workload-domains-architecture
+  section: management-plane-vs-data-plane-placement
+  stem: Which appliances of a VI workload domain with dedicated NSX run in the management domain? (Choose two.)
+  options:
+  - id: a
+    text: The workload domain vCenter
+    correct: true
+    why: Deployed into the management domain.
+  - id: b
+    text: The workload domain NSX Manager nodes
+    correct: true
+    why: Deployed into the management domain.
+  - id: c
+    text: The workload domain NSX Edge nodes
+    why: Edges run in the workload domain (or shared edge cluster).
+    confusedWith: nsx-edge
+  - id: d
+    text: Supervisor control plane VMs
+    why: Run on the workload domain clusters.
+    confusedWith: supervisor
+  - id: e
+    text: Business VMs
+    why: Run on workload domain clusters.
+  select: 2
+  explanation:
+    correct: Management plane of the WLD (vCenter, NSX Manager) lives in the management domain; data plane (edges, workloads,
+      Supervisor) in the WLD.
+    concept: Placement
+    architecture: Keeps management off workload clusters.
+    trap: Edges are data plane, not management.
+- id: f06-wld-007
+  type: single
+  kind: log
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - workload-domains
+  - lcm-concepts
+  objective: '4.1'
+  lesson: workload-domains-architecture
+  section: troubleshooting
+  context: |-
+    ```log
+    domainmanager.log (SDDC Manager)
+    Failed to get install image for component NSX_T_MANAGER, version 9.0.2.0.25150386
+    Failed to get install image for component VCENTER, version 9.0.2.0.25148086
+    Domain Creation Spec validations for SKU EMS failed with errors [FAILED_TO_RETRIEVE_COMPONENT_BINARY]
+    ```
+  stem: Creating a workload domain from VCF Operations fails at the Review step. What should the administrator do?
+  options:
+  - id: a
+    text: Download the required vCenter and NSX install binaries, then retry
+    correct: true
+    why: 'KB 439510: missing install binaries cause this validation failure.'
+  - id: b
+    text: Recommission all hosts
+    why: Hosts are not the reported problem.
+    confusedWith: host-commissioning
+  - id: c
+    text: Restart VCF Operations
+    why: The spec validation runs in SDDC Manager and the binary is missing.
+    confusedWith: fleet-management
+  - id: d
+    text: Change the principal storage to NFS
+    why: Unrelated to binaries.
+    confusedWith: wld-storage
+  explanation:
+    correct: Domain creation needs install binaries for vCenter and NSX on SDDC Manager; download them through binary management
+      and retry.
+    concept: Binary dependency of domain creation
+    architecture: VCF Operations UI → SDDC Manager domainmanager validation.
+    trap: The error surfaces in VCF Operations but originates in SDDC Manager.
+- id: f06-wld-008
+  type: single
+  kind: concept
+  difficulty: foundation
+  version: vcf9
+  topics:
+  - workload-domains
+  objective: '4.1'
+  lesson: workload-domains-architecture
+  section: attributes-of-the-workload-domain-model
+  stem: What is the minimum number of hosts in a VI workload domain cluster in VCF 9.0?
+  options:
+  - id: a
+    text: '1'
+    why: Not supported for production clusters.
+  - id: b
+    text: '2'
+    why: Below the documented minimum.
+  - id: c
+    text: '3'
+    correct: true
+    why: 'Storage Models: all workload domain clusters - three hosts.'
+  - id: d
+    text: '4'
+    why: Four is the HA management default cluster minimum.
+    confusedWith: management-domain
+  explanation:
+    correct: All workload domain clusters (and additional management clusters) need at least three hosts.
+    concept: WLD cluster minimum
+    architecture: Three-host vSAN clusters cannot rebuild to compliance after a failure.
+    trap: Mixing up with the 4-host HA management minimum.
+- id: f06-wld-009
+  type: single
+  kind: architecture
+  difficulty: advanced
+  version: vcf9
+  topics:
+  - workload-domains
+  - nsx-architecture
+  objective: '4.1'
+  lesson: workload-domains-architecture
+  section: shared-vs-dedicated-nsx
+  diagram: d06-workload-domain-layout
+  stem: In the diagram, NSX Manager B becomes unavailable. Which domains lose their NSX management and control plane?
+  options:
+  - id: a
+    text: Only prod
+    why: Dev shares the same NSX instance.
+  - id: b
+    text: Prod and dev
+    correct: true
+    why: Both share NSX Manager B.
+  - id: c
+    text: PCI, prod and dev
+    why: PCI has its own NSX Manager A.
+  - id: d
+    text: None - the management domain NSX takes over
+    why: There is no automatic takeover between NSX instances.
+    confusedWith: nsx-architecture
+  explanation:
+    correct: 'Shared NSX increases the blast radius: every domain sharing it is affected; existing data plane keeps forwarding.'
+    concept: Shared NSX failure domain
+    architecture: Dedicated NSX contains the failure to one domain.
+    trap: Data-plane traffic is not immediately lost.
+- id: f06-wld-010
+  type: single
+  kind: concept
+  difficulty: advanced
+  version: vcf9
+  topics:
+  - wld-storage
+  - workload-domains
+  objective: '4.1'
+  lesson: workload-domains-architecture
+  section: components
+  stem: A design uses a vSAN compute cluster that mounts the datastore of a vSAN storage cluster. Which constraint applies
+    in VCF 9.0?
+  options:
+  - id: a
+    text: The compute cluster must be in the management domain
+    why: Not a requirement.
+    confusedWith: management-domain
+  - id: b
+    text: The compute cluster must be co-located in the same workload domain as its vSAN storage cluster
+    correct: true
+    why: Quoted constraint from Storage Models.
+  - id: c
+    text: The storage cluster must use vSAN OSA
+    why: No such restriction stated.
+    confusedWith: vsan-architecture
+  - id: d
+    text: Compute clusters are only supported as supplemental storage
+    why: They are a principal storage option for workload domains.
+  explanation:
+    correct: A vSAN compute cluster has no local vSAN storage and must sit in the same workload domain as the vSAN storage
+      cluster it mounts.
+    concept: Disaggregated vSAN in VCF
+    architecture: Not allowed for the management default cluster.
+    trap: Cross-domain mounting is not supported.
+- id: f06-wld-011
+  type: single
+  kind: troubleshooting
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - workload-domains
+  - cluster-expansion
+  objective: '4.1'
+  lesson: workload-domains-architecture
+  section: how-it-works
+  stem: An administrator wants to add a new host to a workload domain cluster in VCF 9.x and looks for "Add Host" in the workload
+    domain vCenter. What is the correct approach?
+  options:
+  - id: a
+    text: Use the vSphere Client "Add Host" and let SDDC Manager discover it later
+    why: Bypasses the VCF inventory and creates drift.
+    confusedWith: vcenter
+  - id: b
+    text: Commission the host into the instance, then add it to the cluster through the VCF workflow (VCF Operations / SDDC
+      Manager)
+    correct: true
+    why: 'KB 442933: use the SDDC Manager workflow; NIC layout must match.'
+  - id: c
+    text: Deploy a new workload domain for the host
+    why: Unnecessary.
+    confusedWith: workload-domains
+  - id: d
+    text: Add the host to the management domain first
+    why: Not part of the workflow.
+    confusedWith: management-domain
+  explanation:
+    correct: Hosts are commissioned into SDDC Manager inventory and added through VCF so the cluster image, networking and
+      inventory stay consistent.
+    concept: Host expansion
+    architecture: SDDC Manager owns host inventory per instance.
+    trap: Direct vCenter operations cause inventory drift.
+- id: f06-fm-001
+  type: single
+  kind: concept
+  difficulty: foundation
+  version: vcf9
+  topics:
+  - fleet-management
+  objective: '4.2'
+  lesson: vcf-operations-fleet-management
+  section: concept
+  stem: In VCF 9.0, which console is used to manage certificates, passwords and lifecycle across the fleet?
+  options:
+  - id: a
+    text: SDDC Manager UI
+    why: Deprecated in 9.0; it was the console in 5.x.
+    confusedWith: sddc-manager
+  - id: b
+    text: VCF Operations
+    correct: true
+    why: Fleet Management in VCF Operations.
+  - id: c
+    text: vSphere Client of the management vCenter
+    why: Manages one domain only.
+    confusedWith: vcenter
+  - id: d
+    text: VCF Automation provider portal
+    why: Consumption, not fleet management.
+    confusedWith: vcf-automation
+  explanation:
+    correct: VCF Operations is the 9.0 console for fleet management (lifecycle, certificates, passwords, identity, drift...).
+    concept: Fleet management console
+    architecture: Executed by the fleet management appliance and SDDC Manager.
+    trap: Legacy habit of using SDDC Manager UI.
+  diagnostic: vcf
+- id: f06-fm-002
+  type: multi
+  kind: concept
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - fleet-management
+  objective: '4.2'
+  lesson: vcf-operations-fleet-management
+  section: capabilities-of-fleet-management
+  stem: Which tasks are fleet management capabilities of VCF Operations? (Choose three.)
+  options:
+  - id: a
+    text: Certificate management for VCF components
+    correct: true
+    why: Fleet Management → Certificates.
+  - id: b
+    text: Password rotation and remediation
+    correct: true
+    why: Fleet Management → Passwords.
+  - id: c
+    text: Configuration drift for vCenter instances and clusters
+    correct: true
+    why: Listed capability.
+  - id: d
+    text: Configuring BGP neighbors on a Tier-0 gateway
+    why: Done in NSX.
+    confusedWith: nsx-routing
+  - id: e
+    text: Creating VM templates in a content library
+    why: Done in vCenter.
+    confusedWith: vm-management
+  - id: f
+    text: Installing ESX on bare-metal servers
+    why: Hosts are installed before commissioning.
+    confusedWith: host-commissioning
+  select: 3
+  explanation:
+    correct: Fleet management covers identity/SSO, certificates, passwords, tags, configuration profiles/drift, availability
+      (backup, shutdown/startup, DR), FIPS, scaling, moving instances, lifecycle.
+    concept: Fleet management capabilities
+    architecture: Requests flow to the fleet management appliance or SDDC Manager.
+    trap: Element-level tasks remain in vCenter/NSX.
+- id: f06-fm-003
+  type: ordering
+  kind: concept
+  difficulty: advanced
+  version: vcf9
+  topics:
+  - fleet-management
+  - lcm-workflow
+  objective: '4.2'
+  lesson: vcf-operations-fleet-management
+  section: upgrade-order
+  stem: Put the management components in the documented order for a maintenance release update.
+  items:
+  - id: i1
+    text: VCF Operations fleet management appliance
+  - id: i2
+    text: VCF Operations
+  - id: i3
+    text: Remaining management components (VCF Automation, Operations for logs, Identity Broker, Operations for networks)
+  explanation:
+    correct: 'Management components: fleet management appliance first, then VCF Operations, then the others in preferred order;
+      management components before core components.'
+    concept: Management component upgrade order
+    architecture: The fleet management appliance performs the other upgrades, so it goes first.
+    trap: Upgrading VCF Operations first is a common mistake.
+- id: f06-fm-004
+  type: ordering
+  kind: concept
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - lcm-workflow
+  - sddc-manager
+  objective: '4.2'
+  lesson: vcf-operations-fleet-management
+  section: upgrade-order
+  stem: Put the core components of a domain in the documented update order for a maintenance release.
+  items:
+  - id: i1
+    text: SDDC Manager
+  - id: i2
+    text: NSX
+  - id: i3
+    text: vCenter
+  - id: i4
+    text: ESX hosts
+  - id: i5
+    text: vSAN
+  explanation:
+    correct: 'Core order: SDDC Manager → NSX → vCenter → ESX → vSAN, management domain first, then each workload domain.'
+    concept: Core component upgrade order
+    architecture: SDDC Manager orchestrates the rest so it is updated first.
+    trap: vCenter must precede ESX.
+- id: f06-fm-005
+  type: single
+  kind: scenario
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - fleet-management
+  - vcf-automation
+  objective: '4.2'
+  lesson: vcf-operations-fleet-management
+  section: two-engines-behind-one-console
+  stem: An administrator starts an upgrade of VCF Automation from VCF Operations. Which appliance performs the upgrade?
+  options:
+  - id: a
+    text: SDDC Manager of the first instance
+    why: SDDC Manager handles core components.
+    confusedWith: sddc-manager
+  - id: b
+    text: VCF Operations fleet management appliance
+    correct: true
+    why: It lifecycles VCF Operations, VCF Automation, Identity Broker, logs and networks.
+  - id: c
+    text: The VCF Installer
+    why: Only used for deployments.
+    confusedWith: vcf-installer
+  - id: d
+    text: vSphere Lifecycle Manager
+    why: Used for ESX images.
+    confusedWith: vlcm
+  explanation:
+    correct: Management components are lifecycled by the fleet management appliance; their binaries live there.
+    concept: Two engines
+    architecture: Fleet management appliance = former Aria Suite Lifecycle role.
+    trap: Not everything goes through SDDC Manager.
+- id: f06-fm-006
+  type: single
+  kind: scenario
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - fleet-management
+  - sddc-manager
+  objective: '4.2'
+  lesson: vcf-operations-fleet-management
+  section: two-engines-behind-one-console
+  stem: NSX in a workload domain of instance 2 is updated from VCF Operations. Which component orchestrates the NSX update?
+  options:
+  - id: a
+    text: VCF Operations fleet management appliance
+    why: NSX is a core component.
+    confusedWith: fleet-management
+  - id: b
+    text: SDDC Manager of instance 2
+    correct: true
+    why: Core components are lifecycled via the instance SDDC Manager.
+  - id: c
+    text: SDDC Manager of instance 1
+    why: Each instance has its own SDDC Manager.
+  - id: d
+    text: NSX Global Manager
+    why: Not involved in VCF lifecycle.
+    confusedWith: nsx-architecture
+  explanation:
+    correct: VCF Operations initiates; the SDDC Manager of that instance orchestrates core component updates (and holds resource
+      locks).
+    concept: Core lifecycle
+    architecture: Binaries for core components are stored on SDDC Manager.
+    trap: Per-instance scope.
+- id: f06-fm-007
+  type: single
+  kind: concept
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - lcm-concepts
+  - fleet-management
+  objective: '4.2'
+  lesson: vcf-operations-fleet-management
+  section: two-engines-behind-one-console
+  stem: Where are binaries for ESX, vCenter and NSX downloaded in VCF 9.0?
+  options:
+  - id: a
+    text: To the VCF Operations fleet management appliance
+    why: That stores management-component binaries.
+    confusedWith: fleet-management
+  - id: b
+    text: To SDDC Manager
+    correct: true
+    why: Core-component binaries go to SDDC Manager.
+  - id: c
+    text: To the VCF Installer only
+    why: Installer binaries are for deployment.
+    confusedWith: vcf-installer
+  - id: d
+    text: Directly to each ESX host
+    why: Hosts are remediated via vLCM images.
+    confusedWith: vlcm
+  explanation:
+    correct: 'TechDocs: binaries are downloaded to VCF Operations fleet management (management components) and SDDC Manager
+      (core components).'
+    concept: Binary management
+    architecture: Both pull from an online or offline depot.
+    trap: Mixing up the two binary stores.
+- id: f06-fm-008
+  type: single
+  kind: troubleshooting
+  difficulty: advanced
+  version: vcf9
+  topics:
+  - sddc-manager
+  - lcm-workflow
+  objective: '4.2'
+  lesson: vcf-operations-fleet-management
+  section: upgrade-order
+  stem: During a weekend core-component upgrade of the management domain, a request to create a new workload domain in the
+    same instance will not start. What is the most likely reason?
+  options:
+  - id: a
+    text: VCF Operations licensing expired
+    why: Not indicated.
+    confusedWith: licensing
+  - id: b
+    text: SDDC Manager holds resource locks during the upgrade that block conflicting Day-N operations
+    correct: true
+    why: Documented behaviour.
+  - id: c
+    text: Workload domains can only be created in the HA model
+    why: No such rule.
+    confusedWith: deployment-models
+  - id: d
+    text: The fleet management appliance is busy upgrading VCF Automation
+    why: Domain creation does not use that appliance.
+    confusedWith: fleet-management
+  explanation:
+    correct: SDDC Manager "acquires resource locks that prevent specific Day-N lifecycle operations from running concurrently".
+    concept: Resource locks
+    architecture: SDDC Manager serializes conflicting workflows per instance.
+    trap: This is expected, not a fault.
+- id: f06-fm-009
+  type: multi
+  kind: concept
+  difficulty: advanced
+  version: vcf9
+  topics:
+  - identity-sso
+  - fleet-management
+  objective: '4.2'
+  lesson: vcf-operations-fleet-management
+  section: vcf-sso-scope
+  stem: Which components are NOT covered by VCF Single Sign-On in VCF 9.0? (Choose two.)
+  options:
+  - id: a
+    text: SDDC Manager
+    correct: true
+    why: Explicitly excluded.
+  - id: b
+    text: ESX
+    correct: true
+    why: Explicitly excluded.
+  - id: c
+    text: vCenter
+    why: Covered.
+    confusedWith: identity-sso
+  - id: d
+    text: NSX
+    why: Covered.
+    confusedWith: identity-sso
+  - id: e
+    text: VCF Operations for logs
+    why: Covered.
+  select: 2
+  explanation:
+    correct: 'TechDocs: VCF SSO covers "all the VCF components except SDDC Manager and ESX".'
+    concept: VCF SSO scope
+    architecture: Identity Broker brokers the IdP for the covered components.
+    trap: Assuming SDDC Manager is covered because it is a VCF appliance.
+- id: f06-fm-010
+  type: single
+  kind: troubleshooting
+  difficulty: expert
+  version: vcf9
+  topics:
+  - passwords
+  - fleet-management
+  objective: '4.2'
+  lesson: vcf-operations-fleet-management
+  section: what-sddc-manager-ui-deprecated-means
+  stem: On VCF 9.0.0, Fleet Management → Passwords → VCF Instances is empty while the VCF Management tab works. vCenter uses
+    a license without expiry date and an NSX password has expired. What is the documented workaround?
+  options:
+  - id: a
+    text: Redeploy VCF Operations
+    why: Not needed.
+    confusedWith: vcf-ops-architecture
+  - id: b
+    text: Rotate the NSX password through the SDDC Manager UI or API, and plan an upgrade to 9.0.1 or later
+    correct: true
+    why: 'KB 408116: workaround via SDDC Manager; fixed in 9.0.1.'
+  - id: c
+    text: Change the password directly in NSX and do nothing else
+    why: Creates credential drift for SDDC Manager.
+    confusedWith: passwords
+  - id: d
+    text: Use the VCF Installer to reset passwords
+    why: Not its function.
+    confusedWith: vcf-installer
+  explanation:
+    correct: 'KB 408116: with a non-expiring vCenter license, VCF Instances tabs are empty in 9.0.0; use SDDC Manager UI/API
+      for certificates and passwords; fixed in 9.0.1.'
+    concept: Deprecated UI still useful
+    architecture: SDDC Manager executes core password operations anyway.
+    trap: Changing passwords outside VCF breaks automation.
+- id: f06-fm-011
+  type: matching
+  kind: concept
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - fleet-management
+  - sddc-manager
+  objective: '4.2'
+  lesson: vcf-operations-fleet-management
+  section: two-engines-behind-one-console
+  stem: Match each task to the engine that executes it behind VCF Operations.
+  pairs:
+  - id: p1
+    left: Upgrade VCF Operations for logs
+    right: Fleet management appliance
+  - id: p2
+    left: Create a VI workload domain
+    right: SDDC Manager
+  - id: p3
+    left: Rotate the vCenter root password
+    right: SDDC Manager
+  - id: p4
+    left: Deploy the VCF Identity Broker appliance
+    right: Fleet management appliance
+  - id: p5
+    left: Upgrade ESX hosts of a cluster
+    right: SDDC Manager (with vSphere Lifecycle Manager images)
+  explanation:
+    correct: Management components → fleet management appliance; core components and domain workflows → SDDC Manager.
+    concept: Responsibility split
+    architecture: Both are driven from VCF Operations.
+    trap: Same console, different executor.
+- id: f06-fm-012
+  type: truefalse
+  kind: concept
+  difficulty: foundation
+  version: vcf9
+  topics:
+  - sddc-manager
+  objective: '4.2'
+  lesson: vcf-operations-fleet-management
+  section: what-sddc-manager-ui-deprecated-means
+  stem: 'True or false: the SDDC Manager UI is deprecated in VCF 9.0 and slated for removal in a future major release.'
+  options:
+  - id: a
+    text: 'True'
+    correct: true
+    why: Product support notes say exactly this.
+  - id: b
+    text: 'False'
+    why: It is deprecated.
+    confusedWith: sddc-manager
+  explanation:
+    correct: '"SDDC Manager UI is now deprecated, to be removed in a future major release."'
+    concept: SDDC Manager UI status
+    architecture: The appliance and API remain.
+    trap: Deprecated UI does not mean removed appliance.
+- id: f06-cc-001
+  type: single
+  kind: concept
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - component-communication
+  - esx-host
+  objective: '4.1'
+  lesson: component-communication
+  section: flow-table
+  stem: ESX hosts send heartbeats to vCenter. Which protocol and port are used by default?
+  options:
+  - id: a
+    text: TCP 443 from vCenter to host
+    why: API traffic, not the heartbeat.
+  - id: b
+    text: UDP 902 from host to vCenter
+    correct: true
+    why: KB 323612.
+  - id: c
+    text: TCP 1234 from host to vCenter
+    why: NSX management channel port.
+    confusedWith: nsx-architecture
+  - id: d
+    text: UDP 123 from vCenter to host
+    why: NTP.
+    confusedWith: ntp
+  explanation:
+    correct: Heartbeats every 10 s on UDP 902 host → vCenter; after 60 s without heartbeat the host is marked disconnected.
+    concept: vCenter-host communication
+    architecture: vCenter → host also uses TCP 902 and 443.
+    trap: Testing TCP 902 from host to vCenter is expected to fail.
+- id: f06-cc-002
+  type: single
+  kind: concept
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - nsx-architecture
+  - component-communication
+  objective: '4.1'
+  lesson: component-communication
+  section: flow-table
+  stem: Which port does an ESX transport node use for its control channel (nsx-proxy) to the NSX Manager / controller?
+  options:
+  - id: a
+    text: TCP 1234
+    why: Management channel (appliance proxy).
+    confusedWith: nsx-architecture
+  - id: b
+    text: TCP 1235
+    correct: true
+    why: Control channel per KB 410581.
+  - id: c
+    text: UDP 6081
+    why: Geneve data plane.
+    confusedWith: nsx-segments
+  - id: d
+    text: TCP 902
+    why: vCenter-host.
+    confusedWith: vcenter
+  explanation:
+    correct: TCP 1235 = control plane channel; TCP 1234 = management channel.
+    concept: NSX channels
+    architecture: Both run between transport nodes and NSX Manager nodes.
+    trap: Swapping 1234 and 1235.
+- id: f06-cc-003
+  type: matching
+  kind: concept
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - component-communication
+  objective: '4.1'
+  lesson: component-communication
+  section: flow-table
+  stem: Match each port to its purpose in a VCF environment.
+  pairs:
+  - id: p1
+    left: UDP 902 (host to vCenter)
+    right: ESX heartbeat
+  - id: p2
+    left: TCP 1234
+    right: NSX management channel
+  - id: p3
+    left: TCP 1235
+    right: NSX control channel
+  - id: p4
+    left: UDP 6081
+    right: Geneve overlay between TEPs
+  - id: p5
+    left: TCP 9543
+    right: Log ingestion to VCF Operations for logs (CFAPI over SSL)
+  explanation:
+    correct: Verified in Broadcom KBs 323612, 410581/379698, 444793 and 431771.
+    concept: Ports
+    architecture: Element management vs data plane vs logging.
+    trap: Use the Ports and Protocols tool for anything not memorized.
+- id: f06-cc-004
+  type: single
+  kind: scenario
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - component-communication
+  - vcf-ops-architecture
+  objective: '4.1'
+  lesson: component-communication
+  section: flow-1-monitoring
+  stem: After a firewall change, VCF Operations shows instance B objects with metrics frozen since Saturday. vCenter B works
+    normally and workloads are fine. Which link is the most likely problem?
+  options:
+  - id: a
+    text: ESX hosts of instance B to vCenter B
+    why: vCenter B works normally.
+    confusedWith: esx-host
+  - id: b
+    text: VCF Operations collector of instance B to VCF Operations (or to the instance B endpoints)
+    correct: true
+    why: Monitoring flows through the instance collector.
+  - id: c
+    text: Identity Broker to the IdP
+    why: Would affect logins, not metrics.
+    confusedWith: identity-sso
+  - id: d
+    text: TEP-to-TEP Geneve in instance B
+    why: Would affect workloads.
+    confusedWith: nsx-segments
+  explanation:
+    correct: The collector collects locally and forwards to VCF Operations; a broken path gives stale data but no workload
+      impact.
+    concept: Monitoring flow
+    architecture: Collectors are instance-level.
+    trap: Stale data is a management symptom, not a data-plane one.
+- id: f06-cc-005
+  type: single
+  kind: troubleshooting
+  difficulty: advanced
+  version: vcf9
+  topics:
+  - ntp
+  - component-communication
+  objective: '4.1'
+  lesson: component-communication
+  section: why-dns-and-ntp-break-everything
+  stem: After a hypervisor maintenance, SDDC Manager API token requests fail intermittently and VCF Operations reports authentication
+    errors toward SDDC Manager, although passwords are unchanged. What should you check first?
+  options:
+  - id: a
+    text: Time synchronization (NTP) on SDDC Manager and the involved components
+    correct: true
+    why: Clock skew breaks token and certificate validation.
+  - id: b
+    text: vSAN storage policy compliance
+    why: Unrelated.
+    confusedWith: vsan-policies
+  - id: c
+    text: NSX Edge BGP sessions
+    why: Unrelated to management authentication.
+    confusedWith: nsx-routing
+  - id: d
+    text: The VCF Automation organization configuration
+    why: Not in this path.
+    confusedWith: vcf-automation
+  explanation:
+    correct: Tokens and certificates are time-bound; skew produces errors that look like credential problems.
+    concept: NTP dependency
+    architecture: Every management flow depends on consistent time.
+    trap: Do not reset passwords for a time problem.
+- id: f06-cc-006
+  type: single
+  kind: architecture
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - component-communication
+  - lcm-concepts
+  objective: '4.2'
+  lesson: component-communication
+  section: flow-table
+  diagram: d06-component-communication
+  stem: In the diagram, which two components pull binaries from the depot?
+  options:
+  - id: a
+    text: VCF Operations and vCenter
+    why: Neither stores lifecycle binaries.
+    confusedWith: vcenter
+  - id: b
+    text: SDDC Manager and the fleet management appliance
+    correct: true
+    why: Core and management binaries respectively.
+  - id: c
+    text: NSX Manager and ESX hosts
+    why: They receive updates orchestrated by SDDC Manager.
+    confusedWith: nsx-architecture
+  - id: d
+    text: The collector and VCF Automation
+    why: Not binary stores.
+  explanation:
+    correct: SDDC Manager (core) and the fleet management appliance (management components) download from an online or offline
+      depot.
+    concept: Depot flows
+    architecture: Both are driven from VCF Operations.
+    trap: VCF Operations itself is the console, not the binary store.
+- id: f06-cc-007
+  type: single
+  kind: scenario
+  difficulty: advanced
+  version: vcf9
+  topics:
+  - nsx-architecture
+  - component-communication
+  objective: '4.1'
+  lesson: component-communication
+  section: management-vs-data-plane-failures
+  stem: All three NSX Manager nodes of a workload domain are powered off for 20 minutes. What happens to existing east-west
+    overlay traffic between running VMs?
+  options:
+  - id: a
+    text: It stops immediately
+    why: Hosts keep their forwarding state.
+    confusedWith: nsx-architecture
+  - id: b
+    text: It continues using the forwarding state already on the transport nodes; configuration changes are not possible
+    correct: true
+    why: Management/control plane loss does not immediately stop the data plane.
+  - id: c
+    text: It is rerouted through the management domain NSX
+    why: No such failover.
+  - id: d
+    text: It switches to VLAN-backed port groups automatically
+    why: No such behaviour.
+    confusedWith: vds
+  explanation:
+    correct: Data plane runs on hosts and edges; losing NSX Manager freezes management/control but existing flows continue.
+    concept: Plane separation
+    architecture: Hosts keep their state; new changes cannot be pushed.
+    trap: Treat management outages differently from data-plane outages.
+- id: f06-cc-008
+  type: multi
+  kind: concept
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - dns
+  - ntp
+  - component-communication
+  objective: '4.1'
+  lesson: component-communication
+  section: concept
+  stem: Which external services are dependencies of essentially every VCF communication flow? (Choose two.)
+  options:
+  - id: a
+    text: DNS with forward and reverse records
+    correct: true
+    why: Components use FQDNs and certificates carry FQDNs.
+  - id: b
+    text: NTP
+    correct: true
+    why: Time-bound tokens and certificates.
+  - id: c
+    text: VCF Automation
+    why: A consumer, not a dependency of the platform flows.
+    confusedWith: vcf-automation
+  - id: d
+    text: NSX Edge cluster
+    why: Only needed for north-south workload traffic.
+    confusedWith: nsx-edge
+  - id: e
+    text: vSAN
+    why: Storage, not a communication dependency of all flows.
+    confusedWith: vsan-architecture
+  select: 2
+  explanation:
+    correct: DNS (forward + reverse) and NTP underpin every management flow.
+    concept: Shared dependencies
+    architecture: They must be ready before deployment.
+    trap: Reverse DNS is the most frequently forgotten.
+- id: f06-cc-009
+  type: cli
+  kind: command
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - nsx-architecture
+  - component-communication
+  objective: '4.1'
+  lesson: component-communication
+  section: cli-api
+  stem: You are in nsxcli on an ESX transport node. Type the command that shows the connection status to the NSX controllers
+    (control plane).
+  answers:
+  - get controllers
+  explanation:
+    correct: '`get controllers` shows control-plane connectivity; `get managers` shows management-plane connectivity.'
+    concept: Verifying NSX channels
+    architecture: Control channel uses TCP 1235.
+    trap: Do not confuse with `get managers`.
+- id: f06-cc-010
+  type: single
+  kind: concept
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - component-communication
+  - nsx-segments
+  objective: '4.1'
+  lesson: component-communication
+  section: concept
+  stem: Which communication carries actual workload (VM) traffic between hosts in an NSX overlay?
+  options:
+  - id: a
+    text: NSX management channel TCP 1234
+    why: Management only.
+    confusedWith: nsx-architecture
+  - id: b
+    text: Geneve encapsulated traffic between TEPs (UDP 6081)
+    correct: true
+    why: The overlay data plane.
+  - id: c
+    text: Collector to VCF Operations
+    why: Monitoring.
+    confusedWith: vcf-ops-architecture
+  - id: d
+    text: SDDC Manager API calls
+    why: Orchestration.
+    confusedWith: sddc-manager
+  explanation:
+    correct: Only the data plane (TEP-to-TEP Geneve, edge uplinks, vSAN, vMotion) carries workload or storage traffic.
+    concept: Data plane
+    architecture: Requires MTU at least 1600 end to end.
+    trap: Management outages do not equal data outages.
+- id: f06-dm-001
+  type: single
+  kind: concept
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - deployment-models
+  objective: '4.1'
+  lesson: vcf-deployment-models
+  section: simple-vs-high-availability-vcf-installer
+  stem: How many management appliances does the VCF Installer deploy in the high availability model?
+  options:
+  - id: a
+    text: '7'
+    why: Simple model.
+    confusedWith: deployment-models
+  - id: b
+    text: '9'
+    why: Not a documented count.
+  - id: c
+    text: '13'
+    correct: true
+    why: vCenter 1, SDDC Manager 1, NSX 3, VCF Operations 3, fleet mgmt 1, collector 1, VCF Automation 3.
+  - id: d
+    text: '15'
+    why: Fleet mgmt and collector are not tripled.
+  explanation:
+    correct: HA = 13 appliances; simple = 7.
+    concept: Installer models
+    architecture: Three-node clusters for NSX Manager, VCF Operations, VCF Automation.
+    trap: Tripling everything gives the wrong count.
+- id: f06-dm-002
+  type: multi
+  kind: architecture
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - deployment-models
+  objective: '4.1'
+  lesson: vcf-deployment-models
+  section: simple-vs-high-availability-vcf-installer
+  stem: Which components are deployed as three-node clusters in the VCF Installer high availability model? (Choose three.)
+  options:
+  - id: a
+    text: NSX Manager
+    correct: true
+    why: Nodes 1-3.
+  - id: b
+    text: VCF Operations
+    correct: true
+    why: Primary, replica, data.
+  - id: c
+    text: VCF Automation
+    correct: true
+    why: Three automation nodes.
+  - id: d
+    text: SDDC Manager
+    why: Always single.
+    confusedWith: sddc-manager
+  - id: e
+    text: VCF Operations fleet management appliance
+    why: Single in both models.
+    confusedWith: fleet-management
+  - id: f
+    text: Management vCenter
+    why: Single, protected by vSphere HA.
+    confusedWith: vcenter
+  select: 3
+  explanation:
+    correct: Only NSX Manager, VCF Operations and VCF Automation are tripled.
+    concept: HA component model
+    architecture: Cluster nodes get DRS anti-affinity.
+    trap: Fleet management and collector stay single.
+- id: f06-dm-003
+  type: single
+  kind: design
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - deployment-models
+  - design-availability
+  objective: '4.1'
+  lesson: vcf-deployment-models
+  section: fleet-deployment-designs
+  stem: A customer has two data center rooms on one campus with low-latency links and needs to survive the loss of one room
+    with automatic VM restart and no data loss. Which fleet deployment design fits?
+  options:
+  - id: a
+    text: Basic design
+    why: Single zone - room failure takes the fleet down.
+  - id: b
+    text: Site high availability across zones (stretched clusters)
+    correct: true
+    why: Two availability zones with fault domains and stretched IP.
+  - id: c
+    text: Disaster recovery across regions
+    why: For distant sites; involves RPO and failover.
+    confusedWith: design-availability
+  - id: d
+    text: A second fleet
+    why: Does not provide automatic restart.
+    confusedWith: vcf-fleet
+  explanation:
+    correct: Site HA across zones uses stretched clusters for automatic failover between zones with low latency.
+    concept: Fleet designs
+    architecture: Requires L2 extension/stretched IP and low latency.
+    trap: Stretched is HA, not DR.
+- id: f06-dm-004
+  type: single
+  kind: design
+  difficulty: advanced
+  version: vcf9
+  topics:
+  - deployment-models
+  - design-availability
+  objective: '4.1'
+  lesson: vcf-deployment-models
+  section: stretched-vs-dr
+  stem: A bank must recover from a regional disaster at a site 400 km away. Some data loss according to an agreed RPO is acceptable.
+    Which design fits?
+  options:
+  - id: a
+    text: Site HA across zones
+    why: Latency/distance makes stretching inappropriate.
+    confusedWith: design-availability
+  - id: b
+    text: Disaster recovery across regions with a second VCF instance and replication
+    correct: true
+    why: Matches distance and RPO tolerance.
+  - id: c
+    text: Basic design with vSphere HA
+    why: No site protection.
+  - id: d
+    text: Single-rack cluster model
+    why: A cluster model, not a site strategy.
+  explanation:
+    correct: 'DR across regions: second instance in another region, replication and failover (e.g. VMware Live Recovery);
+      VCF Operations replicated/backed up, VCF Automation backup/restore.'
+    concept: DR design
+    architecture: Network latency/bandwidth must meet requirements.
+    trap: Distance + RPO = DR, not stretched.
+- id: f06-dm-005
+  type: single
+  kind: design
+  difficulty: expert
+  version: vcf9
+  topics:
+  - deployment-models
+  - design-availability
+  objective: '4.1'
+  lesson: vcf-deployment-models
+  section: fleet-deployment-designs
+  stem: A hospital needs automatic recovery from the loss of one of two nearby buildings AND recovery from a regional disaster.
+    Which fleet design?
+  options:
+  - id: a
+    text: Basic
+    why: No zone or region protection.
+  - id: b
+    text: Site HA across zones
+    why: Covers only the building loss.
+  - id: c
+    text: DR across regions
+    why: Covers only the regional disaster.
+  - id: d
+    text: Fault domains + disaster recovery
+    correct: true
+    why: Combines both.
+  explanation:
+    correct: The FD + DR design builds on both the HA-across-zones and DR-across-regions designs.
+    concept: Combined design
+    architecture: Highest cost and complexity.
+    trap: Choosing one partial design.
+- id: f06-dm-006
+  type: single
+  kind: concept
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - deployment-models
+  - network-ops
+  objective: '4.1'
+  lesson: vcf-deployment-models
+  section: component-models
+  stem: What is the purpose of the three-node VCF Operations for networks cluster model?
+  options:
+  - id: a
+    text: 'Redundancy: the service survives a node failure'
+    why: 'TechDocs: performance, not redundancy.'
+    confusedWith: design-availability
+  - id: b
+    text: Performance and scalability; it does not provide high availability
+    correct: true
+    why: Explicitly stated.
+  - id: c
+    text: Stretching across availability zones
+    why: Not this model.
+  - id: d
+    text: Running one collector per node
+    why: Single collector in this model.
+  explanation:
+    correct: The HA-named VCF Operations for networks cluster prioritizes performance/scale over availability.
+    concept: Operations for networks models
+    architecture: Higher reservations required.
+    trap: The name suggests HA but it is not.
+- id: f06-dm-007
+  type: single
+  kind: concept
+  difficulty: advanced
+  version: vcf9
+  topics:
+  - deployment-models
+  - design-availability
+  objective: '4.1'
+  lesson: vcf-deployment-models
+  section: vsphere-cluster-models
+  stem: Which vSphere cluster model cannot be stretched across availability zones?
+  options:
+  - id: a
+    text: Single-rack
+    why: Can be stretched.
+  - id: b
+    text: Layer 2 multi-rack
+    why: Not listed as restricted.
+  - id: c
+    text: Layer 3 multi-rack
+    correct: true
+    why: 'TechDocs: L3 multi-rack clusters cannot be stretched.'
+  - id: d
+    text: vSAN HCI cluster
+    why: A storage role, not a cluster model.
+    confusedWith: vsan-architecture
+  explanation:
+    correct: L3 multi-rack clusters cannot be stretched and are not supported for the management default cluster.
+    concept: Cluster models
+    architecture: Stretched model uses two storage fault domains.
+    trap: Assuming every model can be stretched.
+- id: f06-dm-008
+  type: single
+  kind: concept
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - identity-sso
+  - deployment-models
+  objective: '4.2'
+  lesson: vcf-deployment-models
+  section: component-models
+  stem: Where does the VCF Identity Broker run in its embedded deployment model?
+  options:
+  - id: a
+    text: Inside SDDC Manager
+    why: SDDC Manager is not covered by VCF SSO.
+    confusedWith: sddc-manager
+  - id: b
+    text: As a service in the management domain vCenter
+    correct: true
+    why: Embedded = part of vCenter; protected by vSphere HA.
+  - id: c
+    text: As a three-node appliance cluster
+    why: That is the appliance model.
+  - id: d
+    text: In VCF Operations
+    why: VCF Operations is where you configure it, not where it runs.
+    confusedWith: fleet-management
+  explanation:
+    correct: 'Embedded: service deployed as part of the management vCenter. Appliance: 3-node cluster. Changing embedded →
+      appliance requires an SSO reset.'
+    concept: Identity Broker models
+    architecture: Embedded saves resources but depends on vCenter availability.
+    trap: Configure location vs run location.
+- id: f06-dm-009
+  type: matching
+  kind: concept
+  difficulty: advanced
+  version: vcf9
+  topics:
+  - identity-sso
+  - deployment-models
+  objective: '4.2'
+  lesson: vcf-deployment-models
+  section: component-models
+  stem: Match each VCF SSO model to its scope.
+  pairs:
+  - id: p1
+    left: Fleet-wide
+    right: One Identity Broker for all components of the fleet
+  - id: p2
+    left: Cross-instance
+    right: One Identity Broker shared by several VCF instances
+  - id: p3
+    left: Per-instance
+    right: One Identity Broker per VCF instance
+  explanation:
+    correct: Each model is a single point of failure for its scope - choose based on how far an identity outage may spread.
+    concept: VCF SSO models
+    architecture: Identity Broker can be embedded or appliance in each model.
+    trap: Wider scope = larger blast radius.
+- id: f06-dm-010
+  type: single
+  kind: architecture
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - deployment-models
+  - fleet-management
+  objective: '4.1'
+  lesson: vcf-deployment-models
+  section: simple-vs-high-availability-vcf-installer
+  diagram: d06-deployment-models
+  stem: Using the diagram, which appliance remains a single node in the high availability model?
+  options:
+  - id: a
+    text: NSX Manager
+    why: Three nodes in HA.
+    confusedWith: nsx-architecture
+  - id: b
+    text: VCF Operations
+    why: Three nodes in HA.
+    confusedWith: vcf-ops-architecture
+  - id: c
+    text: VCF Operations fleet management appliance
+    correct: true
+    why: Single in both models (as are the collector, vCenter and SDDC Manager).
+  - id: d
+    text: VCF Automation
+    why: Three nodes in HA.
+    confusedWith: vcf-automation
+  explanation:
+    correct: Fleet management, collector, vCenter and SDDC Manager stay single in the HA model.
+    concept: HA model composition
+    architecture: HA protects the services with the most users/API load.
+    trap: Not everything is tripled.
+- id: f06-dm-011
+  type: single
+  kind: concept
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - vcf-ops-architecture
+  - deployment-models
+  objective: '4.3'
+  lesson: vcf-deployment-models
+  section: component-models
+  stem: What is the maximum supported latency between availability zones for the continuous availability VCF Operations model?
+  options:
+  - id: a
+    text: 2 ms
+    why: Not the documented value.
+  - id: b
+    text: 10 ms
+    correct: true
+    why: Maximum network latency 10 ms between zones.
+  - id: c
+    text: 50 ms
+    why: Too high.
+  - id: d
+    text: 150 ms
+    why: Typical DR, not CA.
+    confusedWith: design-availability
+  explanation:
+    correct: Continuous availability spreads node pairs across two zones with at most 10 ms latency.
+    concept: VCF Operations models
+    architecture: Simple (1), HA (3), CA (pairs across 2 zones).
+    trap: Confusing with vSAN stretched witness latency figures.
+- id: f06-dm-012
+  type: single
+  kind: scenario
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - deployment-models
+  - vcf-installer
+  objective: '4.1'
+  lesson: vcf-deployment-models
+  section: deployment-pathways
+  stem: A customer has an existing standalone vSphere 9 environment (vCenter and hosts) and wants it to become the management
+    domain of a new VCF instance without rebuilding it. Which pathway applies?
+  options:
+  - id: a
+    text: Import vCenter as a workload domain
+    why: Import adds a workload domain to an existing instance.
+    confusedWith: vcenter-import
+  - id: b
+    text: Converge the existing vCenter with the VCF Installer
+    correct: true
+    why: Convergence turns existing vSphere into the management domain.
+  - id: c
+    text: Deploy a new fleet on new hosts and migrate VMs
+    why: Not "without rebuilding".
+  - id: d
+    text: Upgrade from VCF 5.x
+    why: There is no VCF 5.x here.
+    confusedWith: lcm-workflow
+  explanation:
+    correct: 'VCF 9 pathways: new fleet, new instance in existing fleet, converge existing vCenter (→ management domain),
+      import vCenter (→ workload domain).'
+    concept: Deployment pathways
+    architecture: Management domain is created during deployment or convergence.
+    trap: Converge vs import.
+- id: f06-dm-013
+  type: single
+  kind: design
+  difficulty: foundation
+  version: vcf9
+  topics:
+  - deployment-models
+  objective: '4.1'
+  lesson: vcf-deployment-models
+  section: what-simple-really-costs
+  stem: For a proof of concept with minimal hardware, which component model should be chosen and what is its main trade-off?
+  options:
+  - id: a
+    text: High availability - more appliances but no downtime during upgrades
+    why: Not minimal hardware.
+  - id: b
+    text: Simple - smallest footprint, but single nodes rely on vSphere HA restart and upgrades interrupt those services
+    correct: true
+    why: Matches the TechDocs trade-offs.
+  - id: c
+    text: Simple - but it does not include VCF Operations
+    why: Simple includes VCF Operations (mandatory).
+    confusedWith: fleet-management
+  - id: d
+    text: Continuous availability - lowest cost
+    why: Highest complexity.
+    confusedWith: design-availability
+  explanation:
+    correct: 'Simple: 3 hosts, 7 appliances, single nodes; slower recovery and upgrade disruption.'
+    concept: Simple model
+    architecture: Fully supported; HA recommended for production.
+    trap: Simple still deploys the full stack.

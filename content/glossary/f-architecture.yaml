@@ -1,0 +1,119 @@
+# VCF 9 architecture terms (owner: author F). Fleet, VCF instance, domain, management domain and
+# workload domain are defined by author A.
+terms:
+  - id: sddc-manager
+    term: SDDC Manager
+    definition: Per-VCF-instance appliance that orchestrates core components - workload domain deployment, vCenter import, host commissioning, lifecycle of ESX/vCenter/NSX, certificate and password automation. In VCF 9.0 these functions are used from VCF Operations; the SDDC Manager UI is deprecated.
+    whyItMatters: Exam questions test that SDDC Manager still exists (one per instance) and still does the work, even though the console moved to VCF Operations.
+    version: vcf9
+    related: [vcf-operations, fleet-management, core-components]
+    lessons: [vcf-operations-fleet-management, vcf9-architecture-overview]
+    labs: [lab-explore-vcf-fleet]
+  - id: vcf-operations
+    term: VCF Operations
+    definition: The mandatory central console of a VCF fleet (formerly VMware Aria Operations) - monitoring, dashboards, reporting, licensing and fleet management. One per fleet; simple (1 node), HA (3 nodes) or continuous availability models.
+    whyItMatters: In VCF 9 almost every Day-2 task starts here; know its fleet scope and its models.
+    version: vcf9
+    related: [fleet-management, vcf-operations-collector, sddc-manager]
+    lessons: [vcf9-architecture-overview, vcf-operations-fleet-management]
+    labs: [lab-explore-vcf-fleet]
+  - id: fleet-management
+    term: Fleet management (VCF Operations)
+    definition: The set of VCF Operations capabilities for managing VCF infrastructure at scale - lifecycle, identity and SSO, certificates, passwords, configuration drift and profiles, tags, backup/restore, shutdown/startup, DR, FIPS, scaling and moving instances between fleets. Executed by the VCF Operations fleet management appliance (management components) and SDDC Manager (core components).
+    whyItMatters: Exam objective 4.2 asks you to differentiate the fleet management capabilities in VCF Operations.
+    version: vcf9
+    related: [vcf-operations, sddc-manager, management-components, core-components]
+    lessons: [vcf-operations-fleet-management]
+    labs: [lab-explore-vcf-fleet]
+  - id: vcf-installer
+    term: VCF Installer
+    definition: Appliance that replaces Cloud Builder. Downloads binaries and deploys a new VCF fleet, a new VCF instance into an existing fleet, or converges existing vSphere, in a simple or high-availability model, from a wizard or JSON spec. Ships in the SDDC Manager OVA and switches to SDDC Manager mode if deployed on a management host.
+    whyItMatters: Deployment questions use the VCF 9 name; Cloud Builder is legacy.
+    version: vcf9
+    related: [sddc-manager, simple-deployment-model, ha-deployment-model]
+    lessons: [vcf-deployment-models, vcf-installer-workflow]
+    labs: [lab-deploy-vcf-management-domain]
+  - id: vcf-automation
+    term: VCF Automation
+    definition: Fleet-level self-service and multi-tenant consumption platform (formerly Aria Automation), running as containerized services on 1 (simple) or 3 (HA) appliance nodes managed by fleet management.
+    whyItMatters: Know that it is a fleet-level component deployed in the first instance's management domain and its two models.
+    version: vcf9
+    related: [vcf-operations, fleet-management]
+    lessons: [vcf9-architecture-overview, vcf-deployment-models]
+    labs: [lab-vcfa-organization-setup]
+  - id: vcf-identity-broker
+    term: VCF Identity Broker
+    definition: Service that connects an external identity provider (AD/LDAP, OIDC, SAML) to VCF components for VCF single sign-on. Deployed embedded in the management vCenter or as a 3-node appliance; scoped fleet-wide, cross-instance or per-instance.
+    whyItMatters: Replaces Workspace ONE Access for VCF SSO in 9.0; SDDC Manager and ESX are not covered by VCF SSO.
+    version: vcf9
+    related: [vcf-single-sign-on, fleet-management]
+    lessons: [vcf9-architecture-overview, vcf-deployment-models]
+    labs: [lab-explore-vcf-fleet]
+  - id: vcf-operations-collector
+    term: VCF Operations collector
+    expansion: cloud proxy
+    definition: Instance-level appliance that collects and monitors data locally in a VCF instance and forwards it to VCF Operations. Deployed with every VCF instance.
+    whyItMatters: Additional VCF instances get collectors, not their own VCF Operations - a frequent exam distractor.
+    version: vcf9
+    related: [vcf-operations]
+    lessons: [vcf9-architecture-overview, component-communication]
+    labs: [lab-explore-vcf-fleet]
+  - id: vcf-operations-logs
+    term: VCF Operations for logs
+    definition: Fleet-level log collection and analysis product (successor to Aria Operations for Logs), simple 1-node or HA 3-node model, ingesting via CFAPI or syslog.
+    whyItMatters: Deployed on Day 2 through fleet management; know its models and use case.
+    version: vcf9
+    related: [vcf-operations, fleet-management]
+    lessons: [component-communication, vcf-deployment-models]
+    labs: [lab-vcf-ops-logs-network]
+  - id: management-components
+    term: VCF management components
+    definition: Fleet-level components - VCF Operations, VCF Operations fleet management, VCF Automation, VCF Operations for logs, VCF Operations for networks, VCF Identity Broker. Lifecycled by the fleet management appliance and upgraded before core components.
+    whyItMatters: The management/core split decides which engine, binaries location and upgrade order apply.
+    version: vcf9
+    related: [core-components, fleet-management]
+    lessons: [vcf-operations-fleet-management, vcf9-architecture-overview]
+  - id: core-components
+    term: VCF core components
+    definition: Instance-level components - SDDC Manager, vCenter, NSX Manager, ESX (and vSAN). Lifecycled through SDDC Manager in the order SDDC Manager, NSX, vCenter, ESX, vSAN.
+    whyItMatters: Upgrade-order and responsibility questions rely on this classification.
+    version: vcf9
+    related: [management-components, sddc-manager]
+    lessons: [vcf-operations-fleet-management, vcf9-architecture-overview]
+  - id: principal-storage
+    term: Principal storage
+    definition: The storage selected when a domain or cluster is created - vSAN ESA/OSA, vSAN storage cluster or compute cluster (not for the management default cluster), Fibre Channel VMFS or NFS v3.
+    whyItMatters: Scenario questions check which storage types can be principal and which only supplemental.
+    version: vcf9
+    related: [supplemental-storage]
+    lessons: [management-domain, workload-domains-architecture, workload-domain-storage]
+  - id: supplemental-storage
+    term: Supplemental storage
+    definition: Storage added after a domain/cluster exists, for workloads or data at rest - iSCSI, NVMe/TCP, NVMe/FC, NVMe/RDMA, NFS v3/4.1 and FC.
+    whyItMatters: iSCSI and NVMe variants are supplemental only - a classic trap.
+    version: vcf9
+    related: [principal-storage]
+    lessons: [management-domain, workload-domain-storage]
+  - id: vi-workload-domain
+    term: VI workload domain
+    expansion: Virtual Infrastructure workload domain
+    definition: A workload domain for consumer workloads with a dedicated vCenter and vCenter SSO domain, a dedicated or shared NSX instance, and clusters of at least three hosts; created from VCF Operations and executed by SDDC Manager.
+    whyItMatters: The building block for isolation and independent lifecycle in a VCF instance.
+    version: vcf9
+    related: [sddc-manager, principal-storage]
+    lessons: [workload-domains-architecture]
+    labs: [lab-commission-hosts-create-wld]
+  - id: simple-deployment-model
+    term: Simple deployment model
+    definition: VCF Installer option with single-node NSX Manager, VCF Operations and VCF Automation - 7 management appliances on a management default cluster of at least 3 hosts; availability through vSphere HA restarts.
+    whyItMatters: Smallest supported footprint - a good fit for POC/lab, with slower recovery and upgrade disruption.
+    version: vcf9
+    related: [ha-deployment-model, vcf-installer]
+    lessons: [vcf-deployment-models, management-domain]
+  - id: ha-deployment-model
+    term: High availability deployment model
+    definition: VCF Installer option with 3-node NSX Manager, VCF Operations and VCF Automation clusters - 13 management appliances on a management default cluster of at least 4 hosts.
+    whyItMatters: Recommended for production; the exam contrasts it with the simple model by node and host counts.
+    version: vcf9
+    related: [simple-deployment-model, vcf-installer]
+    lessons: [vcf-deployment-models, management-domain]

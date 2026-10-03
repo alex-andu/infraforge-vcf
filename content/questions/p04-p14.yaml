@@ -1,0 +1,1055 @@
+questions:
+  # ---------------------------------------------------------------------------
+  # network-fundamentals-for-vcf
+  # ---------------------------------------------------------------------------
+  - id: net-fund-001
+    type: single
+    kind: concept
+    difficulty: foundation
+    topics: [l2-l3]
+    objective: "2.4"
+    lesson: network-fundamentals-for-vcf
+    section: concept
+    diagnostic: networking
+    stem: "An ESX host's vSAN VMkernel adapter (172.16.13.11/24) sends traffic to another host at 172.16.13.12/24 in the same VLAN. Which device forwards the traffic?"
+    options:
+      - { id: a, text: "The default gateway of VLAN 1613", why: "Same subnet traffic never needs the gateway; it is delivered by MAC address within the VLAN.", confusedWith: l2-l3 }
+      - { id: b, text: "The layer 2 switch(es) carrying VLAN 1613", correct: true, why: "Both IPs are in the same subnet and VLAN, so the frame is switched at layer 2." }
+      - { id: c, text: "vCenter", why: "vCenter is a management plane and never forwards data traffic." }
+      - { id: d, text: "An NSX Tier-0 gateway", why: "vSAN VMkernel traffic is VLAN-backed infrastructure traffic, not routed through NSX gateways.", confusedWith: nsx-routing }
+    explanation:
+      correct: "Hosts in the same VLAN and subnet reach each other directly at layer 2 through the switches; the gateway is used only for other subnets."
+      concept: "Layer 2 switching inside a VLAN vs layer 3 routing between subnets."
+      architecture: "In a single-rack VCF cluster, vMotion, vSAN and TEP traffic between hosts stays inside each VLAN on the ToR pair."
+      trap: "Do not assume all traffic goes through the gateway – only traffic leaving the subnet does."
+  - id: net-fund-002
+    type: single
+    kind: concept
+    difficulty: foundation
+    topics: [mtu]
+    objective: "2.4"
+    lesson: network-fundamentals-for-vcf
+    section: mtu-the-largest-frame-a-link-carries
+    diagnostic: networking
+    stem: "What is the minimum MTU the VCF Installer accepts for the distributed switch used for host overlay (NSX TEP) traffic?"
+    options:
+      - { id: a, text: "1500", why: "1500 is rejected: the installer reports the MTU must be at least 1600." }
+      - { id: b, text: "1600", correct: true, why: "1600 is the enforced minimum for Geneve overlay; VCF 9 design guidance recommends 1700 as the design minimum and 9000 overall." }
+      - { id: c, text: "9000", why: "9000 is the recommendation, not the minimum." }
+      - { id: d, text: "9216", why: "9216 is a common physical switch setting, not a host overlay requirement." }
+    explanation:
+      correct: "The installer validation error reads that the host overlay switch MTU 'Must be at least 1600'. VCF 9 design guidance uses 1700 as the design minimum and recommends 9000."
+      concept: "Geneve encapsulation overhead requires a larger MTU than the inner 1500-byte frame."
+      trap: "Know three numbers: 1600 enforced minimum, 1700 design minimum, 9000 recommended."
+  - id: net-fund-003
+    type: single
+    kind: command
+    difficulty: foundation
+    topics: [mtu]
+    objective: "2.4"
+    lesson: network-fundamentals-for-vcf
+    section: why-8972-and-1472
+    diagnostic: networking
+    stem: "You must prove that the vSAN network carries 9000-byte packets end to end. Which command is correct?"
+    options:
+      - { id: a, text: "`vmkping -I vmk2 -s 9000 172.16.13.12`", why: "No DF bit, so the ping can be fragmented; and 9000 payload plus 28 bytes of headers exceeds 9000." }
+      - { id: b, text: "`vmkping -I vmk2 -d -s 8972 172.16.13.12`", correct: true, why: "DF set and 8972 + 28 bytes of IP/ICMP headers = 9000." }
+      - { id: c, text: "`ping 172.16.13.12` from vCenter", why: "Wrong source interface and no size/DF control." }
+      - { id: d, text: "`vmkping -I vmk2 -d -s 1472 172.16.13.12`", why: "That proves only a 1500-byte path." }
+    explanation:
+      correct: "-d sets the do-not-fragment bit and -s sets the ICMP payload; 9000 − 20 (IP) − 8 (ICMP) = 8972."
+      concept: "MTU testing requires DF and the correct payload size from the correct VMkernel adapter."
+      trap: "A ping without -d may succeed on a 1500 path through fragmentation."
+  - id: net-fund-004
+    type: single
+    kind: troubleshooting
+    difficulty: intermediate
+    topics: [mtu, l2-l3]
+    objective: "2.4"
+    lesson: network-fundamentals-for-vcf
+    section: troubleshooting
+    diagnostic: troubleshooting
+    context: |
+      ```shell
+      [root@esx-03:~] vmkping -I vmk1 -S vmotion 172.16.12.14
+      3 packets transmitted, 3 packets received, 0% packet loss
+      [root@esx-03:~] vmkping -I vmk1 -S vmotion -d -s 8972 172.16.12.14
+      3 packets transmitted, 0 packets received, 100% packet loss
+      ```
+    stem: "vMotion to esx-04 stalls. Based on the output, what is the most likely cause?"
+    options:
+      - { id: a, text: "The vMotion VLAN is not allowed on esx-04's trunk", why: "Then the small ping would also fail.", confusedWith: l2-l3 }
+      - { id: b, text: "A device on the path to esx-04 has an MTU smaller than 9000", correct: true, why: "Small packets pass, large DF packets fail: classic MTU mismatch." }
+      - { id: c, text: "The vMotion gateway is down", why: "Same-subnet traffic does not use the gateway." }
+      - { id: d, text: "vCenter is unavailable", why: "vMotion data transfer is host to host; vCenter does not forward it." }
+    explanation:
+      correct: "Size-dependent failure with DF set means at least one hop (vmk, VDS, switch port) is below 9000."
+      concept: "Distinguish VLAN problems (nothing works), routing problems (only other subnets fail) and MTU problems (only large packets fail)."
+      trap: "A successful small ping does not clear the network."
+  - id: net-fund-005
+    type: multi
+    kind: concept
+    difficulty: intermediate
+    topics: [mtu, vcf-network-design]
+    objective: "2.4"
+    lesson: network-fundamentals-for-vcf
+    section: infrastructure-vlans-and-their-mtu-vcf-9-guidance
+    select: 2
+    stem: "According to VCF 9 design guidance, which TWO networks are recommended to use an MTU of 9000?"
+    options:
+      - { id: a, text: "ESX management VMkernel", why: "Recommended at 1500 because vSAN witness traffic may cross WAN links without jumbo support." }
+      - { id: b, text: "vMotion VMkernel", correct: true, why: "VCF-NET-RCMD-MTU-004 recommends 9000+." }
+      - { id: c, text: "NSX host TEP", correct: true, why: "VCF-NET-RCMD-MTU-005 recommends 9000+ for host/edge TEPs." }
+      - { id: d, text: "vSAN witness traffic over a WAN", why: "Witness traffic may cross links without jumbo frames; 1500 is listed." }
+    explanation:
+      correct: "vMotion, storage and TEP networks are recommended at 9000; ESX management stays at 1500."
+      concept: "VCF 9 per-traffic-type MTU guidance."
+      trap: "'Set everything to 9000' is not the VCF 9 recommendation for the management VMkernel."
+  - id: net-fund-006
+    type: single
+    kind: architecture
+    difficulty: intermediate
+    topics: [mtu, nsx-segments]
+    objective: "2.4"
+    lesson: network-fundamentals-for-vcf
+    section: overlay-segment-mtu-tep-mtu-200
+    stem: "Host TEP MTU is 9000 across the fabric. What is the largest MTU you can configure on an NSX overlay segment for workload VMs per VCF 9 requirements?"
+    options:
+      - { id: a, text: "9000", why: "Encapsulation overhead would make the outer packet exceed 9000; DF packets would be dropped." }
+      - { id: b, text: "8800", correct: true, why: "VCF-NET-REQD-OVL-001: overlay segment MTU = host TEP MTU − 200." }
+      - { id: c, text: "8972", why: "8972 is the vmkping payload for a 9000 test, not a segment MTU." }
+      - { id: d, text: "1500 only", why: "Larger overlay MTUs are possible when the TEP MTU allows it." }
+    explanation:
+      correct: "The VCF design reserves 200 bytes for Geneve overhead: 9000 − 200 = 8800."
+      concept: "Inner (segment) MTU vs outer (TEP) MTU."
+      trap: "Do not confuse the 28-byte ping header subtraction with the 200-byte overlay allowance."
+  - id: net-fund-007
+    type: single
+    kind: design
+    difficulty: advanced
+    topics: [l2-l3, vcf-network-design]
+    objective: "2.4"
+    lesson: network-fundamentals-for-vcf
+    section: addressing-rules-worth-memorising
+    stem: "A team deploys a workload domain with a /26 vMotion subnet for a cluster expected to grow from 8 to 70 hosts. What is the problem with this design?"
+    options:
+      - { id: a, text: "None – the subnet mask can be widened later in SDDC Manager", why: "VCF does not support changing subnet masks for infrastructure networks." }
+      - { id: b, text: "vMotion must use IPv6", why: "Infrastructure networks must be IPv4 in VCF 9." }
+      - { id: c, text: "The subnet cannot hold 70 hosts and VCF does not support changing infrastructure subnet masks later", correct: true, why: "A /26 has 62 usable addresses; masks cannot be changed, only ranges added inside the mask." }
+      - { id: d, text: "vMotion must share the management subnet", why: "Separate VLANs per traffic type are recommended." }
+    explanation:
+      correct: "Size infrastructure subnets for maximum growth: VCF-NET-RCMD-IPA-001 notes expanding subnets later is disruptive and mask changes are unsupported."
+      concept: "IP planning for growth."
+      trap: "Adding IP ranges within an existing mask is supported; changing the mask is not."
+  - id: net-fund-008
+    type: matching
+    kind: concept
+    difficulty: intermediate
+    topics: [vcf-network-design, l2-l3]
+    objective: "2.4"
+    lesson: network-fundamentals-for-vcf
+    section: network-fabric-models
+    stem: "Match each VCF 9 network fabric model with the vSphere cluster model it supports."
+    pairs:
+      - { id: p1, left: "Single-Rack network fabric", right: "Single-rack cluster model" }
+      - { id: p2, left: "Multi-Rack network fabric", right: "Layer 2 or layer 3 multi-rack cluster models" }
+      - { id: p3, left: "Multi Availability Zone network fabric", right: "Stretched cluster model" }
+    explanation:
+      correct: "Fabric models mirror cluster models: single-rack, multi-rack (L2/L3) and multi-AZ (stretched)."
+      concept: "The physical fabric must support the cluster's failure-domain span."
+      trap: "A multi-rack fabric does not by itself provide availability-zone resilience."
+  - id: net-fund-009
+    type: single
+    kind: design
+    difficulty: intermediate
+    topics: [l2-l3]
+    objective: "2.4"
+    lesson: network-fundamentals-for-vcf
+    section: concept
+    stem: "Which VCF 9 recommendation keeps an infrastructure VLAN's gateway available when one top-of-rack switch fails?"
+    options:
+      - { id: a, text: "Use a floating VRRP/HSRP gateway IP across the ToR pair", correct: true, why: "VCF-NET-RCMD-GTW-001 recommends a first hop redundancy protocol." }
+      - { id: b, text: "Configure two default gateways on each VMkernel adapter", why: "A vmk netstack uses one default gateway; redundancy belongs to the network." }
+      - { id: c, text: "Use beacon probing on the VDS", why: "Beacon probing detects upstream link failures; it does not provide a gateway." , confusedWith: vds }
+      - { id: d, text: "Put the gateway on vCenter", why: "vCenter does not route infrastructure traffic." }
+    explanation:
+      correct: "A first hop redundancy protocol (VRRP/HSRP) presents one gateway IP served by either switch."
+      concept: "First hop gateway availability (VCF-NET-REQD-GTW-001 and RCMD-GTW-001)."
+      trap: "Host-side teaming protects the link to the switch, not the gateway function itself."
+
+  # ---------------------------------------------------------------------------
+  # dns-ntp-dependencies
+  # ---------------------------------------------------------------------------
+  - id: dns-ntp-001
+    type: single
+    kind: concept
+    difficulty: foundation
+    topics: [dns]
+    objective: "4.1"
+    lesson: dns-ntp-dependencies
+    section: concept
+    diagnostic: networking
+    stem: "Which DNS records does VCF 9 require for every management component?"
+    options:
+      - { id: a, text: "Forward (A) records only", why: "Reverse lookup is also validated." }
+      - { id: b, text: "Forward (A) and reverse (PTR) records that match", correct: true, why: "VCF-NET-REQD-IPA-002: forward and reverse DNS records for all management components." }
+      - { id: c, text: "CNAME aliases for each component", why: "Aliases cause validation failures for vCenter." }
+      - { id: d, text: "SRV records", why: "Not a VCF component requirement." }
+    explanation:
+      correct: "Each component's FQDN must resolve to its IP and the IP back to the same FQDN."
+      concept: "Forward and reverse DNS as a hard VCF dependency."
+      trap: "Forward-only DNS is the classic cause of validation failures."
+  - id: dns-ntp-002
+    type: single
+    kind: log
+    difficulty: intermediate
+    topics: [dns, deployment-validation]
+    objective: "4.1"
+    lesson: dns-ntp-dependencies
+    section: deep-dive
+    context: |
+      ```log
+      Validation failed with the following errors:
+        VcManager vcenterFQDN vcenter-01.lab.internal:
+        Please ensure there are no DNS aliases configured for vCenter FQDN. vCenter IP 10.10.10.20 ...
+      ```
+      `nslookup vcenter-01.lab.internal` returns 10.10.10.20.
+    stem: "What should you check next?"
+    options:
+      - { id: a, text: "The reverse lookup of 10.10.10.20 – it must return exactly one name, vcenter-01.lab.internal", correct: true, why: "The check verifies the IP uniquely resolves back to the FQDN; missing or duplicate PTRs fail it." }
+      - { id: b, text: "The NTP offset of the VCF Installer", why: "The message is about DNS aliases.", confusedWith: ntp }
+      - { id: c, text: "Whether vCenter responds to ping", why: "In a greenfield deployment vCenter does not exist yet." }
+      - { id: d, text: "The certificate of the VCF Installer", why: "Unrelated to DNS validation.", confusedWith: certificates }
+    explanation:
+      correct: "Forward works, so test reverse; a missing PTR or a second PTR (alias) causes this message (KB 437102)."
+      concept: "Uniqueness of reverse resolution."
+      trap: "Pinging a not-yet-deployed vCenter is a red herring."
+  - id: dns-ntp-003
+    type: single
+    kind: troubleshooting
+    difficulty: advanced
+    topics: [ntp, host-commissioning, certificates]
+    objective: "4.1"
+    lesson: dns-ntp-dependencies
+    section: failure-scenarios
+    context: |
+      Host commissioning fails at "Install Temporary VMCA Certificate For Host Commissioning".
+      domainmanager.log: `java.net.NoRouteToHostException`
+      operationsmanager.log: `Time validation failed. Check host Time and/or Certificate expiration data (notBefore, notAfter).`
+      The credential validation subtask succeeded.
+    stem: "What is the most likely root cause?"
+    options:
+      - { id: a, text: "Missing static route from SDDC Manager to the host subnet", why: "Credential validation reached the host; the routing-looking error is a symptom.", confusedWith: l2-l3 }
+      - { id: b, text: "The host clock is far from SDDC Manager's time, typically because NTP (UDP 123) is not reaching the host", correct: true, why: "The time validation message plus a dropped TLS connection is the documented pattern (KB 448781)." }
+      - { id: c, text: "The host's PTR record is missing", why: "DNS failures produce name/validation errors, not certificate time validation errors.", confusedWith: dns }
+      - { id: d, text: "The vSAN disks are not claimed", why: "Unrelated to certificate installation." }
+    explanation:
+      correct: "A host whose clock is behind sees the new certificate as not yet valid; fix NTP reachability, resync, retry."
+      concept: "Time skew breaks certificate validation."
+      architecture: "SDDC Manager installs a temporary VMCA certificate on hosts during commissioning."
+      trap: "NoRouteToHostException does not always mean routing."
+  - id: dns-ntp-004
+    type: single
+    kind: command
+    difficulty: intermediate
+    topics: [ntp]
+    objective: "4.1"
+    lesson: dns-ntp-dependencies
+    section: ntp-sync-health-on-esx
+    diagnostic: troubleshooting
+    context: |
+      ```shell
+      [root@esx-05:~] ntpq -p
+           remote        refid  st t when poll reach   delay   offset  jitter
+      ======================================================================
+       10.10.10.2      .INIT.  16 u    -   64    0    0.000    0.000   0.000
+      ```
+    stem: "What does this output tell you?"
+    options:
+      - { id: a, text: "The host is synchronized to 10.10.10.2", why: "No '*' and reach 0 mean it is not synchronized." }
+      - { id: b, text: "The host has not received any NTP replies from 10.10.10.2", correct: true, why: "Reach 0 and stratum 16/.INIT. indicate no successful polls." }
+      - { id: c, text: "NTP is disabled on the host", why: "ntpq shows a configured peer being polled." }
+      - { id: d, text: "DNS resolution of the NTP server fails", why: "The peer is shown by IP and is being polled." }
+    explanation:
+      correct: "Reach is an octal bitmask of the last eight polls: 0 = none succeeded, 377 = all eight succeeded."
+      concept: "Configured is not synchronized."
+      trap: "esxcli system ntp get would show Enabled: true here too."
+  - id: dns-ntp-005
+    type: multi
+    kind: concept
+    difficulty: intermediate
+    topics: [ntp, certificates]
+    objective: "4.1"
+    lesson: dns-ntp-dependencies
+    section: concept
+    select: 2
+    stem: "Which TWO problems are direct consequences of significant time skew between VCF components? (Choose two.)"
+    options:
+      - { id: a, text: "Certificates are rejected as not yet valid or expired", correct: true, why: "Certificate validity is time-based." }
+      - { id: b, text: "Authentication tokens or Kerberos tickets are rejected", correct: true, why: "SSO tokens and Kerberos have validity windows." }
+      - { id: c, text: "Jumbo frames are dropped", why: "MTU is unrelated to time.", confusedWith: mtu }
+      - { id: d, text: "VLAN tags are stripped", why: "VLAN tagging is unrelated to time.", confusedWith: l2-l3 }
+    explanation:
+      correct: "Time is an input to certificate validation and to authentication protocols."
+      concept: "Why NTP is a hard dependency."
+      trap: "DNS and NTP failures often appear as certificate or login errors."
+  - id: dns-ntp-006
+    type: single
+    kind: design
+    difficulty: advanced
+    topics: [dns, ntp, deployment-planning]
+    objective: "4.1"
+    lesson: dns-ntp-dependencies
+    section: designing-dns-and-ntp-for-vcf
+    stem: "A customer plans to run their only DNS servers as VMs inside the VCF management domain they are about to deploy. What is the main design concern?"
+    options:
+      - { id: a, text: "DNS VMs cannot run on vSAN", why: "They can; that is not the issue." }
+      - { id: b, text: "Circular dependency: DNS must exist before deployment, and a management domain outage would take name resolution down with it", correct: true, why: "DNS is an external prerequisite; place at least one copy outside the management domain." }
+      - { id: c, text: "VCF requires Windows DNS", why: "Any standards-compliant DNS works." }
+      - { id: d, text: "DNS VMs need jumbo frames", why: "DNS traffic is small." }
+    explanation:
+      correct: "External services must not depend on the infrastructure that depends on them."
+      concept: "DNS and NTP as external services."
+      trap: "Convenient consolidation can create a chicken-and-egg recovery problem."
+  - id: dns-ntp-007
+    type: single
+    kind: troubleshooting
+    difficulty: intermediate
+    topics: [ntp]
+    objective: "4.1"
+    lesson: dns-ntp-dependencies
+    section: troubleshooting
+    stem: "`vmkping -I vmk0 10.10.10.2` to the NTP server succeeds from a host, but ntpq shows reach 0. Which tool best proves whether UDP 123 replies arrive?"
+    options:
+      - { id: a, text: "`tcpdump-uw -n -i vmk0 host 10.10.10.2 and port 123`", correct: true, why: "Shows NTP requests leaving and whether replies return." }
+      - { id: b, text: "`vmkping -d -s 8972 10.10.10.2`", why: "Tests MTU, not UDP 123.", confusedWith: mtu }
+      - { id: c, text: "`esxcli network vswitch dvs vmware list`", why: "Shows switch configuration, not NTP traffic.", confusedWith: vds }
+      - { id: d, text: "`nslookup 10.10.10.2`", why: "DNS is irrelevant when the peer is configured by IP." }
+    explanation:
+      correct: "A packet capture on the VMkernel adapter shows requests without replies when a firewall blocks UDP 123 (KB 442868, KB 443781)."
+      concept: "ICMP reachability does not prove a UDP service is reachable."
+      trap: "A successful ping is false reassurance."
+  - id: dns-ntp-008
+    type: cli
+    kind: command
+    difficulty: foundation
+    topics: [dns]
+    objective: "4.1"
+    lesson: dns-ntp-dependencies
+    section: cli-api
+    stem: "Type the esxcli command that lists the DNS servers an ESX host is configured to use."
+    answers: ["esxcli network ip dns server list"]
+    placeholder: "esxcli ..."
+    explanation:
+      correct: "`esxcli network ip dns server list` shows the DNSServers line."
+      concept: "Verify which DNS servers the failing component actually uses."
+      trap: "Testing from your laptop may use different DNS servers than the host."
+  - id: dns-ntp-009
+    type: ordering
+    kind: troubleshooting
+    difficulty: intermediate
+    topics: [dns, troubleshooting-method]
+    objective: "4.1"
+    lesson: dns-ntp-dependencies
+    section: troubleshooting
+    stem: "Put the DNS troubleshooting steps for a failed VCF validation in the most efficient order."
+    items:
+      - { id: s1, text: "Read the exact validation message and note the FQDN/IP it names" }
+      - { id: s2, text: "From the failing component, run a forward lookup of the FQDN" }
+      - { id: s3, text: "Run a reverse lookup of the IP and count the names returned" }
+      - { id: s4, text: "Repeat against each configured DNS server" }
+      - { id: s5, text: "Fix the zone data at the source and rerun validation" }
+    explanation:
+      correct: "Message → forward → reverse → each server → fix and retry."
+      concept: "Test from the failing component; test both directions; test every server."
+      trap: "Fixing only one DNS server leads to intermittent failures."
+
+  # ---------------------------------------------------------------------------
+  # vsphere-distributed-switch
+  # ---------------------------------------------------------------------------
+  - id: vds-001
+    type: single
+    kind: architecture
+    difficulty: foundation
+    topics: [vds]
+    objective: "2.4"
+    lesson: vsphere-distributed-switch
+    section: concept
+    stem: "vCenter becomes unavailable. What happens to running VMs connected to a vSphere Distributed Switch?"
+    options:
+      - { id: a, text: "They lose network connectivity until vCenter returns", why: "The data plane runs on each host and keeps forwarding.", confusedWith: vcenter }
+      - { id: b, text: "They keep forwarding traffic; only VDS configuration changes are impossible", correct: true, why: "vCenter is the management plane; host proxy switches are the data plane." }
+      - { id: c, text: "They fail over to a standard switch automatically", why: "No such automatic migration exists." }
+      - { id: d, text: "They are restarted by vSphere HA", why: "HA reacts to host failures, not vCenter outages.", confusedWith: vsphere-ha }
+    explanation:
+      correct: "The VDS configuration is cached on every host; forwarding continues without vCenter."
+      concept: "VDS management plane vs data plane."
+      trap: "Many learners think the VDS 'lives in vCenter'."
+  - id: vds-002
+    type: single
+    kind: design
+    difficulty: intermediate
+    topics: [vds]
+    objective: "2.4"
+    lesson: vsphere-distributed-switch
+    section: teaming-policies
+    stem: "Which teaming policy does VCF 9 design guidance recommend for the ESX management, vMotion and storage distributed port groups?"
+    options:
+      - { id: a, text: "Route based on IP hash", why: "Requires EtherChannel/LACP on the physical switches." }
+      - { id: b, text: "Route based on physical NIC load", correct: true, why: "VCF-VDS-COM-RCMD-DPG-004/005 and SDS-RCMD-DPG-001 recommend it; no switch configuration needed." }
+      - { id: c, text: "Use explicit failover order", why: "Provides no load balancing." }
+      - { id: d, text: "Route based on source MAC hash", why: "Not the VCF recommendation." }
+    explanation:
+      correct: "Load-based teaming rebalances when an uplink is busy and needs no physical switch configuration."
+      concept: "Teaming policy selection."
+      trap: "LBT is VDS-only and does not need LACP."
+  - id: vds-003
+    type: single
+    kind: scenario
+    difficulty: intermediate
+    topics: [vds]
+    objective: "2.4"
+    lesson: vsphere-distributed-switch
+    section: port-binding
+    stem: "The management vCenter VM must be recoverable even when vCenter itself is down and its port must be reassigned. Which port binding does VCF 9 recommend for the VM management port group?"
+    options:
+      - { id: a, text: "Static binding", why: "Static ports are assigned through vCenter; recommended for other port groups." }
+      - { id: b, text: "Ephemeral binding", correct: true, why: "VCF-VDS-COM-RCMD-DPG-001: ephemeral binding enables recovering the vCenter that manages the switch." }
+      - { id: c, text: "Dynamic binding", why: "Deprecated option, not the recommendation." }
+      - { id: d, text: "No binding – use a standard switch", why: "VCF uses the VDS." }
+    explanation:
+      correct: "Ephemeral ports are created at power-on without vCenter."
+      concept: "Port binding types."
+      trap: "Static binding is still recommended for all other port groups."
+  - id: vds-004
+    type: single
+    kind: concept
+    difficulty: intermediate
+    topics: [vds]
+    objective: "2.4"
+    lesson: vsphere-distributed-switch
+    section: lacp-and-link-aggregation-in-vcf-9
+    stem: "A network team proposes static EtherChannel between ESX hosts and ToR switches in a VCF 9 environment. What is the correct response?"
+    options:
+      - { id: a, text: "Accept – it is the VCF default", why: "Independent uplinks are the recommendation." }
+      - { id: b, text: "Reject – static link aggregation is not supported; use independent uplinks (or LACP only where its conditions are met)", correct: true, why: "VCF 9 physical design: static aggregation unsupported, LACP with conditions, independent uplinks recommended." }
+      - { id: c, text: "Accept, but only for vSAN traffic", why: "The restriction applies regardless of traffic type." }
+      - { id: d, text: "Accept if beacon probing is enabled", why: "Unrelated." }
+    explanation:
+      correct: "VCF-NET-REQD-LAG-001 recommends that each host-to-switch connection operates as an independent uplink."
+      concept: "Link aggregation policy in VCF 9."
+      trap: "LACP is not forbidden, but static EtherChannel is."
+  - id: vds-005
+    type: single
+    kind: troubleshooting
+    difficulty: advanced
+    topics: [vds]
+    objective: "2.4"
+    lesson: vsphere-distributed-switch
+    section: real-world-scenario
+    stem: "After an admin changed the vMotion port group teaming to 'Route based on IP hash', vMotion became unreliable and the switches log MAC flapping. No switch change was made. What is the best fix?"
+    options:
+      - { id: a, text: "Enable beacon probing", why: "Does not address the mismatch between IP hash and the switch." }
+      - { id: b, text: "Revert to 'Route based on physical NIC load'", correct: true, why: "IP hash requires matching switch aggregation; LBT needs none and is the VCF recommendation." }
+      - { id: c, text: "Increase the vMotion MTU", why: "MTU is not the problem.", confusedWith: mtu }
+      - { id: d, text: "Disable NIOC", why: "NIOC does not cause MAC flapping." }
+    explanation:
+      correct: "IP hash spreads one MAC across several uplinks; without EtherChannel/LACP on the switch the MAC flaps between ports."
+      concept: "Teaming policies that require switch configuration."
+      trap: "More bandwidth comes from more/faster NICs, not mismatched hashing."
+  - id: vds-006
+    type: matching
+    kind: concept
+    difficulty: intermediate
+    topics: [vds]
+    objective: "2.4"
+    lesson: vsphere-distributed-switch
+    section: components
+    stem: "Match each VCF 9 NIOC traffic type with its default share value."
+    pairs:
+      - { id: p1, left: "Virtual machine traffic", right: "High" }
+      - { id: p2, left: "Principal IP-based storage (vSAN)", right: "High" }
+      - { id: p3, left: "Management traffic", right: "Normal" }
+      - { id: p4, left: "vMotion traffic", right: "Low" }
+    explanation:
+      correct: "VCF-VDS-SDS-RCMD-NIO-002..005: management Normal, vMotion Low, VMs High, principal storage High."
+      concept: "NIOC shares apply only under contention."
+      trap: "vMotion is deliberately Low so it cannot starve storage or VMs."
+  - id: vds-007
+    type: truefalse
+    kind: concept
+    difficulty: foundation
+    topics: [vds]
+    objective: "2.4"
+    lesson: vsphere-distributed-switch
+    section: concept
+    stem: "True or false: VCF 9 design guidance requires one vSphere Distributed Switch to be shared across all vSphere clusters of a workload domain."
+    options:
+      - { id: "true", text: "True", why: "The requirement is the opposite." }
+      - { id: "false", text: "False", correct: true, why: "VCF-VDS-COM-REQD-CFG-001: do not share a VDS across different vSphere clusters (greenfield automated workflows)." }
+    explanation:
+      correct: "One VDS set per cluster enables independent lifecycle and limits the fault domain."
+      concept: "VDS scope in VCF 9."
+      trap: "Classic vSphere designs often shared one VDS across clusters; VCF 9 does not."
+  - id: vds-008
+    type: single
+    kind: concept
+    difficulty: advanced
+    topics: [vds]
+    objective: "2.4"
+    lesson: vsphere-distributed-switch
+    section: failover-detection-and-the-standby-list
+    stem: "Which statement about network failover detection on a VDS is correct?"
+    options:
+      - { id: a, text: "Link status only detects NIC, cable and directly connected switch-port failures, and is the generally recommended setting", correct: true, why: "KB 430982 recommends link status only." }
+      - { id: b, text: "Beacon probing is required for every VCF cluster", why: "Not required; generally avoided." }
+      - { id: c, text: "Link status only detects upstream router failures", why: "It sees only the local link state." }
+      - { id: d, text: "Failover detection is configured on vCenter's HA settings", why: "It is a port group teaming setting.", confusedWith: vsphere-ha }
+    explanation:
+      correct: "Link status detects local link loss; upstream resilience is solved with redundant ToRs and routing."
+      concept: "Failure detection options."
+      trap: "Do not confuse network failover detection with vSphere HA host isolation."
+
+  # ---------------------------------------------------------------------------
+  # vcf-network-design
+  # ---------------------------------------------------------------------------
+  - id: vcf-net-001
+    type: single
+    kind: design
+    difficulty: intermediate
+    topics: [vcf-network-design, vds]
+    objective: "2.4"
+    lesson: vcf-network-design
+    section: the-six-distributed-switch-models
+    stem: "Hosts have six 25 GbE ports. Security requires infrastructure, storage and workload traffic on fully separate physical NICs, each with redundancy. Which distributed switch model fits?"
+    options:
+      - { id: a, text: "Single distributed switch", why: "No separation." }
+      - { id: b, text: "Storage separation", why: "Separates storage only." }
+      - { id: c, text: "Storage and workload separation", correct: true, why: "Three VDS (management+vMotion, storage, workload) with a minimum of six NICs for redundancy." }
+      - { id: d, text: "vSAN storage cluster separation", why: "Separates vSAN client and server traffic, not workload." }
+    explanation:
+      correct: "Full separation of storage and workload traffic uses three VDS and at least six NICs."
+      concept: "VCF 9 distributed switch models."
+      trap: "Check NIC counts: the three-VDS model is not possible with four NICs and redundancy."
+  - id: vcf-net-002
+    type: single
+    kind: design
+    difficulty: intermediate
+    topics: [vcf-network-design]
+    objective: "2.4"
+    lesson: vcf-network-design
+    section: deep-dive
+    stem: "Which cluster model requires separate ESX management, vMotion and storage port groups per rack?"
+    options:
+      - { id: a, text: "Single-rack", why: "One set of VLANs." }
+      - { id: b, text: "Layer 2 multi-rack", why: "VLANs are stretched across racks." }
+      - { id: c, text: "Layer 3 multi-rack", correct: true, why: "VCF-VDS-SDS-REQD-CFG-003: per-rack port groups because each rack is its own L2 domain." }
+      - { id: d, text: "Stretched", why: "Needs extra port groups for AZ2, not per rack." }
+    explanation:
+      correct: "Layer 3 multi-rack uses per-rack VLANs/subnets, so port groups are created per rack."
+      concept: "How cluster models change the VLAN plan."
+      trap: "Stretched clusters add AZ2 port groups – a different requirement."
+  - id: vcf-net-003
+    type: single
+    kind: design
+    difficulty: advanced
+    topics: [vcf-network-design, design-availability]
+    objective: "2.4"
+    lesson: vcf-network-design
+    section: cluster-models-change-the-vlan-plan
+    stem: "A customer wants to stretch a workload domain cluster that was built as a layer 3 multi-rack cluster. What do you tell them?"
+    options:
+      - { id: a, text: "Add a witness and stretch it", why: "Layer 3 multi-rack clusters cannot be stretched." }
+      - { id: b, text: "Layer 3 multi-rack clusters cannot be stretched; a stretched design requires a different cluster", correct: true, why: "Stated in the VCF 9 vSphere cluster models." }
+      - { id: c, text: "Convert it to layer 2 by changing the subnet masks", why: "Subnet masks cannot be changed." }
+      - { id: d, text: "Use NSX Federation to stretch it", why: "Federation does not stretch a vSphere/vSAN cluster.", confusedWith: nsx-architecture }
+    explanation:
+      correct: "The stretched cluster model explicitly excludes layer 3 multi-rack clusters."
+      concept: "Cluster model constraints."
+      trap: "Plan the cluster model before deployment; it cannot be changed casually."
+  - id: vcf-net-004
+    type: single
+    kind: scenario
+    difficulty: intermediate
+    topics: [vcf-network-design, mtu]
+    objective: "4.1"
+    lesson: vcf-network-design
+    section: concept
+    context: |
+      ```log
+      The provided MTU for Distributed vSphere Switch which is going to be used for Host Overlay is 1500. Must be at least 1600
+      ```
+    stem: "This error appears during deployment spec validation. What is the correct fix?"
+    options:
+      - { id: a, text: "Raise the host overlay distributed switch MTU (9000 recommended) and make sure the physical path supports it, then retry", correct: true, why: "The installer enforces ≥ 1600; VCF recommends 9000 end to end." }
+      - { id: b, text: "Lower the overlay segment MTU to 1400", why: "Segment MTU is not what is being validated." }
+      - { id: c, text: "Skip NSX deployment", why: "NSX is part of VCF; the requirement remains." }
+      - { id: d, text: "Change the management VMkernel MTU to 1600", why: "The check concerns the host overlay switch." }
+    explanation:
+      correct: "Set the switch MTU to at least 1600 – in practice 9000 – and validate the physical path."
+      concept: "VCF Installer MTU validation (KB 442925)."
+      trap: "Fixing the spec without fixing the physical switches leads to dropped overlay traffic later."
+  - id: vcf-net-005
+    type: multi
+    kind: architecture
+    difficulty: intermediate
+    topics: [vcf-network-design]
+    objective: "2.4"
+    lesson: vcf-network-design
+    section: traffic-types-in-a-vcf-instance
+    select: 3
+    stem: "Which THREE networks does every NSX-prepared ESX host in a vSAN workload domain cluster need? (Choose three.)"
+    options:
+      - { id: a, text: "ESX management", correct: true, why: "vmk0 on every host." }
+      - { id: b, text: "vMotion", correct: true, why: "Every cluster host has a vMotion vmk." }
+      - { id: c, text: "Host TEP", correct: true, why: "NSX overlay requires a TEP on prepared hosts." }
+      - { id: d, text: "NSX Edge RTEP", why: "Optional, only on edges for Federation." , confusedWith: nsx-edge }
+      - { id: e, text: "BGP peering VLAN", why: "Only on edge uplinks.", confusedWith: nsx-routing }
+    explanation:
+      correct: "Hosts need management, vMotion, storage (vSAN) and host TEP networks; edges add uplink and optional RTEP networks."
+      concept: "Per-host network types in VCF."
+      trap: "Edge-only networks are not configured on every host."
+  - id: vcf-net-006
+    type: single
+    kind: troubleshooting
+    difficulty: advanced
+    topics: [mtu, vcf-network-design]
+    objective: "2.4"
+    lesson: vcf-network-design
+    section: troubleshooting
+    stem: "After cluster expansion into a new rack, VMs on the new hosts can be pinged but large transfers hang. NSX shows all tunnels Up. Which statement is correct?"
+    options:
+      - { id: a, text: "Tunnels Up proves MTU is fine", why: "BFD keepalives are small and pass a 1500 path." }
+      - { id: b, text: "Run DF vmkping on the TEP netstack between new and old hosts; size-dependent failure points to an MTU mismatch on the new rack's path", correct: true, why: "Small packets work, large encapsulated packets with DF are dropped." }
+      - { id: c, text: "Restart the NSX Manager cluster", why: "Management/control plane restarts do not change packet size limits.", confusedWith: nsx-architecture }
+      - { id: d, text: "Lower the VDS MTU to 1500 on all hosts", why: "Below the 1600 minimum and breaks the overlay everywhere." }
+    explanation:
+      correct: "Compare old-old and new-old DF pings to isolate the hop, then check switch port MTU."
+      concept: "Overlay MTU troubleshooting."
+      trap: "Healthy tunnel status is a common red herring."
+  - id: vcf-net-007
+    type: single
+    kind: architecture
+    difficulty: advanced
+    topics: [vcf-network-design, design-availability]
+    objective: "2.4"
+    lesson: vcf-network-design
+    section: cluster-models-change-the-vlan-plan
+    stem: "In a stretched cluster, the VM management VLAN exists only in AZ1. AZ1 fails and HA restarts vCenter in AZ2. What happens?"
+    options:
+      - { id: a, text: "vCenter runs and is reachable because vSAN keeps a copy in AZ2", why: "Storage is available, but the network is not." }
+      - { id: b, text: "vCenter powers on but is unreachable because its VLAN and gateway are not available in AZ2", correct: true, why: "VM-facing VLANs and their gateway must be present in both AZs with the same ID and IP." }
+      - { id: c, text: "HA refuses to restart it", why: "HA restarts it; networking is the problem.", confusedWith: vsphere-ha }
+      - { id: d, text: "NSX automatically re-IPs vCenter", why: "No such behavior." }
+    explanation:
+      correct: "VM segments must be reachable across all AZs of the cluster with a consistent VLAN ID and a highly available gateway."
+      concept: "Stretched VLAN requirements."
+      trap: "Storage availability alone is not service availability."
+  - id: vcf-net-008
+    type: single
+    kind: concept
+    difficulty: foundation
+    topics: [vcf-network-design]
+    objective: "2.4"
+    lesson: vcf-network-design
+    section: what-vcf-builds-for-nsx
+    stem: "Who creates the host TEP VMkernel adapters (for example vmk10 and vmk11) in a VCF cluster?"
+    options:
+      - { id: a, text: "The administrator, manually on each host before deployment", why: "You provide VLAN, addressing and MTU; NSX creates the vmks." }
+      - { id: b, text: "NSX host preparation during the VCF workflow", correct: true, why: "Host preparation attaches NSX to the VDS and creates TEP vmks." }
+      - { id: c, text: "vSphere HA", why: "Unrelated.", confusedWith: vsphere-ha }
+      - { id: d, text: "The physical switch via LLDP", why: "Switches do not create host interfaces." }
+    explanation:
+      correct: "TEPs are created by NSX host preparation on the NSX netstack."
+      concept: "Division of work between you, VCF and NSX."
+      trap: "Pre-creating vmks on TEP VLANs is unnecessary in VCF."
+  - id: vcf-net-009
+    type: single
+    kind: design
+    difficulty: expert
+    topics: [vcf-network-design, vds]
+    objective: "2.4"
+    lesson: vcf-network-design
+    section: nioc-and-the-dedicated-edge-cluster-model
+    stem: "You deploy the 'Dedicated vSphere cluster for NSX Edge nodes' distributed switch model. Which post-deployment step does the VCF 9 documentation call out?"
+    options:
+      - { id: a, text: "Enable LACP on both switches", why: "Not part of this model." }
+      - { id: b, text: "Manually disable Network I/O Control on both switches", correct: true, why: "Listed as a drawback/step of the dedicated edge cluster model." }
+      - { id: c, text: "Lower the MTU to 1500 for edges", why: "Contradicts MTU guidance." }
+      - { id: d, text: "Convert the edges to bare metal", why: "Form factor is a separate decision.", confusedWith: nsx-edge }
+    explanation:
+      correct: "The model's drawbacks include that NIOC on both switches must be manually disabled post-deployment."
+      concept: "Model-specific day-2 tasks."
+      trap: "NIOC is on by default in other models and recommended there."
+
+  # ---------------------------------------------------------------------------
+  # design-availability-failure-domains
+  # ---------------------------------------------------------------------------
+  - id: dsg-avl-001
+    type: single
+    kind: design
+    difficulty: intermediate
+    topics: [design-availability, deployment-models]
+    objective: "4.1"
+    lesson: design-availability-failure-domains
+    section: fleet-deployment-models-per-fleet
+    stem: "Requirement: workloads must survive a power outage of one data hall on the same campus with no data loss. There is no regional DR requirement. Which VCF fleet deployment model is the most appropriate?"
+    options:
+      - { id: a, text: "Basic design", why: "No AZ protection." }
+      - { id: b, text: "Site High Availability (across zones)", correct: true, why: "Two AZs with fault domains/stretched clusters cover AZ power, network or cooling failure." }
+      - { id: c, text: "Disaster Recovery (across regions)", why: "Over-scoped and gives RPO > 0." }
+      - { id: d, text: "Fault Domains and Disaster Recovery", why: "Adds DR that was not required." }
+    explanation:
+      correct: "Site HA across zones targets single-AZ power, network and cooling failures."
+      concept: "Mapping failures to fleet deployment models."
+      trap: "Don't over-design: DR was not required."
+  - id: dsg-avl-002
+    type: single
+    kind: design
+    difficulty: intermediate
+    topics: [design-availability, deployment-models]
+    objective: "4.1"
+    lesson: design-availability-failure-domains
+    section: fleet-deployment-models-per-fleet
+    stem: "A customer must recover from ransomware and regional disasters within hours, accepting some data loss, and has no second data hall nearby. Which model fits?"
+    options:
+      - { id: a, text: "Site High Availability (across zones)", why: "Synchronous copies replicate corruption and there is no second AZ." }
+      - { id: b, text: "Disaster Recovery (across regions)", correct: true, why: "Lists cyber attacks and regional disasters; RPO > 0 and longer RTO are accepted implications." }
+      - { id: c, text: "Basic design with vSphere HA", why: "HA does not protect against site loss or ransomware.", confusedWith: vsphere-ha }
+      - { id: d, text: "Stretched management domain only", why: "Stretching needs AZs and is not DR." }
+    explanation:
+      correct: "DR across regions adds a second instance with replication or backup/restore."
+      concept: "HA vs DR."
+      trap: "Stretched clusters are not ransomware protection."
+  - id: dsg-avl-003
+    type: matching
+    kind: concept
+    difficulty: intermediate
+    topics: [design-availability]
+    objective: "4.1"
+    lesson: design-availability-failure-domains
+    section: vsphere-cluster-models-per-cluster
+    stem: "Match each vSphere cluster model with the largest failure it is designed to survive."
+    pairs:
+      - { id: p1, left: "Single-rack", right: "Host failure" }
+      - { id: p2, left: "Layer 2 multi-rack", right: "Rack failure" }
+      - { id: p3, left: "Layer 3 multi-rack", right: "Rack failure (with per-rack L2 domains)" }
+      - { id: p4, left: "Stretched", right: "Availability zone failure" }
+    explanation:
+      correct: "Single-rack: host; multi-rack: rack; stretched: AZ."
+      concept: "Cluster models and failure domains."
+      trap: "Only stretched clusters survive an AZ outage."
+  - id: dsg-avl-004
+    type: single
+    kind: concept
+    difficulty: foundation
+    topics: [design-availability]
+    objective: "4.1"
+    lesson: design-availability-failure-domains
+    section: availability-vs-recovery
+    stem: "What does RPO describe?"
+    options:
+      - { id: a, text: "The maximum time to restore a service", why: "That is RTO." }
+      - { id: b, text: "The maximum acceptable data loss measured in time", correct: true, why: "Recovery Point Objective." }
+      - { id: c, text: "The minimum number of hosts per cluster", why: "Unrelated." }
+      - { id: d, text: "The maximum latency between AZs", why: "A network requirement, not RPO." }
+    explanation:
+      correct: "RPO = how much data you may lose; RTO = how long recovery may take."
+      concept: "Recovery objectives."
+      trap: "Swapping RPO and RTO is a classic exam slip."
+  - id: dsg-avl-005
+    type: multi
+    kind: design
+    difficulty: advanced
+    topics: [design-availability, vsan-resilience]
+    objective: "4.1"
+    lesson: design-availability-failure-domains
+    section: stretched-cluster-prerequisites
+    select: 3
+    stem: "Which THREE are prerequisites for a VCF stretched workload cluster? (Choose three.)"
+    options:
+      - { id: a, text: "A vSAN witness at a third site", correct: true, why: "The witness breaks ties between the two data sites." }
+      - { id: b, text: "Low latency between data sites (vSAN guidance under 5 ms RTT)", correct: true, why: "Synchronous writes need low latency." }
+      - { id: c, text: "VM networks and their first hop gateway available in both AZs on the same IP", correct: true, why: "Restarted VMs keep their IPs and gateway." }
+      - { id: d, text: "A layer 3 multi-rack cluster as the starting point", why: "Layer 3 multi-rack clusters cannot be stretched." }
+      - { id: e, text: "A second VCF instance in another region", why: "That is DR, not a stretched-cluster prerequisite." }
+    explanation:
+      correct: "Witness, latency/bandwidth and stretched networks with HA gateways are the core prerequisites."
+      concept: "Stretched cluster design."
+      trap: "DR components are not required for stretching."
+  - id: dsg-avl-006
+    type: single
+    kind: scenario
+    difficulty: advanced
+    topics: [design-availability, vcf-ops-architecture]
+    objective: "4.1"
+    lesson: design-availability-failure-domains
+    section: components
+    stem: "VCF Operations must keep monitoring with no service interruption if one of two availability zones fails. Which VCF Operations model fits?"
+    options:
+      - { id: a, text: "Simple (single node)", why: "Depends on vSphere HA restart; interruption occurs." }
+      - { id: b, text: "High availability (three-node cluster in one AZ)", why: "An AZ failure can take all nodes." }
+      - { id: c, text: "Continuous availability (nodes across two AZs)", correct: true, why: "Designed for no interruption on a single AZ failure, with ≤10 ms between zones." }
+      - { id: d, text: "Two independent simple instances", why: "Not a supported availability model for one fleet." }
+    explanation:
+      correct: "Continuous availability spreads nodes across zones."
+      concept: "Management component availability models."
+      trap: "HA within one AZ is not AZ resilience."
+  - id: dsg-avl-007
+    type: single
+    kind: design
+    difficulty: expert
+    topics: [design-availability, deployment-models]
+    objective: "4.1"
+    lesson: design-availability-failure-domains
+    section: ha-is-not-dr
+    stem: "A bank already runs stretched clusters across two halls. The auditor says the design does not address cyber attacks. Why, and what is the least disruptive extension?"
+    options:
+      - { id: a, text: "Stretched clusters replicate synchronously, so encrypted or corrupted data is copied too; add DR to a second region with point-in-time copies (Fault Domains and DR model)", correct: true, why: "Cyber attacks are listed under the DR designs; you need history, not only synchronous copies." }
+      - { id: b, text: "Add a third AZ to the stretched cluster", why: "Still synchronous; does not add point-in-time recovery." }
+      - { id: c, text: "Increase vSAN FTT", why: "More copies of corrupted data do not help.", confusedWith: vsan-policies }
+      - { id: d, text: "Enable vSphere HA admission control", why: "Unrelated to data recovery.", confusedWith: vsphere-ha }
+    explanation:
+      correct: "Combine local HA with regional DR and point-in-time protection."
+      concept: "HA is not DR."
+      trap: "Synchronous replication is not backup."
+  - id: dsg-avl-008
+    type: single
+    kind: concept
+    difficulty: intermediate
+    topics: [design-availability, deployment-models]
+    objective: "4.1"
+    lesson: design-availability-failure-domains
+    section: fleet-deployment-models-per-fleet
+    stem: "In the VCF 9 DR (across regions) design, how are VCF Operations and VCF Automation protected at the secondary site?"
+    options:
+      - { id: a, text: "Both are stretched across regions", why: "Regions are too far apart to stretch." }
+      - { id: b, text: "VCF Operations by replication or backup and restore; VCF Automation by backup and restore", correct: true, why: "Stated in the fleet deployment models documentation." }
+      - { id: c, text: "Neither needs protection", why: "Fleet components must be recoverable." }
+      - { id: d, text: "Both by vSphere HA", why: "HA does not cross regions.", confusedWith: vsphere-ha }
+    explanation:
+      correct: "Different fleet components use different protection mechanisms."
+      concept: "Protecting fleet-level components."
+      trap: "Do not assume every component uses the same DR mechanism."
+
+  # ---------------------------------------------------------------------------
+  # design-sizing-scalability
+  # ---------------------------------------------------------------------------
+  - id: dsg-size-001
+    type: single
+    kind: concept
+    difficulty: intermediate
+    topics: [design-sizing, management-domain]
+    objective: "4.1"
+    lesson: design-sizing-scalability
+    section: minimum-host-counts-management-domain
+    stem: "Why does the high availability deployment of the VCF 9 management domain require a minimum of four hosts?"
+    options:
+      - { id: a, text: "vSAN requires four hosts for FTT=1", why: "vSAN FTT=1 with RAID-1 needs three hosts.", confusedWith: vsan-policies }
+      - { id: b, text: "The three NSX Manager nodes must stay on separate hosts (anti-affinity) even when one host is in maintenance", correct: true, why: "NSX Manager anti-affinity during upgrades drives the fourth host." }
+      - { id: c, text: "VCF Operations always needs four nodes", why: "Not the driver." }
+      - { id: d, text: "SDDC Manager requires its own host", why: "It runs as a VM alongside others." }
+    explanation:
+      correct: "With three NSX Manager nodes on three hosts, a fourth host keeps anti-affinity satisfied during maintenance."
+      concept: "What drives minimum host counts."
+      trap: "Minimum counts are not sizing results."
+  - id: dsg-size-002
+    type: single
+    kind: scenario
+    difficulty: advanced
+    topics: [design-sizing, workload-domains]
+    objective: "4.1"
+    lesson: design-sizing-scalability
+    section: components
+    stem: "A customer plans five new workload domains over two years, each with its own NSX Manager cluster. Which resource must grow the most?"
+    options:
+      - { id: a, text: "The management domain, because each workload domain's vCenter and NSX Managers run there", correct: true, why: "Workload domain management appliances are deployed into the management domain." }
+      - { id: b, text: "Only the workload domain hosts", why: "Ignores management appliances.", confusedWith: workload-domains }
+      - { id: c, text: "The VCF Installer appliance", why: "Used for deployment, not to host domain components.", confusedWith: vcf-installer }
+      - { id: d, text: "The DNS servers", why: "Records grow, but DNS load is negligible." }
+    explanation:
+      correct: "Size the management domain for all future workload domain vCenters and dedicated NSX Managers."
+      concept: "Management domain sizing."
+      trap: "Adding a workload domain consumes management capacity too."
+  - id: dsg-size-003
+    type: single
+    kind: design
+    difficulty: advanced
+    topics: [design-sizing]
+    objective: "4.1"
+    lesson: design-sizing-scalability
+    section: worked-example-cpu-ram
+    stem: "Demand after growth and target utilisation is 160 cores and 4.9 TB RAM. Hosts have 64 cores and 1 TB RAM. How many hosts do you need including N+1?"
+    options:
+      - { id: a, text: "3", why: "Covers CPU only." }
+      - { id: b, text: "4", why: "Covers CPU plus N+1, ignores RAM." }
+      - { id: c, text: "5", why: "Covers RAM but no failure reserve." }
+      - { id: d, text: "6", correct: true, why: "RAM needs 5 hosts (4.9 TB / 1 TB) plus one for N+1." }
+    explanation:
+      correct: "Compute both dimensions, take the larger (RAM: 5), then add N+1."
+      concept: "Sizing by the constraining resource."
+      trap: "CPU is not always the constraint."
+  - id: dsg-size-004
+    type: single
+    kind: concept
+    difficulty: foundation
+    topics: [design-sizing, workload-domains]
+    objective: "4.1"
+    lesson: design-sizing-scalability
+    section: scale-units-in-vcf
+    stem: "According to the VCF 9 Workload Domain Models page, how many workload domains can a single VCF instance scale to?"
+    options:
+      - { id: a, text: "4", why: "Too low." }
+      - { id: b, text: "12", why: "Not the documented value." }
+      - { id: c, text: "24", correct: true, why: "Documented as up to 24 workload domains per VCF instance." }
+      - { id: d, text: "Unlimited", why: "Limits apply." }
+    explanation:
+      correct: "Workload domains scale up to 24 per VCF instance; beyond that, add instances."
+      concept: "Scale units: host, cluster, domain, instance."
+      trap: "Always check ConfigMax for your exact version."
+  - id: dsg-size-005
+    type: single
+    kind: design
+    difficulty: expert
+    topics: [design-sizing, design-availability]
+    objective: "4.1"
+    lesson: design-sizing-scalability
+    section: how-it-works
+    stem: "A stretched cluster has 8 hosts per AZ and runs at 80% average utilisation across all 16 hosts. What happens if one AZ fails?"
+    options:
+      - { id: a, text: "All VMs restart in the surviving AZ with no impact", why: "Eight hosts cannot absorb 160% of their capacity." }
+      - { id: b, text: "Not all protected VMs can restart; each AZ should be sized to run the protected load alone (≈50% utilisation)", correct: true, why: "Stretched clusters need per-AZ capacity reserves." }
+      - { id: c, text: "vSAN converts to RAID-0 to free capacity", why: "No such behavior.", confusedWith: vsan-policies }
+      - { id: d, text: "The witness hosts the extra VMs", why: "The witness stores metadata only." }
+    explanation:
+      correct: "Surviving AZ must carry the protected workloads; plan ~50% utilisation per AZ for full protection."
+      concept: "Failure reserve in stretched designs."
+      trap: "N+1 is not enough for an AZ failure."
+  - id: dsg-size-006
+    type: truefalse
+    kind: concept
+    difficulty: foundation
+    topics: [design-sizing, management-domain]
+    objective: "4.1"
+    lesson: design-sizing-scalability
+    section: minimum-host-counts-management-domain
+    stem: "True or false: With simple (non-HA) management components and external principal storage, VCF 9 documents a management domain minimum of two ESX hosts."
+    options:
+      - { id: "true", text: "True", correct: true, why: "Documented minimum: 3 hosts with vSAN or 2 with external storage for the simple deployment." }
+      - { id: "false", text: "False", why: "Two hosts are documented for external storage with simple components." }
+    explanation:
+      correct: "Simple: 3 (vSAN) or 2 (external storage); HA: 4."
+      concept: "Minimum host counts depend on storage type and component availability model."
+      trap: "A minimum is not a recommendation for production."
+
+  # ---------------------------------------------------------------------------
+  # design-network-security-tradeoffs
+  # ---------------------------------------------------------------------------
+  - id: dsg-sec-001
+    type: single
+    kind: design
+    difficulty: intermediate
+    topics: [design-tradeoffs, nsx-security]
+    objective: "2.4"
+    lesson: design-network-security-tradeoffs
+    section: the-isolation-ladder
+    stem: "Requirement: web, app and database tiers of one application may only talk on approved ports. Admins and lifecycle are shared. What is the most appropriate construct?"
+    options:
+      - { id: a, text: "A separate workload domain per tier", why: "Massive over-design for a traffic requirement.", confusedWith: workload-domains }
+      - { id: b, text: "NSX distributed firewall rules (microsegmentation)", correct: true, why: "Enforces east-west policy at each vNIC without new hardware or domains." }
+      - { id: c, text: "A separate VCF instance", why: "Over-design." }
+      - { id: d, text: "Storage separation switch model", why: "Separates storage paths, not app tiers.", confusedWith: vds }
+    explanation:
+      correct: "Traffic isolation between app tiers is the DFW's job."
+      concept: "The isolation ladder: choose the lowest sufficient rung."
+      trap: "Bigger isolation units add cost without adding traffic control."
+  - id: dsg-sec-002
+    type: single
+    kind: design
+    difficulty: advanced
+    topics: [design-tradeoffs, workload-domains]
+    objective: "4.1"
+    lesson: design-network-security-tradeoffs
+    section: how-it-works
+    stem: "PCI workloads need separate administrators, a separate change window and a network control plane whose failure cannot affect other workloads. What is the least costly design that meets all three?"
+    options:
+      - { id: a, text: "DFW rules in the existing workload domain", why: "Does not separate admins, lifecycle or NSX management plane." }
+      - { id: b, text: "A dedicated workload domain with a dedicated NSX Manager cluster", correct: true, why: "Separate vCenter/SSO and lifecycle plus an isolated network management/control plane." }
+      - { id: c, text: "A dedicated workload domain sharing the existing NSX instance", why: "Meets admin and lifecycle but shares the NSX management plane." }
+      - { id: d, text: "A separate VCF instance", why: "Meets the requirements but at higher cost than needed." }
+    explanation:
+      correct: "Each requirement maps to a construct: admins/lifecycle → workload domain; control plane isolation → dedicated NSX."
+      concept: "Mapping requirement types to constructs."
+      trap: "A shared NSX instance couples the domains' network management planes."
+  - id: dsg-sec-003
+    type: single
+    kind: concept
+    difficulty: intermediate
+    topics: [design-tradeoffs, nsx-vpc]
+    objective: "2.4"
+    lesson: design-network-security-tradeoffs
+    section: network-consumption-models-how-users-get-networks
+    stem: "Which limitation does the VCF 9 documentation list for the VLAN network consumption model?"
+    options:
+      - { id: a, text: "It cannot be used with vSphere", why: "VLAN port groups are standard vSphere." }
+      - { id: b, text: "It lacks network virtualization benefits and is tightly coupled to the physical network", correct: true, why: "As listed in the networking models." }
+      - { id: c, text: "It requires NSX Federation", why: "No." , confusedWith: nsx-architecture }
+      - { id: d, text: "It requires VCF Automation", why: "No." }
+    explanation:
+      correct: "VLANs are familiar but need physical network changes for every new network."
+      concept: "Network consumption models."
+      trap: "VLAN-backed networks do not give VPC-style self-service."
+  - id: dsg-sec-004
+    type: single
+    kind: design
+    difficulty: expert
+    topics: [design-tradeoffs, vds]
+    objective: "2.4"
+    lesson: design-network-security-tradeoffs
+    section: software-segmentation-vs-physical-separation
+    stem: "A regulator requires that storage traffic never shares physical links or switches with VM traffic. Which approach satisfies this?"
+    options:
+      - { id: a, text: "DFW rules blocking VMs from the vSAN subnet", why: "Policy enforcement does not change the physical path.", confusedWith: nsx-security }
+      - { id: b, text: "Storage separation distributed switch model with storage NICs connected to a separate storage fabric", correct: true, why: "Moves storage to dedicated NICs and, optionally, an air-gapped fabric." }
+      - { id: c, text: "A separate VLAN for vSAN on the same NICs", why: "Still the same physical links." , confusedWith: l2-l3 }
+      - { id: d, text: "NIOC with storage at High shares", why: "Prioritises bandwidth but still shares links." }
+    explanation:
+      correct: "Physical path requirements need physical separation (dedicated NICs/fabric)."
+      concept: "Software segmentation vs physical separation."
+      trap: "VLANs and DFW are logical separation only."
+  - id: dsg-sec-005
+    type: single
+    kind: concept
+    difficulty: advanced
+    topics: [design-tradeoffs, identity-sso]
+    objective: "4.1"
+    lesson: design-network-security-tradeoffs
+    section: management-plane-security
+    stem: "What is the main trade-off of a fleet-wide VCF single sign-on scope?"
+    options:
+      - { id: a, text: "It cannot integrate with an external identity provider", why: "All scopes integrate with an IdP." }
+      - { id: b, text: "Unified SSO across the fleet, but a single point of failure for fleet authentication", correct: true, why: "As listed in the VCF SSO models." }
+      - { id: c, text: "It requires one Identity Broker per cluster", why: "No." }
+      - { id: d, text: "It disables RBAC", why: "No.", confusedWith: rbac }
+    explanation:
+      correct: "Wider scope is simpler but has a larger blast radius; per-instance scope contains failures."
+      concept: "Blast radius in identity design."
+      trap: "Simplicity and blast radius trade off against each other."
+  - id: dsg-sec-006
+    type: single
+    kind: design
+    difficulty: advanced
+    topics: [design-tradeoffs, nsx-edge]
+    objective: "2.4"
+    lesson: design-network-security-tradeoffs
+    section: components
+    stem: "Several tenants share one NSX edge cluster. One tenant's traffic spikes regularly degrade others' north-south throughput. Which change addresses this with the smallest scope?"
+    options:
+      - { id: a, text: "Give that tenant a dedicated edge cluster", correct: true, why: "Isolates north-south capacity and failure for the noisy tenant." }
+      - { id: b, text: "Move all tenants to separate VCF instances", why: "Far larger change than needed." }
+      - { id: c, text: "Disable the distributed firewall", why: "Unrelated to edge throughput and weakens security.", confusedWith: nsx-security }
+      - { id: d, text: "Increase the TEP MTU to 9216 on hosts", why: "Exceeds the VDS maximum and does not address edge capacity.", confusedWith: mtu }
+    explanation:
+      correct: "Shared edges are efficient but share capacity; dedicated edges isolate it."
+      concept: "Shared vs dedicated edge clusters."
+      trap: "Solve capacity isolation at the edge layer, not with a new instance."

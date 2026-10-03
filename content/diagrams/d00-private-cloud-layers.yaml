@@ -1,0 +1,33 @@
+id: d00-private-cloud-layers
+title: From hardware to private cloud - the SDDC layers
+description: >
+  Physical servers, disks and switches at the bottom are virtualized by three software layers: compute (ESX and
+  vCenter), storage (vSAN or external datastores) and network (vSphere distributed switches and NSX). Together these
+  form the software-defined data center. On top, VCF Operations provides the operate-and-govern layer (monitoring,
+  logs, lifecycle, compliance) and VCF Automation provides the consume layer (self-service catalogs, organizations,
+  quotas). Consumers such as app teams and DevOps request resources through self-service instead of tickets.
+width: 1000
+height: 600
+groups:
+  - { id: g-sddc, x: 20, y: 250, w: 960, h: 200, label: "Software-defined data center (virtualized everything)", kind: zone }
+nodes:
+  - { id: consumers, x: 380, y: 20, w: 240, h: 56, label: "Consumers", sublabel: "app teams, DevOps, tenants", kind: external, info: "People and pipelines who request VMs, Kubernetes clusters and networks through a portal or API instead of raising tickets." }
+  - { id: consume, x: 140, y: 140, w: 300, h: 56, label: "Consume: VCF Automation", sublabel: "self-service, orgs, quotas", kind: ops, component: vcf-automation, info: "Self-service IaaS: catalogs, organizations (tenants), quotas and policy-based governance. This is what makes the SDDC a cloud." }
+  - { id: operate, x: 560, y: 140, w: 300, h: 56, label: "Operate: VCF Operations", sublabel: "monitor, logs, lifecycle, compliance", kind: ops, component: vcf-operations, info: "One console to monitor, troubleshoot, license, patch and keep compliant the whole fleet." }
+  - { id: compute, x: 50, y: 300, w: 270, h: 56, label: "Compute virtualization", sublabel: "ESX + vCenter", kind: compute, info: "ESX turns each server into many VMs; vCenter pools hosts into clusters with HA and DRS." }
+  - { id: storage, x: 365, y: 300, w: 270, h: 56, label: "Storage virtualization", sublabel: "vSAN / datastores", kind: storage, info: "vSAN pools local disks of the hosts into a shared datastore governed by storage policies; external NFS/VMFS datastores are also possible." }
+  - { id: network, x: 680, y: 300, w: 270, h: 56, label: "Network virtualization", sublabel: "VDS + NSX", kind: network, info: "Distributed switches carry host and VM traffic; NSX adds overlay segments, routing and distributed firewalling in software." }
+  - { id: lifecycle, x: 365, y: 380, w: 270, h: 56, label: "Automated lifecycle", sublabel: "SDDC Manager + fleet mgmt", kind: mgmt, component: sddc-manager, info: "The stack is deployed, patched and upgraded as one validated bill of materials rather than product by product." }
+  - { id: hw, x: 50, y: 500, w: 900, h: 56, label: "Physical hardware: x86 servers, local disks, top-of-rack switches", kind: external, component: physical-network, info: "Standard hardware from the compatibility guide. The software layers above make it flexible; the hardware itself is generic." }
+edges:
+  - { from: consumers, to: consume, label: "request", kind: data }
+  - { from: consume, to: compute, kind: dependency, dashed: true }
+  - { from: operate, to: network, kind: mgmt, dashed: true }
+  - { from: compute, to: hw, kind: dependency }
+  - { from: storage, to: hw, kind: dependency }
+  - { from: network, to: hw, kind: dependency }
+steps:
+  - { title: "Hardware", text: "Generic servers, disks and switches.", highlight: [hw] }
+  - { title: "SDDC", text: "Compute, storage and network are virtualized and lifecycle-managed as one.", highlight: [compute, storage, network, lifecycle] }
+  - { title: "Operate", text: "VCF Operations gives one place to run the platform.", highlight: [operate] }
+  - { title: "Consume", text: "VCF Automation adds self-service, tenancy and governance: the cloud part of private cloud.", highlight: [consume, consumers] }

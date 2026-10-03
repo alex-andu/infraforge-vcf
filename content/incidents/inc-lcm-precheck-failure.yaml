@@ -1,0 +1,175 @@
+id: inc-lcm-precheck-failure
+title: Workload domain upgrade precheck fails the night before the window
+difficulty: intermediate
+version: vcf9
+topics: [lcm-workflow, lcm-recovery, passwords]
+lessons: [lifecycle-upgrade-workflow, lifecycle-failures-recovery, password-management]
+summary: The final precheck before a maintenance update of workload domain wld01 fails on NSX. The change board wants a go/no-go in two hours, and the precheck report also contains several warnings that look alarming.
+symptoms:
+  - "Precheck for wld01 shows 1 error: NSX Manager nsx-wld01.lab.local credential validation FAILED."
+  - The precheck also shows 3 warnings (vSAN HCL database age, SDDC Manager disk usage, a host with a certificate expiring in 50 days).
+  - The management domain was upgraded successfully last week.
+  - Three weeks ago there was an NSX incident in wld01 that was resolved "by the network team".
+environment: |
+  VCF 9.0 instance, management domain already on the target maintenance release. Workload domain wld01 with its own
+  NSX Manager cluster (nsx-wld01.lab.local), vCenter vc-wld01.lab.local and four ESX hosts. Upgrade planned for tonight
+  in VCF Operations (Fleet Management > Lifecycle > VCF Instances > wld01 > Updates). SDDC Manager
+  sddc-manager.lab.local.
+evidence:
+  - id: ev-report
+    category: logs
+    action: Open the precheck report for wld01 in VCF Operations
+    output: |
+      ```log
+      ERRORS (1)
+        NSX Manager nsx-wld01.lab.local - Credential validation for user 'admin' FAILED
+      WARNINGS (3)
+        vSAN HCL database is older than 90 days
+        SDDC Manager disk usage /nfs/vmware/vcf/nfs-mount at 72%
+        ESX host esx-wld01-03 certificate expires in 50 days
+      ```
+    relevance: key
+    note: Only one blocking error, and it is specific - credential validation for NSX admin. Warnings do not block.
+  - id: ev-lcm-log
+    category: logs
+    action: Search /var/log/vmware/vcf/lcm/lcm-debug.log on SDDC Manager for nsx-wld01
+    output: |
+      ```log
+      ... ERROR ... NSX API call https://nsx-wld01.lab.local/api/v1/node failed with status 403
+      ... ERROR ... Credential validation failed for NSX_MANAGER nsx-wld01.lab.local user admin
+      ```
+    relevance: key
+    note: SDDC Manager reaches NSX over HTTPS (so DNS, network and TLS are fine) but is refused. Authentication is the problem.
+  - id: ev-lookup
+    category: services
+    action: On SDDC Manager run lookup_passwords, choose the NSX Manager entity type, and try that password on the NSX UI
+    output: |
+      ```log
+      username: admin   password: ************ (stored)
+      NSX UI login with stored password: "Incorrect user name or password"
+      ```
+    relevance: key
+    note: The password VCF stores no longer works on NSX, so the server side changed without VCF knowing - classic drift.
+  - id: ev-nsx-expiry
+    category: nsx
+    action: On NSX Manager CLI run get user admin password-expiration
+    output: |
+      ```log
+      Password expires 65 days from now
+      ```
+    relevance: useful
+    note: The account is not expired, which rules out expiry and points to a deliberate change.
+  - id: ev-nsx-audit
+    category: nsx
+    action: Review NSX Manager audit/syslog entries for admin password changes
+    output: |
+      ```log
+      <date three weeks ago> nsx-wld01 NSX ... audit="true" ... User admin password changed (source: CLI)
+      ```
+    relevance: key
+    note: "Matches the incident three weeks ago: the network team reset the admin password directly on NSX."
+  - id: ev-hcl
+    category: storage
+    action: Check the vSAN HCL database warning
+    output: |
+      ```log
+      vSAN HCL DB last updated: 104 days ago (warning)
+      ```
+    relevance: noise
+    note: Worth updating, but a warning, unrelated to the blocking error.
+  - id: ev-disk
+    category: services
+    action: Check SDDC Manager disk usage with df -h
+    output: |
+      ```shell
+      Filesystem      Size  Used Avail Use% Mounted on
+      ...             ...   ...  ...    72% /nfs/vmware/vcf/nfs-mount
+      ```
+    relevance: noise
+    note: 72% is acceptable; it does not explain a credential failure. Keep an eye on it after downloading binaries.
+  - id: ev-cert
+    category: certificates
+    action: Check esx-wld01-03 certificate in Fleet Management > Certificates
+    output: |
+      ```log
+      esx-wld01-03.lab.local  Issuer: VMCA  Expires in: 50 days  Auto-renewal: inactive
+      ```
+    relevance: noise
+    note: A real hygiene item (activate auto-renewal, which acts at 60 days), but not today's blocker.
+idealSequence: [ev-report, ev-lcm-log, ev-lookup, ev-nsx-expiry, ev-nsx-audit]
+rootCause:
+  - id: rc1
+    text: The NSX admin password was changed directly on NSX three weeks ago, so the credential stored in SDDC Manager no longer matches (credential drift).
+    correct: true
+    why: 403 on authentication, stored password rejected, account not expired, and the audit log shows a CLI password change.
+  - id: rc2
+    text: The NSX admin password expired.
+    why: The CLI shows 65 days remaining.
+  - id: rc3
+    text: SDDC Manager disk space is too low to run the precheck.
+    why: 72% is not critical, and disk problems do not produce NSX authentication failures.
+  - id: rc4
+    text: The NSX certificate is untrusted.
+    why: The API call reached NSX and got a 403; a TLS trust failure would fail before HTTP status codes.
+nextStep:
+  - id: n1
+    text: Confirm drift by testing the stored credential (lookup_passwords) against NSX and checking expiry and audit logs.
+    correct: true
+    why: Distinguishes drift from expiry or lockout before choosing the fix.
+  - id: n2
+    text: Start the upgrade anyway; NSX is upgraded first and will fix itself.
+    why: Errors block the upgrade, and an upgrade does not repair credentials.
+  - id: n3
+    text: Update the vSAN HCL database first because it is the oldest warning.
+    why: Good hygiene, wrong priority; warnings do not block.
+remediation:
+  - id: r1
+    text: In VCF Operations > Fleet Management > Passwords > VCF Instances > wld01, select NSX admin and Remediate Password with the password currently set on NSX; then re-run the precheck.
+    correct: true
+    why: Remediate re-syncs VCF's stored credential to the password already on the component, without changing NSX again.
+  - id: r2
+    text: Update the NSX admin password in VCF Operations to a new value.
+    why: Update is the planned-change action that sets a new password on the component again; the documented repair after an out-of-band change is Remediate.
+  - id: r3
+    text: Rotate the NSX admin password from SDDC Manager.
+    why: Rotation also needs the current password to work and changes it again.
+  - id: r4
+    text: Disable the credential precheck in SDDC Manager properties.
+    why: Hides the problem; the upgrade would then fail at the NSX stage.
+validation:
+  - id: v1
+    text: The precheck for wld01 shows no errors; the SDDC Manager API (GET /v1/credentials) shows the NSX admin credential healthy.
+    correct: true
+    why: Confirms both the blocking condition and the credential state in real time.
+  - id: v2
+    text: VCF Operations Passwords page shows green immediately.
+    why: VCF Operations refreshes password status once a day; it may lag.
+  - id: v3
+    text: The network team confirms they can log in to NSX.
+    why: They always could, with the new password; that is not the failing flow.
+hints:
+  - Only one item in the report is an error. Start there.
+  - A 403 means the request reached NSX and was rejected; think authentication, not network.
+  - Does the password VCF stores still work on NSX? Is the account expired, or was it changed?
+  - Which password action changes only the client side?
+debrief: |
+  Precheck reports mix blocking errors with informational warnings. A good operator starts with the **error** and
+  ignores tempting warnings (HCL age, disk usage, a certificate expiring in 50 days) until the blocker is understood -
+  then schedules the warnings as hygiene work.
+
+  The error was a credential validation failure. The SDDC Manager lifecycle log showed NSX answering with 403, which
+  proves name resolution, routing and TLS all worked. `lookup_passwords` revealed the stored password no longer worked,
+  the NSX CLI showed the account was not expired, and the audit log showed a CLI password change during an incident
+  three weeks earlier. That is credential drift: the server side changed, VCF's client side did not.
+
+  The fix is **Remediate** (client side only). Update or Rotate would try to change the password again using the stale
+  stored value. After remediation, re-run the precheck and confirm through the SDDC Manager API, because VCF Operations
+  refreshes password status only once a day. Prevent recurrence: emergency password changes must be followed by a
+  Remediate step in the incident runbook.
+sources:
+  - title: "VCF 9.0 TechDocs - Remediate passwords"
+    url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/fleet-management/manage-passwords/remediate-passwords.html
+  - title: "VCF 9.0 TechDocs - Upgrade VCF core components (precheck prerequisite)"
+    url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/lifecycle-management/lifecycle-management-of-vcf-core-components/flexible-bom-upgrade-in-vmware-cloud-foundation.html
+  - title: "VCF 9.0 TechDocs - Managing Accounts and Passwords"
+    url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/fleet-management/manage-passwords.html

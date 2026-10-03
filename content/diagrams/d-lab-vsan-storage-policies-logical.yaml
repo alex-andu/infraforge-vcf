@@ -1,0 +1,30 @@
+id: d-lab-vsan-storage-policies-logical
+title: "Lab: storage policies on the nested ESA cluster"
+description: >
+  The four-host nested vSAN ESA cluster from the previous lab with three test VMs, each using a different VM storage
+  policy: pol-raid1-ftt1 (two replicas plus a witness on three hosts), pol-raid5-ftt1 (ESA RAID-5 2+1 on three of
+  four hosts) and pol-ftt0 (a single component, no redundancy). The learner inspects component placement, consumed
+  capacity and compliance, then reboots esx-lab-03 to watch components become absent and objects show reduced
+  availability, and compares maintenance mode options.
+width: 1000
+height: 520
+groups:
+  - { id: g-cl, x: 20, y: 160, w: 960, h: 200, label: "Cluster lab-vsan (4 × nested ESX, vSAN ESA)", kind: compute }
+nodes:
+  - { id: vm1, x: 60, y: 40, w: 240, h: 70, label: "vm-raid1", sublabel: "pol-raid1-ftt1", kind: vm, info: "Expect 2 replicas + 1 witness on 3 different hosts; ~2x capacity." }
+  - { id: vm2, x: 380, y: 40, w: 240, h: 70, label: "vm-raid5", sublabel: "pol-raid5-ftt1", kind: vm, info: "Expect ESA RAID-5 2+1 (fewer than 6 hosts): 3 components; ~1.5x capacity." }
+  - { id: vm3, x: 700, y: 40, w: 240, h: 70, label: "vm-ftt0", sublabel: "pol-ftt0", kind: vm, info: "One component, no redundancy: becomes inaccessible if its host goes down." }
+  - { id: h1, x: 60, y: 220, w: 190, h: 70, label: "esx-lab-01", kind: compute, info: "Nested ESX host." }
+  - { id: h2, x: 290, y: 220, w: 190, h: 70, label: "esx-lab-02", kind: compute, info: "Nested ESX host." }
+  - { id: h3, x: 520, y: 220, w: 190, h: 70, label: "esx-lab-03", sublabel: "reboot test", kind: compute, info: "You will reboot this host and watch absent components and the repair delay timer." }
+  - { id: h4, x: 750, y: 220, w: 190, h: 70, label: "esx-lab-04", kind: compute, info: "Nested ESX host." }
+  - { id: vc, x: 380, y: 410, w: 240, h: 70, label: "vCenter: SPBM + Virtual Objects", kind: mgmt, component: vcenter, info: "Create policies, assign them, view Physical disk placement and compliance, monitor resync." }
+edges:
+  - { from: vm1, to: g-cl, kind: storage }
+  - { from: vm2, to: g-cl, kind: storage }
+  - { from: vm3, to: g-cl, kind: storage }
+  - { from: vc, to: g-cl, label: "policies, compliance", kind: mgmt }
+steps:
+  - { title: "Three policies", text: "Same VM size, three different layouts and capacity costs.", highlight: [vm1, vm2, vm3] }
+  - { title: "Failure test", text: "Reboot esx-lab-03 and watch component states and object health.", highlight: [h3] }
+  - { title: "Observe in vCenter", text: "Virtual Objects, compliance and resync views show the effect.", highlight: [vc] }

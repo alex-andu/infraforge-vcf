@@ -1,0 +1,45 @@
+id: d02-vm-provisioning-content-library
+title: VM provisioning paths, content libraries and migration
+description: >
+  A golden VM is cloned or converted to a template, or cloned as a VM template into a local content library with
+  publishing enabled. A customization specification applies identity at deployment. A second vCenter (another workload
+  domain) has a subscribed library pointing at the publisher's subscription URL; it can download content immediately or when
+  needed and cannot add items. VMs deployed from templates land on a cluster where vMotion moves them between hosts,
+  Storage vMotion between datastores, and EVC keeps CPU features compatible. VCF Automation and Supervisor consume content
+  libraries.
+width: 1000
+height: 600
+groups:
+  - { id: g-vc1, x: 20, y: 20, w: 560, h: 560, label: "vCenter wld01 (publisher)", kind: mgmt }
+  - { id: g-vc2, x: 600, y: 20, w: 380, h: 300, label: "vCenter wld02 (subscriber)", kind: mgmt }
+nodes:
+  - { id: golden, x: 40, y: 60, w: 160, h: 56, label: "Golden VM", sublabel: "OS + VMware Tools", kind: vm, info: "Patched base VM with VMware Tools (required for guest customization and clean shutdowns)." }
+  - { id: tpl, x: 230, y: 60, w: 160, h: 56, label: "Template", sublabel: "inventory", kind: vm, info: "Convert to template (VM becomes template) or clone to template (VM kept). Templates cannot be powered on." }
+  - { id: spec, x: 410, y: 60, w: 150, h: 56, label: "Customization spec", sublabel: "Policies and Profiles", kind: ops, info: "Hostname, network, time zone, domain join. Windows uses Sysprep. Applied on first boot through VMware Tools." }
+  - { id: lib, x: 40, y: 180, w: 300, h: 64, label: "Local library (published)", sublabel: "OVF templates · VM templates · ISOs", kind: storage, info: "Local library with publishing enabled (optional authentication). VM templates support check-out/check-in versioning." }
+  - { id: newvm, x: 40, y: 320, w: 160, h: 56, label: "New VM", sublabel: "from template", kind: vm, info: "Deploy from template or library item: choose folder, compute, storage, then customize OS." }
+  - { id: esxa, x: 40, y: 450, w: 160, h: 56, label: "esx01", kind: compute, info: "Source host." }
+  - { id: esxb, x: 380, y: 450, w: 160, h: 56, label: "esx02", kind: compute, info: "Target host. EVC on the cluster keeps CPU features compatible between generations from the same vendor." }
+  - { id: ds2, x: 380, y: 320, w: 160, h: 56, label: "Datastore B", kind: storage, info: "Storage vMotion target. Combined compute + storage migration needs no shared storage." }
+  - { id: evc, x: 230, y: 320, w: 120, h: 56, label: "EVC", sublabel: "cluster/per-VM", kind: ops, info: "Masks CPU features to a common baseline. Same vendor only. vSphere 9.0 adds custom EVC modes." }
+  - { id: sub, x: 630, y: 70, w: 320, h: 64, label: "Subscribed library", sublabel: "download immediately / when needed", kind: storage, info: "Follows the publisher by subscription URL. Read-only: you cannot add items. VM templates distribute only between linked vCenters; otherwise publish OVF templates." }
+  - { id: vm2, x: 630, y: 200, w: 160, h: 56, label: "VM in wld02", kind: vm, info: "Deployed from the subscribed item." }
+  - { id: vcfa, x: 630, y: 400, w: 320, h: 64, label: "VCF Automation / Supervisor", sublabel: "consume content libraries", kind: ops, info: "VCF Automation provider content libraries and Supervisor VM Service images are vCenter content libraries." }
+edges:
+  - { from: golden, to: tpl, label: "convert / clone", kind: mgmt }
+  - { from: golden, to: lib, label: "clone to library", kind: mgmt }
+  - { from: tpl, to: newvm, label: "deploy", kind: mgmt }
+  - { from: spec, to: newvm, label: "customize", kind: control, dashed: true }
+  - { from: lib, to: sub, label: "sync (HTTPS)", kind: data }
+  - { from: sub, to: vm2, label: "deploy", kind: mgmt }
+  - { from: newvm, to: esxa, kind: dependency }
+  - { from: esxa, to: esxb, label: "vMotion", kind: data }
+  - { from: newvm, to: ds2, label: "Storage vMotion", kind: storage }
+  - { from: lib, to: vcfa, label: "image source", kind: dependency, dashed: true }
+steps:
+  - { title: "Golden image", text: "Build and patch one VM with VMware Tools.", highlight: [golden] }
+  - { title: "Template or library", text: "Convert/clone to an inventory template, or clone as a VM template into a content library.", highlight: [tpl, lib] }
+  - { title: "Deploy with customization", text: "Deploy from template with a customization spec to get a unique hostname and IP.", highlight: [tpl, spec, newvm] }
+  - { title: "Share across vCenters", text: "A published library syncs to a subscribed library in another domain; subscribers are read-only.", highlight: [lib, sub, vm2] }
+  - { title: "Migrate", text: "vMotion moves the running VM between hosts (EVC keeps CPUs compatible); Storage vMotion moves its disks.", highlight: [esxa, esxb, ds2, evc] }
+  - { title: "VCF consumers", text: "VCF Automation and Supervisor use content libraries as image sources.", highlight: [vcfa, lib] }

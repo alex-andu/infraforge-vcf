@@ -1,0 +1,42 @@
+id: d10-alert-pipeline
+title: "Alert pipeline: symptom to alert to recommendation to action"
+description: >
+  The policy applied to an object decides which symptom and alert definitions are active for it. Collected metrics,
+  properties, events, faults and log patterns are evaluated against symptom definitions. When the symptom set logic
+  of an alert definition is satisfied (all sets, or any set) for the wait cycle, an alert is raised on the base object
+  with a criticality and an impact badge (health, risk or efficiency). The alert carries recommendations, and a
+  recommendation can be linked to an action. Notification rules forward matching alerts through outbound plugins
+  such as email, using payload templates. When the symptoms clear for the cancel cycle, the alert is cancelled.
+width: 1000
+height: 560
+groups:
+  - { id: g-policy, x: 20, y: 20, w: 960, h: 80, label: "Policy applied to the object (activates definitions, sets thresholds)", kind: zone }
+nodes:
+  - { id: policy, x: 400, y: 35, w: 200, h: 50, label: "Policy", sublabel: "Alerts and Symptoms", kind: security, info: "Policies activate or deactivate alert and symptom definitions and can override thresholds. An object only raises alerts whose definitions are active in its effective policy." }
+  - { id: data, x: 30, y: 180, w: 160, h: 56, label: "Collected data", sublabel: "metrics, props, events", kind: ops, info: "Metrics, properties, message events, faults and (new in 9.0) log patterns arriving from collectors." }
+  - { id: symptom, x: 230, y: 180, w: 170, h: 56, label: "Symptom definitions", sublabel: "condition + criticality", kind: ops, info: "Types: metric/property, message event, fault, log. Example: datastore free space below 10% = Critical." }
+  - { id: alertdef, x: 440, y: 180, w: 170, h: 56, label: "Alert definition", sublabel: "symptom sets: all / any", kind: ops, info: "Base object type, impact (health/risk/efficiency), criticality, alert type/subtype, wait and cancel cycles, symptom sets and recommendations." }
+  - { id: alert, x: 650, y: 180, w: 150, h: 56, label: "Alert raised", sublabel: "on base object", kind: security, info: "Appears under Infrastructure Operations > Alerts and on the object's Alerts tab, with symptoms, recommendations and potential evidence." }
+  - { id: rec, x: 650, y: 320, w: 150, h: 56, label: "Recommendation", sublabel: "how to fix", kind: ops, info: "Text guidance written for the operator. Can include a link and can be bound to an action." }
+  - { id: action, x: 840, y: 320, w: 140, h: 56, label: "Action", sublabel: "e.g. power off VM", kind: compute, info: "An operation run through an adapter, for example change VM CPU count or delete an idle snapshot. Can be run from the alert or automated." }
+  - { id: notif, x: 840, y: 180, w: 140, h: 56, label: "Notification rule", sublabel: "filter alerts", kind: mgmt, info: "Filters alerts by criteria (object, criticality, definition) and sends them through an outbound plugin." }
+  - { id: outbound, x: 840, y: 460, w: 140, h: 56, label: "Outbound plugin", sublabel: "email, webhook...", kind: external, info: "Configured under outbound settings; payload templates shape the message." }
+  - { id: cancel, x: 440, y: 400, w: 170, h: 56, label: "Cancel cycle", sublabel: "symptoms clear", kind: ops, info: "When the symptoms stop being true for the cancel cycle count, the alert is cancelled automatically." }
+edges:
+  - { from: policy, to: symptom, label: "activates", kind: control, dashed: true }
+  - { from: policy, to: alertdef, kind: control, dashed: true }
+  - { from: data, to: symptom, label: "1. evaluate", kind: data }
+  - { from: symptom, to: alertdef, label: "2. triggered", kind: data }
+  - { from: alertdef, to: alert, label: "3. wait cycle met", kind: data }
+  - { from: alert, to: rec, label: "4. shows", kind: dependency }
+  - { from: rec, to: action, label: "5. run", kind: mgmt }
+  - { from: alert, to: notif, label: "6. match", kind: mgmt }
+  - { from: notif, to: outbound, label: "7. send", kind: mgmt }
+  - { from: alertdef, to: cancel, label: "symptoms clear", kind: dependency, dashed: true }
+steps:
+  - { title: "Policy decides what is evaluated", text: "The effective policy on the object activates symptom and alert definitions and may override thresholds.", highlight: [policy, symptom, alertdef] }
+  - { title: "Symptoms evaluate data", text: "Every collection cycle, incoming metrics, properties, events, faults and log patterns are compared with active symptom definitions.", highlight: [data, symptom] }
+  - { title: "Alert definition fires", text: "If all (or any) symptom sets are true for the wait cycle, the alert is raised on the base object type with its criticality and impact.", highlight: [symptom, alertdef, alert] }
+  - { title: "Recommendation and action", text: "The alert shows recommendations; a recommendation can be linked to an action that fixes the problem.", highlight: [alert, rec, action] }
+  - { title: "Notification", text: "Notification rules filter alerts and send them through outbound plugins (email, webhook...) using payload templates.", highlight: [alert, notif, outbound] }
+  - { title: "Cancellation", text: "When symptoms clear for the cancel cycle, the alert is cancelled automatically.", highlight: [alertdef, cancel] }

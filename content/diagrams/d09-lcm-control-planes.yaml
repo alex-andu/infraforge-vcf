@@ -1,0 +1,45 @@
+id: d09-lcm-control-planes
+title: Who manages lifecycle in VCF 9.0 (management vs core components)
+description: >
+  The administrator drives all lifecycle work from the VCF Operations console (Fleet Management > Lifecycle).
+  Binaries for VCF management components (VCF Operations, VCF Automation, VCF Operations for logs and for networks,
+  VCF Identity Broker, fleet management itself) are downloaded to the VCF Operations fleet management appliance,
+  which upgrades those components. Binaries for VCF core components (SDDC Manager, NSX Manager, vCenter, ESX) are
+  downloaded to SDDC Manager in each VCF instance, which then upgrades NSX and vCenter and drives vSphere Lifecycle
+  Manager to remediate ESX hosts against a cluster image. Both downloaders pull from an online depot (Broadcom, using a
+  download token) or from an offline depot (a web server you populate with the VCF Download Tool).
+width: 1000
+height: 620
+groups:
+  - { id: g-fleet, x: 20, y: 150, w: 460, h: 300, label: "Fleet level (management components)", kind: ops }
+  - { id: g-inst, x: 520, y: 150, w: 460, h: 450, label: "VCF instance (core components)", kind: mgmt }
+nodes:
+  - { id: admin, x: 40, y: 20, w: 160, h: 56, label: "VI administrator", kind: external, info: "Works in the VCF Operations console. In VCF 9.0 the day-N lifecycle UI moved from the SDDC Manager UI to VCF Operations (Fleet Management > Lifecycle)." }
+  - { id: depot-online, x: 600, y: 20, w: 170, h: 56, label: "Online depot", sublabel: "Broadcom, download token", kind: external, info: "Broadcom-hosted depot reached directly or through a proxy. Requires a download token generated in the Broadcom Support Portal (VCF 9.0; 9.1 replaces it with an activation code)." }
+  - { id: depot-offline, x: 800, y: 20, w: 170, h: 56, label: "Offline depot", sublabel: "your web server", kind: external, info: "An HTTPS web server inside your network, populated with the VCF Download Tool from a machine that has internet access. Used by air-gapped or proxy-restricted sites." }
+  - { id: vcfops, x: 60, y: 190, w: 180, h: 60, label: "VCF Operations", sublabel: "Fleet Management > Lifecycle", kind: ops, component: vcf-operations, info: "The console. Shows VCF Management and VCF Instances tabs, Binary Management, prechecks, plans and update history." }
+  - { id: fleetmgmt, x: 60, y: 300, w: 180, h: 60, label: "Fleet management", sublabel: "appliance", kind: ops, component: vcf-operations-fleet-management, info: "Holds binaries for management components and performs their upgrades and patches. Must be updated first in every maintenance update." }
+  - { id: mgmtcomps, x: 280, y: 300, w: 180, h: 110, label: "Mgmt components", sublabel: "VCF Ops, Automation, logs, networks, Identity Broker", kind: ops, info: "VCF management components. Upgraded by fleet management after fleet management itself and VCF Operations." }
+  - { id: sddcm, x: 560, y: 190, w: 180, h: 60, label: "SDDC Manager", sublabel: "one per instance", kind: mgmt, component: sddc-manager, info: "Holds binaries for core components, runs prechecks, takes resource locks and orchestrates NSX, vCenter and ESX upgrades in each domain. Upgraded first among core components." }
+  - { id: nsx, x: 780, y: 190, w: 180, h: 60, label: "NSX Manager", kind: nsx, component: nsx-manager, info: "Upgraded after SDDC Manager and before vCenter in each domain." }
+  - { id: vc, x: 560, y: 320, w: 180, h: 60, label: "vCenter", sublabel: "+ vLCM", kind: mgmt, component: vcenter, info: "Upgraded after NSX. Its vSphere Lifecycle Manager service remediates hosts against the cluster image." }
+  - { id: esx, x: 780, y: 320, w: 180, h: 60, label: "ESX hosts", kind: compute, component: esx-host, info: "Remediated cluster by cluster against a vLCM image, host by host in maintenance mode (sequential for vSAN clusters)." }
+  - { id: vsan, x: 780, y: 450, w: 180, h: 60, label: "vSAN", sublabel: "disk format, file service", kind: storage, component: vsan, info: "Last in the core order: on-disk format and vSAN services are updated after hosts are on the new ESX version." }
+edges:
+  - { from: admin, to: vcfops, label: "plan / run", kind: mgmt }
+  - { from: vcfops, to: fleetmgmt, label: "mgmt lifecycle", kind: control }
+  - { from: fleetmgmt, to: mgmtcomps, label: "upgrade", kind: mgmt }
+  - { from: vcfops, to: sddcm, label: "core lifecycle", kind: control }
+  - { from: depot-online, to: sddcm, label: "core binaries", kind: dependency, dashed: true }
+  - { from: depot-online, to: fleetmgmt, label: "mgmt binaries", kind: dependency, dashed: true }
+  - { from: depot-offline, to: sddcm, kind: dependency, dashed: true }
+  - { from: depot-offline, to: fleetmgmt, kind: dependency, dashed: true }
+  - { from: sddcm, to: nsx, label: "1", kind: mgmt }
+  - { from: sddcm, to: vc, label: "2", kind: mgmt }
+  - { from: vc, to: esx, label: "3 vLCM remediate", kind: mgmt }
+  - { from: esx, to: vsan, label: "4", kind: dependency }
+steps:
+  - { title: "One console", text: "Everything starts in VCF Operations. The SDDC Manager UI is no longer the place for day-N lifecycle in 9.0.", highlight: [admin, vcfops] }
+  - { title: "Two binary stores", text: "Management-component binaries land on the fleet management appliance; core-component binaries land on SDDC Manager of each instance.", highlight: [fleetmgmt, sddcm, depot-online, depot-offline] }
+  - { title: "Fleet first", text: "Fleet management, then VCF Operations, then the remaining management components.", highlight: [fleetmgmt, mgmtcomps] }
+  - { title: "Then each instance", text: "SDDC Manager, NSX, vCenter, ESX, vSAN: management domain first, then workload domains.", highlight: [sddcm, nsx, vc, esx, vsan] }

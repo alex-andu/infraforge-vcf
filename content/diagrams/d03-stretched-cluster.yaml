@@ -1,0 +1,36 @@
+id: d03-stretched-cluster
+title: vSAN stretched cluster with witness
+description: >
+  A vSAN stretched cluster spans a preferred site and a secondary site, each a fault domain with four ESX hosts, plus
+  a witness host (usually the vSAN witness appliance) at a third site. Data sites are connected with up to 5 ms RTT;
+  each site reaches the witness with up to 200 ms RTT. Policy "Site mirroring - stretched cluster" keeps a full copy
+  of each object in each site, plus in-site protection such as RAID-5. The witness holds only witness components.
+  If one site fails, vSphere HA restarts its VMs in the other site; if the inter-site link fails, the preferred site
+  keeps running; if the witness fails, objects stay accessible but noncompliant.
+width: 1000
+height: 560
+groups:
+  - { id: g-pref, x: 20, y: 40, w: 400, h: 330, label: "Preferred site (fault domain 1)", kind: compute }
+  - { id: g-sec, x: 580, y: 40, w: 400, h: 330, label: "Secondary site (fault domain 2)", kind: compute }
+  - { id: g-wit, x: 360, y: 420, w: 280, h: 120, label: "Witness site (fault domain 3)", kind: mgmt }
+nodes:
+  - { id: p1, x: 50, y: 90, w: 160, h: 56, label: "esx-a1", kind: compute, info: "Data host in the preferred site." }
+  - { id: p2, x: 230, y: 90, w: 160, h: 56, label: "esx-a2", kind: compute, info: "Data host in the preferred site." }
+  - { id: p3, x: 50, y: 190, w: 160, h: 56, label: "esx-a3", kind: compute, info: "Data host in the preferred site." }
+  - { id: p4, x: 230, y: 190, w: 160, h: 56, label: "esx-a4", kind: compute, info: "Data host in the preferred site." }
+  - { id: pcopy, x: 50, y: 290, w: 340, h: 56, label: "Site copy A", sublabel: "in-site RAID-5 2+1", kind: storage, info: "A full copy of each object, protected inside the site by the in-site FTT rule." }
+  - { id: s1, x: 610, y: 90, w: 160, h: 56, label: "esx-b1", kind: compute, info: "Data host in the secondary site." }
+  - { id: s2, x: 790, y: 90, w: 160, h: 56, label: "esx-b2", kind: compute, info: "Data host in the secondary site." }
+  - { id: s3, x: 610, y: 190, w: 160, h: 56, label: "esx-b3", kind: compute, info: "Data host in the secondary site." }
+  - { id: s4, x: 790, y: 190, w: 160, h: 56, label: "esx-b4", kind: compute, info: "Data host in the secondary site." }
+  - { id: scopy, x: 610, y: 290, w: 340, h: 56, label: "Site copy B", sublabel: "in-site RAID-5 2+1", kind: storage, info: "The mirrored copy in the secondary site." }
+  - { id: wit, x: 400, y: 460, w: 200, h: 56, label: "Witness host", sublabel: "metadata only", kind: mgmt, info: "Holds witness components; cannot run VMs; serves only one stretched cluster (two-node clusters can share a witness)." }
+edges:
+  - { from: pcopy, to: scopy, label: "site mirroring ≤5 ms RTT", kind: storage, bidirectional: true }
+  - { from: g-pref, to: wit, label: "≤200 ms RTT", kind: control, dashed: true }
+  - { from: g-sec, to: wit, label: "≤200 ms RTT", kind: control, dashed: true }
+steps:
+  - { title: "Two active sites", text: "Both data sites run VMs; each holds a full copy of the data.", highlight: [g-pref, g-sec, pcopy, scopy] }
+  - { title: "Witness as tiebreaker", text: "The witness at a third site holds only metadata components.", highlight: [wit] }
+  - { title: "Site failure", text: "If the secondary site fails, objects keep quorum (site A + witness); HA restarts VMs in site A.", highlight: [g-pref, wit] }
+  - { title: "Link failure", text: "If the inter-site link fails, the preferred site keeps running with the witness.", highlight: [pcopy, wit] }

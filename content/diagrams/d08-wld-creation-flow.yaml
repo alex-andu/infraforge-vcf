@@ -1,0 +1,40 @@
+id: d08-wld-creation-flow
+title: Creating a VI workload domain in VCF 9.0
+description: >
+  In VCF Operations (Inventory > Detailed View > VCF Instances > Add Workload Domain > Create New) the wizard collects
+  general settings with the Enable vSphere Supervisor option, vCenter, cluster and vSphere zone, the vLCM cluster image,
+  NSX Manager (new Standard or HA, or reuse) and connectivity (centralized or distributed), principal storage, unassigned
+  hosts of the same storage type and the distributed switch profile. SDDC Manager executes it: the workload domain
+  vCenter and NSX Managers are deployed into the management domain; the cluster, VDS, storage and NSX host preparation
+  happen on the workload domain hosts. With centralized connectivity an Edge cluster and active-standby Tier-0 are
+  deployed afterwards.
+width: 1000
+height: 600
+groups:
+  - { id: g-mgmt, x: 20, y: 300, w: 440, h: 280, label: "Management domain", kind: mgmt }
+  - { id: g-wld, x: 500, y: 300, w: 480, h: 280, label: "New workload domain cluster", kind: compute }
+nodes:
+  - { id: ops, x: 40, y: 40, w: 220, h: 64, label: "VCF Operations wizard", sublabel: "Add Workload Domain", kind: ops, component: vcf-operations, info: "General (name, Enable vSphere Supervisor, SSO domain, passwords), vCenter, cluster, image, NSX, storage, hosts, switch, Supervisor, review." }
+  - { id: sddc, x: 390, y: 40, w: 220, h: 64, label: "SDDC Manager", sublabel: "executes workflow", kind: mgmt, component: sddc-manager, info: "Orchestrates the build; progress in Fleet Management > Tasks." }
+  - { id: pool, x: 740, y: 40, w: 220, h: 64, label: "Unassigned hosts + pool", kind: compute, info: "Hosts commissioned with the chosen storage type; pool provides VMkernel IPs." }
+  - { id: vc, x: 40, y: 360, w: 180, h: 60, label: "WLD vCenter", kind: mgmt, component: vcenter, info: "Runs in the management domain." }
+  - { id: nsx, x: 250, y: 360, w: 190, h: 60, label: "WLD NSX Manager", sublabel: "1 or 3 nodes, or shared", kind: nsx, component: nsx-manager, info: "Standard (1 node) or High Availability (3 nodes), or reuse an existing NSX Manager of another workload domain." }
+  - { id: cl, x: 520, y: 340, w: 200, h: 60, label: "Cluster + vLCM image", kind: compute, info: "Hosts remediated to the image if vendor add-ons differ." }
+  - { id: st, x: 750, y: 340, w: 210, h: 60, label: "Principal storage", sublabel: "vSAN / NFS / FC / vVols", kind: storage, component: vsan, info: "Chosen once; cannot be changed later." }
+  - { id: vds, x: 520, y: 430, w: 200, h: 60, label: "VDS profile + TEPs", kind: network, component: vds, info: "Default, storage separation, NSX separation, both, or custom. Hosts prepared as NSX transport nodes." }
+  - { id: sup, x: 750, y: 430, w: 210, h: 60, label: "Supervisor (optional)", sublabel: "1 CP VM, 1 zone", kind: compute, component: supervisor, info: "If enabled; needs centralized connectivity and, afterwards, an Edge cluster with active-standby Tier-0." }
+  - { id: edge, x: 600, y: 510, w: 280, h: 56, label: "Edge cluster + Tier-0 (after creation)", kind: nsx, component: nsx-edge-cluster, info: "Centralized connectivity is configured after the workload domain is created." }
+edges:
+  - { from: ops, to: sddc, label: "submit", kind: mgmt }
+  - { from: pool, to: sddc, label: "consumed", kind: dependency, dashed: true }
+  - { from: sddc, to: vc, kind: mgmt }
+  - { from: sddc, to: nsx, kind: mgmt }
+  - { from: vc, to: cl, label: "manages", kind: mgmt }
+  - { from: nsx, to: vds, label: "host prep", kind: control }
+  - { from: cl, to: st, kind: storage }
+  - { from: sup, to: edge, kind: dependency, dashed: true }
+steps:
+  - { title: "Wizard", text: "VCF Operations collects the design; SDDC Manager executes it using unassigned hosts.", highlight: [ops, sddc, pool] }
+  - { title: "Management components", text: "WLD vCenter and NSX Manager(s) land in the management domain.", highlight: [vc, nsx] }
+  - { title: "Cluster build", text: "Cluster with image, principal storage, VDS and NSX host preparation.", highlight: [cl, st, vds] }
+  - { title: "Supervisor and edges", text: "Optional Supervisor; with centralized connectivity deploy the Edge cluster and Tier-0 afterwards.", highlight: [sup, edge] }

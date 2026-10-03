@@ -1,0 +1,35 @@
+id: d00-vsphere-vs-vcf
+title: Standalone vSphere vs VCF
+description: >
+  Left: a standalone vSphere estate where vCenter, ESX, storage, networking, monitoring and automation are separate
+  products that the administrator installs, integrates and upgrades individually, with no enforced bill of materials.
+  Right: VCF, where the VCF Installer deploys a validated stack (vCenter, ESX, vSAN, NSX, SDDC Manager, VCF Operations,
+  VCF Automation), organised into domains, and lifecycle is driven as a whole from VCF Operations and SDDC Manager.
+width: 1000
+height: 560
+groups:
+  - { id: g-vs, x: 20, y: 20, w: 450, h: 520, label: "Standalone vSphere (DIY integration)", kind: zone }
+  - { id: g-vcf, x: 530, y: 20, w: 450, h: 520, label: "VMware Cloud Foundation (integrated stack)", kind: zone }
+nodes:
+  - { id: vs-admin, x: 50, y: 60, w: 390, h: 56, label: "Admin integrates by hand", kind: external, info: "You choose versions, check interoperability matrices, install and patch each product and wire them together." }
+  - { id: vs-vc, x: 50, y: 160, w: 180, h: 56, label: "vCenter", kind: mgmt, info: "Manages hosts and clusters." }
+  - { id: vs-esx, x: 260, y: 160, w: 180, h: 56, label: "ESX hosts", kind: compute, info: "Installed and patched separately." }
+  - { id: vs-sto, x: 50, y: 260, w: 180, h: 56, label: "Storage", sublabel: "any SAN/NAS/vSAN", kind: storage, info: "Chosen and integrated per project." }
+  - { id: vs-net, x: 260, y: 260, w: 180, h: 56, label: "Networking", sublabel: "VSS/VDS, optional NSX", kind: network, info: "Network virtualization optional and separately deployed." }
+  - { id: vs-ops, x: 50, y: 360, w: 390, h: 56, label: "Monitoring/automation: optional add-ons", kind: ops, info: "Separate tools, separate lifecycle." }
+  - { id: vcf-inst, x: 560, y: 60, w: 390, h: 56, label: "VCF Installer", sublabel: "deploys validated stack", kind: mgmt, component: vcf-installer, info: "Deploys vCenter, NSX, SDDC Manager, VCF Operations and VCF Automation on pre-installed ESX hosts using a wizard or JSON spec." }
+  - { id: vcf-ops, x: 560, y: 160, w: 390, h: 56, label: "VCF Operations + VCF Automation", sublabel: "fleet-level operate + consume", kind: ops, component: vcf-operations, info: "Mandatory central console in 9.0 plus self-service consumption." }
+  - { id: vcf-sddcm, x: 560, y: 260, w: 180, h: 56, label: "SDDC Manager", kind: mgmt, component: sddc-manager, info: "Per-instance automation of domains, hosts and lifecycle." }
+  - { id: vcf-nsx, x: 770, y: 260, w: 180, h: 56, label: "NSX", sublabel: "included, deployed", kind: nsx, component: nsx-manager, info: "Part of every VCF domain." }
+  - { id: vcf-domains, x: 560, y: 360, w: 390, h: 56, label: "Domains: vCenter + ESX + vSAN clusters", kind: compute, info: "Standardized building blocks." }
+  - { id: vcf-bom, x: 560, y: 460, w: 390, h: 56, label: "One bill of materials, upgraded together", kind: mgmt, info: "Versions are validated together and upgraded in a defined order." }
+edges:
+  - { from: vs-admin, to: vs-vc, kind: mgmt, dashed: true }
+  - { from: vs-vc, to: vs-esx, kind: mgmt }
+  - { from: vcf-inst, to: vcf-ops, kind: mgmt }
+  - { from: vcf-ops, to: vcf-sddcm, kind: mgmt }
+  - { from: vcf-sddcm, to: vcf-domains, kind: mgmt }
+  - { from: vcf-domains, to: vcf-bom, kind: dependency, dashed: true }
+steps:
+  - { title: "Standalone vSphere", text: "Every product is chosen, integrated and upgraded by you.", highlight: [vs-admin, vs-vc, vs-esx, vs-sto, vs-net, vs-ops] }
+  - { title: "VCF", text: "One installer, one validated stack, one lifecycle.", highlight: [vcf-inst, vcf-ops, vcf-sddcm, vcf-nsx, vcf-domains, vcf-bom] }

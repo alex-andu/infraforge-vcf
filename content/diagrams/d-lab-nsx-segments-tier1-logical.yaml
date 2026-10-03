@@ -1,0 +1,29 @@
+id: d-lab-nsx-segments-tier1-logical
+title: Lab – segments on a Distributed Only Tier-1 (logical view)
+description: >
+  Logical view of lab-nsx-segments-tier1. The Distributed Only Tier-1 gateway t1-lab (no edge cluster, no SR) has two
+  downlinks: seg-web (172.16.10.1/24) with web-01 and web-02, and seg-app (172.16.20.1/24) with app-01. The Tier-0
+  link is empty in this lab and is added in lab-nsx-tier0-bgp-edge.
+width: 1000
+height: 520
+groups:
+  - { id: g-ov, x: 20, y: 140, w: 960, h: 360, label: "Overlay transport zone", kind: nsx }
+nodes:
+  - { id: t0, x: 400, y: 30, w: 200, h: 56, label: "Tier-0 (later lab)", sublabel: "not linked yet", kind: external, info: "Linked in lab-nsx-tier0-bgp-edge to give the segments north-south connectivity." }
+  - { id: t1, x: 380, y: 170, w: 240, h: 60, label: "t1-lab", sublabel: "Distributed Only", kind: nsx, info: "Tier-1 without edge cluster: only a DR on each host. Route advertisement: All Connected Segments and Service Ports." }
+  - { id: sweb, x: 120, y: 290, w: 260, h: 56, label: "seg-web", sublabel: "172.16.10.1/24", kind: network, info: "Overlay segment connected to t1-lab." }
+  - { id: sapp, x: 620, y: 290, w: 260, h: 56, label: "seg-app", sublabel: "172.16.20.1/24", kind: network, info: "Overlay segment connected to t1-lab." }
+  - { id: web1, x: 60, y: 410, w: 160, h: 56, label: "web-01", sublabel: ".10.11 host 1", kind: vm, info: "Test VM on host 1." }
+  - { id: web2, x: 260, y: 410, w: 160, h: 56, label: "web-02", sublabel: ".10.12 host 1→2", kind: vm, info: "Starts on host 1 (case 1), then vMotioned to host 2 (case 2)." }
+  - { id: app1, x: 670, y: 410, w: 160, h: 56, label: "app-01", sublabel: ".20.21 host 2", kind: vm, info: "Routed target (case 3)." }
+edges:
+  - { from: t0, to: t1, label: "later", kind: data, dashed: true }
+  - { from: t1, to: sweb, kind: data }
+  - { from: t1, to: sapp, kind: data }
+  - { from: sweb, to: web1, kind: data }
+  - { from: sweb, to: web2, kind: data }
+  - { from: sapp, to: app1, kind: data }
+steps:
+  - { title: "Gateway", text: "t1-lab is Distributed Only: routing between seg-web and seg-app happens in each host kernel.", highlight: [t1] }
+  - { title: "Segments", text: "Two overlay segments – no physical VLANs needed.", highlight: [t1, sweb, sapp] }
+  - { title: "Test VMs", text: "web-01/web-02 for same-segment tests, app-01 for routed tests.", highlight: [web1, web2, app1] }

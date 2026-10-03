@@ -1,0 +1,49 @@
+id: d02-vcenter-services-inventory
+title: vCenter services and inventory hierarchy in a VCF domain
+description: >
+  Left: the vCenter 9 appliance (Photon OS 5.0) running in the management domain, with authentication services
+  (Single Sign-On, Lookup Service, VMCA, License Service), core vCenter services (vpxd, vSphere Client, vSphere Lifecycle
+  Manager) and the embedded PostgreSQL database. Right: the inventory it manages for a workload domain: a data center
+  containing a cluster of ESX hosts, resource pools, VM folders, datastores and networks. SDDC Manager drives VCF
+  workflows against vCenter, and the VCF Identity Broker provides VCF single sign-on.
+width: 1000
+height: 620
+groups:
+  - { id: g-vca, x: 20, y: 20, w: 420, h: 580, label: "vCenter appliance (runs in management domain)", kind: mgmt }
+  - { id: g-dc, x: 480, y: 120, w: 500, h: 480, label: "Data center (workload domain inventory)", kind: compute }
+nodes:
+  - { id: sso, x: 40, y: 60, w: 180, h: 56, label: "Single Sign-On", sublabel: "SSO domain", kind: security, info: "Authenticates users with tokens. Default domain vsphere.local. In VCF 9 each VI workload domain has a dedicated vCenter and SSO domain." }
+  - { id: lookup, x: 240, y: 60, w: 180, h: 56, label: "Lookup Service", kind: mgmt, info: "Registry of service endpoints that vSphere components use to find each other." }
+  - { id: vmca, x: 40, y: 140, w: 180, h: 56, label: "VMCA", sublabel: "certificates", kind: security, info: "VMware Certificate Authority. By default signs the certificate of every ESX host managed by this vCenter." }
+  - { id: lic, x: 240, y: 140, w: 180, h: 56, label: "License Service", kind: mgmt, info: "Common license inventory for vCenter systems in the SSO domain. In VCF 9 licensing is managed through VCF Operations." }
+  - { id: vpxd, x: 40, y: 240, w: 380, h: 60, label: "vCenter service (vpxd)", sublabel: "inventory · tasks · DRS · HA config · vMotion", kind: mgmt, component: vcenter, info: "The core management service. DRS and vMotion stop when it is down; HA restarts continue because FDM agents run on the hosts." }
+  - { id: ui, x: 40, y: 330, w: 180, h: 56, label: "vSphere Client", sublabel: "/ui", kind: mgmt, info: "HTML5 UI served by the appliance at https://<fqdn>/ui." }
+  - { id: vami, x: 240, y: 330, w: 180, h: 56, label: "Management interface", sublabel: ":5480", kind: mgmt, info: "Appliance management: health, services, time, networking, file-based backup." }
+  - { id: vlcm, x: 40, y: 420, w: 180, h: 56, label: "vSphere Lifecycle Mgr", kind: mgmt, info: "Image-based host lifecycle for clusters; used by VCF lifecycle workflows." }
+  - { id: db, x: 240, y: 420, w: 180, h: 56, label: "PostgreSQL", sublabel: "embedded", kind: storage, info: "Embedded database holding inventory, configuration, tasks and events. No external database option." }
+  - { id: sddcm, x: 40, y: 520, w: 180, h: 56, label: "SDDC Manager", sublabel: "VCF workflows", kind: ops, component: sddc-manager, info: "Drives VCF workflows (commission hosts, create/expand clusters, lifecycle, passwords, certificates) against each domain vCenter." }
+  - { id: ib, x: 240, y: 520, w: 180, h: 56, label: "VCF Identity Broker", sublabel: "VCF SSO", kind: security, component: vcf-identity-broker, info: "Embedded in vCenter or deployed as a three-node appliance; federates an external IdP for single sign-on across VCF components (except SDDC Manager)." }
+  - { id: cluster, x: 500, y: 160, w: 220, h: 56, label: "Cluster wld01-cl01", sublabel: "HA · DRS · vSAN · vLCM image", kind: compute, info: "A collection of ESX hosts managed as one resource pool. Cluster-level services are configured here." }
+  - { id: hosts, x: 500, y: 250, w: 220, h: 56, label: "ESX hosts", sublabel: "esx01..esx04", kind: compute, component: esx-host, info: "Hosts cannot be renamed in the inventory. In VCF they are commissioned and added by VCF workflows." }
+  - { id: rp, x: 500, y: 340, w: 220, h: 56, label: "Resource pools", kind: compute, info: "Divide cluster CPU/memory. Do not use them as folders." }
+  - { id: vmfolder, x: 750, y: 160, w: 210, h: 56, label: "VM & template folders", kind: vm, info: "Group VMs and templates; the main place to assign permissions. Folders contain one object type only." }
+  - { id: vms, x: 750, y: 250, w: 210, h: 56, label: "VMs / templates / vApps", kind: vm, info: "Workloads. VMs inherit permissions from both the folder chain and the host/cluster/resource pool chain." }
+  - { id: ds, x: 750, y: 340, w: 210, h: 56, label: "Datastores", sublabel: "vSAN · NFS · VMFS", kind: storage, info: "Storage for VM files. Datastore folders and datastore clusters organize them." }
+  - { id: net, x: 750, y: 430, w: 210, h: 56, label: "Networks", sublabel: "VDS · port groups", kind: network, info: "Distributed port groups can hold permissions; the VDS itself cannot." }
+  - { id: tags, x: 500, y: 430, w: 220, h: 56, label: "Tags & content libraries", sublabel: "global objects", kind: mgmt, info: "Global objects covered by global permissions, not by inventory permissions." }
+edges:
+  - { from: ui, to: vpxd, kind: mgmt }
+  - { from: sso, to: vpxd, label: "tokens", kind: control }
+  - { from: vpxd, to: db, kind: storage, dashed: true }
+  - { from: vpxd, to: cluster, label: "manages", kind: mgmt }
+  - { from: cluster, to: hosts, kind: mgmt }
+  - { from: cluster, to: rp, kind: mgmt }
+  - { from: vmfolder, to: vms, kind: mgmt }
+  - { from: sddcm, to: vpxd, label: "VCF workflows", kind: mgmt }
+  - { from: ib, to: sso, label: "federation", kind: control, dashed: true }
+steps:
+  - { title: "The appliance", text: "vCenter is a Photon OS 5.0 appliance with embedded PostgreSQL, deployed in the management domain for every VCF domain.", highlight: [g-vca, db] }
+  - { title: "Authentication services", text: "SSO, Lookup Service, VMCA and the License Service form the authentication/platform layer.", highlight: [sso, lookup, vmca, lic] }
+  - { title: "Core service and interfaces", text: "vpxd does the work; you reach it through the vSphere Client (/ui) and the management interface (:5480).", highlight: [vpxd, ui, vami] }
+  - { title: "Inventory", text: "A data center holds clusters, hosts, resource pools, folders, VMs, datastores and networks.", highlight: [cluster, hosts, rp, vmfolder, vms, ds, net] }
+  - { title: "VCF on top", text: "SDDC Manager drives VCF workflows against vCenter; the Identity Broker provides VCF single sign-on.", highlight: [sddcm, ib, vpxd] }

@@ -1,0 +1,328 @@
+commands:
+  - id: nsx-get-cluster-status
+    technology: nsx
+    title: Check NSX Manager cluster health
+    purpose: Confirm that every service group of the NSX Manager cluster (datastore, manager, policy, controller, HTTPS…) is STABLE and every member is UP before and after upgrades, certificate changes or host maintenance.
+    syntax: get cluster status [verbose]
+    example: "nsx-mgr-01> get cluster status"
+    output: |
+      Cluster Id: 7b5f1c2e-....
+      Overall Status: STABLE
+
+      Group Type: DATASTORE
+      Group Status: STABLE
+      Members:
+          UUID          FQDN                    IP            STATUS
+          4ad6....      nsx-mgr-01.lab.local    10.0.10.21    UP
+          9c1e....      nsx-mgr-02.lab.local    10.0.10.22    UP
+          e2f0....      nsx-mgr-03.lab.local    10.0.10.23    UP
+
+      Group Type: CONTROLLER
+      Group Status: STABLE
+      ...
+    mistake: Running it against the VIP and assuming it reflects one node only, or treating DEGRADED with one member DOWN as an outage – two of three members keep the cluster writable.
+    lesson: nsx-architecture
+    version: vcf9
+    source:
+      title: NSX CLI Guide 9.0.2 (single page)
+      url: https://developer.broadcom.com/xapis/nsx-cli-guide/9.0.2/single_page.html
+
+  - id: nsx-api-cluster-status
+    technology: api
+    title: NSX Manager cluster status via API
+    purpose: Monitor management and control cluster health from scripts or VCF Operations-style checks without SSH.
+    syntax: GET https://<nsx-vip>/api/v1/cluster/status
+    example: curl -k -u admin https://nsx-vip.lab.local/api/v1/cluster/status
+    output: |
+      {
+        "mgmt_cluster_status": { "status": "STABLE", ... },
+        "control_cluster_status": { "status": "STABLE", ... },
+        "detailed_cluster_status": { "overall_status": "STABLE", "groups": [ ... ] }
+      }
+    mistake: Using -k in production scripts; trust the NSX certificate instead. Also polling a single node IP instead of the VIP and missing a VIP failover.
+    lesson: nsx-architecture
+    version: vcf9
+    source:
+      title: NSX-T Data Center REST API 9.0
+      url: https://developer.broadcom.com/xapis/nsx-t-data-center-rest-api/9.0.0/
+
+  - id: nsx-get-controllers
+    technology: nsx
+    title: Show which controllers a transport node is connected to
+    purpose: Verify that an ESX host (or Edge) has a live session to the central control plane on the NSX Manager nodes – a host without it keeps forwarding but receives no new state.
+    syntax: get controllers
+    example: |
+      [root@esx-01:~] nsxcli
+      esx-01> get controllers
+    output: |
+       Controller IP     Port  SSL      Status     Is Physical Master  Session State  Controller FQDN
+       10.0.10.22        1235  enabled  connected  true                up             nsx-mgr-02.lab.local
+       10.0.10.21        1235  enabled  not used   false               null           nsx-mgr-01.lab.local
+       10.0.10.23        1235  enabled  not used   false               null           nsx-mgr-03.lab.local
+    mistake: Expecting the host to be connected to all three managers; normally one session is active and the others are standby ("not used").
+    lesson: nsx-architecture
+    version: vcf9
+    source:
+      title: NSX CLI Guide 9.0.2 – ESX host commands
+      url: https://developer.broadcom.com/xapis/nsx-cli-guide/9.0.2/host_esx.html
+
+  - id: nsx-vmkping-tep-mtu
+    technology: esxi
+    title: Test TEP reachability and overlay MTU
+    purpose: Prove that two TEPs can reach each other through the underlay with the MTU the overlay needs, using the vxlan TCP/IP stack and the don't-fragment bit.
+    syntax: vmkping ++netstack=vxlan [-d -s <payload>] <remote-TEP-IP>   (equivalent KB form - vmkping -I <tep-vmk> -S vxlan -d -s <payload> <remote-TEP-IP>)
+    example: vmkping ++netstack=vxlan -d -s 1572 192.168.13.12
+    output: |
+      PING 192.168.13.12 (192.168.13.12): 1572 data bytes
+      1580 bytes from 192.168.13.12: icmp_seq=0 ttl=64 time=0.412 ms
+      1580 bytes from 192.168.13.12: icmp_seq=1 ttl=64 time=0.356 ms
+
+      --- 192.168.13.12 ping statistics ---
+      2 packets transmitted, 2 packets received, 0% packet loss
+    mistake: Pinging without ++netstack=vxlan (uses the management stack and the wrong source), or without -d (fragmentation hides MTU problems). Payload = MTU minus 28 (1572 for 1600, 1672 for 1700, 8972 for 9000).
+    lesson: nsx-transport-nodes-teps
+    version: general
+    source:
+      title: Broadcom KB 379112 – Troubleshooting NSX TEP/BFD tunnels between ESXi hosts and Edges
+      url: https://knowledge.broadcom.com/external/article/379112
+  - id: nsxdp-cli-bfd-sessions-list
+    technology: esxi
+    title: List TEP tunnel BFD sessions on an ESX host
+    purpose: See every Geneve tunnel from this host's TEPs to other hosts and Edges with its BFD state – the host-side counterpart of the Edge's get bfd-sessions.
+    syntax: nsxdp-cli bfd sessions list
+    example: "[root@esx-01:~] nsxdp-cli bfd sessions list"
+    output: |
+      (illustrative, trimmed: one entry per tunnel with local TEP, remote TEP, state, diagnostic)
+      192.168.13.11  192.168.13.12  up    up    No Diagnostic
+      192.168.13.11  192.168.13.21  up    up    No Diagnostic
+      192.168.13.11  192.168.13.22  down  init  Control Detection Time Expired
+    mistake: Assuming a down session means an NSX bug; Broadcom's KB lists VLAN tagging, firewalls blocking BFD, latency and flapping links as the usual causes.
+    lesson: nsx-transport-nodes-teps
+    version: general
+    source:
+      title: Broadcom KB 379112 – Troubleshooting NSX TEP/BFD tunnels between ESXi hosts and Edges
+      url: https://knowledge.broadcom.com/external/article/379112
+
+  - id: nsx-get-tunnel-ports
+    technology: nsx
+    title: List Geneve tunnel ports on a host or Edge
+    purpose: See which remote TEPs a transport node has tunnels to and with which encapsulation – the first check when overlay traffic between two nodes fails.
+    syntax: get tunnel-ports [stats]
+    example: "edge-01> get tunnel-ports"
+    output: |
+      Tunnel      : 3f2c0e1a-....
+      IFUID       : 285
+      LOCAL       : 192.168.13.21
+      REMOTE      : 192.168.13.11
+      ENCAP       : GENEVE
+
+      Tunnel      : 8d1b44c0-....
+      IFUID       : 286
+      LOCAL       : 192.168.13.21
+      REMOTE      : 192.168.13.12
+      ENCAP       : GENEVE
+    mistake: Concluding a tunnel is healthy because it is listed; listing shows configuration – check BFD state (get bfd-sessions / UI tunnel status) for liveness.
+    lesson: nsx-transport-nodes-teps
+    version: general
+    source:
+      title: NSX CLI Guide 9.0.2 – Layer 2 commands
+      url: https://developer.broadcom.com/xapis/nsx-cli-guide/9.0.2/all_networking_layer_2.html
+
+  - id: nsx-get-bfd-sessions
+    technology: nsx
+    title: Show BFD sessions on an Edge
+    purpose: Check liveness of tunnels to host TEPs and peer Edges (and BFD with BGP peers) – the signal Edge HA and tunnel status depend on.
+    syntax: get bfd-sessions [stats]
+    example: "edge-01> get bfd-sessions"
+    output: |
+      BFD Session
+      Encap                         : geneve
+      Local_address                 : 192.168.13.21
+      Remote_address                : 192.168.13.11
+      State                         : up
+      ...
+      BFD Session
+      Encap                         : geneve
+      Local_address                 : 192.168.13.21
+      Remote_address                : 192.168.13.13
+      State                         : down
+      Diag                          : Control Detection Time Expired
+    mistake: Ignoring a single down session; one host's TEP being unreachable from the Edge means VMs on that host lose north-south while everything else works.
+    lesson: nsx-edge-nodes-clusters
+    version: general
+    source:
+      title: NSX CLI Guide 9.0.2 (single page)
+      url: https://developer.broadcom.com/xapis/nsx-cli-guide/9.0.2/single_page.html
+
+  - id: nsx-get-logical-routers
+    technology: nsx
+    title: List gateway (logical router) instances on an Edge or host
+    purpose: Find the SR and DR instances realized on a node and their VRF numbers, so you can enter the right routing context.
+    syntax: get logical-routers [stats]
+    example: "edge-01> get logical-routers"
+    output: |
+      Logical Router
+      UUID                                   VRF    LR-ID  Name                Type                      Ports
+      736a80e3-23f6-5a2d-81d6-bbefb2786666   0      0                          TUNNEL                    3
+      2c3b1d7e-....                          1      2049   SR-t0-lab           SERVICE_ROUTER_TIER0      6
+      9a0f3c11-....                          3      1      DR-t0-lab           DISTRIBUTED_ROUTER_TIER0  5
+      5e7d2b90-....                          4      2      DR-t1-lab           DISTRIBUTED_ROUTER_TIER1  5
+    mistake: Running routing commands in the default context (VRF 0 is the tunnel) instead of entering the Tier-0 SR VRF first.
+    lesson: nsx-tier0-tier1-routing
+    version: general
+    source:
+      title: NSX CLI Guide 9.0.2 – Layer 3 commands
+      url: https://developer.broadcom.com/xapis/nsx-cli-guide/9.0.2/all_networking_layer_3.html
+
+  - id: nsx-vrf-get-route
+    technology: nsx
+    title: Enter a gateway VRF and show its routing table
+    purpose: See what the Tier-0 SR actually knows – BGP-learned default route, Tier-1 segments learned over the router link, connected uplinks.
+    syntax: vrf <vrf-id>  then  get route [<prefix>]
+    example: |
+      edge-01> vrf 1
+      edge-01(tier0_sr)> get route
+    output: |
+      Flags: t0c - Tier0-Connected, t0s - Tier0-Static, b - BGP, o - OSPF,
+      t0n - Tier0-NAT, t1s - Tier1-Static, t1c - Tier1-Connected, ...
+
+      Total number of routes: 6
+      b    > * 0.0.0.0/0 [20/0] via 10.27.11.1, uplink-1, 01:12:44
+      t0c  > * 10.27.11.0/24 is directly connected, uplink-1, 01:13:02
+      t1c  > * 172.16.10.0/24 [3/0] via 100.64.112.1, downlink-2, 00:48:10
+      t1c  > * 172.16.20.0/24 [3/0] via 100.64.112.1, downlink-2, 00:48:10
+    mistake: Forgetting to type `exit` before switching to another VRF, or reading the DR VRF and wondering why there is no BGP route.
+    lesson: nsx-tier0-tier1-routing
+    version: general
+    source:
+      title: Broadcom KB 339392 – Troubleshooting NSX BGP
+      url: https://knowledge.broadcom.com/external/article/339392/
+
+  - id: nsx-get-bgp-neighbor-summary
+    technology: nsx
+    title: Show BGP neighbor summary on the Tier-0 SR
+    purpose: Check whether BGP sessions to the physical routers are Established and how many prefixes are received and advertised.
+    syntax: get bgp neighbor summary   (inside the Tier-0 SR VRF)  |  get logical-router <uuid> bgp neighbor summary
+    example: |
+      edge-01> vrf 1
+      edge-01(tier0_sr)> get bgp neighbor summary
+    output: |
+      BFD States: NC - Not configured, DC - Disconnected
+                  AD - Admin down, DW - Down, IN - Init, UP - Up
+      BGP summary information for VRF default for address-family: ipv4Unicast
+      Router ID: 10.27.11.2  Local AS: 65001
+
+      Neighbor      AS     State   Up/DownTime  BFD  InMsgs  OutMsgs  InPfx  OutPfx
+      10.27.11.1    65000  Estab   01:12:40     NC   812     809      1      3
+      10.27.12.1    65000  Active  never        NC   0       0        0      0
+    mistake: Reading "Active" as healthy. Active means the SR is trying and failing to open the TCP 179 session – check VLAN, IP, reachability and ACLs.
+    lesson: nsx-tier0-tier1-routing
+    version: general
+    source:
+      title: NSX CLI Guide 9.0.2 – get logical-router bgp neighbor summary
+      url: https://developer.broadcom.com/xapis/nsx-cli-guide/9.0.2/GetLogicalRouterUuidBgpNeighborsSummary.html
+
+  - id: nsx-get-bgp-advertised-routes
+    technology: nsx
+    title: Show what the Tier-0 advertises to a BGP neighbor
+    purpose: Prove whether a segment or VPC external block is actually being sent to the physical router (route advertisement + redistribution).
+    syntax: get bgp neighbor <ip-address> advertised-routes
+    example: "edge-01(tier0_sr)> get bgp neighbor 10.27.11.1 advertised-routes"
+    output: |
+      BGP table version is 14, local router ID is 10.27.11.2
+      Status flags: > - best
+         Network            Next Hop        Metric  LocPrf  Weight  Path
+      >  172.16.10.0/24     10.27.11.2      0       100     32768   ?
+      >  172.16.20.0/24     10.27.11.2      0       100     32768   ?
+      Total number of prefixes 2
+    mistake: Assuming that a segment visible in `get route` is advertised; redistribution on the Tier-0 (and route maps) decide what goes to BGP.
+    lesson: nsx-tier0-tier1-routing
+    version: general
+    source:
+      title: NSX CLI Guide 9.0.1 – BGP commands
+      url: https://developer.broadcom.com/xapis/nsx-cli-guide/9.0.1/all_networking_layer_3_logical_gateway_routing_bgp.html
+
+  - id: nsx-api-bgp-neighbors-status
+    technology: api
+    title: Tier-0 BGP neighbor status via Policy API
+    purpose: Monitor BGP neighbor state per Edge without logging in to the Edges.
+    syntax: GET https://<nsx-vip>/policy/api/v1/infra/tier-0s/<tier-0-id>/locale-services/<locale-service-id>/bgp/neighbors/status
+    example: curl -u admin https://nsx-vip.lab.local/policy/api/v1/infra/tier-0s/t0-lab/locale-services/default/bgp/neighbors/status
+    output: |
+      {
+        "results": [
+          { "neighbor_address": "10.27.11.1", "remote_as_number": "65000",
+            "connection_state": "ESTABLISHED", "source_address": "10.27.11.2", ... },
+          { "neighbor_address": "10.27.12.1", "remote_as_number": "65000",
+            "connection_state": "ACTIVE", ... }
+        ],
+        "result_count": 2
+      }
+    mistake: Using the wrong locale-service id; Tier-0s created by the VCF workflow or UI usually use "default", but check with GET .../tier-0s/<id>/locale-services.
+    lesson: nsx-tier0-tier1-routing
+    version: vcf9
+    source:
+      title: Broadcom KB 428449 – APIs for NSX Edge and Tier-0 Monitoring
+      url: https://knowledge.broadcom.com/external/article/428449/apis-for-nsx-edge-and-tier0-monitoring.html
+
+  - id: nsx-get-firewall-vif-rules
+    technology: nsx
+    title: Show DFW rules programmed on a VM's vNIC
+    purpose: Confirm exactly which distributed firewall rules are enforced on one vNIC – the ground truth when a rule "should" apply but doesn't (group membership, Applied-To).
+    syntax: get firewall vifs  then  get firewall <vif-uuid> ruleset rules
+    example: |
+      esx-01> get firewall vifs
+      esx-01> get firewall 5e9f6a3c-.... ruleset rules
+    output: |
+      VIF UUID                               Filter name
+      5e9f6a3c-....                          nic-2144211-eth0-vmware-sfw.2
+
+      ruleset mainrs {
+        # generation number: 0
+        # realization time : 2026-10-03T19:41:07
+        rule 3072 at 1, inout protocol tcp from addrset grp-shop-web to addrset grp-shop-app port 8443 accept;
+        rule 3073 at 2, inout protocol any from addrset grp-shop to addrset grp-shop drop;
+        rule 2 at 3, inout protocol any from any to any accept;
+      }
+    mistake: Checking the policy in the UI only; if Applied-To excludes the VM or the tag is missing, the rule never reaches this vNIC.
+    lesson: nsx-security-dfw-gateway-firewall
+    version: general
+    source:
+      title: NSX CLI Guide 9.0.2 – ESX host commands
+      url: https://developer.broadcom.com/xapis/nsx-cli-guide/9.0.2/host_esx.html
+
+  - id: nsx-get-logical-switches-host
+    technology: nsx
+    title: List segments realized on an ESX host
+    purpose: Check that a segment (and its VNI) is realized on the host where a VM runs – missing means transport-zone or realization problems.
+    syntax: get logical-switches
+    example: "esx-01> get logical-switches"
+    output: |
+      Logical Switches Summary
+      ------------------------------------------------------
+                         Overlay Kernel Entry
+      ======================================================
+              VNI                  DVS name        VIF num
+             67585                 vds-wld01          2
+             67586                 vds-wld01          1
+    mistake: Expecting every segment to be listed; a host only realizes segments that have something attached locally or that it needs.
+    lesson: nsx-segments-overlay
+    version: general
+    source:
+      title: NSX CLI Guide 9.0.2 – ESX host commands
+      url: https://developer.broadcom.com/xapis/nsx-cli-guide/9.0.2/host_esx.html
+
+  - id: nsxdp-cli-l2sec-get
+    technology: esxi
+    title: Inspect L2 security settings of NSX ports with nsxdp-cli
+    purpose: Read the MAC change / forged transmit / promiscuous settings the NSX data path applies to ports on a VDS (used by Broadcom KB procedures for nested or appliance workloads).
+    syntax: nsxdp-cli vswitch l2sec get --dvs-alias "<switch-name>"
+    example: nsxdp-cli vswitch l2sec get --dvs-alias "vds-wld01" | grep -i "port id"
+    output: |
+      (one block per port: port ID and whether MAC change, forged source and promiscuous are allowed)
+    mistake: Changing these settings with `nsxdp-cli ... set` as a permanent fix; they are data-path settings and should be driven by segment security profiles from NSX Manager.
+    lesson: nsx-segments-overlay
+    version: general
+    source:
+      title: Broadcom KB 418915 – Enabling promiscuous mode, MAC address changes and forged transmits (nsxdp-cli)
+      url: https://knowledge.broadcom.com/external/article/418915/enabling-promiscuous-mode-mac-address-c.html

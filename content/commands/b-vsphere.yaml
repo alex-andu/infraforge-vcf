@@ -1,0 +1,208 @@
+commands:
+  - id: esxcli-network-ip-interface-list
+    technology: esxi
+    title: List VMkernel interfaces
+    purpose: Show every VMkernel adapter (vmk0, vmk1...) with its port group, MTU, netstack and enabled state - the quickest way to see a host's management, vMotion and vSAN interfaces.
+    syntax: esxcli network ip interface list
+    example: esxcli network ip interface list
+    output: |
+      vmk0
+         Name: vmk0
+         MAC Address: 00:50:56:6a:1b:2c
+         Enabled: true
+         Portset: vSwitch0
+         Portgroup: Management Network
+         Netstack Instance: defaultTcpipStack
+         VDS Name: N/A
+         MTU: 1500
+      vmk1
+         Name: vmk1
+         Enabled: true
+         Portgroup: vMotion
+         Netstack Instance: defaultTcpipStack
+         MTU: 1500
+    mistake: Expecting IP addresses here - use `esxcli network ip interface ipv4 get` for addresses; this command lists the adapters, their switch/port group and MTU.
+    lesson: esx-architecture-host-management
+    version: general
+    source:
+      title: "vSphere 9.0 – Securing ESX Hosts (ESX Shell)"
+      url: https://techdocs.broadcom.com/us/en/vmware-cis/vsphere/vsphere/9-0/vsphere-security/securing-esxi-hosts.html
+  - id: esxcli-system-maintenancemode-get
+    technology: esxi
+    title: Check maintenance mode state
+    purpose: Confirm whether a host is in maintenance mode before patching, troubleshooting or after a lifecycle remediation.
+    syntax: esxcli system maintenanceMode get
+    example: esxcli system maintenanceMode get
+    output: |
+      Disabled
+    mistake: Entering maintenance mode with esxcli on a cluster host and expecting VMs to be evacuated - esxcli does not vMotion VMs; enter maintenance mode from vCenter so DRS can evacuate.
+    lesson: esx-architecture-host-management
+    version: general
+    source:
+      title: "Yellow Bricks – Enabling maintenance mode via esxcli"
+      url: https://www.yellow-bricks.com/2020/01/07/enabling-maintenance-mode-via-esxcli
+  - id: restart-hostd-vpxa
+    technology: esxi
+    title: Restart the host and vCenter agents
+    purpose: Recover a host that answers ping but shows Not responding or Disconnected in vCenter, without affecting running VMs.
+    syntax: /etc/init.d/hostd restart && /etc/init.d/vpxa restart
+    example: |
+      /etc/init.d/hostd restart
+      /etc/init.d/vpxa restart
+    output: |
+      hostd stopped.
+      hostd started.
+      vpxa stopped.
+      vpxa started.
+    mistake: Running it while a VCF or vLCM task is in progress on the host - wait for the task or cancel it first, and check hostd.log/vpxa.log for the real cause instead of restarting repeatedly.
+    lesson: esx-architecture-host-management
+    version: general
+    source:
+      title: "vSphere 9.0 – Software Components of vSphere (host agent, vCenter agent)"
+      url: https://techdocs.broadcom.com/us/en/vmware-cis/vsphere/vsphere/9-0/vcenter-and-host-management/vsphere-concepts-and-features/vsphere-software-components.html
+  - id: vcenter-service-control-status
+    technology: vsphere
+    title: Check vCenter appliance services
+    purpose: List the state of every service on the vCenter appliance (run from the appliance Bash shell) when the vSphere Client misbehaves.
+    syntax: service-control --status --all
+    example: service-control --status --all
+    output: |
+      Running:
+       applmgmt envoy lookupsvc lwsmd observability vlcm vmafdd vmcad vmdird vmware-content-library vmware-postgres-archiver vmware-vpostgres vmware-vpxd vsphere-ui ...
+      Stopped:
+       vmcam vmware-imagebuilder vmware-netdumper ...
+    mistake: Assuming every stopped service is a problem - several services are stopped by design (for example optional ones like Image Builder). Compare against a healthy appliance or the startup type.
+    lesson: vcenter-architecture-inventory
+    version: general
+    source:
+      title: "vSphere 9.0 – Using the Appliance Shell to Configure vCenter"
+      url: https://techdocs.broadcom.com/us/en/vmware-cis/vsphere/vsphere/9-0/vcenter-configuration/configuring-vcenter-server-using-the-appliance-shell.html
+  - id: powercli-get-cluster-ha-drs
+    technology: powercli
+    title: Report HA and DRS settings of clusters
+    purpose: Audit HA, admission control and DRS settings across all clusters of a vCenter.
+    syntax: Get-Cluster [-Name <name>] | Select-Object Name, HAEnabled, HAAdmissionControlEnabled, HAFailoverLevel, DrsEnabled, DrsAutomationLevel
+    example: Get-Cluster | Select-Object Name, HAEnabled, HAAdmissionControlEnabled, HAFailoverLevel, DrsEnabled, DrsAutomationLevel
+    output: |
+      Name       HAEnabled HAAdmissionControlEnabled HAFailoverLevel DrsEnabled DrsAutomationLevel
+      ----       --------- ------------------------- --------------- ---------- ------------------
+      mgmt-cl01       True                      True               1       True     FullyAutomated
+      wld01-cl01      True                      True               1       True     FullyAutomated
+    mistake: Forgetting Connect-VIServer to the right domain vCenter - in VCF 9 each workload domain has its own vCenter, so one connection does not see all clusters.
+    lesson: vsphere-ha-deep-dive
+    version: general
+    source:
+      title: "PowerCLI Reference – Set-Cluster"
+      url: https://developer.broadcom.com/powercli/latest/vmware.vimautomation.core/commands/set-cluster
+  - id: powercli-set-cluster-ha
+    technology: powercli
+    title: Enable vSphere HA with admission control
+    purpose: Turn on HA for a cluster and tolerate one host failure.
+    syntax: Set-Cluster -Cluster <cluster> -HAEnabled:$true -HAAdmissionControlEnabled:$true -HAFailoverLevel <n> [-HARestartPriority <level>] -Confirm:$false
+    example: Set-Cluster -Cluster "wld01-cl01" -HAEnabled:$true -HAAdmissionControlEnabled:$true -HAFailoverLevel 1 -Confirm:$false
+    output: |
+      Name         HAEnabled  HAFailoverLevel DrsEnabled DrsAutomationLevel
+      ----         ---------  --------------- ---------- ------------------
+      wld01-cl01   True       1               True       FullyAutomated
+    mistake: Changing HA on a VCF cluster while vSAN network changes are pending - with vSAN, deactivate Host Monitoring before changing vSAN networking, and enable vSAN only while HA is off.
+    lesson: vsphere-ha-deep-dive
+    version: general
+    source:
+      title: "PowerCLI Reference – Set-Cluster"
+      url: https://developer.broadcom.com/powercli/latest/vmware.vimautomation.core/commands/set-cluster
+  - id: powercli-set-cluster-drs
+    technology: powercli
+    title: Enable DRS fully automated
+    purpose: Turn on DRS and set its automation level.
+    syntax: Set-Cluster -Cluster <cluster> -DrsEnabled:$true -DrsAutomationLevel <Manual|PartiallyAutomated|FullyAutomated> -Confirm:$false
+    example: Set-Cluster -Cluster "wld01-cl01" -DrsEnabled:$true -DrsAutomationLevel FullyAutomated -Confirm:$false
+    output: |
+      Name         HAEnabled  HAFailoverLevel DrsEnabled DrsAutomationLevel
+      ----         ---------  --------------- ---------- ------------------
+      wld01-cl01   True       1               True       FullyAutomated
+    mistake: Choosing PartiallyAutomated and expecting load balancing - it only automates initial placement; migrations stay recommendations.
+    lesson: drs-resource-management
+    version: general
+    source:
+      title: "PowerCLI Reference – Set-Cluster"
+      url: https://developer.broadcom.com/powercli/latest/vmware.vimautomation.core/commands/set-cluster
+  - id: powercli-new-resourcepool
+    technology: powercli
+    title: Create a resource pool
+    purpose: Create a child resource pool with shares, reservation and expandable settings.
+    syntax: New-ResourcePool -Location <cluster|pool> -Name <name> [-CpuSharesLevel <Low|Normal|High|Custom>] [-MemReservationGB <n>] [-MemExpandableReservation:$true]
+    example: New-ResourcePool -Location (Get-Cluster "wld01-cl01") -Name "Prod" -CpuSharesLevel High -MemReservationGB 16 -MemExpandableReservation:$true
+    output: |
+      Name   CpuSharesLevel CpuReservationMHz CpuLimitMHz MemSharesLevel MemReservationGB MemLimitGB
+      ----   -------------- ----------------- ----------- -------------- ---------------- ----------
+      Prod   High           0                 -1          Normal         16.000           -1.000
+    mistake: Using resource pools as folders for organization - they change resource entitlement; use VM folders instead.
+    lesson: drs-resource-management
+    version: general
+    source:
+      title: "vSphere 9.0 – Managing Resource Pools"
+      url: https://techdocs.broadcom.com/us/en/vmware-cis/vsphere/vsphere/9-0/vsphere-resource-management/managing-resource-pools.html
+  - id: powercli-new-drsrule
+    technology: powercli
+    title: Create a VM-VM anti-affinity rule
+    purpose: Keep two VMs (for example domain controllers) on different hosts.
+    syntax: New-DrsRule -Cluster <cluster> -Name <name> -KeepTogether:$false -VM <vm1>,<vm2>
+    example: New-DrsRule -Cluster (Get-Cluster "wld01-cl01") -Name "dc-separate" -KeepTogether:$false -VM (Get-VM "dc01","dc02")
+    output: |
+      Name         Enabled Type          VMIds
+      ----         ------- ----          -----
+      dc-separate  True    VMAntiAffinity {VirtualMachine-vm-1012, VirtualMachine-vm-1013}
+    mistake: Using a required VM-Host rule when a preferential one would do - required rules are never violated even by HA failover.
+    lesson: drs-resource-management
+    version: general
+    source:
+      title: "vSphere 9.0 – Create a VM-VM Affinity Rule"
+      url: https://techdocs.broadcom.com/us/en/vmware-cis/vsphere/vsphere/9-0/vsphere-resource-management/using-drs-clusters-to-manage-resources/create-a-vm-vm-affinity-rule.html
+  - id: powercli-move-vm
+    technology: powercli
+    title: vMotion / Storage vMotion a VM
+    purpose: Live-migrate a VM to another host, another datastore, or both.
+    syntax: Move-VM -VM <vm> [-Destination <host|cluster|pool>] [-Datastore <datastore>]
+    example: Move-VM -VM "app01" -Destination (Get-VMHost "esx-wld01-02.lab.local") -Datastore "nfs-ds01"
+    output: |
+      Name    PowerState Num CPUs MemoryGB
+      ----    ---------- -------- --------
+      app01   PoweredOn  2        4.000
+    mistake: Migrating a VM with a CD/DVD connected to a host-local ISO - the compatibility check blocks it; disconnect the device first.
+    lesson: vm-lifecycle-templates
+    version: general
+    source:
+      title: "vSphere 9.0 – vSphere Virtual Machines Migration"
+      url: https://techdocs.broadcom.com/us/en/vmware-cis/vsphere/vsphere/9-0/vcenter-and-host-management/migrating-virtual-machines.html
+  - id: powercli-new-vm-from-template
+    technology: powercli
+    title: Deploy a VM from a template with customization
+    purpose: Deploy a VM from an inventory template and apply a guest customization specification.
+    syntax: New-VM -Name <name> -Template <template> -ResourcePool <cluster|pool> [-Datastore <ds>] [-OSCustomizationSpec <spec>]
+    example: New-VM -Name "web03" -Template (Get-Template "tpl-ubuntu") -ResourcePool (Get-Cluster "wld01-cl01") -Datastore "nfs-ds01" -OSCustomizationSpec (Get-OSCustomizationSpec "linux-lab")
+    output: |
+      Name    PowerState Num CPUs MemoryGB
+      ----    ---------- -------- --------
+      web03   PoweredOff 2        2.000
+    mistake: Deploying without a customization spec (duplicate hostname/IP) or from a template without VMware Tools (customization cannot run).
+    lesson: vm-lifecycle-templates
+    version: general
+    source:
+      title: "vSphere 9.0 – Deploying Virtual Machines"
+      url: https://techdocs.broadcom.com/us/en/vmware-cis/vsphere/vsphere/9-0/vsphere-virtual-machine-administration/deploying-virtual-machines.html
+  - id: powercli-new-vipermission
+    technology: powercli
+    title: Grant a group a role on an object
+    purpose: Assign a role to a group on a folder (or any inventory object) with propagation, repeatably.
+    syntax: New-VIPermission -Entity <object> -Principal <DOMAIN\group> -Role <role> [-Propagate:$true]
+    example: New-VIPermission -Entity (Get-Folder "App-Prod") -Principal "LAB\app-operators" -Role "App-VM-Operator" -Propagate:$true
+    output: |
+      EntityId          Role             Principal            Propagate IsGroup
+      --------          ----             ---------            --------- -------
+      Folder-group-v101 App-VM-Operator  LAB\app-operators    True      True
+    mistake: Granting the role to an individual user "temporarily" - a user permission overrides all of that user's group permissions on the object.
+    lesson: vsphere-permissions
+    version: general
+    source:
+      title: "vSphere 9.0 Security – How Do Multiple Permission Settings Work"
+      url: https://techdocs.broadcom.com/us/en/vmware-cis/vsphere/vsphere/9-0/vsphere-security/vsphere-permissions-and-user-management-tasks/multiple-permission-settings.html

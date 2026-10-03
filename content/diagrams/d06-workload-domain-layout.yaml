@@ -1,0 +1,43 @@
+id: d06-workload-domain-layout
+title: "Workload domains: dedicated vs shared NSX"
+description: >
+  One VCF instance with a management domain and three VI workload domains. The management domain hosts the
+  vCenter of each workload domain (PCI, prod, dev), one dedicated NSX Manager instance for the PCI domain and one
+  NSX Manager instance shared by the prod and dev domains. The PCI domain has its own cluster and its own NSX Edge
+  cluster. The prod and dev domains each have their own cluster, but share one NSX Edge cluster, which is possible
+  because they share the same NSX Manager. Each workload domain has its own vCenter Single Sign-On domain.
+width: 1000
+height: 600
+groups:
+  - { id: g-mgmt, x: 10, y: 10, w: 980, h: 200, label: "Management domain (runs the WLD management appliances)", kind: mgmt }
+  - { id: g-pci, x: 10, y: 260, w: 300, h: 330, label: "WLD 'pci' (dedicated NSX)", kind: compute }
+  - { id: g-prod, x: 330, y: 260, w: 320, h: 330, label: "WLD 'prod' (shared NSX)", kind: compute }
+  - { id: g-dev, x: 670, y: 260, w: 320, h: 330, label: "WLD 'dev' (shared NSX)", kind: compute }
+nodes:
+  - { id: sddc, x: 30, y: 50, w: 150, h: 56, label: "SDDC Manager", kind: mgmt, component: sddc-manager, info: "Executes workload domain creation requested from VCF Operations." }
+  - { id: vcpci, x: 30, y: 130, w: 150, h: 56, label: "vCenter pci", sublabel: "own SSO domain", kind: mgmt, component: vcenter, info: "Dedicated vCenter and dedicated vCenter SSO domain for the PCI domain." }
+  - { id: nsxpci, x: 200, y: 130, w: 170, h: 56, label: "NSX Manager A", sublabel: "dedicated to pci", kind: nsx, component: nsx-manager, info: "Dedicated NSX instance (1 or 3 nodes): own policy space and own lifecycle. Strongest isolation." }
+  - { id: vcprod, x: 420, y: 130, w: 150, h: 56, label: "vCenter prod", sublabel: "own SSO domain", kind: mgmt, component: vcenter, info: "One vCenter per workload domain, always." }
+  - { id: nsxsh, x: 590, y: 130, w: 170, h: 56, label: "NSX Manager B", sublabel: "shared prod + dev", kind: nsx, component: nsx-manager, info: "Shared NSX instance: saves management resources; both domains depend on it and share its policy space." }
+  - { id: vcdev, x: 790, y: 130, w: 150, h: 56, label: "vCenter dev", sublabel: "own SSO domain", kind: mgmt, component: vcenter, info: "Dev domain vCenter, also in the management domain." }
+  - { id: clpci, x: 30, y: 310, w: 260, h: 56, label: "Cluster pci", sublabel: "3+ hosts, vSAN ESA", kind: compute, component: esx-host, info: "Workload cluster with principal storage chosen at creation." }
+  - { id: edgepci, x: 30, y: 410, w: 260, h: 56, label: "Edge cluster pci", kind: nsx, component: nsx-edge-cluster, info: "Edge cluster used only by the PCI domain." }
+  - { id: vmpci, x: 30, y: 510, w: 260, h: 56, label: "PCI workloads", kind: vm, info: "Regulated workloads." }
+  - { id: clprod, x: 350, y: 310, w: 280, h: 56, label: "Cluster prod", sublabel: "3+ hosts", kind: compute, component: esx-host, info: "Prod cluster." }
+  - { id: edgesh, x: 350, y: 410, w: 620, h: 56, label: "Shared NSX Edge cluster (prod + dev)", kind: nsx, component: nsx-edge-cluster, info: "Edge clusters can be shared across workload domains that share the same NSX Manager." }
+  - { id: vmprod, x: 350, y: 510, w: 280, h: 56, label: "Prod workloads", kind: vm, info: "Business workloads." }
+  - { id: cldev, x: 690, y: 310, w: 280, h: 56, label: "Cluster dev", sublabel: "3+ hosts", kind: compute, component: esx-host, info: "Dev cluster." }
+  - { id: vmdev, x: 690, y: 510, w: 280, h: 56, label: "Dev workloads", kind: vm, info: "Business workloads." }
+edges:
+  - { from: sddc, to: vcpci, label: "deploys", kind: control }
+  - { from: vcpci, to: clpci, label: "manages", kind: mgmt }
+  - { from: nsxpci, to: clpci, label: "transport nodes", kind: control }
+  - { from: vcprod, to: clprod, label: "manages", kind: mgmt }
+  - { from: nsxsh, to: clprod, label: "transport nodes", kind: control }
+  - { from: nsxsh, to: cldev, label: "transport nodes", kind: control }
+  - { from: vcdev, to: cldev, label: "manages", kind: mgmt }
+steps:
+  - { title: "Management appliances live in the management domain", text: "Every workload domain's vCenter and NSX Manager nodes run in the management domain, deployed by SDDC Manager.", highlight: [g-mgmt, sddc, vcpci, vcprod, vcdev, nsxpci, nsxsh] }
+  - { title: "Dedicated NSX", text: "The PCI domain has its own NSX Manager and its own edge cluster: maximum isolation, more appliances.", highlight: [nsxpci, clpci, edgepci, g-pci] }
+  - { title: "Shared NSX", text: "Prod and dev share NSX Manager B, so they may also share one edge cluster. Cheaper, but one NSX failure or upgrade affects both.", highlight: [nsxsh, clprod, cldev, edgesh] }
+  - { title: "Always one vCenter per domain", text: "Sharing applies to NSX, never to vCenter; each domain also has its own SSO domain.", highlight: [vcpci, vcprod, vcdev] }

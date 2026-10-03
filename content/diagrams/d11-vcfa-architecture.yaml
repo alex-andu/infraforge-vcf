@@ -1,0 +1,41 @@
+id: d11-vcfa-architecture
+title: VCF Automation components and deployment
+description: >
+  VCF Automation runs as containerized services on a Kubernetes cluster that lives on dedicated appliance VMs in the
+  management domain (one node in the Simple model, three nodes in the High Availability model, optional external load
+  balancer). It is deployed by the VCF Installer or later through VCF Operations fleet management, which also manages
+  its lifecycle. Providers use the Provider Management portal; tenants use their organization portal. VCF Automation
+  consumes vCenter, NSX and Supervisor capacity in the workload domains, uses VCF Operations Orchestrator for
+  extensibility and the identity provider for sign-in.
+width: 1000
+height: 580
+groups:
+  - { id: g-mgmt, x: 20, y: 140, w: 560, h: 260, label: "Management domain", kind: mgmt }
+  - { id: g-vcfa, x: 40, y: 180, w: 330, h: 200, label: "VCF Automation (K8s on appliances)", kind: ops }
+  - { id: g-wld, x: 620, y: 140, w: 360, h: 400, label: "Workload domain(s)", kind: compute }
+nodes:
+  - { id: provider, x: 40, y: 40, w: 180, h: 56, label: "Provider admin", sublabel: "org 'system'", kind: external, info: "Logs in to the provider (system) organization to manage regions, networking, organizations, quotas and provider content." }
+  - { id: tenant, x: 260, y: 40, w: 180, h: 56, label: "Org admins / users", sublabel: "/automation", kind: external, info: "Log in to their own organization portal to manage projects, namespaces, catalog, policies and to deploy workloads." }
+  - { id: node1, x: 60, y: 220, w: 140, h: 56, label: "Node 1", sublabel: "Simple = 1 node", kind: ops, component: vcf-automation, info: "Simple model: one node, small size, no application-level HA. Deployment spec needs 2 IP addresses (ipPool)." }
+  - { id: node23, x: 210, y: 220, w: 140, h: 56, label: "Nodes 2-3", sublabel: "HA = 3 nodes", kind: ops, info: "High Availability model: three nodes, medium or large size. Deployment spec needs 4 IP addresses. Optional external load balancer." }
+  - { id: services, x: 60, y: 310, w: 290, h: 50, label: "Provider portal, org portals, catalog, policy, Orchestrator", kind: ops, info: "Containerized services. Extensibility uses VCF Operations Orchestrator workflows and event subscriptions." }
+  - { id: fm, x: 400, y: 200, w: 160, h: 56, label: "Fleet management", sublabel: "deploy + lifecycle", kind: mgmt, component: vcf-operations-fleet-management, info: "VCF Operations fleet management deploys (Day 2) and lifecycles VCF Automation; the VCF Installer can deploy it at bring-up." }
+  - { id: idp, x: 400, y: 310, w: 160, h: 56, label: "Identity", sublabel: "VCF SSO / external IdP", kind: security, component: vcf-identity-broker, info: "Providers and organizations can integrate external identity providers (SAML, OIDC, LDAP) and import users and groups." }
+  - { id: vc, x: 650, y: 190, w: 140, h: 56, label: "vCenter", kind: mgmt, component: vcenter, info: "Hosts the Supervisor and provides storage policies (exposed as storage classes) and VM classes." }
+  - { id: nsx, x: 820, y: 190, w: 140, h: 56, label: "NSX Manager", kind: nsx, component: nsx-manager, info: "Provides Tier-0/VRF gateways (provider gateways), edge clusters and VPC networking. A region needs all its Supervisors on the same NSX instance." }
+  - { id: sup, x: 650, y: 310, w: 310, h: 56, label: "Supervisor", sublabel: "VM Service, VKS", kind: compute, component: supervisor, info: "Required for All Apps organizations. Namespaces created by VCF Automation are Supervisor namespaces where VMs and VKS clusters run." }
+  - { id: clusters, x: 650, y: 430, w: 310, h: 56, label: "vSphere clusters", sublabel: "VM Apps orgs: no Supervisor", kind: compute, info: "VM Apps organizations consume vSphere clusters directly through cloud accounts, without a Supervisor." }
+edges:
+  - { from: provider, to: services, label: "provider portal", kind: mgmt }
+  - { from: tenant, to: services, label: "org portal", kind: mgmt }
+  - { from: fm, to: node1, label: "deploy / LCM", kind: mgmt }
+  - { from: services, to: idp, label: "sign-in", kind: dependency, dashed: true }
+  - { from: services, to: vc, label: "API", kind: mgmt }
+  - { from: services, to: nsx, label: "API", kind: mgmt }
+  - { from: vc, to: sup, kind: control }
+  - { from: services, to: clusters, label: "VM Apps", kind: mgmt, dashed: true }
+steps:
+  - { title: "Where it runs", text: "VCF Automation is a Kubernetes-based application on 1 (Simple) or 3 (HA) appliance nodes in the management domain.", highlight: [node1, node23, services] }
+  - { title: "How it is deployed", text: "VCF Installer at bring-up, or Day 2 from VCF Operations fleet management, which also handles upgrades, certificates and passwords.", highlight: [fm, node1] }
+  - { title: "Who uses it", text: "The provider administrator uses the system organization; tenants use their own organization portal.", highlight: [provider, tenant, services] }
+  - { title: "What it consumes", text: "vCenter, NSX and Supervisors in workload domains (All Apps), or vSphere clusters directly (VM Apps).", highlight: [vc, nsx, sup, clusters] }

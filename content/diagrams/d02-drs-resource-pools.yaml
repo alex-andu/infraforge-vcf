@@ -1,0 +1,46 @@
+id: d02-drs-resource-pools
+title: DRS cluster, resource pool hierarchy and VM resource controls
+description: >
+  A DRS cluster in vCenter with a hidden root resource pool equal to the cluster's total CPU and memory (here 4 hosts,
+  200 GHz, 1 TB). Two child pools: Prod with High shares and a 100 GHz/512 GB reservation, and Test with Normal shares and a
+  memory limit. The Prod pool's expandable reservation lets it borrow from the root. A VM in Prod has a reservation; a VM in
+  Test has a limit. DRS (a vCenter service) performs initial placement and load balancing with vMotion between hosts, depends
+  on healthy vCLS VMs, and honours VM-VM and VM-Host rules.
+width: 1000
+height: 600
+groups:
+  - { id: g-cluster, x: 20, y: 110, w: 620, h: 470, label: "DRS cluster (root resource pool = all cluster resources)", kind: compute }
+  - { id: g-hosts, x: 660, y: 110, w: 320, h: 470, label: "Hosts", kind: compute }
+nodes:
+  - { id: drs, x: 40, y: 30, w: 200, h: 56, label: "DRS", sublabel: "vCenter service", kind: mgmt, component: vcenter, info: "Initial placement, load balancing (vMotion) and maintenance evacuation. Automation: Manual, Partially automated, Fully automated. Stops when vCenter is down." }
+  - { id: vcls, x: 270, y: 30, w: 200, h: 56, label: "vCLS", sublabel: "embedded, up to 2 VMs", kind: ops, info: "DRS depends on vCLS health. Embedded vCLS in vSphere 9.0; deprecated in vCenter 9.0." }
+  - { id: rules, x: 500, y: 30, w: 200, h: 56, label: "Affinity rules", sublabel: "VM-VM · VM-Host must/should", kind: security, info: "Required (must) rules are never violated by DRS, HA or DPM; preferential (should) rules can be." }
+  - { id: root, x: 200, y: 140, w: 260, h: 56, label: "Root pool", sublabel: "200 GHz · 1 TB (hidden)", kind: compute, info: "Every DRS cluster has an invisible root resource pool equal to the cluster's resources." }
+  - { id: prod, x: 50, y: 260, w: 250, h: 64, label: "RP Prod", sublabel: "Shares High · Res 100 GHz/512 GB · expandable", kind: compute, info: "Reservation guaranteed to the pool. Expandable reservation lets it borrow unreserved capacity from the root if its own runs out." }
+  - { id: test, x: 350, y: 260, w: 250, h: 64, label: "RP Test", sublabel: "Shares Normal · Mem limit 128 GB", kind: compute, info: "Shares only matter under contention, relative to the sibling Prod. The limit caps Test even if the cluster is idle." }
+  - { id: vmp1, x: 50, y: 400, w: 120, h: 56, label: "db01", sublabel: "Res 16 GB", kind: vm, info: "A VM reservation must be satisfiable from the pool (or its ancestors if expandable) for the VM to power on." }
+  - { id: vmp2, x: 180, y: 400, w: 120, h: 56, label: "app01", sublabel: "Shares High", kind: vm, info: "High = 2000 CPU shares per vCPU and 20 memory shares per MB." }
+  - { id: vmt1, x: 350, y: 400, w: 120, h: 56, label: "test01", sublabel: "CPU limit 1 GHz", kind: vm, info: "A limit caps the VM even when resources are free — a common cause of 'slow VM on an idle host'." }
+  - { id: vmt2, x: 480, y: 400, w: 120, h: 56, label: "test02", sublabel: "Normal", kind: vm, info: "Normal = 1000 CPU shares per vCPU, 10 memory shares per MB." }
+  - { id: esx01, x: 690, y: 150, w: 260, h: 56, label: "esx01", kind: compute, info: "Hosts contribute capacity to the root pool." }
+  - { id: esx02, x: 690, y: 250, w: 260, h: 56, label: "esx02", kind: compute, info: "vMotion VMkernel adapter required on each host for DRS migrations." }
+  - { id: esx03, x: 690, y: 350, w: 260, h: 56, label: "esx03", sublabel: "entering maintenance", kind: compute, info: "In fully automated mode DRS evacuates running VMs with vMotion. HA admission control or required rules can block it." }
+  - { id: esx04, x: 690, y: 450, w: 260, h: 56, label: "esx04", kind: compute, info: "Receives VMs evacuated from esx03." }
+edges:
+  - { from: root, to: prod, kind: dependency }
+  - { from: root, to: test, kind: dependency }
+  - { from: prod, to: vmp1, kind: dependency }
+  - { from: prod, to: vmp2, kind: dependency }
+  - { from: test, to: vmt1, kind: dependency }
+  - { from: test, to: vmt2, kind: dependency }
+  - { from: drs, to: root, label: "enforces tree", kind: control }
+  - { from: vcls, to: drs, label: "required", kind: dependency, dashed: true }
+  - { from: esx03, to: esx04, label: "vMotion (evacuate)", kind: data }
+  - { from: rules, to: drs, kind: control, dashed: true }
+steps:
+  - { title: "DRS and its dependencies", text: "DRS runs in vCenter and needs healthy vCLS and a vMotion network.", highlight: [drs, vcls] }
+  - { title: "Root resource pool", text: "The hidden root equals the cluster's total capacity.", highlight: [root] }
+  - { title: "Sibling pools", text: "Prod (High shares, reservation, expandable) and Test (Normal shares, limit) divide the root.", highlight: [prod, test] }
+  - { title: "VM controls", text: "Reservations guarantee, limits cap, shares prioritize only under contention.", highlight: [vmp1, vmp2, vmt1, vmt2] }
+  - { title: "Maintenance evacuation", text: "Fully automated DRS vMotions VMs off esx03 so it can enter maintenance mode.", highlight: [esx03, esx04, drs] }
+  - { title: "Rules", text: "Required rules are never violated — they can block evacuation and even HA failover.", highlight: [rules, drs] }

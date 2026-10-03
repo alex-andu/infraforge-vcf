@@ -1,0 +1,152 @@
+terms:
+  - id: root-cause-analysis
+    term: Root cause analysis
+    expansion: RCA
+    definition: >
+      The disciplined process of finding the mechanism that produced a symptom and the trigger that set it off, proven
+      with evidence, rather than the first thing that made the symptom go away. In this course it follows the six steps
+      Observe, Scope, Hypothesize, Validate, Remediate, Verify.
+    whyItMatters: >
+      A fix without a root cause comes back. Exam scenarios reward the answer that gathers or validates evidence before a
+      disruptive action, and the "next best step" that targets the cause rather than the symptom.
+    version: general
+    related: [blast-radius, vcf-health, support-bundle]
+    lessons: [troubleshooting-methodology, troubleshooting-core-dependencies]
+    labs: [lab-troubleshooting-drill]
+
+  - id: vcf-health
+    term: VCF Health
+    definition: >
+      Part of VCF Operations diagnostics that monitors the VCF stack with summary cards for Certificates health, NTP and
+      DNS health, vCenter health, Virtual Machine operations health, vSphere vMotion health and Virtual Machine snapshots
+      health, with a Component view and a VCF view (drill-down from the management domain to individual hosts).
+    whyItMatters: >
+      It surfaces the silent dependency problems (expiring certificates, time drift, DNS reverse lookup failures) before
+      they break deployments, commissioning or upgrades, which makes it the natural first stop in the Observe and Scope
+      steps.
+    version: vcf9
+    related: [diagnostics-findings, troubleshooting-workbench, log-assist, vcf-operations]
+    lessons: [troubleshooting-methodology, troubleshooting-core-dependencies]
+
+  - id: diagnostics-findings
+    term: Diagnostics Findings
+    definition: >
+      VCF Operations diagnostics feature that collects properties and logs from platform components and matches them to
+      known issues, showing existing or potential problems with remediation guidance.
+    whyItMatters: >
+      When a symptom matches a known issue, Findings shortcuts the Hypothesize step. Log Assist attaches the active
+      findings to support bundles so Broadcom Support sees them too.
+    version: vcf9
+    related: [vcf-health, log-assist]
+    lessons: [troubleshooting-methodology]
+
+  - id: troubleshooting-workbench
+    term: Troubleshooting Workbench
+    definition: >
+      The advanced investigation tool in VCF Operations (Infrastructure Operations > Troubleshooting Workbench) used to
+      investigate an object or a triggered alert with an adjustable scope and time range, looking for potential evidence
+      of known and unknown issues. Active sessions do not persist after logout; they reappear under Recent Searches.
+    whyItMatters: >
+      It supports the Scope and Validate steps: what changed and what was anomalous around the object at the time the
+      problem began.
+    version: vcf9
+    related: [vcf-health, diagnostics-findings]
+    lessons: [troubleshooting-methodology]
+
+  - id: log-assist
+    term: Log Assist
+    definition: >
+      VCF Operations diagnostics capability, reached from the Diagnostics Findings tab, that generates log bundles for VCF
+      Operations, vCenter, ESX, SDDC Manager, NSX, VCF Operations for logs and VCF Operations fleet management and
+      uploads them to Broadcom Support without an external FTP client, including the active findings.
+    whyItMatters: >
+      Collecting evidence before remediation is part of the method; Log Assist does it for most components from one place.
+      It validates connectivity from the environment to the collector, from the collector to the component and to the
+      Broadcom Support Portal first.
+    version: vcf9
+    related: [support-bundle, sos-utility, diagnostics-findings]
+    lessons: [troubleshooting-methodology, troubleshooting-vcf-services]
+
+  - id: sos-utility
+    term: SoS utility
+    expansion: Supportability and Serviceability utility
+    definition: >
+      The command-line tool on the SDDC Manager and VCF Installer appliances at /opt/vmware/sddc-support/sos, run as root,
+      that collects log bundles and health information. In 9.0.x, options include --vcf-installer-logs,
+      --sddc-manager-logs and --collect-all-logs with --zip; output goes to /var/log/vmware/vcf/sddc-support/ unless
+      --log-location is given. 9.1 adds --vcf-mgmt-svcs-logs.
+    whyItMatters: >
+      It is the documented way to capture SDDC Manager and installer evidence for analysis or a support case, and should
+      be run before restarts or redeployments that destroy evidence.
+    version: vcf9
+    related: [support-bundle, log-assist, sddc-manager, vcf-installer]
+    lessons: [troubleshooting-vcf-services, troubleshooting-methodology]
+
+  - id: support-bundle
+    term: Support bundle
+    expansion: Log bundle
+    definition: >
+      An archive of logs, configuration and state collected from a component (ESX, vCenter, NSX, SDDC Manager, VCF
+      Operations) for offline analysis or for Broadcom Support. Produced by tools such as sos, Log Assist, the vCenter log
+      bundle export or the ESX log bundle.
+    whyItMatters: >
+      Logs roll over and restarts reset state; a bundle taken at the time of failure preserves the evidence you need to
+      prove a root cause.
+    version: general
+    related: [sos-utility, log-assist, root-cause-analysis]
+    lessons: [troubleshooting-methodology, troubleshooting-vcf-services]
+
+  - id: esx-heartbeat
+    term: ESX host heartbeat (UDP 902)
+    definition: >
+      The UDP packets the vpxa agent on each ESX host sends to vCenter on port 902. Broadcom KB 323612 documents a
+      heartbeat every 10 seconds and a 60-second window: if vCenter receives none for 60 seconds it marks the host Not
+      Responding. Not the same as vSphere HA network or datastore heartbeats.
+    whyItMatters: >
+      A firewall that blocks UDP 902 produces hosts that disconnect 30 to 90 seconds after every reconnect while VMs keep
+      running. Recognising the pattern (repeated "Started heartbeating" in vpxa.log) saves hours.
+    version: general
+    related: [vpxa, hostd]
+    lessons: [troubleshooting-vcf-services]
+    labs: [lab-troubleshooting-drill]
+
+  - id: remote-syslog
+    term: Remote syslog
+    definition: >
+      Forwarding a component's log messages over the network to a log server such as VCF Operations for logs. On ESX it is
+      set with esxcli system syslog config set --loghost and applied with esxcli system syslog reload.
+    whyItMatters: >
+      Central logs survive host reboots and let you correlate events from ESX, vCenter and NSX by time, which is the core of
+      the Validate step for multi-component incidents.
+    version: general
+    related: [vcf-operations-logs, support-bundle]
+    lessons: [troubleshooting-vcf-services, troubleshooting-network-nsx-vsan]
+
+  - id: nested-virtualization
+    term: Nested virtualization
+    definition: >
+      Running a hypervisor (for example ESX) as a virtual machine on another hypervisor (ESX, Proxmox VE/KVM or VMware
+      Workstation). The outer hypervisor must expose hardware virtualization extensions (Intel VT-x/EPT or AMD-V/RVI) to the
+      guest; on Proxmox this means the kvm_intel or kvm_amd nested parameter and CPU type host.
+    whyItMatters: >
+      It is how a single home-lab server can run a multi-host VCF management domain. It is not supported by Broadcom for
+      production, performance is lower, and some features do not work nested (for example William Lam notes that NVMe
+      Tiering in VCF 9.0 is not interoperable with nested ESX).
+    version: general
+    related: [cpu-type-host, esx]
+    lessons: [troubleshooting-methodology]
+    labs: [lab-homelab-proxmox-prep]
+
+  - id: cpu-type-host
+    term: CPU type host (Proxmox)
+    definition: >
+      The Proxmox VE virtual CPU model that passes the physical CPU's model and feature flags through to the VM
+      (qm set <vmid> --cpu host). For nested ESX it exposes VT-x/AMD-V plus flags such as AES-NI and 1 GB pages that ESX
+      and NSX Edge VMs need.
+    whyItMatters: >
+      With a generic CPU model (for example x86-64-v2-AES or kvm64) the nested ESX may not see the virtualization
+      extensions it needs to power on its own VMs, and NSX Edge DPDK requirements (AES-NI, 1 GB pages) may not be met. The trade-off is that VMs with nesting cannot be live-migrated between different CPUs.
+    version: general
+    related: [nested-virtualization]
+    lessons: [troubleshooting-methodology]
+    labs: [lab-homelab-proxmox-prep]

@@ -1,0 +1,101 @@
+id: scn-production-workload-domain
+title: Design the network for a production workload domain
+topics: [vcf-network-design, vds, mtu, dns, design-sizing, workload-domains]
+lessons: [vcf-network-design, vsphere-distributed-switch, network-fundamentals-for-vcf, dns-ntp-dependencies, design-sizing-scalability]
+brief: |
+  An insurance company runs a VCF 9 instance with a four-host management domain. It now needs a **production
+  workload domain** for its policy administration platform (Java application servers and a large database cluster on
+  VMs). You must design the cluster networking: switch model, VLANs and subnets, MTU, teaming, DNS/NTP preparation and
+  the validation plan, and justify each decision.
+requirements:
+  - "16 hosts at go-live, growing to 32 hosts in the same cluster within three years."
+  - "vSAN ESA principal storage; the database team wants storage traffic protected from vMotion bursts."
+  - "Application networks consumed as NSX overlay (VPCs), with jumbo frames available to the database tier where possible."
+  - "Survive the loss of one NIC or one top-of-rack switch per host without manual action."
+  - "All components resolvable by FQDN; no manual host-file workarounds."
+constraints:
+  - "Hosts have 2 x 25 GbE ports (one dual-port NIC) plus 2 x 25 GbE on a second card – 4 ports total."
+  - "Single rack today, layer 2 fabric between the two ToRs; the network team supports MTU up to 9216."
+  - "The network team does not run LACP to servers."
+  - "Corporate DNS (two servers) and NTP (two servers) exist outside VCF."
+existing: |
+  Management domain: single VDS model, 2 x 25 GbE, MTU 9000, management VLAN 1610/1611, vMotion 1612, vSAN 1613,
+  host TEP 1614, edge cluster in the management domain with BGP to the ToRs. Shared NSX instance is acceptable for
+  the production domain. The VCF Planning and Preparation Workbook is used for all inputs.
+decisions:
+  - id: d-switch
+    question: Which distributed switch model fits the requirements and hardware?
+    options:
+      - id: a
+        text: Single distributed switch on two NICs, leave the other two unused.
+        why: Simplest, but wastes half the bandwidth and does not address the storage-isolation request.
+      - id: b
+        text: Storage separation model – VDS1 (management, vMotion, overlay workload) on NIC card ports 1/2, VDS2 (vSAN) on the second card; each VDS uses one port from each card.
+        correct: true
+        why: Meets the storage protection requirement with the 4 NICs available (model needs 4–6) and keeps NIC redundancy by spreading each VDS across both cards and both ToRs.
+      - id: c
+        text: Storage and workload separation (three VDS).
+        why: Requires a minimum of six NICs for redundancy; not implementable on 4 ports.
+      - id: d
+        text: Single VDS with all four NICs in an LACP LAG.
+        why: The network team does not run LACP, VCF 9 prefers independent uplinks, and LACP adds no isolation for storage.
+  - id: d-mtu
+    question: Which MTU settings do you specify?
+    options:
+      - id: a
+        text: VDS 9000; vMotion, vSAN and host TEP vmks 9000; ESX management vmk 1500; ToR ports and gateways 9216; overlay segments up to 8800 where the database tier needs jumbo frames.
+        correct: true
+        why: Matches VCF 9 recommendations (management 1500, others 9000), keeps switch MTU above host MTU, and respects overlay segment MTU = TEP MTU − 200.
+      - id: b
+        text: Everything 1500 to avoid jumbo frame problems.
+        why: Host overlay below 1600 fails VCF validation; vMotion/vSAN lose efficiency.
+      - id: c
+        text: Everything including overlay segments at 9000.
+        why: An overlay segment cannot be as large as the TEP MTU; encapsulation adds overhead and DF packets would be dropped.
+  - id: d-subnets
+    question: How do you size the infrastructure subnets?
+    options:
+      - id: a
+        text: /27 per network – enough for 16 hosts.
+        why: Masks cannot be changed later; 32 hosts plus TEP IPs (typically two per host) will not fit.
+      - id: b
+        text: /24 per network (management, vMotion, vSAN, host TEP), sized for the 32-host target with two TEP IPs per host and spare addresses.
+        correct: true
+        why: Covers growth, matches VCF guidance to scale subnets for expansion since subnet masks cannot be changed.
+      - id: c
+        text: One /22 shared by all traffic types.
+        why: Mixing traffic types in one L2 domain removes separation and contradicts one VLAN/L2 domain per traffic type.
+  - id: d-teaming
+    question: Which teaming design meets "survive one NIC or ToR failure" without switch dependencies?
+    options:
+      - id: a
+        text: Route based on IP hash on all port groups.
+        why: Needs EtherChannel/LACP on the switches, which the network team does not provide.
+      - id: b
+        text: Route based on physical NIC load with both uplinks active on management, vMotion and vSAN port groups; link status only failure detection; each VDS uplink pair cabled to different ToRs.
+        correct: true
+        why: VCF 9 recommendation; no switch configuration needed; fails over on NIC or ToR loss.
+      - id: c
+        text: Explicit failover with one uplink unused to keep traffic predictable.
+        why: An unused uplink provides no redundancy for that port group.
+  - id: d-validate
+    question: What do you require before submitting the workload domain creation?
+    options:
+      - id: a
+        text: Trust the VCF validation – it checks everything.
+        why: Validation catches some issues late; physical MTU between every host pair and NTP sync status still need your own evidence.
+      - id: b
+        text: A readiness checklist with A+PTR records for all 32 planned host IPs (16 now), NTP reach 377 on every host, DF vmkping at 8972 on vMotion/vSAN/TEP between hosts on both ToRs, and gateway reachability per VLAN.
+        correct: true
+        why: Proves the hard dependencies (DNS, NTP, MTU, gateways) before automation runs and avoids late validation failures.
+      - id: c
+        text: Ping every host's management IP.
+        why: Proves only basic layer 3 reachability on one network.
+recommended: |
+  **Storage separation distributed switch model** on 4 × 25 GbE: VDS1 (ESX management, vMotion, host TEP/overlay)
+  and VDS2 (vSAN), each using one port from each NIC card and one link to each ToR, load-based teaming, link status
+  failure detection, NIOC enabled with VCF defaults. MTU: VDS and vMotion/vSAN/TEP vmks 9000, ESX management 1500,
+  ToR ports and VLAN gateways 9216, overlay segments ≤ 8800 (database tier at 8800 if the app supports it, others 1500).
+  Separate VLAN and /24 subnet per traffic type with VRRP gateways; DNS A+PTR for all planned hosts and the domain's
+  vCenter (which runs in the management domain – check management domain capacity). Readiness evidence (DNS, NTP
+  reach 377, DF vmkping per network and per ToR path) is required before submitting the workload domain workflow.

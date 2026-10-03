@@ -1,0 +1,51 @@
+id: d11-vcfa-tenancy
+title: "VCF Automation tenancy: provider, regions, organizations, projects, namespaces"
+description: >
+  The provider builds regions from one or more Supervisors that share one NSX instance and identical storage class
+  names. Provider networking (IP spaces plus provider gateways built on Tier-0 or Tier-0 VRF gateways, and synced edge
+  clusters) is shared to organizations through regional networking. Provider content libraries are read-only to
+  organizations. Each organization gets a region quota (compute, memory, storage, VM classes) for All Apps
+  organizations. Inside an organization, the org admin creates projects (groups of users) and namespaces (resource
+  envelopes, often from a namespace class) where VMs and VKS clusters are deployed into VPC networks.
+width: 1000
+height: 600
+groups:
+  - { id: g-provider, x: 20, y: 20, w: 960, h: 210, label: "Provider (system organization)", kind: mgmt }
+  - { id: g-org, x: 20, y: 260, w: 960, h: 320, label: "Organization (All Apps) - tenant boundary", kind: compute }
+nodes:
+  - { id: region, x: 40, y: 70, w: 200, h: 56, label: "Region", sublabel: "Supervisor(s) + 1 NSX", kind: mgmt, info: "Combines compute, memory and networking from one or more Supervisors in one or more vCenters that share the same NSX instance. Storage class names and configurations must be identical. Name and NSX cannot be changed after creation." }
+  - { id: ipspace, x: 270, y: 70, w: 200, h: 56, label: "IP space", sublabel: "external IP blocks", kind: network, info: "Structured allocation of external (public) IP ranges to organizations." }
+  - { id: pgw, x: 500, y: 70, w: 200, h: 56, label: "Provider gateway", sublabel: "Tier-0 / VRF", kind: nsx, info: "Associates an NSX Tier-0 or Tier-0 VRF gateway with IP addresses from IP spaces that can be advertised from it." }
+  - { id: edge, x: 730, y: 70, w: 220, h: 56, label: "Edge cluster (synced)", kind: nsx, info: "Edge clusters are listed in the provider portal and synchronized with NSX; regional networking of an org binds one." }
+  - { id: pcl, x: 40, y: 155, w: 200, h: 56, label: "Provider content library", sublabel: "read-only to orgs", kind: storage, info: "Images and templates published by the provider; organizations consume them but cannot modify them." }
+  - { id: quota, x: 270, y: 155, w: 200, h: 56, label: "Region quota", sublabel: "CPU, memory, storage, VM classes", kind: mgmt, info: "Compute and storage an organization gets in a region. Applies only to All Apps organizations." }
+  - { id: regnet, x: 500, y: 155, w: 220, h: 56, label: "Regional networking", sublabel: "per org: region + gw + edge", kind: network, info: "Per-organization network configuration binding a region, a provider gateway and an edge cluster." }
+  - { id: orgadmin, x: 40, y: 300, w: 200, h: 56, label: "Org admin", sublabel: "first user", kind: external, info: "The first user defined when the provider creates the org; manages projects, namespaces, users, content, policies." }
+  - { id: proj, x: 270, y: 300, w: 200, h: 56, label: "Project", sublabel: "users + infrastructure", kind: compute, info: "Logical grouping of users and the infrastructure assigned to them. Every org has a default project. Only project members see its deployments." }
+  - { id: nsclass, x: 500, y: 300, w: 200, h: 56, label: "Namespace class", sublabel: "template", kind: compute, info: "Reusable template defining resource limits, VM classes, storage classes and content libraries for new namespaces." }
+  - { id: ns, x: 270, y: 410, w: 200, h: 56, label: "Namespace", sublabel: "resource envelope", kind: compute, info: "Supervisor namespace with CPU, memory and storage limits; can draw on several vSphere zones. Total limits cannot exceed the org quota." }
+  - { id: vpc, x: 500, y: 410, w: 200, h: 56, label: "VPC + subnets", kind: nsx, info: "Organization networking: VPCs with private and public subnets, connected north-south through the provider gateway." }
+  - { id: wl, x: 270, y: 505, w: 430, h: 56, label: "Workloads: VMs (VM Service), VKS clusters, volumes", kind: vm, info: "What users deploy from the catalog or directly into namespaces." }
+  - { id: pol, x: 760, y: 300, w: 200, h: 56, label: "Policies", sublabel: "approval, lease, day 2, IaaS", kind: security, info: "Org- or project-scoped governance: approval, day-2 action, lease and IaaS resource (CEL) policies." }
+  - { id: cat, x: 760, y: 410, w: 200, h: 56, label: "Content + catalog", sublabel: "blueprints, workflows", kind: storage, info: "Org content libraries, blueprints and Orchestrator workflows published to the catalog." }
+edges:
+  - { from: region, to: quota, label: "carve", kind: mgmt }
+  - { from: ipspace, to: pgw, kind: dependency }
+  - { from: pgw, to: regnet, kind: dependency }
+  - { from: edge, to: regnet, kind: dependency }
+  - { from: quota, to: proj, label: "org capacity", kind: mgmt }
+  - { from: orgadmin, to: proj, label: "create", kind: mgmt }
+  - { from: proj, to: ns, kind: mgmt }
+  - { from: nsclass, to: ns, label: "template", kind: dependency, dashed: true }
+  - { from: regnet, to: vpc, label: "north-south", kind: north-south }
+  - { from: ns, to: wl, kind: data }
+  - { from: vpc, to: wl, kind: data }
+  - { from: pcl, to: cat, label: "read-only", kind: storage, dashed: true }
+  - { from: pol, to: wl, label: "govern", kind: control, dashed: true }
+  - { from: cat, to: wl, label: "request", kind: mgmt }
+steps:
+  - { title: "Provider: region", text: "Group Supervisors that share one NSX instance and identical storage classes into a region.", highlight: [region] }
+  - { title: "Provider: networking", text: "Define IP spaces, build provider gateways on Tier-0/VRF, sync edge clusters.", highlight: [ipspace, pgw, edge] }
+  - { title: "Provider: organization", text: "Create the org, give it a region quota and regional networking, and name the first user (org admin). Share provider content read-only.", highlight: [quota, regnet, pcl, orgadmin] }
+  - { title: "Org admin: projects and namespaces", text: "Create projects for teams and namespaces (from namespace classes) as resource envelopes; networking comes from VPCs.", highlight: [orgadmin, proj, nsclass, ns, vpc] }
+  - { title: "Governed consumption", text: "Users request catalog items or deploy into namespaces; policies (approval, lease, day 2, IaaS) govern every request.", highlight: [cat, pol, wl] }

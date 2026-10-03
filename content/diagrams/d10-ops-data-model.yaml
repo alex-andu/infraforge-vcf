@@ -1,0 +1,43 @@
+id: d10-ops-data-model
+title: From collected data to views, dashboards and reports
+description: >
+  Adapters on collectors gather two kinds of data about every object: metrics (numeric values sampled on every
+  collection cycle, kept as time series) and properties (attributes that describe the object and change rarely).
+  Super metrics are formulas you build from existing metrics. Views present metrics and properties for a chosen
+  subject (object type) as a list, summary, trend, distribution, text or image. Dashboards are built from widgets,
+  one of which is the View widget. Reports are scheduled snapshots of views and dashboards exported to PDF or CSV.
+  Metrics and properties also feed symptom definitions, which feed alerts.
+width: 1000
+height: 560
+groups:
+  - { id: g-data, x: 230, y: 40, w: 230, h: 470, label: "Data model (per object)", kind: ops }
+  - { id: g-present, x: 520, y: 40, w: 230, h: 470, label: "Presentation", kind: zone }
+nodes:
+  - { id: adapter, x: 40, y: 230, w: 160, h: 56, label: "Adapter instance", sublabel: "on a collector", kind: ops, info: "An integration (for example the vCenter adapter) that discovers objects and collects their metrics and properties on each collection cycle." }
+  - { id: metric, x: 260, y: 90, w: 170, h: 56, label: "Metrics", sublabel: "time series", kind: ops, info: "Numeric measurements collected every cycle, for example cpu|usage_average or mem|usage_average. Stored as a time series so you can trend, forecast and threshold them." }
+  - { id: prop, x: 260, y: 230, w: 170, h: 56, label: "Properties", sublabel: "object attributes", kind: ops, info: "Attributes of an object, for example number of vCPUs, guest OS, ESX build, power state, vSAN cluster type. They change rarely and are used in symptom definitions, views and reports." }
+  - { id: super, x: 260, y: 370, w: 170, h: 56, label: "Super metrics", sublabel: "your formulas", kind: ops, info: "Custom metrics computed from a formula over one or more objects' metrics, for example the average CPU ready across all VMs in a cluster. Must be activated in a policy to be calculated." }
+  - { id: view, x: 550, y: 90, w: 170, h: 56, label: "Views", sublabel: "list, summary, trend...", kind: ops, info: "Six view types: List, Summary, Trend, Distribution, Text, Image. A view picks a subject object type, the metrics and properties to show, transformations and a time range." }
+  - { id: dash, x: 550, y: 230, w: 170, h: 56, label: "Dashboards", sublabel: "widgets + views", kind: ops, info: "Canvas of widgets (scoreboards, heat maps, object lists, View widget...) with interactions between widgets. Shared with user groups, by URL, or exported as JSON." }
+  - { id: report, x: 550, y: 370, w: 170, h: 56, label: "Reports", sublabel: "PDF / CSV", kind: ops, info: "A report template collects views and dashboards (plus optional cover page, table of contents, footer). It can be run on demand or scheduled; output is PDF or CSV." }
+  - { id: symptom, x: 800, y: 160, w: 170, h: 56, label: "Symptoms", sublabel: "conditions", kind: security, info: "Symptom definitions test metrics, properties, events or log patterns. They are the input to alert definitions (see the alert pipeline diagram)." }
+  - { id: consumer, x: 800, y: 370, w: 170, h: 56, label: "Stakeholders", sublabel: "email / share", kind: external, info: "Reports are delivered via outbound settings (for example email); dashboards are shared with user groups or via a link." }
+edges:
+  - { from: adapter, to: metric, label: "collect", kind: data }
+  - { from: adapter, to: prop, label: "collect", kind: data }
+  - { from: metric, to: super, label: "formula", kind: dependency, dashed: true }
+  - { from: metric, to: view, kind: data }
+  - { from: prop, to: view, kind: data }
+  - { from: super, to: view, kind: data }
+  - { from: view, to: dash, label: "View widget", kind: data }
+  - { from: view, to: report, kind: data }
+  - { from: dash, to: report, label: "snapshot", kind: data }
+  - { from: metric, to: symptom, kind: dependency, dashed: true }
+  - { from: prop, to: symptom, kind: dependency, dashed: true }
+  - { from: report, to: consumer, label: "schedule", kind: mgmt }
+steps:
+  - { title: "Collection", text: "Adapter instances collect metrics and properties for every discovered object.", highlight: [adapter, metric, prop] }
+  - { title: "Metric vs property", text: "Metrics change constantly and are trended; properties describe the object and change rarely. Both can be shown in views and used in symptoms.", highlight: [metric, prop] }
+  - { title: "Derived data", text: "Super metrics combine metrics with a formula. They only calculate when activated in the policy applied to the object.", highlight: [super] }
+  - { title: "Presentation", text: "Views shape the data; dashboards place views and other widgets on a canvas; reports snapshot views and dashboards into PDF or CSV.", highlight: [view, dash, report] }
+  - { title: "Delivery", text: "Reports are scheduled and delivered; dashboards are shared with groups.", highlight: [report, consumer, dash] }

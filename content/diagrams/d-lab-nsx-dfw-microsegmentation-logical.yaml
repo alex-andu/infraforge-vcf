@@ -1,0 +1,30 @@
+id: d-lab-nsx-dfw-microsegmentation-logical
+title: Lab – micro-segmentation policy (logical view)
+description: >
+  Logical policy of lab-nsx-dfw-microsegmentation. Tag-based groups grp-shop-web (web-01, web-02), grp-shop-app (app-01)
+  and grp-shop-db (db-01) all belong to grp-shop. Allowed flows: any to web on HTTP/HTTPS, web to app on TCP 8443, app to
+  db on TCP 5432, plus infrastructure (DNS, NTP, admin SSH). Everything else inside grp-shop is dropped, including
+  web-01 to web-02 on the same segment. Policy Applied-To is grp-shop.
+width: 1000
+height: 520
+groups:
+  - { id: g-shop, x: 20, y: 120, w: 960, h: 380, label: "grp-shop (Applied-To)", kind: security }
+nodes:
+  - { id: client, x: 60, y: 30, w: 180, h: 56, label: "Clients", sublabel: "any", kind: external, info: "Allowed to web on HTTP/HTTPS only." }
+  - { id: infra, x: 760, y: 30, w: 200, h: 56, label: "DNS / NTP / admin", sublabel: "Infrastructure category", kind: mgmt, info: "Allowed first, so the drop rule cannot break shared services." }
+  - { id: web1, x: 60, y: 200, w: 160, h: 56, label: "web-01", sublabel: "tier/web", kind: vm, info: "grp-shop-web member." }
+  - { id: web2, x: 60, y: 380, w: 160, h: 56, label: "web-02", sublabel: "tier/web", kind: vm, info: "Same segment as web-01; lateral traffic between them is dropped." }
+  - { id: app, x: 420, y: 290, w: 160, h: 56, label: "app-01", sublabel: "tier/app", kind: vm, info: "Accepts TCP 8443 from web only." }
+  - { id: db, x: 780, y: 290, w: 160, h: 56, label: "db-01", sublabel: "tier/db", kind: vm, info: "Accepts TCP 5432 from app only." }
+  - { id: deny, x: 380, y: 420, w: 240, h: 56, label: "shop-deny", sublabel: "grp-shop → grp-shop DROP", kind: security, info: "Last rule of the Application policy: everything not explicitly allowed inside the app is dropped." }
+edges:
+  - { from: client, to: web1, label: "HTTP/S", kind: data }
+  - { from: web1, to: app, label: "TCP 8443", kind: data }
+  - { from: web2, to: app, label: "TCP 8443", kind: data }
+  - { from: app, to: db, label: "TCP 5432", kind: data }
+  - { from: web1, to: web2, label: "dropped", kind: dependency, dashed: true }
+  - { from: infra, to: db, label: "infra", kind: mgmt, dashed: true }
+steps:
+  - { title: "Infrastructure first", text: "DNS, NTP and admin access are allowed in the Infrastructure category, processed before Application.", highlight: [infra] }
+  - { title: "Tier flows", text: "Only client→web, web→app 8443 and app→db 5432 are allowed.", highlight: [client, web1, web2, app, db] }
+  - { title: "Lateral drop", text: "web-01 → web-02 hits shop-deny even though both sit on the same segment and host – only the DFW can enforce this.", highlight: [web1, web2, deny] }

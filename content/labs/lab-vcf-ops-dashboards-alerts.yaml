@@ -1,0 +1,155 @@
+id: lab-vcf-ops-dashboards-alerts
+title: "VCF Operations: Views, Reports, Dashboards, Policies and Alerts"
+level: intermediate
+complexity: 3
+minutes: 150
+version: vcf9
+technologies: [VCF Operations 9.0, vCenter 9.0, PowerCLI]
+topics: [vcf-ops-architecture, metrics-properties, dashboards-alerts]
+lessons: [vcf-operations-architecture, metrics-properties-views-reports, dashboards-alerts-policies]
+objectives:
+  - Identify the node roles, collectors and integrations of a running VCF Operations deployment.
+  - Distinguish metrics and properties on real objects.
+  - Create a custom List view and a scheduled report template (PDF and CSV).
+  - Create a dashboard with an interaction between widgets and share it with a user group.
+  - Create a custom group and a custom policy that inherits from the default policy, with a higher priority.
+  - Build a symptom, an alert definition with a recommendation, and a notification, then trigger and clear the alert.
+prerequisites:
+  - "A deployed VCF management domain including VCF Operations (lab-deploy-vcf-management-domain). VCF 9 binaries and licenses are required; until they are available, read the steps and do the challenge on paper."
+  - "Lessons vcf-operations-architecture, metrics-properties-views-reports and dashboards-alerts-policies."
+  - "A jump host on the lab management network with a browser."
+  - "Optional: a lab SMTP receiver (any small mail-catcher container or VM) for notifications."
+topology:
+  logical: d-lab-vcf-ops-dashboards-alerts-logical
+requirements:
+  network:
+    - "Lab management VLAN with DNS and NTP (see lab-network-readiness)."
+    - "Jump host reachable to the VCF Operations FQDN on HTTPS."
+  vms:
+    - "VCF Operations (Simple model, smallest size the installer allows for your lab), collector and fleet management appliance - already deployed."
+    - "Two small Linux test VMs (1 vCPU, 1-2 GB RAM) in the management cluster or a workload domain, with stress-ng or a busy loop available."
+    - "Optional: SMTP receiver VM/container."
+  ip:
+    - "Existing IPs/FQDNs for VCF Operations and the collector from the Home Lab IP plan."
+    - "One IP for the SMTP receiver if used."
+startingState: |
+  VCF Operations is deployed by the VCF Installer and collecting from the management vCenter, NSX and SDDC Manager. No
+  custom content exists yet.
+
+  :::warning
+  A nested VCF management domain on one Proxmox host (256 GB RAM) is tight. Keep VCF Operations at the Simple model,
+  power off anything not needed during this lab, and expect slower UI and longer collection cycles than in production.
+  Everything you configure is identical to a physical deployment.
+  :::
+steps:
+  - id: tour-cluster
+    title: Tour the cluster, collectors and integrations
+    why: Before building content, know where data comes from. Most later problems (empty views, silent alerts) start with an integration or collector.
+    instructions: |
+      1. Log in to VCF Operations as admin.
+      2. Open the administration pages for the cluster and note the node(s) and their role (Simple model = primary only).
+      3. Open **Administration > Integrations**. For each integration (vCenter, NSX, SDDC Manager...) note its status and
+         which collector or collector group it uses.
+      4. Note whether any adapter still runs on the Default Collector Group (analytics node).
+    hint: KB 438361 explains why vCenter adapters should be on a cloud proxy (configuration drift depends on it).
+    validate: Write down a table "integration - collector - status".
+    expected: Every integration is collecting and assigned to the collector (cloud proxy). One analytics node in the Simple model.
+  - id: metric-vs-property
+    title: Find metrics and properties on a VM
+    why: The exam item "differentiate metrics and properties" is easiest to remember after you have seen both on the same object.
+    instructions: |
+      1. Search for one of your test VMs and open it.
+      2. Open the **Metrics** area: find CPU usage (a metric). Chart the last 24 hours.
+      3. Find properties: number of vCPUs, guest OS, power state, VM hardware version.
+      4. Change the VM's vCPU count in vCenter (power off if needed), wait two collection cycles, and find the change
+         in the property history / potential evidence.
+    validate: Compare what you can chart over time with what you can only read as a value.
+    expected: CPU usage is a time series; vCPU count is a property whose change appears as a property change event.
+  - id: custom-view
+    title: Create a custom List view
+    why: Views are the building blocks of reports and can be dropped into dashboards with the View widget.
+    instructions: |
+      1. **Infrastructure Operations > Views > Create**, type **List**.
+      2. Name `Lab - VM inventory and usage`, subject **vSphere VM** (VM object type).
+      3. Add properties: vCPUs, memory, guest OS, power state. Add metrics: CPU usage (average), memory usage (average).
+      4. Time range: last 7 days. Filter: power state = powered on (optional).
+      5. Make it available in dashboards and reports. **Create**.
+      6. Open the management cluster object and display the view on it.
+    validate: The view lists your VMs with property and metric columns.
+    expected: One row per VM; properties show current values, metrics show the transformed (average) value for 7 days.
+  - id: report-template
+    title: Build and schedule a report
+    why: Reports deliver views to people who never open the console (exam item "create custom Views and Reports").
+    instructions: |
+      1. **Infrastructure Operations > Dashboards & Reports > Reports**, create a template `Lab - weekly VM report`.
+      2. Add your view (and optionally a predefined Trend view for cluster CPU).
+      3. Add a cover page and table of contents. Formats: **PDF** and **CSV**.
+      4. Run it once against the management cluster and download both outputs.
+      5. Schedule it weekly; if you have the SMTP receiver, configure an email outbound setting and select it.
+    validate: Open the generated PDF and CSV.
+    expected: PDF contains cover page, TOC and the view; CSV contains the view's rows.
+  - id: dashboard
+    title: Create and share a dashboard with widget interaction
+    why: Dashboards with interactions turn a static page into a troubleshooting tool; sharing is an exam item.
+    instructions: |
+      1. **Infrastructure Operations > Dashboards & Reports > Dashboards > Create**. Name `Lab - Cluster drilldown`.
+      2. Add an **Object List** widget showing clusters, a **Heat Map** (or Scoreboard) widget for hosts, and a
+         **View** widget showing your custom view.
+      3. In widget interactions, make the object list drive the other two widgets. **Save**.
+      4. Create a local user and a user group `lab-noc` (or use an SSO group) with a read-only role.
+      5. **Dashboards > Manage**: share the dashboard with `lab-noc` (no Allow Editing). Export it as JSON.
+      6. Log in as the `lab-noc` user and open the dashboard.
+    validate: Select a cluster in the list; the other widgets update. The NOC user sees the dashboard locked (view-only).
+    expected: Interactions work; the shared dashboard appears for the group; exported JSON file downloaded.
+  - id: group-and-policy
+    title: Create a custom group and a custom policy
+    why: Policies decide which alerts are active and with which thresholds for each group of objects.
+    instructions: |
+      1. Create a custom group `Lab test VMs` with membership criteria (for example VM name contains `test`).
+      2. **Infrastructure Operations > Configurations > Policy Definition**: Add a policy `Lab policy`, inherit from the
+         default policy.
+      3. In **Alerts and Symptoms**, make sure the alert you will create in the next step is active (you can return here).
+      4. In **Groups and Objects**, assign `Lab test VMs`. Set its priority above the default policy.
+    validate: Open a test VM and check which policy is effective.
+    expected: The test VMs show `Lab policy` as the effective policy; other VMs keep the default.
+  - id: alert
+    title: Build, trigger and clear a custom alert
+    why: Practise the whole pipeline - symptom, alert definition, recommendation, policy, notification.
+    instructions: |
+      1. **Configurations > Symptom Definitions**: create a metric symptom on VM CPU usage > 80% (Warning) and > 95% (Critical).
+      2. **Configurations > Alert Definitions**: create `Lab - VM CPU saturated`, base object type VM, impact **Health**,
+         criticality symptom-based, symptom set **any** of your two symptoms, wait cycle 1, cancel cycle 1.
+      3. Add a recommendation: "Check the process using CPU or add a vCPU".
+      4. Make sure it is active in `Lab policy`.
+      5. Optional: create a notification rule for this alert definition using the email outbound plugin.
+      6. On a test VM run a CPU load (for example `stress-ng --cpu 1 --timeout 900`).
+      7. Watch **Infrastructure Operations > Alerts**. Stop the load and watch the alert cancel.
+    hint: Collection cycles are minutes long; be patient and check the Potential Evidence tab while waiting.
+    validate: The alert appears on the test VM with your recommendation; the email (if configured) arrives.
+    expected: Alert raised during load, cancelled after the load stops; VMs outside the custom group never raise it if it is only active in `Lab policy`.
+troubleshooting:
+  - symptom: View shows empty metric columns for some VMs.
+    fix: Check the VMs' integration and collector are collecting; check the metric is collected in the effective policy.
+  - symptom: Alert never fires during the load test.
+    fix: Confirm the alert definition is active in the effective policy of that VM (`Lab policy`), the symptom threshold and that the VM is in the custom group. Wait at least two collection cycles.
+  - symptom: Shared dashboard is empty for the NOC user.
+    fix: Sharing gives the dashboard, not object permissions. Give the user's role access to the objects (scope).
+  - symptom: Report email never arrives.
+    fix: Test the outbound setting (SMTP host/port/TLS), check the schedule is active, run the report manually first.
+challenge: |
+  Without using the default policy, design a "Production" and a "Test" policy pair: production gets stricter CPU and
+  datastore thresholds and a notification for Critical health alerts; test has the contention alerts deactivated.
+  Explain which policy wins for a VM that is in both groups, and how a direct assignment would change it. Export the
+  dashboard and alert definition so you could import them into another VCF Operations instance.
+cleanup: |
+  Stop load generators. Optionally delete the test alert definition, symptom definitions, custom group, policy and the
+  NOC user. Keep the view, report and dashboard if you want them for later labs.
+sources:
+  - title: "VCF 9.0 - Create and Configure Dashboards"
+    url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/infrastructure-operations/dashboards-and-widgets/using-dashboards/create-and-configure-dashboards.html
+  - title: "VCF 9.0 - Creating and Configuring a View"
+    url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/infrastructure-operations/reports-and-views/using-vcops-views/create-and-modify-a-view.html
+  - title: "VCF 9.0 - Alert Definitions"
+    url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/infrastructure-operations/configuring-alerts-and-actions/alert-definitions.html
+  - title: "VCF 9.0 - Using the Policy Workspace"
+    url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/infrastructure-operations/configuring-policies/using-the-monitoring-policy-workspace.html

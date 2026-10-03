@@ -1,0 +1,47 @@
+id: d-lab-homelab-proxmox-prep-logical
+title: "Proxmox host prepared for nested ESX: storage pools, VLAN-aware bridge, nested VMs"
+description: >
+  A single Proxmox VE server with two 28-core CPUs and 256 GB RAM. Storage: the two 256 GB SSDs form a ZFS mirror for
+  the Proxmox OS, ISO images and small infrastructure VMs; the 1 TB NVMe holds the nested ESX disks (boot and emulated
+  NVMe vSAN ESA devices); the four 2 TB HDDs form a bulk pool for the VCF offline depot, backups, NFS and templates.
+  Network: physical NICs are bonded into vmbr0, a VLAN-aware Linux bridge with MTU 9000 trunked to the VLAN-capable
+  switch. The Proxmox management IP sits on VLAN 10. Infrastructure VMs (DNS/NTP and router) and nested ESX VMs attach
+  to vmbr0; nested ESX NICs are vmxnet3 without a VLAN tag so they receive all VLANs as a trunk. Nested ESX VMs use CPU
+  type host so VT-x/EPT, AES-NI and 1 GB pages are exposed.
+width: 1000
+height: 600
+groups:
+  - { id: g-pve, x: 20, y: 20, w: 960, h: 560, label: "Proxmox VE host pve01 (2 x 28c/56t, 256 GB)", kind: compute }
+  - { id: g-storage, x: 40, y: 420, w: 920, h: 140, label: "Storage pools", kind: storage }
+nodes:
+  - { id: sw, x: 400, y: 40, w: 200, h: 56, label: "Physical switch", sublabel: "trunk, MTU 9216", kind: external, component: physical-network, info: "VLAN-capable switch with jumbo frames. Ports to the server are trunks carrying VLANs 10-70 and 100; MTU at least 9000 (often configured as 9216)." }
+  - { id: bond, x: 400, y: 130, w: 200, h: 56, label: "bond0 -> vmbr0", sublabel: "VLAN-aware, MTU 9000", kind: network, info: "Linux bond of the physical NICs, enslaved to vmbr0 with bridge-vlan-aware yes and mtu 9000. Proxmox sets each VM tap interface to the bridge MTU when the VM starts." }
+  - { id: mgmt, x: 680, y: 130, w: 260, h: 56, label: "vmbr0.10", sublabel: "Proxmox mgmt 10.10.10.5", kind: network, info: "Proxmox management IP on VLAN 10 (example). Keep it at MTU 1500 if your management VLAN is 1500." }
+  - { id: dns, x: 60, y: 240, w: 180, h: 56, label: "infra01", sublabel: "DNS + NTP", kind: vm, component: dns-service, info: "Small Linux VM running DNS (forward and reverse zones) and an NTP server. Tagged on VLAN 10. First VM to build." }
+  - { id: router, x: 60, y: 320, w: 180, h: 56, label: "rtr01", sublabel: "inter-VLAN + BGP", kind: vm, info: "Router VM (or your L3 switch) providing gateways for every VLAN and, later, BGP peering for the NSX Tier-0. Trunk NIC with all VLANs." }
+  - { id: esx1, x: 280, y: 260, w: 160, h: 80, label: "esx01", sublabel: "nested ESX", kind: compute, component: esx-host, info: "Nested ESX VM: CPU type host, q35, SATA boot disk 64 GB, NVMe devices via args for vSAN ESA, 2 x vmxnet3 on vmbr0 without tag, firewall off." }
+  - { id: esx2, x: 460, y: 260, w: 160, h: 80, label: "esx02", sublabel: "nested ESX", kind: compute, component: esx-host, info: "Same template as esx01, unique MAC addresses, NVMe serials and hostname." }
+  - { id: esx3, x: 640, y: 260, w: 160, h: 80, label: "esx03", sublabel: "nested ESX", kind: compute, component: esx-host, info: "Third host for a supported-minimum vSAN cluster." }
+  - { id: jump, x: 820, y: 260, w: 140, h: 80, label: "jump01", sublabel: "browser, tools", kind: vm, info: "Optional jump host with a browser, PowerShell/PowerCLI, ovftool and SSH client, on VLAN 10." }
+  - { id: ssd, x: 60, y: 460, w: 260, h: 70, label: "rpool (2 x 256 GB SSD)", sublabel: "ZFS mirror: OS, ISO, infra VMs", kind: storage, info: "Proxmox OS mirror plus ISO library and the small infrastructure VMs. Limit ZFS ARC so it does not eat the RAM budget." }
+  - { id: nvme, x: 370, y: 460, w: 260, h: 70, label: "nvme-fast (1 TB NVMe)", sublabel: "nested ESX disks", kind: storage, info: "LVM-thin or ZFS on the NVMe for all nested ESX boot and vSAN ESA device images. vSAN performance in the lab depends on this device." }
+  - { id: hdd, x: 680, y: 460, w: 260, h: 70, label: "bulk (4 x 2 TB HDD)", sublabel: "depot, backups, NFS", kind: storage, info: "ZFS RAID10 or RAIDZ1: VCF offline depot, SFTP backup target, vzdump backups, optional NFS datastore. Not for vSAN devices." }
+edges:
+  - { from: sw, to: bond, label: "trunk", kind: data, bidirectional: true }
+  - { from: bond, to: mgmt, kind: mgmt }
+  - { from: bond, to: dns, kind: data }
+  - { from: bond, to: router, kind: data }
+  - { from: bond, to: esx1, label: "vmxnet3 trunk", kind: data }
+  - { from: bond, to: esx2, kind: data }
+  - { from: bond, to: esx3, kind: data }
+  - { from: bond, to: jump, kind: data }
+  - { from: esx1, to: nvme, kind: storage, dashed: true }
+  - { from: esx2, to: nvme, kind: storage, dashed: true }
+  - { from: esx3, to: nvme, kind: storage, dashed: true }
+  - { from: dns, to: ssd, kind: storage, dashed: true }
+  - { from: jump, to: hdd, label: "depot", kind: storage, dashed: true }
+steps:
+  - { title: "Fabric", text: "Switch trunk and VLAN-aware vmbr0 with MTU 9000 on bond and bridge.", highlight: [sw, bond, mgmt] }
+  - { title: "Foundations", text: "Build DNS/NTP and the router before any ESX host.", highlight: [dns, router] }
+  - { title: "Nested hosts", text: "Three nested ESX VMs with host CPU, vmxnet3 trunks and NVMe devices.", highlight: [esx1, esx2, esx3] }
+  - { title: "Storage placement", text: "Nested ESX disks on NVMe; OS and infra on the SSD mirror; depot and backups on HDD.", highlight: [ssd, nvme, hdd] }

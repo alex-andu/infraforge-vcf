@@ -1,0 +1,38 @@
+id: d-lab-nsx-dfw-microsegmentation-network
+title: Lab – where the DFW enforces (network view)
+description: >
+  Network view of lab-nsx-dfw-microsegmentation. Each VM's vNIC on the nested ESX hosts has its own DFW filter in the
+  host kernel. web-01 and web-02 on esx-lab-01 share seg-web; app-01 and db-01 run on esx-lab-02. The Distributed Only
+  Tier-1 t1-lab routes in the kernels. No Edge or gateway firewall is in any of these paths. NSX Manager pushes the rules
+  only to hosts that run members of grp-shop (Applied-To).
+width: 1000
+height: 520
+groups:
+  - { id: g-h1, x: 20, y: 140, w: 440, h: 340, label: "esx-lab-01 kernel", kind: compute }
+  - { id: g-h2, x: 540, y: 140, w: 440, h: 340, label: "esx-lab-02 kernel", kind: compute }
+nodes:
+  - { id: mgr, x: 400, y: 30, w: 200, h: 56, label: "NSX Manager", sublabel: "publishes policy", kind: mgmt, component: nsx-manager, info: "Resolves groups and pushes rules via the CCP to hosts whose VMs are in Applied-To." }
+  - { id: f1, x: 50, y: 190, w: 170, h: 50, label: "DFW filter", sublabel: "web-01 vNIC", kind: security, info: "Inspect with get firewall <vif> ruleset rules." }
+  - { id: f2, x: 260, y: 190, w: 170, h: 50, label: "DFW filter", sublabel: "web-02 vNIC", kind: security, info: "Same-host lateral traffic is filtered here." }
+  - { id: v1, x: 50, y: 280, w: 170, h: 50, label: "web-01", kind: vm, info: "172.16.10.11" }
+  - { id: v2, x: 260, y: 280, w: 170, h: 50, label: "web-02", kind: vm, info: "172.16.10.12" }
+  - { id: dr1, x: 140, y: 390, w: 220, h: 50, label: "t1-lab DR", kind: nsx, info: "Routes web→app locally; no SR, so no gateway firewall." }
+  - { id: f3, x: 570, y: 190, w: 170, h: 50, label: "DFW filter", sublabel: "app-01 vNIC", kind: security, info: "Allows 8443 from grp-shop-web." }
+  - { id: f4, x: 780, y: 190, w: 170, h: 50, label: "DFW filter", sublabel: "db-01 vNIC", kind: security, info: "Allows 5432 from grp-shop-app." }
+  - { id: v3, x: 570, y: 280, w: 170, h: 50, label: "app-01", kind: vm, info: "172.16.20.21" }
+  - { id: v4, x: 780, y: 280, w: 170, h: 50, label: "db-01", kind: vm, info: "172.16.30.31" }
+edges:
+  - { from: mgr, to: f1, label: "rules", kind: control, dashed: true }
+  - { from: mgr, to: f3, kind: control, dashed: true }
+  - { from: v1, to: f1, kind: data }
+  - { from: v2, to: f2, kind: data }
+  - { from: f1, to: f2, label: "drop", kind: data, dashed: true }
+  - { from: f1, to: dr1, kind: data }
+  - { from: dr1, to: f3, label: "Geneve", kind: overlay, dashed: true }
+  - { from: v3, to: f3, kind: data }
+  - { from: f3, to: f4, label: "5432", kind: data }
+  - { from: v4, to: f4, kind: data }
+steps:
+  - { title: "Policy distribution", text: "NSX Manager publishes the shop policy; only hosts with grp-shop members receive it.", highlight: [mgr, f1, f2, f3, f4] }
+  - { title: "Same-host lateral", text: "web-01 → web-02 never leaves esx-lab-01, yet both vNIC filters see it and the drop rule applies.", highlight: [v1, f1, f2, v2] }
+  - { title: "Routed east-west", text: "web-01 → app-01 is routed by the DR and tunnelled; web-01's egress filter and app-01's ingress filter both evaluate it.", highlight: [f1, dr1, f3, v3] }

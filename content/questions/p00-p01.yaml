@@ -1,0 +1,1209 @@
+questions:
+  # ---------------------------------------------------------------- what-is-vcf
+  - id: fnd-vcf-001
+    type: single
+    kind: concept
+    difficulty: foundation
+    version: vcf9
+    topics: [vcf-overview]
+    objective: "2.1"
+    lesson: what-is-vcf
+    section: concept
+    stem: "Which set of products makes up the five pillars of VMware Cloud Foundation 9?"
+    options:
+      - { id: a, text: "vSphere, vSAN, NSX, VCF Operations, VCF Automation", correct: true, why: "These are the five components Broadcom lists for VCF 9." }
+      - { id: b, text: "vSphere, vSAN, NSX, Cloud Builder, Aria Suite Lifecycle", why: "Cloud Builder and Aria Suite Lifecycle are VCF 5.x-era tools, replaced by the VCF Installer and VCF Operations fleet management.", confusedWith: vcf-terminology }
+      - { id: c, text: "ESX, vCenter, SDDC Manager, HCX, Site Recovery Manager", why: "SDDC Manager is an instance component, not one of the five pillars; HCX and SRM are not pillars.", confusedWith: sddc-manager }
+      - { id: d, text: "vSphere, vSAN, VCF Operations only", why: "That is close to vSphere Foundation; it omits NSX and VCF Automation." }
+    explanation:
+      correct: "VCF 9 consists of vSphere (compute), vSAN (storage), NSX (networking and security), VCF Operations (operate) and VCF Automation (consume)."
+      concept: "The SDDC pillars (compute, storage, network) plus operate and consume layers."
+      architecture: "SDDC Manager, the installer and fleet management are enabling components that deploy and lifecycle these pillars."
+      trap: "Old VCF 5.x names (Cloud Builder, Aria) appear as distractors."
+    diagnostic: vcf
+
+  - id: fnd-vcf-002
+    type: single
+    kind: architecture
+    difficulty: intermediate
+    version: vcf9
+    topics: [vcf-overview, vcf-fleet]
+    objective: "2.1"
+    lesson: what-is-vcf
+    section: components
+    diagram: d00-vcf-big-picture
+    stem: "An organisation runs one VCF fleet with two VCF instances in two data centers. How many VCF Operations instances and how many SDDC Manager appliances does the design need at minimum?"
+    options:
+      - { id: a, text: "One VCF Operations and two SDDC Managers", correct: true, why: "VCF Operations is fleet-level (one per fleet); SDDC Manager is instance-level (one per instance)." }
+      - { id: b, text: "Two VCF Operations and two SDDC Managers", why: "VCF Operations is not deployed per instance; one serves the whole fleet.", confusedWith: vcf-fleet }
+      - { id: c, text: "One VCF Operations and one SDDC Manager", why: "Each instance has its own SDDC Manager.", confusedWith: sddc-manager }
+      - { id: d, text: "Two VCF Operations and one SDDC Manager", why: "Both scopes are reversed." }
+    explanation:
+      correct: "A fleet is defined by a single set of fleet-level components (VCF Operations, VCF Automation). Each instance has its own SDDC Manager, management domain, vCenter and NSX."
+      concept: "Fleet-level vs instance-level scope."
+      architecture: "Fleet components run in the management domain of the first instance; instance 2 has only instance-level appliances."
+      trap: "Assuming every site needs its own operations console."
+
+  - id: fnd-vcf-003
+    type: single
+    kind: architecture
+    difficulty: intermediate
+    version: vcf9
+    topics: [workload-domains, management-domain]
+    objective: "2.1"
+    lesson: what-is-vcf
+    section: architecture
+    stem: "An administrator creates the first workload domain, WLD-01, with four new hosts. Where is the vCenter appliance that manages WLD-01 deployed?"
+    options:
+      - { id: a, text: "In the management domain", correct: true, why: "For the first workload domain, VCF deploys a vCenter and an NSX Manager instance in the management domain." }
+      - { id: b, text: "On the four WLD-01 hosts", why: "The workload domain hosts are for consumer workloads; their vCenter runs in the management domain.", confusedWith: workload-domains }
+      - { id: c, text: "On the VCF Installer appliance", why: "The installer is a deployment tool, not a host for vCenter." }
+      - { id: d, text: "Inside VCF Operations", why: "VCF Operations requests the domain but does not host vCenter." }
+    explanation:
+      correct: "Workload domain vCenter (and NSX Manager unless shared) appliances run in the management domain, managing hosts in the workload domain."
+      concept: "Management/workload separation in VCF."
+      architecture: "Management domain capacity must be sized for every workload domain's management appliances."
+      trap: "Picturing each domain as self-contained including its own vCenter VM."
+
+  - id: fnd-vcf-004
+    type: multi
+    kind: scenario
+    difficulty: advanced
+    version: vcf9
+    topics: [vcf-overview, component-communication]
+    objective: "2.1"
+    lesson: what-is-vcf
+    section: failure-scenarios
+    context: |
+      The management domain cluster of a VCF instance suffers a complete power outage for 30 minutes. The workload
+      domain WLD-01 runs on separate hosts in another rack that remain powered on.
+    stem: "Which two statements describe the impact during the outage? (Choose two.)"
+    select: 2
+    options:
+      - { id: a, text: "VMs already running in WLD-01 continue to run", correct: true, why: "Workload VMs run on WLD-01 hosts; the management plane being down does not stop them." }
+      - { id: b, text: "WLD-01 cannot be managed (for example, no new VMs or DRS) because its vCenter runs in the management domain", correct: true, why: "The WLD-01 vCenter is a VM in the management domain." }
+      - { id: c, text: "All WLD-01 VMs are powered off by vSphere HA", why: "HA restarts VMs after host failures; WLD-01 hosts did not fail.", confusedWith: vsphere-ha }
+      - { id: d, text: "WLD-01 automatically fails over to a second VCF Operations", why: "There is one VCF Operations per fleet and it is also down; there is no such failover." }
+    explanation:
+      correct: "Management-plane outages stop changes, not running workloads. Since the WLD-01 vCenter and NSX Manager live in the management domain, management of WLD-01 is lost while its VMs keep running."
+      concept: "Separation of management plane and data plane."
+      architecture: "Management domain hosts all management appliances of the instance, plus fleet components in the first instance."
+      trap: "Equating 'cannot manage' with 'workloads down'."
+
+  - id: fnd-vcf-005
+    type: single
+    kind: concept
+    difficulty: foundation
+    version: vcf9
+    topics: [vcf-overview, vcf-installer]
+    objective: "2.1"
+    lesson: what-is-vcf
+    section: how-it-works
+    stem: "Which tool performs the initial (day 0) deployment of a new VCF 9 fleet?"
+    options:
+      - { id: a, text: "VCF Installer", correct: true, why: "The VCF Installer deploys vCenter, NSX, SDDC Manager, VCF Operations and VCF Automation on pre-installed ESX hosts." }
+      - { id: b, text: "Cloud Builder", why: "Cloud Builder was the VCF 5.x bring-up appliance.", confusedWith: vcf-terminology }
+      - { id: c, text: "VCF Operations fleet management", why: "Fleet management lifecycle-manages fleet components after deployment." }
+      - { id: d, text: "vSphere Lifecycle Manager", why: "vLCM manages host images within a cluster." }
+    explanation:
+      correct: "VCF 9 is deployed with the VCF Installer appliance, using a wizard or a JSON specification."
+      concept: "Day 0 deployment tooling in VCF 9."
+      trap: "Cloud Builder appears in older study material."
+
+  - id: fnd-vcf-006
+    type: single
+    kind: design
+    difficulty: advanced
+    version: vcf9
+    topics: [vcf-overview, deployment-models]
+    objective: "2.1"
+    lesson: what-is-vcf
+    section: deep-dive
+    stem: "A customer wants a VCF 9 deployment with high-availability (clustered) NSX Manager. Based on the documented minimums, how many ESX hosts are required for the management domain?"
+    options:
+      - { id: a, text: "4", correct: true, why: "A high-availability VCF deployment needs a minimum of 4 ESX hosts, largely because NSX Manager nodes are kept on separate hosts." }
+      - { id: b, text: "3", why: "3 hosts with vSAN is the minimum for a simple (non-HA) deployment." }
+      - { id: c, text: "2", why: "2 hosts is the simple-deployment minimum with external storage." }
+      - { id: d, text: "1", why: "Single-host builds exist only as unsupported lab techniques." }
+    explanation:
+      correct: "For VCF 9.x: simple deployment = 3 hosts with vSAN or 2 hosts with external storage; high availability = 4 hosts."
+      concept: "Minimum host counts depend on deployment mode and storage."
+      architecture: "NSX Manager anti-affinity keeps its three nodes on separate hosts; one extra host leaves room for failure/maintenance."
+      trap: "Remembering only one number for all modes. Always confirm against the docs for your version."
+
+  # ---------------------------------------------------------------- private-cloud-and-sddc
+  - id: fnd-pc-001
+    type: single
+    kind: concept
+    difficulty: foundation
+    version: general
+    topics: [private-cloud]
+    objective: "2.1"
+    lesson: private-cloud-and-sddc
+    section: concept
+    stem: "Which capability most clearly distinguishes a private cloud from a merely virtualized data center?"
+    options:
+      - { id: a, text: "Self-service provisioning governed by policies and quotas", correct: true, why: "Self-service plus governance is the defining cloud operating model." }
+      - { id: b, text: "Running many VMs on each physical server", why: "That is server virtualization, a prerequisite but not the defining principle.", confusedWith: hypervisors }
+      - { id: c, text: "Using shared SAN storage", why: "Shared storage exists in traditional virtualized data centers." }
+      - { id: d, text: "Having vCenter manage the hosts", why: "Central management alone does not provide cloud consumption." }
+    explanation:
+      correct: "A private cloud adds on-demand self-service, tenancy, governance and metering on top of the SDDC."
+      concept: "Virtualized DC → SDDC → private cloud maturity."
+      trap: "Picking virtualization as the defining feature."
+    diagnostic: vcf
+
+  - id: fnd-pc-002
+    type: matching
+    kind: concept
+    difficulty: intermediate
+    version: vcf9
+    topics: [private-cloud, vcf-overview]
+    objective: "2.1"
+    lesson: private-cloud-and-sddc
+    section: concept
+    stem: "Match each private cloud principle to the VCF component that primarily delivers it."
+    pairs:
+      - { id: p1, left: "Self-service consumption with quotas", right: "VCF Automation" }
+      - { id: p2, left: "Measured service, capacity and cost visibility", right: "VCF Operations" }
+      - { id: p3, left: "Software-defined networks and micro-segmentation", right: "NSX" }
+      - { id: p4, left: "Pooled storage from hosts' local disks", right: "vSAN" }
+      - { id: p5, left: "Automated per-instance workflows (domains, host commissioning)", right: "SDDC Manager" }
+    explanation:
+      correct: "Each principle maps to the component built to deliver it: consume (VCF Automation), operate/measure (VCF Operations), network (NSX), storage pooling (vSAN), instance automation (SDDC Manager)."
+      concept: "Private cloud principles mapped to VCF."
+      trap: "Attributing self-service to VCF Operations."
+
+  - id: fnd-pc-003
+    type: single
+    kind: scenario
+    difficulty: intermediate
+    version: general
+    topics: [private-cloud]
+    objective: "2.1"
+    lesson: private-cloud-and-sddc
+    section: deep-dive
+    context: |
+      A bank must keep customer data in its own data centers to meet regulations, but its developers complain that
+      getting a VM takes three weeks and have started using unapproved public cloud accounts.
+    stem: "Which private cloud value proposition addresses BOTH problems?"
+    options:
+      - { id: a, text: "Public-cloud-like agility through self-service, with data sovereignty and control on-premises", correct: true, why: "Self-service fixes speed; on-premises control meets regulation." }
+      - { id: b, text: "Lower hardware cost through server consolidation", why: "True benefit but addresses neither the speed nor the shadow-IT problem directly." }
+      - { id: c, text: "Unlimited elasticity by bursting all workloads to public cloud", why: "Moving data to public cloud conflicts with the regulatory requirement." }
+      - { id: d, text: "Replacing vSphere HA with Fault Tolerance", why: "Availability is not the problem described." }
+    explanation:
+      correct: "Private cloud combines cloud agility (self-service, automation) with on-premises control, security and sovereignty."
+      concept: "Value proposition of private cloud."
+      trap: "Choosing a true but irrelevant benefit."
+
+  - id: fnd-pc-004
+    type: multi
+    kind: concept
+    difficulty: intermediate
+    version: vcf9
+    topics: [private-cloud]
+    objective: "2.1"
+    lesson: private-cloud-and-sddc
+    section: deep-dive
+    stem: "Which three are use-case themes Broadcom positions for VCF 9? (Choose three.)"
+    select: 3
+    options:
+      - { id: a, text: "Infrastructure modernization", correct: true, why: "Includes private cloud on-premises/edge, automated IaaS, extending the data center." }
+      - { id: b, text: "Unified cloud experience", correct: true, why: "Kubernetes and modern apps, Private AI, traditional workloads." }
+      - { id: c, text: "Secure and resilient platform", correct: true, why: "Ransomware recovery, disaster recovery, integrated security and compliance." }
+      - { id: d, text: "Multi-public-cloud cost brokerage", why: "VCF 9 messaging focuses on private cloud, not brokering public clouds." }
+      - { id: e, text: "Desktop virtualization licensing", why: "Not one of the VCF 9 use-case themes." }
+    explanation:
+      correct: "The VCF 9 use cases are grouped into infrastructure modernization, unified cloud experience, and secure and resilient platform."
+      concept: "VCF 9 use cases (objective 2.1)."
+      trap: "Distractors that sound like generic cloud marketing."
+
+  - id: fnd-pc-005
+    type: single
+    kind: concept
+    difficulty: foundation
+    version: general
+    topics: [sddc]
+    objective: "2.1"
+    lesson: private-cloud-and-sddc
+    section: concept
+    stem: "What makes a data center 'software-defined'?"
+    options:
+      - { id: a, text: "Compute, storage and networking are all virtualized and controlled through software and automation", correct: true, why: "That is the SDDC definition." }
+      - { id: b, text: "All servers run a hypervisor", why: "Only compute is virtualized; storage and network may still be manual.", confusedWith: hypervisors }
+      - { id: c, text: "All workloads run in containers", why: "Containers are a workload type, not the SDDC definition." }
+      - { id: d, text: "The data center uses only public cloud services", why: "SDDC can be entirely on-premises." }
+    explanation:
+      correct: "An SDDC virtualizes all three resource types and manages them as software, enabling automation of provisioning and lifecycle."
+      concept: "SDDC definition."
+      trap: "Equating virtualization of servers with SDDC."
+
+  - id: fnd-pc-006
+    type: single
+    kind: scenario
+    difficulty: advanced
+    version: vcf9
+    topics: [private-cloud, vcf-automation]
+    objective: "2.1"
+    lesson: private-cloud-and-sddc
+    section: failure-scenarios
+    context: |
+      Two years after deploying VCF, an internal survey shows that application teams still open tickets for every VM,
+      and infrastructure staff create VMs manually in the vSphere Client.
+    stem: "Which private cloud principle has the organisation failed to implement, and which component should it adopt?"
+    options:
+      - { id: a, text: "Self-service; adopt VCF Automation with organizations, quotas and catalogs", correct: true, why: "Tickets and manual creation mean no self-service consumption layer." }
+      - { id: b, text: "Measured service; adopt VCF Operations dashboards", why: "Visibility is useful but does not remove tickets.", confusedWith: vcf-ops-architecture }
+      - { id: c, text: "Resource pooling; enable vSAN", why: "Pooling already exists through clusters." }
+      - { id: d, text: "Automated lifecycle; use SDDC Manager upgrades", why: "Lifecycle does not change how VMs are requested.", confusedWith: sddc-manager }
+    explanation:
+      correct: "Without VCF Automation, VCF behaves like well-run vSphere; the cloud operating model needs self-service."
+      concept: "Operating model vs technology."
+      trap: "Confusing operate (VCF Operations) with consume (VCF Automation)."
+
+  # ---------------------------------------------------------------- vcf-vs-vsphere
+  - id: fnd-vvs-001
+    type: single
+    kind: concept
+    difficulty: foundation
+    version: vcf9
+    topics: [vcf-overview]
+    objective: "2.1"
+    lesson: vcf-vs-vsphere
+    section: components
+    stem: "Which capability is included in VMware Cloud Foundation but NOT in vSphere Foundation (VVF)?"
+    options:
+      - { id: a, text: "VCF Automation self-service and multi-tenancy", correct: true, why: "VVF does not include cloud management and integrated automation." }
+      - { id: b, text: "vSAN hyperconverged storage", why: "VVF includes vSAN." }
+      - { id: c, text: "VCF Operations monitoring", why: "VVF includes VCF Operations." }
+      - { id: d, text: "vCenter and ESX", why: "Both editions include vSphere." }
+    explanation:
+      correct: "VVF = vSphere + vSAN + VCF Operations. VCF adds NSX, VCF Automation, SDDC Manager and the domain architecture."
+      concept: "Edition differences."
+      trap: "Assuming VVF lacks vSAN or operations."
+
+  - id: fnd-vvs-002
+    type: single
+    kind: architecture
+    difficulty: intermediate
+    version: vcf9
+    topics: [vcf-installer, vcf-overview]
+    objective: "2.1"
+    lesson: vcf-vs-vsphere
+    section: components
+    stem: "An administrator uses the VCF Installer and selects vSphere Foundation instead of VCF. Which components will the installer deploy?"
+    options:
+      - { id: a, text: "vCenter and VCF Operations (primary node only)", correct: true, why: "This is the documented VVF deployment scope." }
+      - { id: b, text: "vCenter, VCF Operations, NSX, VCF Automation and SDDC Manager", why: "That is the VCF scope.", confusedWith: vcf-installer }
+      - { id: c, text: "vCenter, NSX and SDDC Manager", why: "VVF does not deploy NSX or SDDC Manager." }
+      - { id: d, text: "Only vCenter", why: "VCF Operations is included in VVF and is deployed." }
+    explanation:
+      correct: "VVF: vCenter and VCF Operations (primary node). VCF: vCenter, VCF Operations, NSX, VCF Automation, SDDC Manager (and HA variants)."
+      concept: "One installer, two platforms."
+      trap: "Expecting SDDC Manager in VVF."
+
+  - id: fnd-vvs-003
+    type: single
+    kind: scenario
+    difficulty: intermediate
+    version: vcf9
+    topics: [vcf-overview, host-commissioning]
+    objective: "2.1"
+    lesson: vcf-vs-vsphere
+    section: failure-scenarios
+    context: |
+      An experienced vSphere administrator adds a new ESX host directly to a workload domain cluster using "Add Host"
+      in the vSphere Client. Later, a VCF workflow on that cluster fails.
+    stem: "What is the most likely reason?"
+    options:
+      - { id: a, text: "The host was not commissioned into the VCF inventory, so SDDC Manager does not know it", correct: true, why: "VCF expects hosts to be commissioned and added through VCF workflows." }
+      - { id: b, text: "vCenter does not support adding hosts to clusters", why: "vCenter supports it; the problem is VCF inventory drift." }
+      - { id: c, text: "The host must first be added to VCF Automation", why: "VCF Automation consumes capacity; it does not inventory hosts." }
+      - { id: d, text: "DRS was disabled when the host joined", why: "DRS state would not cause VCF inventory mismatch." }
+    explanation:
+      correct: "Changes made outside VCF workflows cause drift between SDDC Manager's inventory and reality."
+      concept: "Use the VCF workflow when one exists."
+      architecture: "SDDC Manager orchestrates instance-level changes; vCenter is only one of the systems it updates."
+      trap: "Treating VCF like standalone vSphere."
+
+  - id: fnd-vvs-004
+    type: ordering
+    kind: concept
+    difficulty: advanced
+    version: vcf9
+    topics: [vcf-overview, lcm-workflow]
+    objective: "2.1"
+    lesson: vcf-vs-vsphere
+    section: how-it-works
+    stem: "Put the high-level steps of upgrading a VCF 5.x environment to VCF 9.0 in order (as described in the VCF upgrade guidance)."
+    items:
+      - { id: i1, text: "Assess the environment and validate prerequisites" }
+      - { id: i2, text: "Upgrade existing Aria Automation and Aria Operations components to VCF 9.0" }
+      - { id: i3, text: "Upgrade management domain core components (SDDC Manager, NSX, vCenter, ESX)" }
+      - { id: i4, text: "Deploy VCF Operations if it was not previously installed" }
+      - { id: i5, text: "Finalize the remaining components" }
+    explanation:
+      correct: "The documented sequence is assess, upgrade Aria components, upgrade management domain core components, deploy VCF Operations if absent, finalize."
+      concept: "Upgrade path into VCF 9."
+      trap: "VCF 4.x environments must first reach 5.2 before this path applies. Detailed sequencing is covered in the Lifecycle phase."
+
+  - id: fnd-vvs-005
+    type: single
+    kind: design
+    difficulty: advanced
+    version: vcf9
+    topics: [vcf-overview, private-cloud]
+    objective: "2.1"
+    lesson: vcf-vs-vsphere
+    section: deep-dive
+    context: |
+      Requirements: hyperconverged storage; run VMs and Kubernetes side by side; isolated tenants for three business
+      units who create their own networks without involving the network team.
+    stem: "Which platform meets all requirements?"
+    options:
+      - { id: a, text: "VMware Cloud Foundation", correct: true, why: "Tenant isolation with self-service networks requires VCF Automation and NSX, which are VCF-only." }
+      - { id: b, text: "vSphere Foundation", why: "Meets storage and VM/Kubernetes needs but lacks VCF Automation tenancy and NSX overlays.", confusedWith: vcf-overview }
+      - { id: c, text: "Standalone vSphere with vSAN", why: "No tenancy, self-service or overlay networking." }
+      - { id: d, text: "vSphere Foundation plus VCF Operations for networks", why: "VCF Operations for networks is VCF-only and is monitoring, not tenancy." }
+    explanation:
+      correct: "Map each requirement to a capability: tenancy and self-service (VCF Automation) and software-created networks (NSX) force VCF."
+      concept: "Choose edition from requirements."
+      trap: "Picking the cheaper edition because most requirements fit."
+
+  - id: fnd-vvs-006
+    type: truefalse
+    kind: concept
+    difficulty: foundation
+    version: vcf9
+    topics: [vcf-overview, vcenter-import]
+    objective: "2.1"
+    lesson: vcf-vs-vsphere
+    section: how-it-works
+    stem: "True or false: a standalone vCenter must be converted into a VCF instance before VCF Operations in a fleet can manage it."
+    options:
+      - { id: "true", text: "True", why: "The taxonomy explicitly allows standalone vCenter instances in a fleet." }
+      - { id: "false", text: "False", correct: true, why: "A fleet can contain standalone vCenter instances managed by the fleet's VCF Operations." }
+    explanation:
+      correct: "VCF fleets can include standalone vCenter instances; convergence into an instance is optional."
+      concept: "Fleet membership."
+      trap: "Assuming everything in a fleet must be a full instance."
+
+  # ---------------------------------------------------------------- vcf9-terminology
+  - id: fnd-term-001
+    type: matching
+    kind: concept
+    difficulty: foundation
+    version: vcf9
+    topics: [vcf-terminology]
+    objective: "2.1"
+    lesson: vcf9-terminology
+    section: components
+    stem: "Match each legacy product name to its VCF 9 name."
+    pairs:
+      - { id: r1, left: "VMware Aria Operations", right: "VCF Operations" }
+      - { id: r2, left: "VMware Aria Automation", right: "VCF Automation" }
+      - { id: r3, left: "VMware Aria Operations for Logs", right: "VCF Operations for logs" }
+      - { id: r4, left: "VMware Aria Suite Lifecycle", right: "VCF Operations fleet management" }
+      - { id: r5, left: "Cloud Builder", right: "VCF Installer" }
+      - { id: r6, left: "VMware ESXi", right: "VMware ESX" }
+    explanation:
+      correct: "VCF 9 rebrands the Aria products under VCF, replaces Cloud Builder with the VCF Installer, and renames ESXi to ESX."
+      concept: "VCF 9 renames."
+      trap: "Old documentation uses legacy names for the same functions."
+    diagnostic: vcf
+
+  - id: fnd-term-002
+    type: single
+    kind: concept
+    difficulty: foundation
+    version: vcf9
+    topics: [vcf-terminology, vcf-fleet]
+    objective: "2.1"
+    lesson: vcf9-terminology
+    section: concept
+    stem: "In VCF 9, what defines a VCF fleet?"
+    options:
+      - { id: a, text: "An environment managed by a single set of fleet-level management components: VCF Operations and VCF Automation", correct: true, why: "This is the documented definition." }
+      - { id: b, text: "All hosts managed by one vCenter", why: "That describes a domain's vCenter scope.", confusedWith: vcenter }
+      - { id: c, text: "All domains managed by one SDDC Manager", why: "That is a VCF instance.", confusedWith: sddc-manager }
+      - { id: d, text: "A group of ESX hosts with HA and DRS", why: "That is a vSphere cluster.", confusedWith: vsphere-cluster }
+    explanation:
+      correct: "Fleet = one VCF Operations + one VCF Automation, managing one or more instances and optionally standalone vCenters."
+      concept: "VCF 9 hierarchy."
+      trap: "Mixing up fleet, instance, domain and cluster scopes."
+
+  - id: fnd-term-003
+    type: ordering
+    kind: concept
+    difficulty: foundation
+    version: vcf9
+    topics: [vcf-terminology]
+    objective: "2.1"
+    lesson: vcf9-terminology
+    section: concept
+    stem: "Order the VCF 9 constructs from the largest scope to the smallest."
+    items:
+      - { id: o1, text: "VCF private cloud" }
+      - { id: o2, text: "VCF fleet" }
+      - { id: o3, text: "VCF instance" }
+      - { id: o4, text: "VCF domain" }
+      - { id: o5, text: "vSphere cluster" }
+      - { id: o6, text: "ESX host" }
+    explanation:
+      correct: "Private cloud → fleet → instance → domain → cluster → host."
+      concept: "VCF 9 taxonomy."
+      trap: "Placing 'domain' above 'instance' (an instance contains domains)."
+
+  - id: fnd-term-004
+    type: single
+    kind: scenario
+    difficulty: intermediate
+    version: vcf9
+    topics: [vcf-installer, sddc-manager]
+    objective: "2.1"
+    lesson: vcf9-terminology
+    section: how-it-works
+    context: |
+      An engineer deploys the VCF-SDDC-Manager-Appliance-9.x OVA onto one of the four ESX hosts that will form the
+      new management domain, planning to use it to run the deployment wizard.
+    stem: "What happens?"
+    options:
+      - { id: a, text: "The appliance switches into SDDC Manager mode and can no longer be used as the installer", correct: true, why: "Deployed inside the management infrastructure, the appliance switches to SDDC Manager mode." }
+      - { id: b, text: "The appliance runs as the installer and later converts itself to SDDC Manager after bring-up", why: "The documented behaviour for this placement is SDDC Manager mode, not installer mode.", confusedWith: vcf-installer }
+      - { id: c, text: "The OVA fails to deploy because the installer and SDDC Manager are separate OVAs", why: "They are delivered together in one OVA." }
+      - { id: d, text: "It deploys Cloud Builder instead", why: "Cloud Builder does not exist in VCF 9." }
+    explanation:
+      correct: "The VCF Installer and SDDC Manager share one OVA. Placement decides the mode: deploy it outside the future management infrastructure to use installer mode."
+      concept: "VCF Installer vs SDDC Manager."
+      architecture: "After deployment, the instance's SDDC Manager runs in the management domain."
+      trap: "Assuming any placement works as long as the OVA is correct."
+
+  - id: fnd-term-005
+    type: multi
+    kind: concept
+    difficulty: intermediate
+    version: vcf9
+    topics: [sddc-manager, vcf-terminology]
+    objective: "2.1"
+    lesson: vcf9-terminology
+    section: how-it-works
+    stem: "Which two statements about SDDC Manager in VCF 9.0 are correct? (Choose two.)"
+    select: 2
+    options:
+      - { id: a, text: "There is one SDDC Manager per VCF instance", correct: true, why: "SDDC Manager remains an instance-level component." }
+      - { id: b, text: "The SDDC Manager UI is deprecated; VCF Operations is the central console", correct: true, why: "Release notes deprecate the SDDC Manager UI for removal in a future major release." }
+      - { id: c, text: "SDDC Manager is removed in 9.0 and replaced by the VCF Installer", why: "SDDC Manager still exists and runs instance workflows.", confusedWith: vcf-installer }
+      - { id: d, text: "There is one SDDC Manager per fleet, managing all instances", why: "That scope belongs to VCF Operations.", confusedWith: vcf-fleet }
+    explanation:
+      correct: "SDDC Manager stays per instance and still orchestrates instance workflows, but its UI is deprecated and most tasks are driven from VCF Operations."
+      concept: "SDDC Manager's changed role."
+      trap: "Believing SDDC Manager disappeared."
+
+  - id: fnd-term-006
+    type: single
+    kind: concept
+    difficulty: intermediate
+    version: vcf9
+    topics: [workload-domains, vcf-terminology]
+    objective: "2.1"
+    lesson: vcf9-terminology
+    section: concept
+    stem: "In VCF 9.0, where does an administrator create a new workload domain?"
+    options:
+      - { id: a, text: "In VCF Operations", correct: true, why: "The taxonomy states that workload domains are created in VCF Operations." }
+      - { id: b, text: "In the VCF Installer", why: "The installer deploys a fleet or a new instance; workload domains are added later." }
+      - { id: c, text: "In vCenter, by creating a new cluster", why: "A cluster is not a domain; VCF workflows are required.", confusedWith: vsphere-cluster }
+      - { id: d, text: "In VCF Automation", why: "VCF Automation consumes domain capacity; it does not create domains.", confusedWith: vcf-automation }
+    explanation:
+      correct: "Workload domains are created in VCF Operations; SDDC Manager executes the workflow, deploying the domain's vCenter and NSX Manager into the management domain."
+      concept: "Where day-2 infrastructure tasks happen in VCF 9."
+      trap: "Habit from 5.x of using the SDDC Manager UI."
+
+  - id: fnd-term-007
+    type: single
+    kind: concept
+    difficulty: intermediate
+    version: vcf9
+    topics: [vcf-terminology, management-domain]
+    objective: "2.1"
+    lesson: vcf9-terminology
+    section: concept
+    stem: "Where do the fleet-level management components (VCF Operations, VCF Automation, fleet management) run?"
+    options:
+      - { id: a, text: "In the management domain of the first VCF instance", correct: true, why: "The taxonomy places them in the first instance's management domain." }
+      - { id: b, text: "In a dedicated fleet domain separate from all instances", why: "There is no separate fleet domain in 9.0.", confusedWith: vcf-fleet }
+      - { id: c, text: "In every workload domain", why: "They are fleet-wide singletons." }
+      - { id: d, text: "On the VCF Installer appliance", why: "The installer only deploys them." }
+    explanation:
+      correct: "The first instance's management domain hosts the instance's management components plus VCF Operations and VCF Automation for the fleet."
+      concept: "Placement of fleet components."
+      trap: "Inventing a 'fleet domain'."
+
+  - id: fnd-term-008
+    type: single
+    kind: concept
+    difficulty: foundation
+    version: vcf9
+    topics: [vcf-terminology, hypervisors]
+    objective: "2.1"
+    lesson: vcf9-terminology
+    section: esx-vs-esxi
+    stem: "A KB article refers to 'ESXi 8.0 U3'. How should you relate it to VCF 9 terminology?"
+    options:
+      - { id: a, text: "It is the previous release of the same hypervisor product line, now called ESX in 9.x", correct: true, why: "ESXi was renamed ESX; same product line." }
+      - { id: b, text: "It is a different, lightweight hypervisor not used in VCF", why: "ESXi was the standard VCF hypervisor up to 5.x." }
+      - { id: c, text: "It is the name of the VMkernel inside ESX 9", why: "VMkernel is the kernel; ESXi is the product name." }
+      - { id: d, text: "It is the type 2 version of ESX", why: "Both are type 1 hypervisors.", confusedWith: hypervisors }
+    explanation:
+      correct: "The hypervisor was called ESXi from 5.0 to 8.x and is called ESX in 9.x."
+      concept: "ESX vs ESXi naming."
+      trap: "Thinking the rename means a different product."
+
+  - id: fnd-term-009
+    type: single
+    kind: scenario
+    difficulty: advanced
+    version: vcf9
+    topics: [vcf-terminology, workload-domains]
+    objective: "2.1"
+    lesson: vcf9-terminology
+    section: concept
+    context: |
+      An instance already has workload domain WLD-01 with its own NSX Manager cluster. The administrator now creates
+      WLD-02 for a test environment and wants to minimise management domain resource consumption.
+    stem: "Which option does VCF 9 support for WLD-02's NSX Manager?"
+    options:
+      - { id: a, text: "Share the existing NSX Manager cluster used by WLD-01", correct: true, why: "New workload domains can share an NSX Manager cluster with an existing workload domain." }
+      - { id: b, text: "Run without any NSX Manager", why: "Each domain uses a dedicated or shared NSX Manager." }
+      - { id: c, text: "Use the VCF Installer's embedded NSX", why: "The installer does not provide NSX for domains." }
+      - { id: d, text: "Deploy NSX Manager inside WLD-02's own hosts only", why: "NSX Manager appliances for workload domains are placed in the management domain." }
+    explanation:
+      correct: "Workload domains can share an NSX Manager cluster or get a new one; sharing saves management-domain resources at the cost of a shared NSX failure and lifecycle domain."
+      concept: "Dedicated vs shared NSX Manager."
+      architecture: "NSX Manager appliances for workload domains run in the management domain."
+      trap: "Assuming every domain must have its own NSX Manager."
+
+  - id: fnd-term-010
+    type: single
+    kind: concept
+    difficulty: expert
+    version: vcf9
+    topics: [vcf-terminology, lcm-concepts]
+    objective: "2.1"
+    lesson: vcf9-terminology
+    section: the-rename-table
+    stem: "Starting with VCF 9.0, which versioning approach do VCF components use?"
+    options:
+      - { id: a, text: "A unified five-field numeric format such as 9.0.1.0 (with express/hot patches adding further digits)", correct: true, why: "KB 410435 describes the unified x.x.x.x.x format replacing Update/Patch naming." }
+      - { id: b, text: "Major version plus 'Update n' and 'Patch n' as in vSphere 8", why: "That legacy nomenclature was replaced." }
+      - { id: c, text: "Each product keeps its own independent version numbering", why: "9.0 unifies versions across components (with documented exceptions such as virtual hardware version)." }
+      - { id: d, text: "Calendar-based versions such as 2025.06", why: "Not used for VCF." }
+    explanation:
+      correct: "VCF 9 uses unified five-field versions: major (9.0.0.0), minor (9.1.0.0), maintenance (9.2.1.0), express patch (9.2.1.0100), hot patch."
+      concept: "Unified versioning."
+      trap: "Applying vSphere 8 'U3' style naming to 9.x."
+
+  - id: fnd-term-011
+    type: single
+    kind: troubleshooting
+    difficulty: expert
+    version: vcf9
+    topics: [vcf-terminology, identity-sso]
+    objective: "2.1"
+    lesson: vcf9-terminology
+    section: the-rename-table
+    context: |
+      A colleague follows a VCF 5.x runbook step: "Join the new workload domain vCenter to the management SSO domain
+      using Enhanced Linked Mode so admins get single sign-on."
+    stem: "What is the correct VCF 9 interpretation?"
+    options:
+      - { id: a, text: "Single sign-on across components is provided by VCF single sign-on with the VCF Identity Broker, not Enhanced Linked Mode", correct: true, why: "VCF 9 replaces ELM-based SSO with VCF SSO via the Identity Broker." }
+      - { id: b, text: "Use Enhanced Linked Mode exactly as in 5.x", why: "ELM is gone in VCF 9 per release coverage." }
+      - { id: c, text: "Configure SSO in the deprecated SDDC Manager identity APIs", why: "Those APIs are deprecated; identity configuration moved to VCF Operations.", confusedWith: sddc-manager }
+      - { id: d, text: "SSO is not available in VCF 9", why: "VCF 9 provides VCF single sign-on." }
+    explanation:
+      correct: "VCF 9 introduces VCF single sign-on through the VCF Identity Broker connected to an identity provider; identity configuration is done from VCF Operations."
+      concept: "Identity changes in VCF 9."
+      trap: "Applying 5.x runbooks to 9.x."
+
+  # ---------------------------------------------------------------- hypervisors-and-esx
+  - id: fnd-hyp-001
+    type: single
+    kind: concept
+    difficulty: foundation
+    version: general
+    topics: [hypervisors]
+    objective: "2.2"
+    lesson: hypervisors-and-esx
+    section: concept
+    stem: "What makes ESX a type 1 hypervisor?"
+    options:
+      - { id: a, text: "It runs directly on the server hardware without a general-purpose host OS", correct: true, why: "Type 1 = bare metal." }
+      - { id: b, text: "It can run only one VM at a time", why: "ESX runs many VMs." }
+      - { id: c, text: "It is installed as an application on Linux", why: "That would be type 2." }
+      - { id: d, text: "It provides a shell and CLI", why: "A CLI does not determine the hypervisor type." }
+    explanation:
+      correct: "A type 1 hypervisor's kernel (the VMkernel) owns the hardware directly."
+      concept: "Type 1 vs type 2."
+      trap: "Confusing management interfaces with architecture."
+    diagnostic: virtualization
+
+  - id: fnd-hyp-002
+    type: single
+    kind: troubleshooting
+    difficulty: intermediate
+    version: general
+    topics: [esx-host]
+    objective: "2.2"
+    lesson: hypervisors-and-esx
+    section: failure-scenarios
+    context: |
+      A standalone ESX host's Host Client shows errors and vCenter reports the host as "not responding". The VMs on
+      the host are still answering on the network.
+    stem: "What is the most appropriate first action?"
+    options:
+      - { id: a, text: "Restart the management agents from the DCUI", correct: true, why: "VMs are running, so the hypervisor is fine; the management agents (hostd/vpxa) are the likely problem." }
+      - { id: b, text: "Reboot the host immediately", why: "Would take down running VMs unnecessarily." }
+      - { id: c, text: "Reinstall ESX", why: "Far too disruptive for a management-agent issue." }
+      - { id: d, text: "Power off all VMs from the guest OS", why: "The VMs are healthy." }
+    explanation:
+      correct: "hostd/vpxa problems block management but not running VMs; restarting management agents from the DCUI is the standard first step."
+      concept: "Management plane vs data plane on a host."
+      trap: "Assuming 'not responding' means the VMs are down."
+    diagnostic: esxi
+
+  - id: fnd-hyp-003
+    type: multi
+    kind: concept
+    difficulty: intermediate
+    version: vcf9
+    topics: [esx-host]
+    objective: "2.2"
+    lesson: hypervisors-and-esx
+    section: deep-dive
+    stem: "Which three are ESX 9.0 minimum hardware requirements? (Choose three.)"
+    select: 3
+    options:
+      - { id: a, text: "At least two CPU cores", correct: true, why: "Documented minimum." }
+      - { id: b, text: "At least 8 GB of physical RAM", correct: true, why: "Documented minimum (12 GB recommended for typical production VMs)." }
+      - { id: c, text: "A boot disk of at least 32 GB of persistent storage", correct: true, why: "Documented minimum; 128 GB recommended." }
+      - { id: d, text: "At least four 25 GbE NICs", why: "One or more Gigabit or faster Ethernet controllers is the minimum." }
+      - { id: e, text: "A USB boot device", why: "USB/SD-only boot is not the recommended persistent boot device." }
+    explanation:
+      correct: "ESX 9.0: ≥2 cores, NX/XD and VT-x/AMD-V enabled, ≥8 GB RAM, ≥1 GbE NIC, ≥32 GB boot device (128 GB recommended)."
+      concept: "Host requirements."
+      trap: "Confusing VCF design recommendations with ESX minimums."
+
+  - id: fnd-hyp-004
+    type: matching
+    kind: concept
+    difficulty: intermediate
+    version: general
+    topics: [virtual-hardware]
+    objective: "2.2"
+    lesson: hypervisors-and-esx
+    section: components
+    stem: "Match each VM file to its purpose."
+    pairs:
+      - { id: f1, left: ".vmx", right: "VM configuration (virtual hardware and settings)" }
+      - { id: f2, left: "-flat.vmdk", right: "Virtual disk data" }
+      - { id: f3, left: ".vswp", right: "VM swap file created at power-on" }
+      - { id: f4, left: "vmware.log", right: "VM log file" }
+      - { id: f5, left: ".nvram", right: "VM firmware (BIOS/EFI) settings" }
+    explanation:
+      correct: "A VM is encapsulated as files on a datastore; knowing them helps troubleshoot power-on, space and boot issues."
+      concept: "Encapsulation."
+      trap: "Confusing .vmdk descriptor with -flat.vmdk data file."
+
+  - id: fnd-hyp-005
+    type: single
+    kind: scenario
+    difficulty: intermediate
+    version: vcf9
+    topics: [virtual-hardware]
+    objective: "2.2"
+    lesson: hypervisors-and-esx
+    section: components
+    stem: "A VM created on an ESX 9.0 host with compatibility 'ESX 9.0' (hardware version 22) must be moved to an ESXi 8.0 U3 host. What happens?"
+    options:
+      - { id: a, text: "It cannot run there, because ESXi 8.0 U2/U3 supports up to hardware version 21", correct: true, why: "Hardware version 22 requires ESX 9.0." }
+      - { id: b, text: "It runs, with version 22 features disabled automatically", why: "Hosts do not run newer hardware versions." }
+      - { id: c, text: "vMotion downgrades it to version 21", why: "Hardware version upgrades are one-way; vMotion does not downgrade." }
+      - { id: d, text: "It runs, because hardware version only affects VMware Tools", why: "Hardware version determines virtual hardware, not Tools." }
+    explanation:
+      correct: "Each host supports up to a maximum virtual hardware version; ESX 9.0 = 22, ESXi 8.0 U2/U3 = 21."
+      concept: "VM compatibility."
+      trap: "Upgrading hardware version before all hosts are upgraded."
+
+  - id: fnd-hyp-006
+    type: cli
+    kind: command
+    difficulty: foundation
+    version: general
+    topics: [esx-host]
+    objective: "2.2"
+    lesson: hypervisors-and-esx
+    section: cli-api
+    stem: "Which command, run in the ESX shell, lists all registered VMs on the host with their Vmid?"
+    answers: ["vim-cmd vmsvc/getallvms"]
+    placeholder: "vim-cmd ..."
+    explanation:
+      correct: "`vim-cmd vmsvc/getallvms` lists registered VMs (powered on or off) with Vmid, name, file, guest OS and version."
+      concept: "Host CLI for VM operations."
+      trap: "`esxcli vm process list` shows only running VMs."
+    diagnostic: esxi
+
+  - id: fnd-hyp-007
+    type: single
+    kind: troubleshooting
+    difficulty: advanced
+    version: vcf9
+    topics: [hypervisors, esx-host]
+    objective: "2.2"
+    lesson: hypervisors-and-esx
+    section: troubleshooting
+    context: |
+      In a home lab, ESX 9 is installed as a VM on Proxmox. The host works, but powering on any 64-bit guest VM fails
+      with an error that hardware virtualization is not available.
+    stem: "What is the most likely cause?"
+    options:
+      - { id: a, text: "The Proxmox VM does not expose VT-x/AMD-V to ESX (nested virtualization off or CPU type not 'host')", correct: true, why: "Nested ESX needs the virtualization extensions passed through." }
+      - { id: b, text: "The VM uses a thin-provisioned disk", why: "Disk format does not affect CPU virtualization." }
+      - { id: c, text: "VMware Tools is not installed in the guest", why: "Tools is installed after the guest boots; it does not affect power-on." }
+      - { id: d, text: "The ESX host has no vCenter", why: "Standalone hosts run VMs fine." }
+    explanation:
+      correct: "ESX needs hardware-assisted virtualization to run 64-bit VMs. Nested, that means nested=Y on Proxmox and CPU type host for the ESX VM."
+      concept: "Hardware-assisted CPU virtualization."
+      architecture: "Two hypervisor layers: Proxmox (KVM) → ESX → guest."
+      trap: "Looking at storage or Tools for a CPU feature problem."
+
+  # ---------------------------------------------------------------- cpu-memory-virtualization
+  - id: fnd-cpu-001
+    type: ordering
+    kind: concept
+    difficulty: intermediate
+    version: general
+    topics: [cpu-memory-virt]
+    objective: "2.2"
+    lesson: cpu-memory-virtualization
+    section: how-it-works
+    stem: "As host memory pressure increases, order the reclamation techniques ESX relies on, from least to most performance impact."
+    items:
+      - { id: m1, text: "Transparent page sharing" }
+      - { id: m2, text: "Ballooning" }
+      - { id: m3, text: "Memory compression" }
+      - { id: m4, text: "Host swapping" }
+    explanation:
+      correct: "Sharing and ballooning are cheap, compression avoids disk I/O, swapping to .vswp is the costly last resort."
+      concept: "Memory reclamation."
+      trap: "Putting swapping before compression."
+    diagnostic: virtualization
+
+  - id: fnd-cpu-002
+    type: single
+    kind: concept
+    difficulty: foundation
+    version: general
+    topics: [cpu-memory-virt]
+    objective: "2.2"
+    lesson: cpu-memory-virtualization
+    section: components
+    stem: "Ballooning is not happening on a VM even though the host is under memory pressure. What is the most likely reason?"
+    options:
+      - { id: a, text: "VMware Tools (with the balloon driver) is not installed or not running in the guest", correct: true, why: "The vmmemctl balloon driver comes with VMware Tools." }
+      - { id: b, text: "The VM uses vmxnet3", why: "NIC type is unrelated." }
+      - { id: c, text: "DRS is in Manual mode", why: "Ballooning is a host-level mechanism independent of DRS.", confusedWith: drs }
+      - { id: d, text: "The VM has a thin disk", why: "Disk format is unrelated." }
+    explanation:
+      correct: "Without the balloon driver, ESX must use compression or swapping instead."
+      concept: "Ballooning requires guest cooperation."
+      trap: "Blaming cluster features for a host mechanism."
+
+  - id: fnd-cpu-003
+    type: single
+    kind: scenario
+    difficulty: advanced
+    version: general
+    topics: [cpu-memory-virt, drs]
+    objective: "2.2"
+    lesson: cpu-memory-virtualization
+    section: failure-scenarios
+    context: |
+      A VM configured with 16 GB of memory is swapping heavily. The host has 120 GB free memory. Edit Settings shows
+      Memory reservation 0 MB, Shares Normal, Limit 4096 MB.
+    stem: "What explains the swapping?"
+    options:
+      - { id: a, text: "The 4096 MB limit caps the VM's physical memory regardless of free host memory", correct: true, why: "Limits are always enforced, even on an idle host." }
+      - { id: b, text: "Normal shares give the VM too low a priority", why: "Shares matter only under contention; the host has plenty free." }
+      - { id: c, text: "The zero reservation forces swapping", why: "No reservation just means no guarantee." }
+      - { id: d, text: "Inter-VM TPS is disabled", why: "TPS settings do not cause swapping on a host with free memory." }
+    explanation:
+      correct: "A limit below configured memory makes the guest believe it has 16 GB while ESX gives it at most 4 GB; the rest is reclaimed via ballooning/swapping."
+      concept: "Shares vs reservations vs limits."
+      trap: "Thinking limits apply only under contention."
+
+  - id: fnd-cpu-004
+    type: single
+    kind: concept
+    difficulty: intermediate
+    version: general
+    topics: [cpu-memory-virt]
+    objective: "2.2"
+    lesson: cpu-memory-virtualization
+    section: components
+    stem: "A VM has 32 GB configured memory and a 24 GB memory reservation. What is the size of its .vswp file when powered on?"
+    options:
+      - { id: a, text: "8 GB", correct: true, why: "Swap file size = configured memory − reservation." }
+      - { id: b, text: "32 GB", why: "Would be true with no reservation." }
+      - { id: c, text: "24 GB", why: "That is the reserved amount, which never needs swap." }
+      - { id: d, text: "0 GB", why: "Only with a full reservation." }
+    explanation:
+      correct: "The reserved portion is guaranteed in RAM, so only the unreserved 8 GB needs swap backing."
+      concept: "Reservation and swap file."
+      trap: "Forgetting reservations reduce .vswp size; useful when datastore space is tight."
+
+  - id: fnd-cpu-005
+    type: single
+    kind: scenario
+    difficulty: intermediate
+    version: general
+    topics: [cpu-memory-virt]
+    objective: "2.2"
+    lesson: cpu-memory-virtualization
+    section: deep-dive
+    context: |
+      A single-threaded legacy application runs in a VM with 8 vCPUs on a busy host. Users report slowness; the
+      guest shows one vCPU at 100% and seven idle; the host reports high CPU ready for this VM.
+    stem: "What is the best first change?"
+    options:
+      - { id: a, text: "Reduce the VM to 1 or 2 vCPUs", correct: true, why: "Docs recommend uniprocessor VMs for single-threaded apps; fewer vCPUs are easier to schedule." }
+      - { id: b, text: "Increase to 16 vCPUs", why: "Makes scheduling harder and cannot help a single thread." }
+      - { id: c, text: "Set a CPU limit", why: "Limits only restrict further." }
+      - { id: d, text: "Enable inter-VM TPS", why: "Memory feature; unrelated." }
+    explanation:
+      correct: "Right-sizing vCPUs reduces CPU ready and overhead; a single thread cannot use more vCPUs."
+      concept: "vCPU scheduling and overcommit."
+      trap: "Assuming more vCPUs equals more performance."
+
+  - id: fnd-cpu-006
+    type: multi
+    kind: concept
+    difficulty: expert
+    version: vcf9
+    topics: [cpu-memory-virt]
+    objective: "2.2"
+    lesson: cpu-memory-virtualization
+    section: deep-dive
+    stem: "Which two statements about Memory Tiering over NVMe in vSphere 9.0 are correct? (Choose two.)"
+    select: 2
+    options:
+      - { id: a, text: "It is deactivated by default and must be enabled manually", correct: true, why: "Documented default." }
+      - { id: b, text: "It uses locally installed NVMe devices as a slower memory tier behind DRAM", correct: true, why: "DRAM = tier 0, NVMe = tier 1." }
+      - { id: c, text: "It can use the vSAN cache or capacity disks as its tier", why: "Pre-configured vSAN disks cannot be used." }
+      - { id: d, text: "It is supported in nested ESX labs", why: "William Lam notes it is not interoperable with nested virtualization." }
+    explanation:
+      correct: "Memory Tiering adds NVMe as tier 1 memory on ESX 9.0+, off by default, configured in maintenance mode, with local NVMe only."
+      concept: "VCF 9 memory capacity feature."
+      trap: "Assuming any NVMe (vSAN, fabric-attached, nested) works."
+
+  - id: fnd-cpu-007
+    type: truefalse
+    kind: concept
+    difficulty: foundation
+    version: general
+    topics: [cpu-memory-virt]
+    objective: "2.2"
+    lesson: cpu-memory-virtualization
+    section: components
+    stem: "True or false: by default, ESX shares identical memory pages between different VMs (inter-VM transparent page sharing)."
+    options:
+      - { id: "true", text: "True", why: "Inter-VM TPS has been disabled by default for security; sharing is restricted to within a VM." }
+      - { id: "false", text: "False", correct: true, why: "Inter-VM TPS is deactivated by default; page sharing is intra-VM." }
+    explanation:
+      correct: "TPS between VMs is disabled by default; ESX still shares pages within a VM."
+      concept: "TPS defaults."
+      trap: "Older material describes inter-VM TPS as on by default."
+
+  # ---------------------------------------------------------------- storage-network-virtualization-basics
+  - id: fnd-snv-001
+    type: single
+    kind: concept
+    difficulty: foundation
+    version: general
+    topics: [l2-l3, vds]
+    objective: "2.2"
+    lesson: storage-network-virtualization-basics
+    section: concept
+    stem: "On an ESX host, what is vmk0?"
+    options:
+      - { id: a, text: "A VMkernel adapter: the host's own IP interface, normally for management", correct: true, why: "vmk = VMkernel adapter." }
+      - { id: b, text: "The first physical NIC", why: "Physical NICs are vmnic0, vmnic1…", confusedWith: vds }
+      - { id: c, text: "The first VM's virtual NIC", why: "VM NICs are not named vmk." }
+      - { id: d, text: "The default port group", why: "Port groups have names like 'Management Network'." }
+    explanation:
+      correct: "VMkernel adapters carry the host's own traffic (management, vMotion, vSAN); vmk0 is typically management."
+      concept: "vmk vs vmnic."
+      trap: "Swapping vmk and vmnic."
+
+  - id: fnd-snv-002
+    type: single
+    kind: troubleshooting
+    difficulty: intermediate
+    version: general
+    topics: [l2-l3]
+    objective: "2.2"
+    lesson: storage-network-virtualization-basics
+    section: troubleshooting
+    context: |
+      A VM moved to the new port group "App-VLAN30" (VLAN ID 30) cannot reach its default gateway. VMs on VLAN 20 on
+      the same vSwitch work. `esxcli network nic list` shows both uplinks Up at 10000 Mb.
+    stem: "What should you check next?"
+    options:
+      - { id: a, text: "Whether VLAN 30 is allowed on the physical switch trunk ports", correct: true, why: "With VST, the physical trunk must carry the VLAN." }
+      - { id: b, text: "Whether the VM's disk is thin provisioned", why: "Storage does not affect network reachability." }
+      - { id: c, text: "Whether DRS is enabled", why: "DRS does not configure VLANs.", confusedWith: drs }
+      - { id: d, text: "Whether vmk0 is on VLAN 30", why: "vmk0 is host management, not the VM path." }
+    explanation:
+      correct: "Uplinks are healthy and other VLANs work, so the missing piece is the VLAN on the physical trunk."
+      concept: "Virtual switch tagging."
+      trap: "Assuming the port group VLAN ID is the whole configuration."
+
+  - id: fnd-snv-003
+    type: single
+    kind: concept
+    difficulty: intermediate
+    version: vcf9
+    topics: [datastores]
+    objective: "2.2"
+    lesson: storage-network-virtualization-basics
+    section: concept
+    stem: "Which datastore technology is deprecated starting with VCF 9.0 and should not be chosen for a new design?"
+    options:
+      - { id: a, text: "vSphere Virtual Volumes (vVols)", correct: true, why: "Broadcom KB 401070 announces deprecation of vVols starting with VCF/VVF 9.0." }
+      - { id: b, text: "vSAN", why: "vSAN is the default principal storage for VCF." }
+      - { id: c, text: "NFS", why: "NFS remains supported." }
+      - { id: d, text: "VMFS", why: "VMFS remains supported." }
+    explanation:
+      correct: "vVols capabilities are deprecated beginning with VCF 9.0 and will be discontinued in a future release."
+      concept: "Storage options in VCF 9."
+      trap: "Picking vVols because it was strategic in earlier versions."
+
+  - id: fnd-snv-004
+    type: single
+    kind: scenario
+    difficulty: advanced
+    version: general
+    topics: [datastores]
+    objective: "2.2"
+    lesson: storage-network-virtualization-basics
+    section: failure-scenarios
+    context: |
+      A 2 TB VMFS datastore holds 30 VMs with thin disks totalling 3.5 TB provisioned. Over a weekend several VMs pause
+      and one VM fails to power on with an error about creating its swap file.
+    stem: "What is the root cause?"
+    options:
+      - { id: a, text: "The datastore ran out of space because thin disks grew (overcommitted thin provisioning)", correct: true, why: "Thin disks consume space as written; when the datastore fills, VMs stun and .vswp creation fails." }
+      - { id: b, text: "Thin disks cannot be powered on", why: "Thin disks power on normally." }
+      - { id: c, text: "The VMFS version is too old", why: "Version does not cause these symptoms." }
+      - { id: d, text: "vSphere HA isolated the host", why: "Isolation would affect all VMs and is unrelated to space errors.", confusedWith: vsphere-ha }
+    explanation:
+      correct: "Thin provisioning lets provisioned space exceed capacity; monitoring and alarms are mandatory."
+      concept: "Thin vs thick provisioning."
+      trap: "Forgetting the .vswp file also needs free space at power-on."
+
+  - id: fnd-snv-005
+    type: single
+    kind: architecture
+    difficulty: intermediate
+    version: vcf9
+    topics: [vds, vcf-network-design]
+    objective: "2.2"
+    lesson: storage-network-virtualization-basics
+    section: components
+    stem: "Which virtual switch type does VCF use for system traffic (management, vMotion, vSAN) in its domains?"
+    options:
+      - { id: a, text: "vSphere Distributed Switch configured in vCenter", correct: true, why: "VCF domains use VDS; one configuration applies to all hosts." }
+      - { id: b, text: "vSphere Standard Switch on each host", why: "vSwitch0 exists at install but VCF domains use VDS.", confusedWith: l2-l3 }
+      - { id: c, text: "NSX overlay segments", why: "Overlay segments carry workload traffic, not host system traffic.", confusedWith: nsx-segments }
+      - { id: d, text: "A Proxmox Linux bridge", why: "Only in a nested lab, outside ESX." }
+    explanation:
+      correct: "The VCF taxonomy lists vSphere distributed switches for system traffic in every domain; NSX segments are for workloads."
+      concept: "vSS vs VDS vs NSX."
+      trap: "Confusing workload overlays with host system networks."
+
+  - id: fnd-snv-006
+    type: single
+    kind: troubleshooting
+    difficulty: expert
+    version: general
+    topics: [mtu]
+    objective: "2.2"
+    lesson: storage-network-virtualization-basics
+    section: deep-dive
+    context: |
+      After enabling jumbo frames (MTU 9000) on a VDS and the vMotion VMkernel adapters, small pings between hosts'
+      vMotion interfaces succeed but vMotion operations time out.
+    stem: "What is the most likely cause?"
+    options:
+      - { id: a, text: "The physical switch ports or VLAN are still at MTU 1500, so large frames are dropped", correct: true, why: "MTU must match end to end; small packets fit, large ones are dropped." }
+      - { id: b, text: "vMotion does not support jumbo frames", why: "It does." }
+      - { id: c, text: "The VMs need VMware Tools upgraded", why: "Guest tools are not involved in host-to-host vMotion transport." }
+      - { id: d, text: "DRS is set to Manual", why: "Manual vMotion would still transfer data." }
+    explanation:
+      correct: "Classic MTU mismatch symptom: small traffic works, large transfers fail. Test with vmkping and do-not-fragment (Networking phase)."
+      concept: "End-to-end MTU."
+      trap: "Concluding the network is fine because ping works."
+
+  # ---------------------------------------------------------------- clusters-ha-drs-intro
+  - id: fnd-cl-001
+    type: single
+    kind: concept
+    difficulty: foundation
+    version: general
+    topics: [vsphere-ha]
+    objective: "2.2"
+    lesson: clusters-ha-drs-intro
+    section: concept
+    stem: "An ESX host in an HA cluster loses power. What does vSphere HA do with its VMs?"
+    options:
+      - { id: a, text: "Restarts them on surviving hosts in the cluster", correct: true, why: "HA restarts VMs after a host failure (with downtime)." }
+      - { id: b, text: "Live-migrates them with vMotion before they stop", why: "A failed host cannot vMotion anything.", confusedWith: drs }
+      - { id: c, text: "Keeps them running with zero downtime", why: "That is Fault Tolerance, not HA." }
+      - { id: d, text: "Nothing until vCenter approves", why: "HA acts on its own via host agents." }
+    explanation:
+      correct: "HA restarts protected VMs on other hosts; it is a restart, not a migration."
+      concept: "HA vs vMotion vs FT."
+      trap: "Expecting zero downtime from HA."
+    diagnostic: vsphere
+
+  - id: fnd-cl-002
+    type: single
+    kind: concept
+    difficulty: intermediate
+    version: general
+    topics: [drs]
+    objective: "2.2"
+    lesson: clusters-ha-drs-intro
+    section: components
+    stem: "A cluster has DRS set to Partially Automated. What happens?"
+    options:
+      - { id: a, text: "Initial placement is automatic; load-balancing migrations are recommendations you must apply", correct: true, why: "That is the Partially Automated definition." }
+      - { id: b, text: "Placement and balancing are both automatic", why: "That is Fully Automated." }
+      - { id: c, text: "Placement and balancing are both recommendations", why: "That is Manual." }
+      - { id: d, text: "Balancing is automatic but placement requires approval", why: "The reverse of the real behaviour." }
+    explanation:
+      correct: "Manual: recommendations only. Partially Automated: automatic placement only. Fully Automated: both automatic."
+      concept: "DRS automation levels."
+      trap: "Reversing Partially Automated."
+    diagnostic: vsphere
+
+  - id: fnd-cl-003
+    type: single
+    kind: scenario
+    difficulty: advanced
+    version: general
+    topics: [vsphere-ha, drs, vcenter]
+    objective: "2.2"
+    lesson: clusters-ha-drs-intro
+    section: deep-dive
+    context: |
+      The vCenter VM of a cluster runs on host esx-02. esx-02 suffers a hardware failure.
+    stem: "Which statement is correct?"
+    options:
+      - { id: a, text: "HA restarts vCenter and the other VMs on surviving hosts; DRS is unavailable until vCenter is back", correct: true, why: "HA agents work without vCenter; DRS is a vCenter function." }
+      - { id: b, text: "Nothing restarts because HA requires vCenter", why: "HA operates through host agents independently of vCenter.", confusedWith: vcenter }
+      - { id: c, text: "DRS migrates vCenter to another host", why: "DRS needs vCenter and cannot migrate VMs from a failed host." }
+      - { id: d, text: "vCenter fails over automatically to the VCF Installer", why: "The installer is not a failover target." }
+    explanation:
+      correct: "vSphere HA's primary host detects the failure and restarts protected VMs including vCenter. DRS resumes once vCenter is running."
+      concept: "HA independence from vCenter."
+      architecture: "In VCF, all management appliances in the management domain rely on this behaviour."
+      trap: "Believing vCenter must be up for HA to act."
+
+  - id: fnd-cl-004
+    type: single
+    kind: troubleshooting
+    difficulty: expert
+    version: general
+    topics: [vsphere-ha]
+    objective: "2.2"
+    lesson: clusters-ha-drs-intro
+    section: how-it-works
+    context: |
+      The HA primary stops receiving network heartbeats from esx-03, and esx-03 does not answer ICMP on its management
+      IP. However, esx-03 is still updating its datastore heartbeats.
+    stem: "How does vSphere HA classify esx-03?"
+    options:
+      - { id: a, text: "Not failed: it is isolated or partitioned, because it is still alive on storage", correct: true, why: "Datastore heartbeating distinguishes a live but unreachable host from a failed one." }
+      - { id: b, text: "Failed: restart all its VMs immediately", why: "That would risk two copies of the VM attempting to run; datastore heartbeats prove it is alive." }
+      - { id: c, text: "In maintenance mode", why: "Maintenance mode is administrator-initiated." }
+      - { id: d, text: "Disconnected from vCenter only, with no HA impact", why: "HA does evaluate the host's state." }
+    explanation:
+      correct: "If a host stops network heartbeats but keeps datastore heartbeats, HA treats it as isolated/partitioned rather than failed; an isolated host applies the configured isolation response."
+      concept: "HA failure detection: network heartbeat, ping, datastore heartbeat, isolation addresses."
+      trap: "Treating loss of network heartbeat as host failure."
+
+  - id: fnd-cl-005
+    type: single
+    kind: design
+    difficulty: intermediate
+    version: general
+    topics: [drs]
+    objective: "2.2"
+    lesson: clusters-ha-drs-intro
+    section: deep-dive
+    context: |
+      An administrator creates 20 resource pools named after departments, all with default settings, just to organise
+      VMs in the inventory.
+    stem: "What is the best recommendation?"
+    options:
+      - { id: a, text: "Use VM folders for organisation; use resource pools only to apply shares, reservations and limits", correct: true, why: "Resource pools change resource entitlement; folders only organise." }
+      - { id: b, text: "Keep the pools; they have no effect with default settings", why: "Pools with shares still affect entitlement under contention, often unexpectedly." }
+      - { id: c, text: "Disable DRS to remove the overhead", why: "Disabling DRS removes resource pools entirely and loses balancing." }
+      - { id: d, text: "Convert the pools into vSAN fault domains", why: "Unrelated construct." }
+    explanation:
+      correct: "Resource pools are resource-management objects (requiring DRS in a cluster). Folders are for organisation and permissions."
+      concept: "Resource pools vs folders."
+      trap: "Treating resource pools as folders."
+
+  - id: fnd-cl-006
+    type: multi
+    kind: architecture
+    difficulty: advanced
+    version: vcf9
+    topics: [vsphere-cluster, workload-domains]
+    objective: "2.2"
+    lesson: clusters-ha-drs-intro
+    section: why-this-matters
+    stem: "According to the VCF 9 taxonomy, which two features are enabled on the vSphere clusters of every VCF domain? (Choose two.)"
+    select: 2
+    options:
+      - { id: a, text: "vSphere HA", correct: true, why: "Domains contain clusters with HA enabled." }
+      - { id: b, text: "vSphere DRS", correct: true, why: "Domains contain clusters with DRS enabled." }
+      - { id: c, text: "vSphere Fault Tolerance for all VMs", why: "FT is optional per VM with strict limits." }
+      - { id: d, text: "Distributed Power Management", why: "DPM is optional and not a VCF requirement." }
+    explanation:
+      correct: "Each VCF domain has one or more vSphere clusters with HA and DRS enabled."
+      concept: "VCF cluster baseline."
+      trap: "Adding optional features to the baseline."
+
+  - id: fnd-cl-007
+    type: single
+    kind: concept
+    difficulty: intermediate
+    version: general
+    topics: [vsphere-ha]
+    objective: "2.2"
+    lesson: clusters-ha-drs-intro
+    section: how-it-works
+    stem: "Which vSphere HA feature restarts an individual VM whose guest OS has hung while the host is healthy?"
+    options:
+      - { id: a, text: "VM Monitoring, based on VMware Tools heartbeats", correct: true, why: "VM Monitoring restarts VMs when Tools heartbeats are not received within a set time." }
+      - { id: b, text: "Datastore heartbeating", why: "Used for host failure vs isolation detection." }
+      - { id: c, text: "Admission control", why: "Reserves failover capacity; does not detect hung guests." }
+      - { id: d, text: "DRS affinity rules", why: "Placement constraints, not monitoring.", confusedWith: drs }
+    explanation:
+      correct: "VM Monitoring watches VMware Tools heartbeats per VM; it requires Tools in the guest."
+      concept: "HA host monitoring vs VM monitoring."
+      trap: "Expecting HA host monitoring to catch guest OS hangs."

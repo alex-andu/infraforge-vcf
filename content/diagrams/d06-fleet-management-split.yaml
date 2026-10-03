@@ -1,0 +1,44 @@
+id: d06-fleet-management-split
+title: "Fleet management: one console, two engines"
+description: >
+  VCF Operations is the console for fleet management. Requests for management components (VCF Operations, VCF
+  Automation, VCF Identity Broker, VCF Operations for logs and for networks) are executed by the VCF Operations fleet
+  management appliance, which stores their binaries. Requests for core components (SDDC Manager, NSX, vCenter, ESX,
+  vSAN) are executed by the SDDC Manager of each VCF instance, which stores core binaries and uses vSphere Lifecycle
+  Manager images for hosts. Both engines download binaries from an online or offline depot.
+width: 1000
+height: 560
+groups:
+  - { id: g-mc, x: 10, y: 190, w: 480, h: 360, label: "Management components (fleet level)", kind: ops }
+  - { id: g-cc, x: 510, y: 190, w: 480, h: 360, label: "Core components (per VCF instance)", kind: mgmt }
+nodes:
+  - { id: ops, x: 400, y: 20, w: 200, h: 60, label: "VCF Operations", sublabel: "Fleet Management menu", kind: ops, component: vcf-operations, info: "Lifecycle, passwords, certificates, identity, drift, tags, backup, licensing: all start here." }
+  - { id: depot, x: 760, y: 20, w: 200, h: 60, label: "Depot", sublabel: "online / offline", kind: external, info: "Source of binaries for both engines." }
+  - { id: fm, x: 140, y: 225, w: 220, h: 60, label: "Fleet management appliance", sublabel: "management binaries", kind: ops, component: vcf-operations-fleet-management, info: "Upgraded first in a maintenance release, then VCF Operations, then the rest." }
+  - { id: m-ops, x: 30, y: 330, w: 140, h: 56, label: "VCF Operations", kind: ops, component: vcf-operations, info: "Upgraded second." }
+  - { id: m-vcfa, x: 180, y: 330, w: 140, h: 56, label: "VCF Automation", kind: ops, component: vcf-automation, info: "Upgraded after VCF Operations." }
+  - { id: m-idb, x: 330, y: 330, w: 140, h: 56, label: "Identity Broker", kind: security, component: vcf-identity-broker, info: "Upgraded after VCF Operations." }
+  - { id: m-logs, x: 30, y: 430, w: 140, h: 56, label: "Ops for logs", kind: ops, component: vcf-operations-logs, info: "Upgraded after VCF Operations." }
+  - { id: m-net, x: 180, y: 430, w: 140, h: 56, label: "Ops for networks", kind: ops, component: vcf-operations-networks, info: "Upgraded after VCF Operations." }
+  - { id: sddc, x: 640, y: 225, w: 220, h: 60, label: "SDDC Manager", sublabel: "core binaries, resource locks", kind: mgmt, component: sddc-manager, info: "One per instance. Also does domain creation, vCenter import, host commissioning, stretched vSAN configuration, certificate and password automation." }
+  - { id: c-nsx, x: 530, y: 330, w: 140, h: 56, label: "1. NSX", kind: nsx, component: nsx-manager, info: "Upgraded right after SDDC Manager." }
+  - { id: c-vc, x: 680, y: 330, w: 140, h: 56, label: "2. vCenter", kind: mgmt, component: vcenter, info: "Upgraded after NSX." }
+  - { id: c-esx, x: 830, y: 330, w: 140, h: 56, label: "3. ESX hosts", kind: compute, component: esx-host, info: "Upgraded after vCenter, using vSphere Lifecycle Manager images." }
+  - { id: c-vsan, x: 830, y: 430, w: 140, h: 56, label: "4. vSAN", kind: storage, component: vsan, info: "Last step of the core sequence." }
+edges:
+  - { from: ops, to: fm, label: "management components", kind: control }
+  - { from: ops, to: sddc, label: "core components", kind: control }
+  - { from: depot, to: fm, kind: dependency, dashed: true }
+  - { from: depot, to: sddc, kind: dependency, dashed: true }
+  - { from: fm, to: m-ops, kind: control }
+  - { from: fm, to: m-vcfa, kind: control }
+  - { from: fm, to: m-idb, kind: control }
+  - { from: sddc, to: c-nsx, kind: control }
+  - { from: c-nsx, to: c-vc, label: "then", kind: dependency }
+  - { from: c-vc, to: c-esx, label: "then", kind: dependency }
+  - { from: c-esx, to: c-vsan, label: "then", kind: dependency }
+steps:
+  - { title: "One console", text: "Every fleet management task starts in VCF Operations.", highlight: [ops] }
+  - { title: "Engine 1: fleet management appliance", text: "Management components are deployed and lifecycled by the fleet management appliance. In a maintenance release it is upgraded first, then VCF Operations, then the others.", highlight: [fm, m-ops, m-vcfa, m-idb, m-logs, m-net] }
+  - { title: "Engine 2: SDDC Manager", text: "Core components of each instance are handled by its SDDC Manager: SDDC Manager itself, then NSX, vCenter, ESX and vSAN, domain by domain, management domain first.", highlight: [sddc, c-nsx, c-vc, c-esx, c-vsan] }
+  - { title: "Binaries", text: "Management binaries go to the fleet management appliance, core binaries to SDDC Manager; both come from an online or offline depot.", highlight: [depot, fm, sddc] }

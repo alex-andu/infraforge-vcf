@@ -1,0 +1,44 @@
+id: d05-edge-cluster-ha
+title: Edge cluster high availability – active/standby vs active/active
+description: >
+  Left: an edge cluster with two Edge VMs hosting an active/standby Tier-0. Edge-01 runs the active SR, edge-02 the
+  standby SR; both have a management interface, fast-path interfaces carrying the Edge TEP and two uplink VLANs to
+  ToR-A and ToR-B. Only the active SR forwards; on failure the standby takes over. Right: an active/active Tier-0 on
+  edge-03 and edge-04; both SRs peer with both ToRs and forward simultaneously, and the Tier-0 DR on the ESX hosts
+  load-balances across them with ECMP. Stateful services (SNAT/DNAT, stateful gateway firewall) and vSphere
+  Supervisor require the active/standby design.
+width: 1000
+height: 620
+groups:
+  - { id: g-as, x: 20, y: 150, w: 470, h: 290, label: "Edge cluster A – Tier-0 Active/Standby", kind: nsx }
+  - { id: g-aa, x: 510, y: 150, w: 470, h: 290, label: "Edge cluster B – Tier-0 Active/Active", kind: nsx }
+nodes:
+  - { id: tora, x: 200, y: 30, w: 160, h: 56, label: "ToR-A", sublabel: "VLAN 2711", kind: network, component: physical-network, info: "Top-of-rack router A. BGP peer on uplink VLAN 2711." }
+  - { id: torb, x: 640, y: 30, w: 160, h: 56, label: "ToR-B", sublabel: "VLAN 2712", kind: network, component: physical-network, info: "Top-of-rack router B. BGP peer on uplink VLAN 2712." }
+  - { id: e1, x: 40, y: 200, w: 200, h: 70, label: "edge-01", sublabel: "Tier-0 SR ACTIVE", kind: nsx, component: nsx-edge-cluster, info: "Edge VM anatomy: eth0 management interface; fp-eth0/fp-eth1 DPDK fast-path NICs on trunk port groups carrying the Edge TEP VLAN and uplink VLANs. Active SR forwards all north-south traffic and holds NAT/firewall state." }
+  - { id: e2, x: 270, y: 200, w: 200, h: 70, label: "edge-02", sublabel: "Tier-0 SR STANDBY", kind: nsx, component: nsx-edge-cluster, info: "Standby SR: ready to take over interfaces and state. Placed on a different host (anti-affinity) and ideally in a different failure domain." }
+  - { id: e3, x: 530, y: 200, w: 200, h: 70, label: "edge-03", sublabel: "Tier-0 SR ACTIVE", kind: nsx, component: nsx-edge-cluster, info: "Active/active: forwards and peers with both ToRs." }
+  - { id: e4, x: 760, y: 200, w: 200, h: 70, label: "edge-04", sublabel: "Tier-0 SR ACTIVE", kind: nsx, component: nsx-edge-cluster, info: "Also active: north-south capacity scales with the number of Edges." }
+  - { id: hb, x: 150, y: 340, w: 200, h: 56, label: "HA heartbeat", sublabel: "BFD mgmt + overlay", kind: nsx, info: "Edges in a cluster detect each other's failure with BFD over management and TEP paths; uplink/BGP health is also considered." }
+  - { id: ecmp, x: 640, y: 340, w: 200, h: 56, label: "ECMP", sublabel: "from Tier-0 DR", kind: nsx, info: "Hosts' Tier-0 DR has equal-cost paths to every active SR and hashes flows across them. A failed SR is removed from the set." }
+  - { id: hosts, x: 380, y: 520, w: 240, h: 60, label: "ESX hosts", sublabel: "Tier-0 DR + Tier-1 DR", kind: compute, component: esx-host, info: "Workload hosts send north-south traffic over Geneve to the Edge TEPs." }
+edges:
+  - { from: e1, to: tora, label: "BGP", kind: north-south, bidirectional: true }
+  - { from: e1, to: torb, kind: north-south, bidirectional: true }
+  - { from: e2, to: tora, kind: north-south, dashed: true }
+  - { from: e1, to: hb, kind: control, bidirectional: true }
+  - { from: e2, to: hb, kind: control, bidirectional: true }
+  - { from: e3, to: tora, kind: north-south, bidirectional: true }
+  - { from: e3, to: torb, kind: north-south, bidirectional: true }
+  - { from: e4, to: torb, label: "BGP", kind: north-south, bidirectional: true }
+  - { from: e4, to: tora, kind: north-south, bidirectional: true }
+  - { from: ecmp, to: e3, kind: overlay, dashed: true }
+  - { from: ecmp, to: e4, kind: overlay, dashed: true }
+  - { from: hosts, to: e1, label: "Geneve", kind: overlay, dashed: true }
+  - { from: hosts, to: ecmp, kind: overlay, dashed: true }
+steps:
+  - { title: "Edge anatomy", text: "An Edge VM has a management interface and DPDK fast-path interfaces (fp-eth0/fp-eth1) on trunk port groups carrying its TEP VLAN and the uplink VLANs.", highlight: [e1, tora, torb] }
+  - { title: "Active/standby", text: "Only edge-01's SR forwards and keeps NAT/firewall state. edge-02 waits. Required for Supervisor and VCF Automation All Apps; in the VCF workflow only two Edges carry gateway uplinks.", highlight: [e1, e2, hosts] }
+  - { title: "Failover", text: "If edge-01 fails, BFD heartbeats stop and edge-02's SR becomes active, takes over the uplinks and re-establishes routing. Non-preemptive: when edge-01 returns it stays standby.", highlight: [e1, e2, hb] }
+  - { title: "Active/active", text: "edge-03 and edge-04 both peer with both ToRs and forward at the same time. Throughput scales with Edges.", highlight: [e3, e4, tora, torb] }
+  - { title: "ECMP from the hosts", text: "The Tier-0 DR on hosts load-balances flows across all active SRs. Classic A/A cannot do stateful SNAT/DNAT; use reflexive NAT or stateful A/A.", highlight: [hosts, ecmp, e3, e4] }

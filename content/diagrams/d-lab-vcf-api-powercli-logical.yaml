@@ -1,0 +1,24 @@
+id: d-lab-vcf-api-powercli-logical
+title: "Lab topology: VCF APIs and PowerCLI"
+description: >
+  A jump host with PowerShell 7, VCF.PowerCLI, curl and jq calls the APIs of vCenter, NSX, SDDC Manager and VCF
+  Operations. Parts 1-2 (vCenter API and PowerCLI) work against any nested vCenter, even before VCF is deployed; parts
+  3-5 need the VCF components.
+width: 1000
+height: 460
+nodes:
+  - { id: jump, x: 40, y: 190, w: 200, h: 70, label: "Jump host", sublabel: "pwsh 7, VCF.PowerCLI, curl, jq", kind: external, info: "Linux or Windows VM on the lab management VLAN; trusts the lab CA or uses lab-only certificate overrides." }
+  - { id: vc, x: 400, y: 40, w: 220, h: 56, label: "vCenter", sublabel: "/api/session", kind: mgmt, component: vcenter, info: "Available now in the home lab (from the vCenter lab)." }
+  - { id: nsx, x: 400, y: 140, w: 220, h: 56, label: "NSX Manager", sublabel: "/policy/api/v1", kind: nsx, component: nsx-manager, info: "Needs NSX (VCF lab)." }
+  - { id: sddc, x: 400, y: 240, w: 220, h: 56, label: "SDDC Manager", sublabel: "/v1/tokens", kind: mgmt, component: sddc-manager, info: "Needs the VCF management domain." }
+  - { id: ops, x: 400, y: 340, w: 220, h: 56, label: "VCF Operations", sublabel: "/suite-api", kind: ops, component: vcf-operations, info: "Needs VCF Operations." }
+  - { id: out, x: 740, y: 190, w: 220, h: 70, label: "Report CSV", sublabel: "domains, VMs, alerts", kind: storage, info: "Output of the challenge script." }
+edges:
+  - { from: jump, to: vc, label: "1-2", kind: mgmt }
+  - { from: jump, to: nsx, label: "3", kind: mgmt }
+  - { from: jump, to: sddc, label: "4", kind: mgmt }
+  - { from: jump, to: ops, label: "5", kind: mgmt }
+  - { from: jump, to: out, label: "challenge", kind: data, dashed: true }
+steps:
+  - { title: "Now", text: "vCenter API and PowerCLI work on any nested vCenter.", highlight: [jump, vc] }
+  - { title: "After VCF is deployed", text: "NSX, SDDC Manager and VCF Operations APIs.", highlight: [nsx, sddc, ops] }

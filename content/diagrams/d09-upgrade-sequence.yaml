@@ -1,0 +1,46 @@
+id: d09-upgrade-sequence
+title: VCF 9.0 maintenance update order
+description: >
+  The documented order for a maintenance update (for example 9.0.0.0 to 9.0.1.0). First the fleet-level management
+  components: the VCF Operations fleet management appliance, then VCF Operations, then the remaining management
+  components (VCF Operations for logs, VCF Automation, VCF Identity Broker, VCF Operations for networks) in any
+  preferred order. Then the core components of the management domain in the order SDDC Manager, NSX, vCenter,
+  ESX hosts, vSAN. Then each workload domain in the same order. Patches can be applied in any order; the order
+  matters for major, minor and maintenance updates.
+width: 1000
+height: 560
+groups:
+  - { id: g-fleet, x: 20, y: 20, w: 960, h: 140, label: "Phase A: fleet-level management components", kind: ops }
+  - { id: g-mgmt, x: 20, y: 190, w: 960, h: 150, label: "Phase B: management domain core components", kind: mgmt }
+  - { id: g-wld, x: 20, y: 370, w: 960, h: 150, label: "Phase C: each workload domain (same order)", kind: compute }
+nodes:
+  - { id: a1, x: 40, y: 70, w: 200, h: 60, label: "1. Fleet management", sublabel: "appliance", kind: ops, component: vcf-operations-fleet-management, info: "Must be upgraded or patched before any other management component; it is the engine that upgrades the rest." }
+  - { id: a2, x: 280, y: 70, w: 200, h: 60, label: "2. VCF Operations", kind: ops, component: vcf-operations, info: "Upgraded second. Hosts the console you are using, so expect a short UI interruption." }
+  - { id: a3, x: 520, y: 70, w: 440, h: 60, label: "3. Logs, Automation, Identity Broker, Networks", sublabel: "any preferred order", kind: ops, info: "Remaining VCF management components. Check the release notes and interoperability matrix for any version-specific constraint." }
+  - { id: b1, x: 40, y: 240, w: 160, h: 60, label: "4. SDDC Manager", kind: mgmt, component: sddc-manager, info: "Always first among core components: the new SDDC Manager knows how to upgrade the new NSX/vCenter/ESX versions." }
+  - { id: b2, x: 230, y: 240, w: 160, h: 60, label: "5. NSX", kind: nsx, component: nsx-manager, info: "NSX Manager cluster and edges, then host components as part of the ESX phase." }
+  - { id: b3, x: 420, y: 240, w: 160, h: 60, label: "6. vCenter", kind: mgmt, component: vcenter, info: "Upgraded after NSX, before ESX: vCenter must be at least the version of the hosts it manages." }
+  - { id: b4, x: 610, y: 240, w: 160, h: 60, label: "7. ESX hosts", kind: compute, component: esx-host, info: "Remediated by vLCM against the cluster image, cluster by cluster." }
+  - { id: b5, x: 800, y: 240, w: 160, h: 60, label: "8. vSAN", kind: storage, component: vsan, info: "On-disk format and vSAN services last, once every host runs the new version." }
+  - { id: c1, x: 40, y: 420, w: 160, h: 60, label: "SDDC Manager", sublabel: "already done", kind: mgmt, info: "There is one SDDC Manager per instance, so it is already upgraded in phase B." }
+  - { id: c2, x: 230, y: 420, w: 160, h: 60, label: "NSX", kind: nsx, info: "Workload domain NSX (unless shared with another domain that already upgraded it)." }
+  - { id: c3, x: 420, y: 420, w: 160, h: 60, label: "vCenter", kind: mgmt, info: "Workload domain vCenter." }
+  - { id: c4, x: 610, y: 420, w: 160, h: 60, label: "ESX hosts", kind: compute, info: "Workload domain clusters." }
+  - { id: c5, x: 800, y: 420, w: 160, h: 60, label: "vSAN", kind: storage, info: "Workload domain vSAN clusters." }
+edges:
+  - { from: a1, to: a2, kind: dependency }
+  - { from: a2, to: a3, kind: dependency }
+  - { from: a3, to: b1, label: "then instances", kind: dependency }
+  - { from: b1, to: b2, kind: dependency }
+  - { from: b2, to: b3, kind: dependency }
+  - { from: b3, to: b4, kind: dependency }
+  - { from: b4, to: b5, kind: dependency }
+  - { from: b5, to: c2, label: "then WLDs", kind: dependency, dashed: true }
+  - { from: c2, to: c3, kind: dependency }
+  - { from: c3, to: c4, kind: dependency }
+  - { from: c4, to: c5, kind: dependency }
+steps:
+  - { title: "Fleet management first", text: "The tool that upgrades the management components is upgraded before them.", highlight: [a1] }
+  - { title: "VCF Operations, then the rest", text: "Then VCF Operations and the remaining management components.", highlight: [a2, a3] }
+  - { title: "Management domain", text: "SDDC Manager, NSX, vCenter, ESX, vSAN.", highlight: [b1, b2, b3, b4, b5] }
+  - { title: "Workload domains", text: "Repeat NSX, vCenter, ESX, vSAN for each workload domain.", highlight: [c2, c3, c4, c5] }

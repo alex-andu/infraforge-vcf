@@ -1,0 +1,33 @@
+id: d14-sizing-management-domain
+title: Sizing a four-host HA management domain
+description: >
+  Four ESX hosts form the management domain with vSAN. Three NSX Manager nodes are kept on separate hosts by
+  anti-affinity, leaving a fourth host so one host can enter maintenance mode during upgrades while the rule is still
+  satisfied. vCenter, SDDC Manager, VCF Operations and VCF Automation share the remaining capacity, and each future
+  workload domain adds its own vCenter, and possibly a dedicated NSX Manager cluster, to this domain. N+1 capacity is
+  reserved for vSphere HA.
+width: 1000
+height: 560
+groups:
+  - { id: g-md, x: 20, y: 20, w: 960, h: 360, label: "Management domain (vSAN, 4 hosts)", kind: mgmt }
+nodes:
+  - { id: h1, x: 40, y: 60, w: 210, h: 300, label: "esx-01", kind: compute, info: "Runs NSX Manager node 1 plus other appliances." }
+  - { id: h2, x: 275, y: 60, w: 210, h: 300, label: "esx-02", kind: compute, info: "Runs NSX Manager node 2." }
+  - { id: h3, x: 510, y: 60, w: 210, h: 300, label: "esx-03", kind: compute, info: "Runs NSX Manager node 3." }
+  - { id: h4, x: 745, y: 60, w: 210, h: 300, label: "esx-04", kind: compute, info: "Lets one host go into maintenance while three NSX Managers stay on separate hosts. This is why the HA deployment needs four hosts." }
+  - { id: nsx1, x: 60, y: 110, w: 170, h: 46, label: "NSX Manager 1", kind: nsx, component: nsx-manager, info: "Anti-affinity keeps nodes apart." }
+  - { id: nsx2, x: 295, y: 110, w: 170, h: 46, label: "NSX Manager 2", kind: nsx, info: "Anti-affinity keeps nodes apart." }
+  - { id: nsx3, x: 530, y: 110, w: 170, h: 46, label: "NSX Manager 3", kind: nsx, info: "Anti-affinity keeps nodes apart." }
+  - { id: vc, x: 60, y: 180, w: 170, h: 46, label: "vCenter (mgmt)", kind: mgmt, component: vcenter, info: "Management domain vCenter." }
+  - { id: sddc, x: 295, y: 180, w: 170, h: 46, label: "SDDC Manager", kind: mgmt, component: sddc-manager, info: "Instance-level lifecycle and workflows." }
+  - { id: ops, x: 530, y: 180, w: 170, h: 46, label: "VCF Operations", kind: ops, component: vcf-operations, info: "1 node (simple) or 3-node HA cluster; add nodes as the fleet grows." }
+  - { id: auto, x: 765, y: 110, w: 170, h: 46, label: "VCF Automation", kind: ops, component: vcf-automation, info: "Large memory footprint; include in sizing from day one if planned." }
+  - { id: wvc, x: 60, y: 250, w: 405, h: 46, label: "Future: WLD vCenters + NSX Managers", kind: mgmt, info: "Every workload domain adds a vCenter (and possibly 1 or 3 NSX Manager nodes) here." }
+  - { id: res, x: 765, y: 250, w: 170, h: 90, label: "N+1 reserve", sublabel: "HA + maintenance", kind: security, info: "Capacity kept free so HA can restart VMs and hosts can be evacuated for upgrades." }
+  - { id: minimum, x: 40, y: 410, w: 440, h: 120, label: "Minimums (VCF 9)", sublabel: "simple: 3 hosts vSAN / 2 external storage · HA: 4 hosts", kind: external, info: "Minimums, not recommendations. Real size = management stack + workload + reserve + growth." }
+  - { id: limits, x: 520, y: 410, w: 440, h: 120, label: "Scale-out path", sublabel: "host → cluster → workload domain (≤24/instance) → instance", kind: external, info: "Check ConfigMax for limits; plan where the next host, cluster and domain will go." }
+steps:
+  - { title: "Anti-affinity drives 4 hosts", text: "Three NSX Manager nodes on separate hosts plus one spare host for maintenance.", highlight: [nsx1, nsx2, nsx3, h4] }
+  - { title: "Management stack", text: "vCenter, SDDC Manager, VCF Operations and VCF Automation share the remaining capacity.", highlight: [vc, sddc, ops, auto] }
+  - { title: "Growth in the management domain", text: "Workload domain vCenters and NSX Managers land here: size for future domains.", highlight: [wvc] }
+  - { title: "Reserve and minimums", text: "Keep N+1 free; minimum host counts are only a floor.", highlight: [res, minimum, limits] }

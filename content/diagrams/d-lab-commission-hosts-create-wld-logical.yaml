@@ -1,0 +1,37 @@
+id: d-lab-commission-hosts-create-wld-logical
+title: Workload domain lab – logical view
+description: >
+  Three nested hosts are commissioned with storage type NFS and network pool wld01-np01 (vMotion VLAN 22, NFS VLAN 50).
+  VCF Operations creates workload domain wld01: its vCenter (vcenter-wld01) and single-node NSX Manager (nsx-wld01) run
+  in the management domain, while the cluster wld01-cl01 with the NFS datastore wld01-nfs and the VDS runs on the
+  three workload hosts.
+width: 1000
+height: 600
+groups:
+  - { id: g-md, x: 20, y: 20, w: 440, h: 300, label: "Management domain lab-m01", kind: mgmt }
+  - { id: g-wld, x: 500, y: 20, w: 480, h: 560, label: "Workload domain wld01", kind: compute }
+nodes:
+  - { id: ops, x: 40, y: 70, w: 190, h: 60, label: "VCF Operations", sublabel: "Add Workload Domain", kind: ops, component: vcf-operations, info: "Wizard for wld01." }
+  - { id: sddc, x: 250, y: 70, w: 190, h: 60, label: "SDDC Manager", kind: mgmt, component: sddc-manager, info: "Commissioning and domain workflows." }
+  - { id: vcw, x: 40, y: 200, w: 190, h: 60, label: "vcenter-wld01", sublabel: ".50", kind: mgmt, component: vcenter, info: "Workload domain vCenter, running in the management domain." }
+  - { id: nsxw, x: 250, y: 200, w: 190, h: 60, label: "nsx-wld01", sublabel: "1 node, VIP .55", kind: nsx, component: nsx-manager, info: "Standard (single-node) NSX Manager in the management domain." }
+  - { id: pool, x: 40, y: 400, w: 400, h: 64, label: "Network pool wld01-np01", sublabel: "vMotion VLAN 22 + NFS VLAN 50", kind: network, info: "Supplies vMotion and NFS VMkernel IPs." }
+  - { id: cl, x: 530, y: 70, w: 420, h: 60, label: "Cluster wld01-cl01", sublabel: "vLCM image, Default VDS", kind: compute, info: "Created by the wizard." }
+  - { id: h1, x: 530, y: 200, w: 130, h: 60, label: "esx-21", kind: compute, component: esx-host, info: "Commissioned as NFS." }
+  - { id: h2, x: 675, y: 200, w: 130, h: 60, label: "esx-22", kind: compute, info: "Commissioned as NFS." }
+  - { id: h3, x: 820, y: 200, w: 130, h: 60, label: "esx-23", kind: compute, info: "Removed, decommissioned, re-imaged and re-commissioned during the lab." }
+  - { id: ds, x: 530, y: 340, w: 420, h: 60, label: "wld01-nfs (NFS v3, nfs-01:/export/wld01)", kind: storage, info: "Principal storage." }
+  - { id: un, x: 530, y: 470, w: 420, h: 64, label: "Unassigned Hosts (vSphere Client Global Inventory)", kind: mgmt, info: "Where hosts wait after commissioning and after removal." }
+edges:
+  - { from: ops, to: sddc, kind: mgmt }
+  - { from: sddc, to: vcw, label: "deploys", kind: mgmt }
+  - { from: sddc, to: nsxw, label: "deploys", kind: mgmt }
+  - { from: vcw, to: cl, label: "manages", kind: mgmt }
+  - { from: nsxw, to: h2, label: "host prep", kind: control, dashed: true }
+  - { from: pool, to: h1, label: "IPs", kind: dependency, dashed: true }
+  - { from: h1, to: ds, kind: storage }
+  - { from: un, to: h3, label: "commission / add back", kind: mgmt, bidirectional: true }
+steps:
+  - { title: "Commission", text: "Pool first, then commission three NFS hosts.", highlight: [pool, un, sddc] }
+  - { title: "Create the domain", text: "VCF Operations wizard; vCenter and NSX land in the management domain.", highlight: [ops, vcw, nsxw] }
+  - { title: "Cluster", text: "Hosts, NFS datastore and VDS form wld01-cl01.", highlight: [cl, h1, h2, h3, ds] }

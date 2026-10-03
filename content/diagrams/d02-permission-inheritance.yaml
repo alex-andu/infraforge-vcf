@@ -1,0 +1,46 @@
+id: d02-permission-inheritance
+title: How vCenter permissions are inherited and resolved
+description: >
+  A permission is a principal (user or group) plus a role plus an object, with a propagate flag. A global permission sits
+  above the vCenter root and reaches all inventories in the SSO domain plus tags and content libraries, but only when
+  propagate is set. Inside vCenter, the data center has a Read-only permission for group AppOps (propagate). The App-Prod VM
+  folder grants AppOps a VM Power User role (propagate), which overrides the inherited Read-only. On VM db01 an explicit
+  Read-only permission for AppOps overrides the folder's role. User Alice has a direct Read-only permission on the folder, which
+  takes precedence over every group permission she has there. VMs also inherit through the cluster and resource pool chain.
+width: 1000
+height: 620
+groups:
+  - { id: g-sso, x: 20, y: 20, w: 960, h: 580, label: "SSO domain (one per VCF 9 workload domain)", kind: security }
+  - { id: g-vc, x: 40, y: 140, w: 700, h: 440, label: "vCenter inventory", kind: mgmt }
+nodes:
+  - { id: global, x: 60, y: 60, w: 260, h: 56, label: "Global permission", sublabel: "root above all vCenters", kind: security, info: "Applies to every vCenter inventory in the SSO domain and to global objects (tags, content libraries). Without Propagate, the principal gets no inventory access — only some global functions such as creating roles." }
+  - { id: tagscl, x: 360, y: 60, w: 240, h: 56, label: "Tags · Content libraries", kind: mgmt, info: "Global objects. Their permissions come from global permissions, not from inventory permissions." }
+  - { id: root, x: 60, y: 170, w: 220, h: 56, label: "vCenter root", kind: mgmt, info: "Licenses, roles, sessions, statistics intervals and custom fields take their permissions from here only." }
+  - { id: dc, x: 60, y: 260, w: 220, h: 56, label: "Data center", sublabel: "AppOps: Read-only ↓", kind: mgmt, info: "Read-only for group AppOps with propagate: AppOps can see everything below unless overridden lower down." }
+  - { id: folder, x: 60, y: 360, w: 220, h: 56, label: "VM folder App-Prod", sublabel: "AppOps: VM Power User ↓", kind: vm, info: "A permission set directly on a child overrides the propagated parent permission. AppOps members get VM Power User here. User Alice also has a direct Read-only permission here — user beats group, so Alice is read-only." }
+  - { id: web01, x: 60, y: 470, w: 160, h: 56, label: "VM web01", sublabel: "inherits Power User", kind: vm, info: "No permission of its own: inherits VM Power User for AppOps from the folder (and anything propagated through the cluster/resource pool chain)." }
+  - { id: db01, x: 250, y: 470, w: 160, h: 56, label: "VM db01", sublabel: "AppOps: Read-only", kind: vm, info: "Explicit Read-only for AppOps on db01 overrides the folder's VM Power User. Child overrides parent." }
+  - { id: cluster, x: 460, y: 260, w: 240, h: 56, label: "Cluster wld01-cl01", kind: compute, info: "Second inheritance chain for VMs: permissions propagated from the cluster, host or resource pool also apply to the VMs running there." }
+  - { id: rp, x: 460, y: 360, w: 240, h: 56, label: "Resource pool App", kind: compute, info: "Part of the compute chain. A No access permission here would also affect VMs in the pool." }
+  - { id: alice, x: 790, y: 170, w: 170, h: 56, label: "User Alice", sublabel: "member of AppOps, Backup", kind: external, info: "Without a direct user permission she would get the union of AppOps and Backup group permissions. With a direct user permission, it takes precedence over all group permissions on that object." }
+  - { id: groups, x: 790, y: 270, w: 170, h: 56, label: "Groups", sublabel: "AppOps · Backup", kind: external, info: "Assign roles to groups, not users (best practice). Groups come from the SSO domain, AD/LDAP, or VCF SSO via the Identity Broker." }
+  - { id: role, x: 790, y: 370, w: 170, h: 56, label: "Role", sublabel: "set of privileges", kind: security, info: "System roles Administrator, Read-only, No access cannot be edited. Clone a sample role to build a custom one." }
+edges:
+  - { from: global, to: root, label: "propagate", kind: dependency, dashed: true }
+  - { from: global, to: tagscl, kind: dependency, dashed: true }
+  - { from: root, to: dc, label: "inherit", kind: dependency }
+  - { from: dc, to: folder, label: "inherit (overridden)", kind: dependency }
+  - { from: folder, to: web01, label: "inherit", kind: dependency }
+  - { from: folder, to: db01, label: "overridden", kind: dependency, dashed: true }
+  - { from: dc, to: cluster, kind: dependency }
+  - { from: cluster, to: rp, kind: dependency }
+  - { from: rp, to: db01, label: "2nd chain", kind: dependency, dashed: true }
+  - { from: alice, to: groups, label: "member of", kind: control }
+  - { from: groups, to: role, label: "assigned", kind: control }
+steps:
+  - { title: "Permission = principal + role + object", text: "Groups get roles on objects; roles are sets of privileges.", highlight: [groups, role, folder] }
+  - { title: "Propagation", text: "Read-only on the data center propagates down to everything below.", highlight: [root, dc, folder, cluster] }
+  - { title: "Child overrides parent", text: "The folder's VM Power User overrides the data center Read-only; db01's explicit Read-only overrides the folder.", highlight: [folder, web01, db01] }
+  - { title: "User beats group; groups union", text: "Alice's direct Read-only on the folder wins over her groups. Without it she would get the union of AppOps and Backup.", highlight: [alice, groups, folder] }
+  - { title: "Two chains for VMs", text: "VMs inherit from the folder chain and from the cluster/resource pool chain.", highlight: [cluster, rp, db01] }
+  - { title: "Global permissions", text: "Span the SSO domain and global objects such as tags and content libraries — only with Propagate.", highlight: [global, tagscl, root] }

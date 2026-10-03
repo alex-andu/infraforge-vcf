@@ -1,0 +1,165 @@
+id: lab-vsan-storage-policies
+title: vSAN storage policies, component placement and failure behaviour
+level: intermediate
+complexity: 3
+minutes: 150
+version: vcf9
+technologies: [vCenter 9, vSAN ESA, SPBM, esxcli, PowerCLI]
+topics: [vsan-policies, vsan-resilience, vsan-capacity]
+lessons: [vsan-storage-policies, vsan-resilience-fault-domains, vsan-space-efficiency-capacity]
+objectives:
+  - Create RAID-1, RAID-5 and FTT=0 VM storage policies and predict their component layouts on a four-host ESA cluster.
+  - Inspect physical placement, consumed capacity and compliance of VMs that use each policy.
+  - Prove which policies a cluster cannot satisfy (RAID-6 on four hosts) and why.
+  - Change a policy on a running VM and observe the resync.
+  - Reboot a host and observe absent components, the repair delay and the effect on an FTT=0 VM; compare maintenance mode options.
+prerequisites:
+  - "lab-vsan-esa-cluster completed: four nested ESX hosts (esx-lab-01..04) in a vSAN ESA cluster, vSAN health green apart from expected nested-hardware findings."
+  - "A small Linux ISO or template to create three test VMs (or empty VMs; you only need disks that contain data)."
+topology:
+  logical: d-lab-vsan-storage-policies-logical
+requirements:
+  network:
+    - "Same as lab-vsan-esa-cluster (VLAN 30 vSAN, MTU 9000)."
+  vms:
+    - "vm-raid1, vm-raid5, vm-ftt0: 1 vCPU, 1 GB RAM, one 10 GB thin disk each, on vsanDatastore."
+  ip:
+    - "No new addresses needed (test VMs can stay disconnected or use DHCP on the VM network)."
+startingState: |
+  A healthy four-host nested vSAN ESA cluster with one vsanDatastore. The datastore default policy is either the classic
+  vSAN Default Storage Policy or, if auto-policy management is on, the cluster's "Optimal Datastore Default Policy".
+
+  :::note
+  Everything here works the same on physical vSAN; only performance and timings differ. With four hosts, ESA uses
+  RAID-5 **2+1**: 4+1 needs six hosts.
+  :::
+steps:
+  - id: inspect-default
+    title: Find the default policy and what it would do
+    why: >
+      Every VM on vSAN has a policy, even if nobody chose one. Knowing the datastore default (and whether auto-policy
+      management changed it) is the first thing to check on any cluster you inherit.
+    instructions: |
+      1. vsanDatastore → **Configure → General → Default Storage Policy**: note its name.
+      2. Policies and Profiles → VM Storage Policies → open that policy and read its vSAN rules.
+      3. Cluster → **Configure → vSAN → Services**: is auto-policy management enabled?
+      4. On a host, compare with the host-level defaults:
+      ```shell
+      esxcli vsan policy getdefault
+      ```
+    validate: Write down FTT, failure tolerance method, stripes and object space reservation of the default policy.
+    expected: "Classic default: FTT=1, RAID-1, 1 stripe, thin. With auto-policy management on a four-host cluster (host rebuild reserve off), the VCF blog's table says the optimal default is FTT=1 RAID-5 (2+1)."
+
+  - id: create-policies
+    title: Create three policies (and one that cannot work)
+    why: >
+      Writing the policies yourself fixes the host-count rules in memory: RAID-1 needs 2×FTT+1 hosts, ESA RAID-5 2+1
+      needs three, RAID-6 needs six.
+    instructions: |
+      Policies and Profiles → VM Storage Policies → **Create**, enable vSAN rules, then:
+
+      | Name | Site disaster tolerance | Failures to tolerate |
+      |---|---|---|
+      | `pol-raid1-ftt1` | None – standard cluster | 1 failure – RAID-1 (Mirroring) |
+      | `pol-raid5-ftt1` | None – standard cluster | 1 failure – RAID-5 (Erasure Coding) |
+      | `pol-ftt0` | None – standard cluster | No data redundancy |
+      | `pol-raid6-ftt2` | None – standard cluster | 2 failures – RAID-6 (Erasure Coding) |
+
+      Leave storage and advanced rules at their defaults. On the **Storage compatibility** page of each wizard, note whether vsanDatastore is listed as compatible.
+    validate: Compare the compatibility result of `pol-raid6-ftt2` with the others.
+    expected: The first three show vsanDatastore as compatible. `pol-raid6-ftt2` shows it as **incompatible** (RAID-6 needs six hosts/fault domains; the cluster has four).
+
+  - id: deploy-vms
+    title: Deploy three test VMs and write data
+    why: Thin objects only consume what is written; writing data makes the capacity differences visible.
+    instructions: |
+      1. Create `vm-raid1`, `vm-raid5` and `vm-ftt0` on vsanDatastore, each with a 10 GB thin disk, selecting the matching policy for VM home and disk.
+      2. Install a minimal Linux (or boot a live ISO) and write about 4 GB to the disk in each VM, for example:
+      ```shell
+      dd if=/dev/urandom of=/root/fill.bin bs=1M count=4096 oflag=direct
+      ```
+    hint: Random data does not compress, so the comparison shows policy overhead rather than compression savings. Repeat later with /dev/zero to see ESA compression at work.
+    validate: VM → **Configure → Policies** for each VM.
+    expected: All three VMs show their policy and **Compliant**.
+
+  - id: placement
+    title: Inspect component placement
+    why: The policy only becomes real when you see where vSAN put the components.
+    instructions: |
+      For each VM open **Monitor → vSAN → Physical disk placement** (VM level) or Cluster → **Monitor → vSAN → Virtual Objects** → select the VM's disk → View placement details. Record the host of every component.
+    validate: Count components and hosts per object.
+    expected: "`vm-raid1`: two components with data on two hosts plus a witness on a third. `vm-raid5`: three components on three different hosts (2+1). `vm-ftt0`: a single component on one host — write down which one."
+
+  - id: capacity
+    title: Compare consumed capacity
+    why: Capacity questions on the exam are ratios; measuring them once makes 2x / 1.5x / 1x intuitive.
+    instructions: |
+      Cluster → **Monitor → vSAN → Capacity** → usage breakdown, and Virtual Objects for per-object sizes. Optionally in PowerCLI:
+      ```powershell
+      Get-VM vm-raid1, vm-raid5, vm-ftt0 | Get-SpbmEntityConfiguration | Select-Object Entity, StoragePolicy, ComplianceStatus
+      ```
+    validate: Estimate the physical consumption of the 4 GB written in each VM.
+    expected: Roughly 8 GB for RAID-1, 6 GB for RAID-5 2+1 and 4 GB for FTT=0, plus small metadata overheads.
+
+  - id: change-policy
+    title: Change vm-raid1 to RAID-5 and watch the resync
+    why: "Policy changes are online but not free: vSAN builds the new layout beside the old one and copies data."
+    instructions: |
+      1. vm-raid1 → **Configure → Policies → Edit VM Storage Policies** → `pol-raid5-ftt1` for all objects.
+      2. Immediately watch Cluster → **Monitor → vSAN → Resyncing Objects**, and on a host:
+      ```shell
+      esxcli vsan debug resync summary get
+      ```
+    validate: Re-check placement of vm-raid1 when the resync reaches zero.
+    expected: A short resync appears and drains to 0; vm-raid1 ends with three RAID-5 components and stays compliant. Capacity used briefly rises (transient capacity) then falls.
+
+  - id: host-reboot
+    title: Reboot the host that holds vm-ftt0's component
+    why: >
+      This shows absent components, the 60-minute repair delay, and why FTT=0 is dangerous even for "unimportant" VMs.
+    instructions: |
+      1. Identify the host holding vm-ftt0's single component (step placement). Migrate vm-ftt0's *compute* to another host with vMotion so only its storage depends on that host.
+      2. Reboot that host from the vSphere Client **without** entering maintenance mode (this simulates a crash).
+      3. While it is down run on another host:
+      ```shell
+      esxcli vsan debug object health summary get
+      ```
+      4. Check vm-raid5 and vm-ftt0 in the vSphere Client.
+    hint: If your nested host takes long to boot, that is fine — the repair delay is 60 minutes, so vSAN will wait.
+    validate: Note the object states and which VM still works.
+    expected: Objects with a component on the rebooted host show `reduced-availability-with-no-rebuild-delay-timer`; vm-raid5 (and vm-raid1 if not yet changed) keep running. vm-ftt0's disk is inaccessible until the host returns, then it recovers on its own. After the host is back, a small delta resync completes.
+
+  - id: maintenance-modes
+    title: Compare maintenance mode options with the pre-check
+    why: Choosing the right maintenance mode option is a frequent exam scenario and a daily operational decision.
+    instructions: |
+      Cluster → **Monitor → vSAN → Data Migration Pre-check**. Select esx-lab-02 and run the check for **Ensure accessibility**, then **Full data migration**, then **No data migration**.
+    validate: Compare how much data would move and which objects would become noncompliant or inaccessible in each case.
+    expected: Ensure accessibility moves little data and leaves some objects with reduced redundancy; Full data migration moves every component off the host (possible here because three remaining hosts still satisfy RAID-1 and RAID-5 2+1, as long as they have free capacity); No data migration moves nothing and flags the FTT=0 object if it lives on that host.
+
+troubleshooting:
+  - symptom: A policy shows vsanDatastore as incompatible.
+    fix: The cluster cannot satisfy the rule (host or fault-domain count, or a feature not enabled). Check the minimum hosts for the RAID level and FTT you chose.
+  - symptom: VMs show "Out of date" after editing a policy.
+    fix: Reapply the policy to the VMs (VM Storage Policies → select policy → Reapply), in small batches to limit resync.
+  - symptom: Resync never finishes.
+    fix: Check capacity (Monitor → vSAN → Capacity), Skyline Health network findings and `esxcli vsan cluster get` member counts on all hosts.
+  - symptom: Placement view shows two components of the same object on one host.
+    fix: That should never happen for components of different replicas; re-check you are reading different objects (VM home vs disk) and that all four hosts are vSAN members.
+challenge: |
+  Create three fault domains: `fd-a` (esx-lab-01 + esx-lab-02), `fd-b` (esx-lab-03), `fd-c` (esx-lab-04). Before
+  applying, predict: what happens to RAID-1 and RAID-5 objects, can either be rebuilt if `fd-a` fails, and what does the
+  "+1 fault domain" recommendation say about this design? Apply it, check compliance and resync, and explain the
+  results. Then remove the fault domains.
+cleanup: |
+  Delete vm-raid1, vm-raid5 and vm-ftt0, delete the four test policies, remove any fault domains you created, and
+  confirm `esxcli vsan debug object health summary get` shows only healthy objects.
+sources:
+  - title: "vSAN 9.0 – What are vSAN Policies"
+    url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/vsan-deployment-administration-and-monitoring/administering-vmware-vsan/using-vsan-policies/about-vsan-policies.html
+  - title: "vSAN 9.0 – vSAN Terms and Definitions"
+    url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/vsan-deployment-administration-and-monitoring/vsan-planning-and-deployment/what-is-vsan/vsan-concepts/virtual-san-terms-and-definitions.html
+  - title: "VCF blog – Auto-Policy Management Capabilities with the ESA in vSAN 8 U1"
+    url: https://blogs.vmware.com/cloud-foundation/2023/03/20/auto-policy-management-capabilities-with-the-esa-in-vsan-8-u1/
+  - title: "VCF blog – Using Fault Domains in vSAN ESA"
+    url: https://blogs.vmware.com/cloud-foundation/2023/06/08/using-fault-domains-in-vsan-esa/

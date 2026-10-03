@@ -1,0 +1,158 @@
+id: lab-vcf-planning-workbook
+title: Plan a VCF 9 management domain with the Planning and Preparation Workbook
+level: intermediate
+complexity: 3
+minutes: 180
+version: vcf9
+technologies: [VCF Planning and Preparation Workbook, Proxmox VE, BIND9, chrony, Excel or LibreOffice Calc]
+topics: [deployment-planning, vcf-installer, dns, ntp, deployment-models, design-sizing]
+lessons: [deployment-planning-prereqs, vcf-installer-workflow, management-domain]
+objectives:
+  - Fill the Prerequisite Checklist of the VCF 9.0 Planning and Preparation Workbook for a nested lab.
+  - Make and justify the scope decisions (new fleet, simple model, principal storage, switch profile, deferred VCF Automation).
+  - Build a RAM, CPU and disk budget for the learner's Proxmox server and decide what fits.
+  - Allocate FQDNs, IPs, VLANs and IP ranges, and create every A and PTR record.
+  - Produce a one-page plan that the deployment lab will use unchanged.
+prerequisites:
+  - "lab-network-readiness completed: VLANs 10/20/30/40 trunked to Proxmox with jumbo frames, infra-01 (10.10.10.2) serving DNS for lab.internal and NTP."
+  - "Lesson: Deployment Planning and Prerequisites."
+  - "A Broadcom account (only needed later to download binaries)."
+topology:
+  network: d-lab-vcf-planning-workbook-network
+  physical: d-lab-vcf-planning-workbook-physical
+requirements:
+  network:
+    - "VLAN 10 Management 10.10.10.0/24, gateway 10.10.10.1 (from lab-network-readiness)"
+    - "VLAN 20 vMotion 10.10.20.0/24, VLAN 30 vSAN 10.10.30.0/24, VLAN 40 Host TEP 10.10.40.0/24 (MTU 9000)"
+    - "VLAN 50 NFS 10.10.50.0/24 (new in this lab, MTU 9000) for workload domain NFS storage"
+  vms:
+    - "infra-01 (DNS + NTP) already running"
+    - "No new VMs are created in this lab; it produces the plan and DNS records"
+  ip:
+    - "Management appliances on 10.10.10.0/24 using the reservations from lab-network-readiness (.4 installer, .20 vCenter, .21 NSX node, .25 NSX VIP, .30 SDDC Manager, .40 VCF Operations)"
+    - "Management hosts esx-01..esx-03 = 10.10.10.11-13; workload domain hosts esx-21..esx-23 = 10.10.10.121-123"
+startingState: |
+  You have a VLAN-aware Proxmox bridge, a working DNS/NTP server (infra-01) and two test nested ESX hosts from the
+  network-readiness lab. You have not deployed any VCF component. The Proxmox server has 2 x 28 cores, 256 GB RAM,
+  1 x 1 TB NVMe, 2 x 256 GB SSD and 4 x 2 TB HDD.
+steps:
+  - id: download-workbook
+    title: Download the workbook and read the Prerequisite Checklist
+    why: The workbook is Broadcom's official list of inputs and prerequisites for a VCF 9.0 fleet; working from it avoids forgetting an input the installer will ask for.
+    instructions: |
+      1. Download `vcf-9.0-planning-and-preparation-workbook.xlsx` from the TechDocs *Planning and Preparation* page.
+      2. Open the prerequisite checklist tab and read every row. Mark each as *Done*, *Lab N/A* or *To do*.
+      3. Note which rows are about the physical network, DNS/NTP, hosts, and licensing/binaries.
+    hint: "The workbook is large. You only need the tabs for the management domain of a new fleet, plus workload domain and Supervisor later."
+    validate: Every checklist row has a status and a one-line note.
+    expected: A short list of *To do* items, typically DNS records for appliances, host preparation and depot access.
+  - id: decide-scope
+    title: Make the scope decisions
+    why: Model, storage and switch profile cannot be changed after deployment without a rebuild; deciding them on paper is cheap.
+    instructions: |
+      Record and justify each decision:
+
+      | Decision | Lab choice | Why |
+      |---|---|---|
+      | Deployment type | A new VCF fleet | First instance |
+      | Model | Simple | 7 appliances instead of 13 |
+      | VCF Automation | Connect later | Saves about 96 GB RAM (William Lam's minimal-lab numbers) |
+      | Principal storage (mgmt) | NFS v3 from an NFS VM on the NVMe | No nested vSAN overhead or vSAN ESA HCL checks |
+      | Switch profile | Default (one VDS) | Nested hosts have 2 vNICs |
+      | Mgmt hosts | 3 (TechDocs minimum for the default cluster, simple) | RAM budget |
+
+      Write one sentence on what you lose: no HA for NSX/VCF Operations, no vSAN in the management domain, VCF
+      Automation not available until deployed later.
+    validate: Your decision table names the model, storage type, switch profile and host count, each with a reason.
+    expected: Simple model, NFS v3, Default profile, 3 hosts, VCF Automation deferred.
+  - id: resource-budget
+    title: Build the RAM/CPU/disk budget
+    why: The lab only works if the nested hosts can hold every appliance, including the vCenter and NSX of the future workload domain, which also run in the management domain.
+    instructions: |
+      Use the appliance sizes William Lam measured for a minimal VCF 9.0 lab (vCPU / RAM):
+      vCenter 4/21 GB, NSX Manager 6/24 GB, SDDC Manager 4/16 GB, VCF Operations 4/16 GB, fleet management 4/12 GB,
+      collector 4/16 GB, VCF Automation 24/96 GB (deferred).
+
+      | Item | RAM |
+      |---|---|
+      | Management appliances (without VCF Automation) | 105 GB |
+      | Workload domain vCenter + single-node NSX (run in mgmt domain) | about 45 GB |
+      | Management hosts: 3 x 56 GB nested ESX | 168 GB provisioned |
+      | Workload domain hosts: 3 x 20 GB nested ESX | 60 GB provisioned |
+      | infra-01 + nfs-01 + Proxmox itself | about 12 GB |
+
+      Compare the total with 256 GB. Note that nested ESX also needs memory for itself, so expect to rely on Proxmox
+      KSM and to keep workloads tiny. Disk: put the NFS export on the 1 TB NVMe (appliances are thin-provisioned;
+      Lam measured about 330 GB *used* for a full minimal deployment including VCF Automation). Keep ISOs, the offline
+      depot and backups on the HDDs.
+    hint: "The deployment is temporarily bigger: the VCF Installer itself (deployed on a temporary utility host) needs RAM until the deployment finishes."
+    validate: Your budget sheet shows provisioned vs physical RAM and identifies which VMs to shut down if memory is short.
+    expected: About 240 GB provisioned against 256 GB physical — feasible only with VCF Automation deferred, single-node NSX and small workload hosts. Supervisor work later will need you to stop other VMs.
+  - id: allocate-names
+    title: Allocate FQDNs, IPs and ranges
+    why: Every FQDN needs forward and reverse DNS before validation; IP ranges must hold at least one address per host.
+    instructions: |
+      Fill the workbook (or your own sheet) with:
+
+      | FQDN | IP | Role |
+      |---|---|---|
+      | esx-01/02/03.lab.internal | 10.10.10.11-13 | management hosts |
+      | vcf-installer.lab.internal | 10.10.10.4 | VCF Installer (temporary) |
+      | vcenter-01.lab.internal | 10.10.10.20 | mgmt vCenter |
+      | nsx-01a.lab.internal / nsx-01.lab.internal | 10.10.10.21 / .25 | NSX node / VIP |
+      | sddc-manager.lab.internal | 10.10.10.30 | SDDC Manager |
+      | vcf-ops-01.lab.internal | 10.10.10.40 | VCF Operations |
+      | vcf-fleet-01.lab.internal | 10.10.10.41 | fleet management appliance |
+      | vcf-opscol-01.lab.internal | 10.10.10.42 | collector |
+      | nfs-01.lab.internal | 10.10.10.6 (+10.10.50.6) | NFS server |
+      | esx-21/22/23.lab.internal | 10.10.10.121-123 | workload domain hosts |
+      | vcenter-wld01 / nsx-wld01a / nsx-wld01 | 10.10.10.50 / .51 / .55 | workload domain vCenter, NSX node, VIP |
+
+      Ranges: vMotion 10.10.20.11-10.10.20.20, vSAN 10.10.30.11-10.10.30.20 (unused with NFS but the wizard and pool
+      may still need a range — keep it ready), TEP static pool 10.10.40.11-10.10.40.40.
+    validate: No IP is used twice; every range has more addresses than hosts that will use it; no gateway inside a range.
+    expected: A complete IP/FQDN table.
+  - id: create-dns
+    title: Create A and PTR records on infra-01 and test them
+    why: Missing or wrong PTR records are the most common VCF validation failure.
+    instructions: |
+      Add an A record in `lab.internal` and a PTR record in `10.10.10.in-addr.arpa` for every row of your table
+      (and a `50.10.10.in-addr.arpa` zone for nfs-01's second address if you want reverse lookup there too).
+      Increase the zone serials and reload BIND (`rndc reload`).
+    validate: |
+      ```shell
+      for h in esx-01 esx-02 esx-03 vcf-installer vcenter-01 nsx-01a nsx-01 sddc-manager vcf-ops-01 vcf-fleet-01 vcf-opscol-01; do
+        printf "%s -> %s\n" "$h" "$(dig +short $h.lab.internal @10.10.10.2)"; done
+      dig +short -x 10.10.10.30 @10.10.10.2
+      ```
+    expected: Every name resolves to its IP and every IP resolves back to the same FQDN (lower case, full domain).
+  - id: check-ntp-and-depot
+    title: Confirm NTP and plan binary access
+    why: Time skew breaks certificates and tokens; the installer ships without binaries.
+    instructions: |
+      1. On infra-01 run `chronyc tracking` and confirm it is synchronised.
+      2. Decide: online depot (the installer will need internet access via your gateway and a Broadcom download token)
+         or offline depot (a web server on an HDD-backed VM filled by the VCF Download Tool).
+      3. Write the choice and the token/activation-code handling in your plan.
+    validate: "`chronyc tracking` shows a leap status of Normal; your plan states the depot type."
+    expected: NTP healthy; depot method chosen.
+troubleshooting:
+  - symptom: "dig -x returns nothing for a new IP"
+    fix: "The reverse zone file was not updated or its serial not increased; fix the PTR, bump the serial and run `rndc reload`."
+  - symptom: "The RAM budget exceeds 256 GB"
+    fix: "Reduce the management hosts to the documented minimum, keep VCF Automation deferred, use a single-node NSX for the workload domain, shrink workload hosts, or plan to power off the workload domain while working on the management domain."
+  - symptom: "Unsure whether a host count is enough"
+    fix: "TechDocs Storage Models: management default cluster 3 hosts (simple) or 4 (HA). The installer validates the count; check the workbook for your exact release."
+challenge: |
+  Re-plan the same lab for the High Availability model with vSAN ESA principal storage and four management hosts.
+  Show the new appliance count (13), the RAM total and explain why it does not fit on a single 256 GB server
+  without dropping the workload domain.
+cleanup: |
+  Nothing to delete. Keep the workbook and DNS records — the deployment lab uses them unchanged.
+sources:
+  - title: "VCF 9.0 – Planning and Preparation"
+    url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/planning-and-preparation.html
+  - title: "William Lam – Minimal resources for deploying VCF 9.0 in a lab"
+    url: https://williamlam.com/2025/06/minimal-resources-for-deploying-vcf-9-0-in-a-lab.html
+  - title: "VCF 9.0 – Storage Models"
+    url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/design/vmware-cloud-foundation-concepts/storage-models.html

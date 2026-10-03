@@ -1,0 +1,43 @@
+id: d03-esa-vs-osa
+title: vSAN ESA storage pools vs OSA disk groups
+description: >
+  Left: a vSAN OSA host with two disk groups; each disk group has one flash cache device (not counted as capacity)
+  and capacity devices. A cache device failure takes the whole disk group offline; with deduplication enabled, any
+  device failure does. Right: a vSAN ESA host with one storage pool of NVMe TLC devices; every device provides both
+  performance and capacity, and a device failure affects only that device. Both hosts belong to a vSAN cluster that
+  presents one shared vSAN datastore over the vSAN VMkernel network.
+width: 1000
+height: 600
+groups:
+  - { id: g-osa, x: 20, y: 20, w: 460, h: 440, label: "vSAN OSA host (two-tier)", kind: storage }
+  - { id: g-dg1, x: 40, y: 60, w: 200, h: 380, label: "Disk group 1", kind: zone }
+  - { id: g-dg2, x: 260, y: 60, w: 200, h: 380, label: "Disk group 2", kind: zone }
+  - { id: g-esa, x: 520, y: 20, w: 460, h: 440, label: "vSAN ESA host (single tier)", kind: storage }
+  - { id: g-pool, x: 540, y: 60, w: 420, h: 380, label: "Storage pool", kind: zone }
+nodes:
+  - { id: cache1, x: 60, y: 100, w: 160, h: 56, label: "Cache SSD", sublabel: "write buffer", kind: storage, info: "One flash cache device per disk group. In all-flash OSA it is a write buffer; in hybrid it is read cache + write buffer. It does not count toward datastore capacity." }
+  - { id: cap1a, x: 60, y: 220, w: 160, h: 56, label: "Capacity SSD", kind: storage, info: "Capacity devices (1 to 7 per disk group). Data is destaged here from the cache device." }
+  - { id: cap1b, x: 60, y: 320, w: 160, h: 56, label: "Capacity SSD", kind: storage, info: "Dedup and compression in OSA happen during destage, within the disk group." }
+  - { id: cache2, x: 280, y: 100, w: 160, h: 56, label: "Cache SSD", sublabel: "write buffer", kind: storage, info: "Up to 5 disk groups per host. If this cache device fails, disk group 2 goes offline entirely." }
+  - { id: cap2a, x: 280, y: 220, w: 160, h: 56, label: "Capacity HDD/SSD", kind: storage, info: "Hybrid OSA uses magnetic disks for capacity; erasure coding and dedup need all-flash." }
+  - { id: cap2b, x: 280, y: 320, w: 160, h: 56, label: "Capacity HDD/SSD", kind: storage, info: "Capacity device of disk group 2." }
+  - { id: n1, x: 560, y: 100, w: 180, h: 56, label: "NVMe TLC", sublabel: "perf + capacity", kind: storage, info: "ESA requires NVMe TLC devices; each storage pool needs at least one. Every device contributes capacity." }
+  - { id: n2, x: 760, y: 100, w: 180, h: 56, label: "NVMe TLC", sublabel: "perf + capacity", kind: storage, info: "No cache tier: all devices serve reads and writes." }
+  - { id: n3, x: 560, y: 220, w: 180, h: 56, label: "NVMe TLC", kind: storage, info: "A device failure affects only components on this device." }
+  - { id: n4, x: 760, y: 220, w: 180, h: 56, label: "NVMe TLC", kind: storage, info: "ESA compresses (by default) and encrypts once at the top of the stack before data crosses the network." }
+  - { id: lfs, x: 560, y: 330, w: 380, h: 70, label: "ESA log-structured layer", sublabel: "full-stripe writes, native snapshots", kind: storage, info: "ESA writes efficiently in full stripes, which is why RAID-5/6 perform close to RAID-1, and snapshots are native (no delta objects)." }
+  - { id: vsannet, x: 300, y: 500, w: 400, h: 70, label: "vSAN network + one vSAN datastore", sublabel: "≤1 ms RTT single site", kind: network, component: vsan, info: "All hosts in the cluster exchange data over vSAN VMkernel adapters. OSA all-flash: 10 GbE; ESA: 10 GbE minimum (limited profiles), 25 GbE+ recommended." }
+edges:
+  - { from: cache1, to: cap1a, label: "destage", kind: storage }
+  - { from: cap1a, to: cap1b, kind: storage, dashed: true }
+  - { from: cache2, to: cap2a, label: "destage", kind: storage }
+  - { from: cap2a, to: cap2b, kind: storage, dashed: true }
+  - { from: g-osa, to: vsannet, kind: storage }
+  - { from: g-esa, to: vsannet, kind: storage }
+  - { from: n3, to: lfs, kind: storage, dashed: true }
+steps:
+  - { title: "OSA: two tiers", text: "Each disk group = 1 cache device + 1-7 capacity devices; cache capacity is not part of the datastore.", highlight: [cache1, cap1a, cap1b] }
+  - { title: "OSA blast radius", text: "Lose the cache device and the whole disk group goes offline.", highlight: [cache2, cap2a, cap2b] }
+  - { title: "ESA: one storage pool", text: "Every NVMe device provides capacity and performance. No disk groups.", highlight: [n1, n2, n3, n4] }
+  - { title: "ESA data path", text: "Log-structured, full-stripe writes make erasure coding fast and snapshots native.", highlight: [lfs] }
+  - { title: "One datastore", text: "Either way, the cluster presents one vSAN datastore over the vSAN network.", highlight: [vsannet] }

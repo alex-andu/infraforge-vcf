@@ -1,0 +1,32 @@
+id: d12-licensing-flow
+title: VCF 9 licensing flow
+description: >
+  In VCF 9 you register a VCF Operations instance with the VCF Business Services console (vcf.broadcom.com), in
+  connected mode (activation code, automatic usage reporting) or disconnected mode (manual JWS registration and
+  usage files). The console allocates capacity (cores for VCF, TiB for vSAN add-on) as a license file that VCF
+  Operations imports. You assign the primary license to vCenter instances in VCF Operations (License Management >
+  Licenses); ESX hosts, NSX and other components behind a licensed vCenter are licensed automatically. Usage must be
+  reported at least every 180 days.
+width: 1000
+height: 520
+nodes:
+  - { id: portal, x: 40, y: 40, w: 220, h: 64, label: "VCF Business Services", sublabel: "vcf.broadcom.com", kind: external, info: "Shows subscriptions as a default license (a pool per product and Site ID). You split allocations between VCF Operations instances here." }
+  - { id: ops, x: 400, y: 40, w: 220, h: 64, label: "VCF Operations", sublabel: "License Management", kind: ops, component: vcf-operations, info: "Registered asset. Holds the license file, assigns licenses to vCenter instances and produces usage reports. Up to 90 days of evaluation before registration." }
+  - { id: vc1, x: 300, y: 260, w: 180, h: 60, label: "vCenter (mgmt)", sublabel: "primary license", kind: mgmt, component: vcenter, info: "Licenses are assigned only to vCenter instances." }
+  - { id: vc2, x: 560, y: 260, w: 180, h: 60, label: "vCenter (WLD)", sublabel: "primary + add-on", kind: mgmt, component: vcenter, info: "Add-on licenses (for example vSAN TiB capacity) are assigned after the primary license." }
+  - { id: esx, x: 300, y: 400, w: 180, h: 60, label: "ESX hosts", sublabel: "auto-licensed", kind: compute, component: esx-host, info: "Licensed through their vCenter. If capacity is exceeded, hosts run in evaluation for 90 days." }
+  - { id: nsx, x: 560, y: 400, w: 180, h: 60, label: "NSX, Automation...", sublabel: "auto-licensed", kind: nsx, info: "No separate keys for NSX in VCF 9: licensed via the vCenter they are attached to." }
+  - { id: usage, x: 780, y: 40, w: 190, h: 64, label: "Usage report", sublabel: "at least every 180 days", kind: security, info: "Connected mode sends it automatically. Disconnected mode: download usage file, upload to the console, import the updated license." }
+edges:
+  - { from: portal, to: ops, label: "license file", kind: control, bidirectional: true }
+  - { from: ops, to: vc1, label: "assign", kind: mgmt }
+  - { from: ops, to: vc2, label: "assign", kind: mgmt }
+  - { from: vc1, to: esx, kind: dependency }
+  - { from: vc2, to: nsx, kind: dependency }
+  - { from: ops, to: usage, kind: dependency }
+  - { from: usage, to: portal, kind: dependency, dashed: true }
+steps:
+  - { title: "Register", text: "Register VCF Operations with the VCF Business Services console (connected or disconnected).", highlight: [portal, ops] }
+  - { title: "Assign to vCenter", text: "Assign primary (then add-on) licenses to vCenter instances.", highlight: [ops, vc1, vc2] }
+  - { title: "Inherit", text: "Hosts and other components behind a licensed vCenter are licensed automatically.", highlight: [esx, nsx] }
+  - { title: "Report", text: "Report usage at least every 180 days and update the license.", highlight: [usage, portal] }

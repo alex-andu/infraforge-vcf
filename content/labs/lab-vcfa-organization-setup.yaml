@@ -1,0 +1,136 @@
+id: lab-vcfa-organization-setup
+title: "VCF Automation: Region, Provider Networking, Organization, Project and Policies"
+level: advanced
+complexity: 5
+minutes: 240
+version: vcf9
+technologies: [VCF Automation 9.0, vSphere Supervisor, NSX 9.0, VCF Operations fleet management]
+topics: [vcf-automation, vcfa-tenancy, vcfa-org-admin, supervisor]
+lessons: [vcf-automation-architecture, vcf-automation-tenancy-regions, vcf-automation-org-admin]
+objectives:
+  - Plan and (if needed) deploy VCF Automation in the Simple model.
+  - As provider, create a region from a Supervisor, an IP space, a provider gateway and sync the edge cluster.
+  - Create an All Apps organization with region quota, regional networking and a first user.
+  - Share a provider content library read-only.
+  - As org admin, create a project, namespace class, namespace and VPC, and deploy a test VM.
+  - Create lease, approval and day-2 action policies and an event subscription; verify their effect.
+prerequisites:
+  - "VCF management domain deployed; VCF Automation deployed by the installer or available to deploy from fleet management."
+  - "A Supervisor enabled on a cluster with NSX VPC networking (lab-enable-supervisor) and an NSX edge cluster with a Tier-0 (lab-nsx-tier0-bgp-edge)."
+  - "Lessons vcf-automation-architecture, vcf-automation-tenancy-regions and vcf-automation-org-admin."
+  - "Honest note: this is the most resource-hungry lab of the course. On one Proxmox host with 256 GB RAM you may need a consolidated design (Supervisor on the management cluster) and must power off optional appliances (for example VCF Operations for logs) while you work."
+topology:
+  logical: d-lab-vcfa-organization-setup-logical
+requirements:
+  network:
+    - "Management VLAN for VCF Automation (FQDN + 2 node IPs for the Simple model)."
+    - "Tier-0 uplink VLAN and a lab router that can route the IP space block (static route if no BGP)."
+    - "A non-overlapping internal cluster CIDR for VCF Automation: one of 198.18.0.0/15, 240.0.0.0/15, 250.0.0.0/15."
+  vms:
+    - "VCF Automation: 1 node (Simple)."
+    - "Supervisor control plane VMs and NSX edge nodes (from earlier labs)."
+    - "One small test VM deployed through VCF Automation."
+  ip:
+    - "VCF Automation FQDN with A/PTR, plus 2 node IPs (ipPool)."
+    - "IP space block, e.g. 172.31.0.0/24, routed to the Tier-0 uplink."
+startingState: |
+  VCF management domain running; Supervisor enabled with NSX VPC networking; Tier-0 and edge cluster working. VCF
+  Automation has no regions or organizations.
+
+  :::warning
+  If your host cannot run a Supervisor next to the management domain, do steps 1-2 for real and the rest as a guided
+  paper exercise using the lesson diagrams. The provider and tenant concepts are what the exam tests.
+  :::
+steps:
+  - id: plan-deploy
+    title: Plan and confirm the VCF Automation deployment
+    why: Wrong IPs, DNS or internal CIDR are the usual deployment failures.
+    instructions: |
+      1. Confirm the FQDN, 2 node IPs and the internal cluster CIDR (not used anywhere in your lab).
+      2. If VCF Automation is not deployed, deploy it from VCF Operations fleet management in the **Simple** model.
+      3. Note the node VMs in vCenter (name prefix) and their size.
+    validate: Browse to `https://<vcfa-fqdn>/` and log in to organization **system** as admin.
+    expected: Provider Management portal opens.
+  - id: region
+    title: Create a region
+    why: A region is the provider's capacity unit and the base for every All Apps organization.
+    instructions: |
+      1. In the provider portal open Regions and create `region-lab`.
+      2. Select your Supervisor and the storage class(es) to offer.
+      3. Note that the name and NSX Manager cannot be changed later.
+    hint: If the Supervisor is not offered, check that it is healthy and that all Supervisors you select share one NSX instance.
+    validate: The region shows the Supervisor and storage class.
+    expected: Region created and healthy.
+  - id: provider-networking
+    title: IP space, provider gateway and edge cluster sync
+    why: Organizations reach the outside world only through the provider's networking.
+    instructions: |
+      1. Networking > IP Spaces: create `lab-external` with the block 172.31.0.0/24 (or your plan).
+      2. Networking > Provider Gateways: create `pgw-lab` on your Tier-0, associate `lab-external`.
+      3. Networking > Edge Clusters: **Sync** and confirm your edge cluster appears.
+      4. On the lab router add a static route for 172.31.0.0/24 to the Tier-0 uplink IP (unless BGP advertises it).
+    validate: From the NSX API list Tier-0s (`GET /policy/api/v1/infra/tier-0s`) and compare with the provider gateway.
+    expected: Provider gateway active on the correct Tier-0; edge cluster synced; router has the route.
+  - id: organization
+    title: Create an All Apps organization
+    why: The organization is the tenant boundary (exam item "configure multi-organizational tenancy").
+    instructions: |
+      1. Organizations: create `org-dev` as an **organization for All Apps**; define the first user `devadmin`.
+      2. Set the **region quota** for `region-lab` (CPU, memory, storage, VM classes such as best-effort-small/medium).
+      3. Configure **regional networking**: name `org-dev-net`, region `region-lab`, provider gateway `pgw-lab`, edge cluster.
+      4. Create a provider content library `golden-images`, add a small OVA/ISO, and share it with `org-dev`.
+    validate: In a private browser window log in to the organization portal as `devadmin`.
+    expected: Org portal opens; the provider library is visible but read-only.
+  - id: org-admin
+    title: Project, namespace class, namespace and VPC
+    why: Exam items "complete tasks as an organizational administrator" and "configure organizational networks".
+    instructions: |
+      1. As `devadmin` create a local user or import a group, and project `payments` with that user as member.
+      2. Create namespace class `small-app` (limits, VM class best-effort-small, storage class, content library).
+      3. Create namespace `payments-dev` from the class in project `payments`.
+      4. Create a VPC with a private subnet and a public subnet.
+      5. Try to create a namespace bigger than the quota and read the error.
+    validate: Namespace visible in the org portal and as a Supervisor namespace in vCenter.
+    expected: Namespace created within quota; oversize request refused.
+  - id: governance
+    title: Policies and an event subscription
+    why: Exam items "governance policies" and "extensibility".
+    instructions: |
+      1. Create a **lease policy** of 1 day for project `payments` (shorten for testing if allowed).
+      2. Create an **approval policy** requiring `devadmin` approval for requests in `payments`.
+      3. Create a **day 2 action policy** that removes the delete action for project members.
+      4. If VCF Operations Orchestrator is available, create a simple workflow that logs the deployment name, and an
+         **event subscription** (non-blocking) on a post-provisioning event topic in project `payments`.
+      5. As the project user, deploy a small VM into `payments-dev` from the catalog/content.
+      6. Approve it from the **Inbox** as `devadmin`; check the workflow run; check the lease and that delete is not offered.
+    validate: Use Policy Assignments and Policy Enforcement to see which policies applied.
+    expected: Request waits for approval, deploys, workflow runs, lease shown, delete blocked for the user.
+troubleshooting:
+  - symptom: Supervisor not selectable for the region.
+    fix: Supervisor unhealthy or on a different NSX instance than others selected; fix Supervisor health first.
+  - symptom: Region creation fails with storage class errors.
+    fix: Storage class names/configurations must be identical across all Supervisors in the region.
+  - symptom: VM on the public subnet unreachable from the lab.
+    fix: Add the route for the IP space block on the lab router (or advertise it via BGP from the Tier-0).
+  - symptom: Org admin cannot create a namespace.
+    fix: Region quota missing or too small; raise it as provider.
+  - symptom: Request stays pending.
+    fix: Approval policy applies; approve from the Inbox or check the approver group membership.
+challenge: |
+  Add a second organization `org-qa` that shares the region but must never see `org-dev` content or deployments, gets
+  half the quota, and uses the same provider gateway. Explain which objects are shared (region, provider gateway,
+  provider library) and which are isolated (projects, namespaces, VPCs, org libraries, policies). Then deactivate
+  `org-qa` and observe the effect on a logged-in user.
+cleanup: |
+  As org admin delete the test deployment, namespace and project. As provider delete or deactivate the test
+  organizations, provider gateway and IP space if you will not reuse them. Remove the lab router static route if added
+  only for this lab.
+sources:
+  - title: "VCF 9.0 - Provider Management"
+    url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/provider-management.html
+  - title: "VCF 9.0 - Organization Management"
+    url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/organization-management.html
+  - title: "William Lam - VCF 9.0 lab: configuring VCF Automation"
+    url: https://williamlam.com/2025/08/ms-a2-vcf-9-0-lab-configuring-vcf-automation.html
+  - title: "SDDC Manager API 9.0 - VcfAutomationSpec"
+    url: https://developer.broadcom.com/xapis/sddc-manager-api/9.0/data-structures/VcfAutomationSpec/

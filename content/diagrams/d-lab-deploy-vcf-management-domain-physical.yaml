@@ -1,0 +1,34 @@
+id: d-lab-deploy-vcf-management-domain-physical
+title: Deployment lab – nested hosts on Proxmox
+description: >
+  Three nested ESX management hosts and a temporary utility host run on the Proxmox server, each with vmxnet3 NICs on
+  the VLAN-aware trunk bridge. The VCF Installer runs on the utility host's local datastore. nfs-01 exports NFS v3 from
+  the NVMe as principal storage; infra-01 provides DNS and NTP. The router provides gateways and internet access for
+  the online depot.
+width: 1000
+height: 600
+groups:
+  - { id: g-px, x: 20, y: 120, w: 960, h: 460, label: "Proxmox VE (vmbr1 VLAN-aware trunk, MTU 9000)", kind: compute }
+nodes:
+  - { id: rtr, x: 380, y: 20, w: 240, h: 64, label: "Router + internet", sublabel: "gateways, depot access", kind: external, component: physical-network, info: "Gateways for VLANs 10-60; outbound HTTPS for the online depot." }
+  - { id: e1, x: 50, y: 180, w: 200, h: 70, label: "esx-01", sublabel: "2 x vmxnet3", kind: mgmt, component: esx-host, info: "Nested ESX 9; CPU type host; 56 GB." }
+  - { id: e2, x: 280, y: 180, w: 200, h: 70, label: "esx-02", sublabel: "2 x vmxnet3", kind: mgmt, info: "Nested ESX 9." }
+  - { id: e3, x: 510, y: 180, w: 200, h: 70, label: "esx-03", sublabel: "2 x vmxnet3", kind: mgmt, info: "Nested ESX 9." }
+  - { id: eu, x: 740, y: 180, w: 210, h: 70, label: "esx-util", sublabel: "local VMFS", kind: external, info: "Temporary host for the installer so it stays an installer." }
+  - { id: inst, x: 740, y: 320, w: 210, h: 64, label: "VCF Installer", sublabel: "10.10.10.4", kind: mgmt, component: vcf-installer, info: "admin@local; downloads binaries and deploys the management domain." }
+  - { id: nfs, x: 280, y: 330, w: 220, h: 64, label: "nfs-01", sublabel: "/export/mgmt01 on NVMe", kind: storage, info: "NFS v3 principal storage of the management domain." }
+  - { id: infra, x: 50, y: 330, w: 200, h: 64, label: "infra-01", sublabel: "DNS + NTP", kind: ops, component: dns-service, info: "lab.internal zones and chrony." }
+  - { id: br, x: 50, y: 470, w: 900, h: 64, label: "vmbr1 trunk: VLAN 10 / 20 / 30 / 40 / 50", kind: network, info: "No VLAN tag on the nested ESX vNICs - the nested VDS tags the VLANs. Firewall off on the vNICs." }
+edges:
+  - { from: rtr, to: br, label: "trunk", kind: north-south }
+  - { from: e1, to: br, kind: data }
+  - { from: e2, to: br, kind: data }
+  - { from: e3, to: br, kind: data }
+  - { from: eu, to: inst, label: "runs", kind: mgmt }
+  - { from: inst, to: e1, label: "deploys", kind: mgmt, dashed: true }
+  - { from: nfs, to: br, kind: storage }
+  - { from: infra, to: br, kind: dependency }
+steps:
+  - { title: "Hosts", text: "Three nested management hosts on the trunk bridge.", highlight: [e1, e2, e3, br] }
+  - { title: "Installer", text: "The installer runs on a temporary utility host.", highlight: [eu, inst] }
+  - { title: "Dependencies", text: "DNS/NTP and NFS storage must work before validation.", highlight: [infra, nfs, rtr] }

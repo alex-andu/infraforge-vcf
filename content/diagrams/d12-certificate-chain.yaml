@@ -1,0 +1,46 @@
+id: d12-certificate-chain
+title: Certificate chain of trust in a VCF instance
+description: >
+  A TLS client trusts a server certificate only if it can build a chain from that leaf certificate, through any
+  intermediate CA certificates, to a root CA certificate already in its own trust store. In VCF, leaf certificates
+  can be signed by the vCenter VMCA (default for vCenter and ESX), by a Microsoft CA or OpenSSL CA configured in VCF
+  Operations, or by an external CA via CSR and import. When a component's certificate is replaced with one from a new
+  CA, every client of that component (SDDC Manager, VCF Operations, other components, browsers) needs the new root
+  and intermediate in its trust store, or API calls fail with path-building errors.
+width: 1000
+height: 600
+groups:
+  - { id: g-pki, x: 20, y: 20, w: 330, h: 560, label: "PKI (issuers)", kind: security }
+  - { id: g-servers, x: 380, y: 20, w: 300, h: 560, label: "Servers (leaf certificates)", kind: mgmt }
+  - { id: g-clients, x: 710, y: 20, w: 270, h: 560, label: "Clients (trust stores)", kind: ops }
+nodes:
+  - { id: root, x: 50, y: 60, w: 270, h: 60, label: "Root CA", sublabel: "self-signed, offline", kind: security, info: "Top of the chain. Its certificate is self-signed and must be distributed to every client trust store. Usually kept offline." }
+  - { id: inter, x: 50, y: 180, w: 270, h: 60, label: "Intermediate (issuing) CA", sublabel: "e.g. Microsoft AD CS", kind: security, info: "Signed by the root; signs leaf certificates. Servers should present it with their leaf (full chain) so clients can build the path." }
+  - { id: vmca, x: 50, y: 320, w: 270, h: 60, label: "VMCA in vCenter", sublabel: "default issuer", kind: security, component: vcenter, info: "VMware Certificate Authority built into vCenter. Issues the vCenter machine SSL and ESX host certificates by default. Its root lives in the vCenter TRUSTED_ROOTS store (VECS)." }
+  - { id: openssl, x: 50, y: 440, w: 270, h: 60, label: "OpenSSL CA", sublabel: "on SDDC Manager", kind: security, component: sddc-manager, info: "Configurable in VCF Operations for VCF instance components only (not for management components)." }
+  - { id: leafvc, x: 400, y: 60, w: 260, h: 56, label: "vCenter machine SSL", kind: mgmt, component: vcenter, info: "Certificate presented on 443 by the vCenter reverse proxy (VECS store MACHINE_SSL_CERT)." }
+  - { id: leafnsx, x: 400, y: 150, w: 260, h: 56, label: "NSX Manager / VIP", kind: nsx, component: nsx-manager, info: "Certificates on the NSX Manager nodes and cluster VIP." }
+  - { id: leafsddc, x: 400, y: 240, w: 260, h: 56, label: "SDDC Manager", kind: mgmt, component: sddc-manager, info: "SDDC Manager SSL certificate." }
+  - { id: leafesx, x: 400, y: 330, w: 260, h: 56, label: "ESX hosts", sublabel: "2048-bit keys only", kind: compute, component: esx-host, info: "Host certificates. Through VCF Operations CSR generation, ESX hosts support 2048-bit keys only." }
+  - { id: leafops, x: 400, y: 420, w: 260, h: 56, label: "VCF Operations & mgmt", kind: ops, component: vcf-operations, info: "Fleet management, VCF Operations, Automation, logs, networks and Identity Broker certificates (VCF Management tab)." }
+  - { id: csr, x: 400, y: 510, w: 260, h: 56, label: "CSR", sublabel: "generated per component", kind: security, info: "Certificate Signing Request with CN, SANs, org data and key size. The private key never leaves the component." }
+  - { id: cl-sddc, x: 730, y: 60, w: 230, h: 56, label: "SDDC Manager trust", kind: mgmt, info: "SDDC Manager calls vCenter, NSX and ESX APIs. If it does not trust the new chain, lifecycle and password tasks fail." }
+  - { id: cl-ops, x: 730, y: 150, w: 230, h: 56, label: "VCF Operations adapters", kind: ops, info: "Collection from vCenter/NSX fails with certificate errors if trust is missing or the thumbprint changed." }
+  - { id: cl-vc, x: 730, y: 240, w: 230, h: 56, label: "vCenter TRUSTED_ROOTS", kind: mgmt, info: "vCenter trusts NSX, hosts and solutions through its TRUSTED_ROOTS store." }
+  - { id: cl-browser, x: 730, y: 330, w: 230, h: 56, label: "Admin browser", kind: external, info: "A browser warning means only that the workstation lacks the root. It is not proof that service-to-service trust is broken." }
+edges:
+  - { from: root, to: inter, label: "signs", kind: dependency }
+  - { from: inter, to: leafvc, label: "signs", kind: dependency }
+  - { from: inter, to: leafnsx, kind: dependency }
+  - { from: inter, to: leafops, kind: dependency }
+  - { from: vmca, to: leafesx, label: "signs", kind: dependency }
+  - { from: openssl, to: leafsddc, kind: dependency, dashed: true }
+  - { from: csr, to: inter, label: "submit", kind: control, dashed: true }
+  - { from: cl-sddc, to: leafvc, label: "TLS", kind: control }
+  - { from: cl-ops, to: leafnsx, label: "TLS", kind: control }
+  - { from: cl-browser, to: leafvc, kind: control, dashed: true }
+steps:
+  - { title: "Root to leaf", text: "The root signs the intermediate, the intermediate signs leaf certificates.", highlight: [root, inter, leafvc, leafnsx, leafops] }
+  - { title: "VMCA and OpenSSL", text: "vCenter VMCA signs host certificates by default; OpenSSL on SDDC Manager can sign instance components.", highlight: [vmca, openssl, leafesx, leafsddc] }
+  - { title: "CSR flow", text: "The component generates a key and CSR; the CA signs it; you import the PEM chain and replace.", highlight: [csr, inter] }
+  - { title: "Clients must trust", text: "Every client of the component must have the root (and intermediate) in its trust store.", highlight: [cl-sddc, cl-ops, cl-vc, cl-browser] }

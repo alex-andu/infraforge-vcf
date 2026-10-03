@@ -1,0 +1,201 @@
+terms:
+  - id: planning-and-preparation-workbook
+    term: Planning and Preparation Workbook
+    definition: >
+      Microsoft Excel file published on Broadcom TechDocs for VCF 9.0 that helps you gather the inputs required for
+      deploying a VCF fleet (instances, workload domains, VCF Identity Broker, vSphere Supervisor, VCF Automation). It
+      contains the prerequisite checklist, sizing guidance and acts as a living specification of your design.
+    whyItMatters: >
+      It is the planning tool for the VCF Installer. Unlike the VCF 5.x Deployment Parameters Workbook it is not
+      uploaded to the installer; you use it to prepare DNS, IPs, hosts and decisions before running the wizard.
+    version: vcf9
+    related: [vcf-installer, deployment-specification]
+    lessons: [deployment-planning-prereqs, vcf-installer-workflow]
+    labs: [lab-vcf-planning-workbook]
+  - id: deployment-specification
+    term: Deployment specification (JSON spec)
+    definition: >
+      The JSON representation of a VCF Installer deployment (SddcSpec), downloadable from the wizard's review page and
+      re-uploadable after editing. It contains fields such as vcfInstanceName, hostSpecs, vcenterSpec, nsxtSpec,
+      datastoreSpec, networkSpecs, dnsSpec, ntpServers, sddcManagerSpec and the VCF Operations/Automation specs.
+    whyItMatters: >
+      Required for Link Aggregation Group uplinks and for hosts with different root passwords; gives repeatable,
+      API-driven deployments (POST /v1/sddcs/validations then POST /v1/sddcs).
+    version: vcf9
+    related: [vcf-installer, planning-and-preparation-workbook]
+    lessons: [vcf-installer-workflow, deployment-validation-failures]
+    labs: [lab-deploy-vcf-management-domain]
+  - id: network-pool
+    term: Network pool
+    definition: >
+      A collection of subnets within a layer-2 network domain, with IP ranges per network type, that automatically
+      assigns static IP addresses to the vMotion, vSAN, vSAN Storage Client, NFS and iSCSI VMkernel ports of hosts when
+      they are placed into a VCF cluster. The management domain deployment creates a default pool that cannot be deleted.
+    whyItMatters: >
+      A network pool must exist before hosts can be commissioned, and it must contain the network types for the host's
+      storage. Subnets and existing IP ranges cannot be edited after creation; you can only add ranges.
+    version: vcf9
+    related: [host-commissioning, vmkernel-adapter]
+    lessons: [host-commissioning-wld-creation, workload-domain-storage, cluster-host-expansion, deployment-planning-prereqs]
+    labs: [lab-commission-hosts-create-wld]
+  - id: host-commissioning
+    term: Host commissioning
+    definition: >
+      Adding a prepared ESX host to the VCF global inventory: you supply the FQDN, storage type, network pool and root
+      credentials, confirm the host fingerprint, validate and commission. In VCF 9.0 it is done from the vSphere Client
+      (Global Inventory Lists, Hosts, Unassigned Hosts, Commission Hosts) or the SDDC Manager API (POST /v1/hosts).
+    whyItMatters: >
+      Only commissioned, unassigned hosts can be used to create workload domains, add clusters or expand clusters.
+      Validation catches DNS, certificate, NIC, disk and network pool problems before they break a domain workflow.
+    version: vcf9
+    related: [network-pool, unassigned-host, host-decommissioning, ssl-thumbprint]
+    lessons: [host-commissioning-wld-creation, cluster-host-expansion]
+    labs: [lab-commission-hosts-create-wld]
+  - id: unassigned-host
+    term: Unassigned host
+    definition: >
+      A commissioned host that is in the VCF inventory but not part of any domain cluster. The SDDC Manager API reports
+      it as UNASSIGNED_USEABLE (ready) or UNASSIGNED_UNUSEABLE (has a problem). It can only join clusters of the storage
+      type it was commissioned with.
+    whyItMatters: >
+      Workload domain creation and cluster expansion select from unassigned hosts; a host with the wrong storage tag
+      never appears in the selection list.
+    version: vcf9
+    related: [host-commissioning, host-decommissioning]
+    lessons: [host-commissioning-wld-creation, cluster-host-expansion]
+    labs: [lab-commission-hosts-create-wld]
+  - id: host-decommissioning
+    term: Host decommissioning
+    definition: >
+      Removing an unassigned host from the VCF inventory (Unassigned Hosts, Decommission Selected Hosts, or DELETE
+      /v1/hosts). The host must not belong to any domain. A host that was previously in a VCF domain must be re-imaged
+      before it is commissioned again.
+    whyItMatters: >
+      Reusing a host in another domain is always remove from cluster, decommission, re-image, commission.
+    version: vcf9
+    related: [host-commissioning, unassigned-host]
+    lessons: [host-commissioning-wld-creation, cluster-host-expansion]
+    labs: [lab-commission-hosts-create-wld]
+  - id: ssl-thumbprint
+    term: Host thumbprint / fingerprint
+    definition: >
+      A hash of a host's certificate or SSH host key that VCF shows during deployment and commissioning so the
+      administrator can confirm the identity of the host before trusting it. The SDDC Manager HostCommissionSpec carries
+      sslThumbprint and sshThumbprint fields.
+    whyItMatters: >
+      A host re-imaged with the same name and IP has a new thumbprint; a certificate not regenerated after the hostname
+      change does not match the FQDN. Both surface as thumbprint or certificate validation failures.
+    version: general
+    related: [host-commissioning, fqdn]
+    lessons: [deployment-validation-failures, host-commissioning-wld-creation, deployment-planning-prereqs]
+    labs: [lab-commission-hosts-create-wld]
+  - id: vcenter-convergence
+    term: vCenter convergence
+    definition: >
+      The VCF 9.0 workflow, run from the VCF Installer, that takes an existing standalone vCenter with all its clusters
+      (and optionally existing Aria components) and makes it the management domain of a new VCF instance by deploying
+      the missing VCF components around it.
+    whyItMatters: >
+      The brownfield path when no VCF fleet exists yet. It has stricter prerequisites than import (no ELM, no VCHA,
+      vLCM images, fully automated DRS, VDS, static IPs).
+    version: vcf9
+    related: [vcenter-import, vcf-installer, enhanced-linked-mode]
+    lessons: [import-existing-vcenter]
+  - id: vcenter-import
+    term: vCenter import
+    definition: >
+      The VCF 9.0 workflow that adds an existing vCenter (8.0 U1 or later) and all its clusters to an existing VCF
+      instance as a VI workload domain, from VCF Operations (Add Workload Domain, Import a vCenter), with an existing or
+      newly deployed NSX Manager.
+    whyItMatters: >
+      Exam objective 4.2. Know the prerequisites (images, fully automated DRS, VDS 8.0+, static VMkernel IPs, FQDN hosts,
+      SSH on vCenter, no ELM, no vVols) and the post-import limits (hosts of imported clusters managed in the vSphere
+      Client; DFW enabled with allow-all).
+    version: vcf9
+    related: [vcenter-convergence, vi-workload-domain]
+    lessons: [import-existing-vcenter, cluster-host-expansion]
+  - id: sddc-cluster
+    term: SDDC cluster
+    definition: >
+      A vSphere cluster created and managed by VCF (through the workload domain or Create SDDC Cluster workflows) from
+      commissioned hosts, as opposed to a cluster that arrived through a vCenter import.
+    whyItMatters: >
+      Only SDDC clusters accept commissioned hosts through Add Unassigned Hosts; imported clusters keep vSphere Client
+      host management.
+    version: vcf9
+    related: [host-commissioning, vcenter-import]
+    lessons: [cluster-host-expansion]
+  - id: supervisor
+    term: vSphere Supervisor
+    definition: >
+      A workload domain capability that runs a Kubernetes control plane (one or three control plane VMs) on a vSphere
+      cluster or three clusters (zones) and exposes a single declarative API for VMs (VM Service), VKS clusters,
+      vSphere Pods, volumes and Supervisor Services.
+    whyItMatters: >
+      VCF 9.0 can activate it from the workload domain wizard (on by default) and VCF Automation consumes it. Formerly
+      vSphere with Tanzu / vSphere IaaS control plane.
+    version: vcf9
+    related: [vsphere-zone, vsphere-namespace, supervisor-service, vks]
+    lessons: [supervisor-in-workload-domain, host-commissioning-wld-creation]
+    labs: [lab-enable-supervisor]
+  - id: vsphere-zone
+    term: vSphere Zone
+    definition: >
+      A vSphere cluster mapped to a zone for Supervisor placement. A Supervisor runs on one zone or three zones; with
+      three zones the control plane VMs are spread one per zone.
+    whyItMatters: >
+      The workload domain wizard creates a single zone. Three zones give cluster-level availability but require three
+      control plane VMs.
+    version: vcf9
+    related: [supervisor, vsphere-namespace]
+    lessons: [supervisor-in-workload-domain]
+    labs: [lab-enable-supervisor]
+  - id: vsphere-namespace
+    term: vSphere Namespace
+    definition: >
+      The Supervisor tenancy unit: a set of CPU, memory and storage quotas, permissions, storage policies, VM classes
+      and content libraries in which DevOps users run VMs, VKS clusters and vSphere Pods. A namespace can span up to
+      three zones.
+    whyItMatters: >
+      Everything a developer creates on a Supervisor lives in a namespace, and VCF Automation maps its constructs onto
+      namespaces.
+    version: vcf9
+    related: [supervisor, vsphere-zone, vcfa-namespace]
+    lessons: [supervisor-in-workload-domain]
+    labs: [lab-enable-supervisor]
+  - id: supervisor-service
+    term: Supervisor Service
+    definition: >
+      An add-on delivered as a YAML service definition from the Broadcom support portal, registered in vCenter and
+      installed on a Supervisor. Examples: vSphere Kubernetes Service, Harbor, Contour, ExternalDNS, Velero, Local
+      Consumption Interface, ArgoCD.
+    whyItMatters: >
+      Exam objective 4.4 item "describe the deployment of Supervisor-based Services". Services need a Supervisor with a
+      load balancer; a simplified Supervisor without one cannot run them.
+    version: vcf9
+    related: [supervisor, vks]
+    lessons: [supervisor-in-workload-domain]
+    labs: [lab-enable-supervisor]
+  - id: vks
+    term: VKS
+    expansion: vSphere Kubernetes Service
+    definition: >
+      The Supervisor component, delivered as a Supervisor Service, that provisions and manages conformant Kubernetes
+      clusters (VKS clusters) whose nodes are VM Service VMs. Formerly the TKG Service.
+    whyItMatters: >
+      Because VKS is a Supervisor Service it is updated independently of the Supervisor itself.
+    version: vcf9
+    related: [supervisor, supervisor-service]
+    lessons: [supervisor-in-workload-domain]
+  - id: foundation-load-balancer
+    term: Foundation Load Balancer
+    definition: >
+      A layer-4 load balancer packaged with vCenter in VCF 9.0 for Supervisors that use VDS (VLAN) networking, in a
+      single- or dual-node topology.
+    whyItMatters: >
+      Lets a Supervisor on VDS networking run vSphere Pods and Supervisor Services without NSX or Avi. Not available
+      with VPC or NSX segment networking.
+    version: vcf9
+    related: [supervisor]
+    lessons: [supervisor-in-workload-domain]
+    labs: [lab-enable-supervisor]

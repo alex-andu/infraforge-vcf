@@ -1,0 +1,268 @@
+id: inc-vsan-degraded-objects
+title: "vSAN datastore degraded: objects with reduced availability, cluster still online"
+difficulty: intermediate
+version: vcf9
+topics: [vsan-health, vsan-resilience, troubleshooting-method]
+lessons: [vsan-health-troubleshooting, vsan-resilience-fault-domains, vsan-architecture-esa-osa]
+summary: >
+  Monday morning, VCF Operations raises a critical vSAN alert for the VI workload domain cluster wld01-cl01. Every VM
+  is still running, but Skyline Health is red, dozens of objects show reduced availability and an application team
+  reports slightly higher latency. Find out whether this is a partition, a host outage, a device failure or noise —
+  and what to do (and not do) next.
+symptoms:
+  - "VCF Operations alert at 08:05: vSAN object health is critical on cluster wld01-cl01 (VI workload domain wld01)."
+  - "Skyline Health score 58 (unhealthy). Top findings: vSAN object health (red), Physical disk operation health (red), vSAN HCL DB up-to-date (yellow), Time is synchronized across hosts (yellow)."
+  - "The vsanDatastore summary shows objects with reduced availability; no VM is powered off or reported inaccessible."
+  - "The ERP team reports database write latency up from about 1 ms to 3-4 ms since roughly 08:00."
+environment: |
+  - VCF 9.0 fleet; VI workload domain `wld01` with cluster `wld01-cl01`.
+  - 6 × ESX 9 hosts `esx-w01` … `esx-w06`, vSAN **ESA**, 4 NVMe devices per host in each storage pool, 25 GbE vSAN network (VLAN 1630, MTU 9000).
+  - Default policy: FTT=1 RAID-5 (ESA uses 4+1 at six hosts). ERP database VMs: FTT=2 RAID-6.
+  - Host rebuild reserve and operations reserve enabled. Weekly patching window is Saturday; nobody worked on the cluster this weekend.
+  - vCenter `vc-wld01` runs in the management domain (not on this vSAN datastore).
+evidence:
+  - id: ev-skyline
+    category: services
+    action: Open Skyline Health for wld01-cl01 and read the findings sorted by impact
+    output: |
+      ```log
+      Cluster health score: 58 (Unhealthy)
+      Availability  | vSAN object health                    | RED     | 41 objects reduced availability
+      Availability  | Physical disk - Operation health      | RED     | 1 disk on esx-w03.corp.example
+      Compliance    | vSAN HCL DB up-to-date                | YELLOW  | HCL DB is 112 days old
+      Compliance    | Time is synchronized across hosts     | YELLOW  | esx-w05 offset 1.8 s
+      Network       | vSAN cluster partition                | GREEN
+      Network       | Hosts with connectivity issues        | GREEN
+      Capacity      | Storage space                          | GREEN
+      ```
+    relevance: useful
+    note: The two Availability findings rank first and point at one host and one disk. Partition and connectivity checks are green, which already argues against a network cause. HCL DB and time are lower-impact compliance findings.
+  - id: ev-object-summary
+    category: storage
+    action: Run esxcli vsan debug object health summary get on esx-w01
+    output: |
+      ```log
+      Health Status                                     Number Of Objects
+      ------------------------------------------------  -----------------
+      reduced-availability-with-no-rebuild-delay-timer                  0
+      reduced-availability-with-active-rebuild                         41
+      reduced-availability-with-no-rebuild                              0
+      inaccessible                                                      0
+      healthy                                                         487
+      (trimmed)
+      ```
+    relevance: key
+    note: All affected objects are already rebuilding and none are waiting on the 60-minute repair delay. That pattern means vSAN classified the lost components as degraded (permanent failure), not absent (temporary). Nothing is inaccessible.
+  - id: ev-cluster-get
+    category: hosts
+    action: Run esxcli vsan cluster get on esx-w01, esx-w03 and esx-w06
+    output: |
+      ```log
+      esx-w01:  Local Node State: MASTER   Sub-Cluster Member Count: 6   Maintenance Mode State: OFF
+      esx-w03:  Local Node State: AGENT    Sub-Cluster Member Count: 6   Maintenance Mode State: OFF
+      esx-w06:  Local Node State: BACKUP   Sub-Cluster Member Count: 6   Maintenance Mode State: OFF
+      ```
+    relevance: useful
+    note: Every host sees all six members — no partition. esx-w03 is an active vSAN member and not in maintenance mode.
+  - id: ev-host-status
+    category: hosts
+    action: Check host connection state and uptime in vCenter for all six hosts
+    output: |
+      ```log
+      Host                 State      Uptime     Last reboot
+      esx-w01.corp.example Connected  23 days    Sat 2025-09-06 22:14
+      esx-w02.corp.example Connected  23 days    Sat 2025-09-06 22:41
+      esx-w03.corp.example Connected  23 days    Sat 2025-09-06 23:05
+      esx-w04.corp.example Connected  23 days    Sat 2025-09-06 23:30
+      esx-w05.corp.example Connected  23 days    Sat 2025-09-06 23:58
+      esx-w06.corp.example Connected  23 days    Sun 2025-09-07 00:21
+      ```
+    relevance: useful
+    note: No host rebooted or disconnected recently, so absent components from a host outage are ruled out.
+  - id: ev-disk-mgmt
+    category: storage
+    action: Open Configure > vSAN > Disk Management for esx-w03 and list its storage pool devices
+    output: |
+      ```log
+      Host: esx-w03.corp.example   Storage pool: 4 devices
+      Device                                   Capacity   Health                    State
+      eui.00a1b2c3d4e5f6070000000000000001     3.49 TB    Healthy                   Mounted
+      eui.00a1b2c3d4e5f6070000000000000002     3.49 TB    Healthy                   Mounted
+      eui.00a1b2c3d4e5f6070000000000000003     3.49 TB    Permanent disk failure    Unhealthy
+      eui.00a1b2c3d4e5f6070000000000000004     3.49 TB    Healthy                   Mounted
+      ```
+    relevance: key
+    note: One NVMe device on esx-w03 is reported as permanently failed. On ESA only the components on this device are affected; the other three devices on the host keep serving data.
+  - id: ev-vobd
+    category: logs
+    action: Search the vobd log of esx-w03 (/var/run/log/vobd.log) around 07:50
+    output: |
+      ```log
+      2025-09-29T07:52:11.384Z: [vSANCorrelator] vSAN device eui.00a1b2c3d4e5f6070000000000000003 has gone offline (device errors).
+      2025-09-29T07:52:11.902Z: [vSANCorrelator] vSAN device eui.00a1b2c3d4e5f6070000000000000003 is under permanent error.
+      2025-09-29T07:52:40.117Z: [vSANCorrelator] vSAN components on device eui.00a1b2c3d4e5f6070000000000000003 marked DEGRADED; repair started.
+      (host vobd log, trimmed; exact message wording varies by build)
+      ```
+    relevance: key
+    note: Timestamp 07:52 matches the start of the latency complaint and the alert. The device moved to permanent error, which is why rebuild started immediately rather than after the repair delay.
+  - id: ev-capacity
+    category: storage
+    action: Open Monitor > vSAN > Capacity for wld01-cl01
+    output: |
+      ```log
+      Total raw capacity:            83.8 TB
+      Used (incl. policy overhead):  57.1 TB  (68 %)
+      Operations reserve:            enabled
+      Host rebuild reserve:          enabled
+      Free beyond reserves:          sufficient for current rebuild
+      Data reduction (compression):  1.4x
+      ```
+    relevance: useful
+    note: There is enough free capacity for the rebuild to finish. If the cluster had been near the red threshold, objects would show "no rebuild" instead.
+  - id: ev-resync
+    category: storage
+    action: Run esxcli vsan debug resync summary get twice, 20 minutes apart
+    output: |
+      ```log
+      08:20  Total Number Of Resyncing Objects: 41   Total GB Left To Resync: 1948.31
+      08:40  Total Number Of Resyncing Objects: 33   Total GB Left To Resync: 1203.77
+      ```
+    relevance: useful
+    note: Resync is progressing steadily — the extra write latency reported by the ERP team is consistent with rebuild traffic and will subside when it finishes.
+  - id: ev-vmkping
+    category: network
+    action: Run vmkping -I vmk2 -s 8972 -d from esx-w03 to the vSAN IPs of the other five hosts
+    output: |
+      ```log
+      PING 172.16.30.11 (172.16.30.11): 8972 data bytes
+      8980 bytes from 172.16.30.11: icmp_seq=0 ttl=64 time=0.212 ms
+      ... (5 of 5 hosts answer, 0% packet loss)
+      ```
+    relevance: noise
+    note: The vSAN network with jumbo frames is healthy. Useful to rule out a network cause, but it does not explain the problem.
+  - id: ev-ntp
+    category: ntp
+    action: Check NTP status on esx-w05 (esxcli system ntp get and time offset)
+    output: |
+      ```log
+      Enabled: true
+      Server: ntp1.corp.example, ntp2.corp.example
+      Current offset to ntp1.corp.example: +1.8 s (yellow threshold exceeded)
+      ```
+    relevance: noise
+    note: A real but minor issue on a different host. A 1.8 s offset does not cause device failures or object degradation; fix it later.
+  - id: ev-hcl
+    category: services
+    action: Review the vSAN HCL DB up-to-date finding
+    output: |
+      ```log
+      vSAN HCL DB up-to-date: WARNING
+      Last update: 2025-06-09 (112 days ago). Online download failed: proxy not configured on vc-wld01.
+      ```
+    relevance: noise
+    note: Classic red herring. An old compatibility database cannot fail a device; it only affects compatibility checks. Update it after the incident.
+  - id: ev-cpu-ready
+    category: hosts
+    action: Check CPU ready of the ERP database VM in VCF Operations
+    output: |
+      ```log
+      erp-db01  CPU ready (avg 1h): 0.9 %   CPU usage: 41 %   Disk latency (write): 3.6 ms (baseline 1.1 ms)
+      ```
+    relevance: noise
+    note: CPU contention is not the cause; the latency increase is storage-side and matches the rebuild window.
+idealSequence: [ev-skyline, ev-object-summary, ev-cluster-get, ev-host-status, ev-disk-mgmt, ev-vobd, ev-capacity, ev-resync]
+rootCause:
+  - id: rc-device
+    text: An NVMe capacity device in esx-w03's storage pool failed permanently; its components were marked degraded and vSAN is rebuilding them on other hosts.
+    correct: true
+    why: Disk Management shows "Permanent disk failure", vobd logs the permanent error at 07:52, objects are in active rebuild (not waiting on the repair timer), and no host is down or partitioned.
+  - id: rc-partition
+    text: esx-w03 is partitioned from the vSAN network, so its components are absent.
+    why: All hosts report a member count of 6, the partition check is green and vmkping with jumbo frames succeeds.
+  - id: rc-reboot
+    text: esx-w03 rebooted unexpectedly and its components are absent until the 60-minute repair delay expires.
+    why: Uptime is 23 days and no objects are in the no-rebuild-delay-timer state; absent components would wait, not rebuild immediately.
+  - id: rc-hcl
+    text: The outdated HCL database marked healthy devices as unsupported, which degraded the objects.
+    why: The HCL DB only influences compatibility findings. It has no effect on device state or object availability.
+  - id: rc-ntp
+    text: Time skew on esx-w05 caused vSAN to reject components.
+    why: A 1.8 s offset on another host is a minor compliance finding; it does not explain a failed device on esx-w03.
+nextStep:
+  - id: ns-let-rebuild
+    text: Let the rebuild finish — confirm free capacity and steady resync progress, and postpone any maintenance on other hosts until all objects are healthy.
+    correct: true
+    why: The cluster is self-healing and has room to do so. Taking another host down now would put objects with reduced availability at risk of becoming inaccessible.
+  - id: ns-wait-timer
+    text: Wait 60 minutes for the repair delay timer before doing anything.
+    why: The timer applies to absent components. These components are degraded and already rebuilding.
+  - id: ns-full-evac
+    text: Put esx-w03 into maintenance mode with Full data migration immediately.
+    why: Unnecessary and risky while 41 objects are already rebuilding; it adds a large data movement on top of the rebuild. The other three devices on esx-w03 are healthy.
+  - id: ns-hcl
+    text: Update the HCL database and click RETEST to clear the alert.
+    why: Fixes a noise finding; the object health problem remains.
+remediation:
+  - id: rem-replace
+    text: After resync completes, remove the failed device from esx-w03's storage pool, have the hardware vendor replace it, claim the new NVMe device into the storage pool, then fix the HCL DB proxy and the NTP offset on esx-w05.
+    correct: true
+    why: Replaces the failed hardware the supported way and restores full capacity; then the secondary findings are cleaned up so they do not mask future issues.
+  - id: rem-reboot
+    text: Reboot esx-w03 to reset the failed device.
+    why: A permanently failed device will not recover, and the reboot makes all of esx-w03's other components absent, reducing availability further.
+  - id: rem-ftt0
+    text: Change the default policy to FTT=0 so there is less data to rebuild.
+    why: Removes protection for every VM; any further failure would cause data unavailability. It treats the symptom by making the cluster fragile.
+  - id: rem-silence
+    text: Silence the object health and physical disk findings in Skyline Health.
+    why: Silencing hides the findings but does not restore the health score or fix anything (KB 447177).
+validation:
+  - id: val-full
+    text: Object health summary shows only healthy objects, resync is 0, the new device is healthy and mounted in esx-w03's storage pool, and Skyline Health RETEST returns to a healthy score.
+    correct: true
+    why: Verifies availability, compliance, hardware and health service from both the CLI and vCenter.
+  - id: val-ping
+    text: All VMs answer ping.
+    why: VMs were reachable throughout; ping proves nothing about vSAN redundancy.
+  - id: val-hcl
+    text: The HCL DB finding is green.
+    why: Only shows the database was updated.
+hints:
+  - "The VMs never went down. What does 'reduced availability' mean, and what would make it worse?"
+  - "Absent components wait for a timer; degraded components rebuild immediately. Which pattern does the object summary show?"
+  - "Are any hosts down, rebooted or partitioned? If not, look at the device level on the host named in the physical disk finding."
+  - "Check Disk Management and the vobd log on esx-w03 around the time the latency started."
+debrief: |
+  **What happened.** At 07:52 one NVMe device in esx-w03's ESA storage pool went into permanent error. vSAN marked the
+  components on that device **degraded** and immediately started rebuilding them on other hosts. Every object still
+  had enough components (RAID-5 4+1 and RAID-6 objects each lost one), so all VMs kept running: the cluster was
+  **online but with reduced availability**. The extra write latency was rebuild traffic.
+
+  **How an expert gets there quickly.**
+
+  1. *Observe*: Skyline Health sorts findings by impact — the two Availability findings (object health, physical
+     disk on esx-w03) come first. HCL DB and NTP are compliance findings with lower impact.
+  2. *Scope*: `esxcli vsan cluster get` shows six members everywhere (no partition), and no host rebooted.
+  3. *Classify*: the object summary shows **active rebuild** and nothing in the repair-delay state — the signature of
+     degraded components, not absent ones.
+  4. *Validate*: Disk Management and the vobd log on esx-w03 confirm a permanent device failure at 07:52.
+  5. *Decide*: capacity is sufficient and resync is progressing, so the right action is to let vSAN heal and avoid
+     adding risk (no maintenance mode on other hosts, no full evacuation of esx-w03).
+  6. *Remediate*: replace the device after the rebuild, claim the new one, then clean up the noise findings.
+  7. *Verify*: healthy objects, resync 0, RETEST.
+
+  **Red herrings.** The outdated HCL DB and the 1.8 s NTP offset are real findings but cannot fail a device. The
+  vmkping test is worth running to exclude the network, and the ERP VM's CPU ready is normal.
+
+  **Exam link.** Know the difference between absent (60-minute repair delay) and degraded (immediate rebuild), that
+  ESA confines a device failure to that device (OSA would lose a whole disk group if it were a cache device or if
+  dedup were enabled), and that rebuilds need spare hosts/fault domains and free capacity.
+sources:
+  - title: "vSAN 9.0 – vSAN Terms and Definitions (component and object states)"
+    url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/vsan-deployment-administration-and-monitoring/vsan-planning-and-deployment/what-is-vsan/vsan-concepts/virtual-san-terms-and-definitions.html
+  - title: "Broadcom KB 438821 – vSAN massive resync and degraded object health alerts after exiting Maintenance Mode"
+    url: https://knowledge.broadcom.com/external/article/438821/vsan-massive-resync-and-degraded-object.html
+  - title: "Broadcom KB 447177 – vSAN Skyline Health score remains low after silencing alerts"
+    url: https://knowledge.broadcom.com/external/article/447177/vsan-skyline-health-score-remains-low-or.html
+  - title: "VCF blog – Skyline Health Scoring, Diagnostics and Remediation in vSAN 8 U1"
+    url: https://blogs.vmware.com/cloud-foundation/2023/03/24/skyline-health-scoring-diagnostics-and-remediation-in-vsan-8-u1/

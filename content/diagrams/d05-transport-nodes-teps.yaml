@@ -1,0 +1,43 @@
+id: d05-transport-nodes-teps
+title: Transport zones, transport nodes and TEPs
+description: >
+  Two ESX host transport nodes (esx-01, esx-02) and one Edge transport node (edge-01). Each host has a TEP VMkernel
+  adapter on the TEP VLAN; the Edge has its own TEP. All three are members of the overlay transport zone, and Geneve
+  tunnels with BFD connect every TEP pair. The Edge is also in a VLAN transport zone for its uplink to the physical
+  router. A transport node profile attached to the vSphere cluster prepared both hosts. The underlay switch must carry
+  the TEP VLAN with an MTU of at least 1600 (1700 recommended, 9000 best).
+width: 1000
+height: 600
+groups:
+  - { id: g-tz-overlay, x: 20, y: 20, w: 960, h: 330, label: "Overlay transport zone (nsx-overlay-transportzone)", kind: nsx }
+  - { id: g-tz-vlan, x: 640, y: 370, w: 340, h: 210, label: "VLAN transport zone (Edge uplinks)", kind: network }
+nodes:
+  - { id: tnp, x: 40, y: 60, w: 200, h: 56, label: "Transport node profile", sublabel: "attached to cluster", kind: mgmt, info: "Template applied to the vSphere cluster: VDS, transport zones, uplink profile (teaming, transport VLAN), TEP addressing (IP pool or DHCP). New hosts are prepared automatically." }
+  - { id: esx1, x: 60, y: 170, w: 160, h: 56, label: "esx-01", sublabel: "host transport node", kind: compute, component: esx-host, info: "ESX host with NSX kernel modules, attached to the NSX-enabled VDS." }
+  - { id: tep1, x: 60, y: 260, w: 160, h: 50, label: "TEP vmk10", sublabel: "192.168.13.11", kind: nsx, info: "Tunnel endpoint VMkernel adapter in the vxlan TCP/IP stack. Source and destination of Geneve tunnels. With two active uplinks a host can have two TEPs." }
+  - { id: esx2, x: 400, y: 170, w: 160, h: 56, label: "esx-02", sublabel: "host transport node", kind: compute, component: esx-host, info: "Second host prepared by the same profile." }
+  - { id: tep2, x: 400, y: 260, w: 160, h: 50, label: "TEP vmk10", sublabel: "192.168.13.12", kind: nsx, info: "TEP on the same VLAN/subnet in this example; TEPs may also be in routed subnets." }
+  - { id: edge, x: 760, y: 170, w: 160, h: 56, label: "edge-01", sublabel: "edge transport node", kind: nsx, component: nsx-edge-cluster, info: "Edge VM: member of the overlay TZ (TEP) and of a VLAN TZ (uplinks)." }
+  - { id: tep3, x: 760, y: 260, w: 160, h: 50, label: "Edge TEP", sublabel: "192.168.13.21", kind: nsx, info: "In VCF 9 the Edge TEP VLAN can be the same as the host TEP VLAN (activate NSX on DVPG when Edges run on prepared hosts)." }
+  - { id: sw, x: 330, y: 420, w: 220, h: 56, label: "ToR switch", sublabel: "TEP VLAN, MTU >= 1700", kind: network, component: physical-network, info: "Underlay. The TEP VLAN must be trunked to every host and Edge uplink with a large enough MTU on every port and router hop." }
+  - { id: uplink, x: 680, y: 430, w: 150, h: 50, label: "Uplink VLAN seg", sublabel: "VLAN 2711", kind: network, info: "VLAN-backed segment in the VLAN transport zone used by the Tier-0 external interface." }
+  - { id: rtr, x: 680, y: 510, w: 150, h: 50, label: "Physical router", kind: external, component: physical-network, info: "Peer for the Tier-0 SR (BGP or static)." }
+edges:
+  - { from: tnp, to: esx1, label: "prepares", kind: mgmt }
+  - { from: tnp, to: esx2, kind: mgmt }
+  - { from: esx1, to: tep1, kind: data }
+  - { from: esx2, to: tep2, kind: data }
+  - { from: edge, to: tep3, kind: data }
+  - { from: tep1, to: tep2, label: "Geneve + BFD", kind: overlay, dashed: true, bidirectional: true }
+  - { from: tep2, to: tep3, label: "Geneve + BFD", kind: overlay, dashed: true, bidirectional: true }
+  - { from: tep1, to: sw, kind: data }
+  - { from: tep2, to: sw, kind: data }
+  - { from: tep3, to: sw, kind: data }
+  - { from: edge, to: uplink, kind: north-south }
+  - { from: uplink, to: rtr, label: "BGP", kind: north-south, bidirectional: true }
+steps:
+  - { title: "Prepare hosts", text: "A transport node profile attached to the cluster installs NSX, configures the VDS, assigns TEPs and joins the hosts to the overlay transport zone.", highlight: [tnp, esx1, esx2] }
+  - { title: "TEPs", text: "Each transport node gets one or more TEPs on the TEP VLAN. Addresses come from an IP pool, DHCP or a static list.", highlight: [tep1, tep2, tep3] }
+  - { title: "Tunnels", text: "TEP pairs form Geneve tunnels on demand and run BFD inside them; tunnel status in the UI reflects BFD.", highlight: [tep1, tep2, tep3] }
+  - { title: "Underlay", text: "Geneve is UDP over IP: the switch must carry the TEP VLAN with MTU >= 1600 (1700 recommended). Test with vmkping ++netstack=vxlan -d -s 1572.", highlight: [sw, tep1, tep2, tep3] }
+  - { title: "VLAN transport zone", text: "The Edge is also in a VLAN transport zone: its Tier-0 uplinks are VLAN segments toward the physical router.", highlight: [edge, uplink, rtr] }

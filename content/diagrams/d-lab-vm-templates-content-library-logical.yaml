@@ -1,0 +1,39 @@
+id: d-lab-vm-templates-content-library-logical
+title: Lab topology - templates, content libraries and migrations
+description: >
+  In vcenter-lab, the golden-ubuntu VM is cloned to an inventory template tpl-ubuntu and also cloned as a VM template into the
+  published local library lib-lab-pub stored on nfs-ds01, alongside an imported OVF template. A subscribed library lib-lab-sub
+  on a host's local datastore follows lib-lab-pub through its subscription URL and downloads content when needed. web01 and
+  web02 are deployed from tpl-ubuntu with the linux-lab customization spec into resource pool rp-prod. web01 is then migrated
+  between hosts (vMotion), between nfs-ds01 and a local datastore (Storage vMotion), and both at once.
+width: 1000
+height: 600
+groups:
+  - { id: g-vc, x: 20, y: 20, w: 960, h: 560, label: "vcenter-lab / cl-lab01", kind: mgmt }
+nodes:
+  - { id: golden, x: 50, y: 70, w: 180, h: 56, label: "golden-ubuntu", sublabel: "open-vm-tools", kind: vm, info: "Patched source VM, shut down and cleaned before cloning." }
+  - { id: tpl, x: 280, y: 70, w: 180, h: 56, label: "tpl-ubuntu", sublabel: "inventory template", kind: vm, info: "Clone to Template keeps golden-ubuntu intact." }
+  - { id: spec, x: 510, y: 70, w: 180, h: 56, label: "linux-lab", sublabel: "customization spec", kind: ops, info: "Hostname from VM name, IP prompt or DHCP, DNS, time zone." }
+  - { id: pub, x: 50, y: 200, w: 260, h: 64, label: "lib-lab-pub", sublabel: "local, published · VM template + OVF", kind: storage, info: "Stored on nfs-ds01. VM template item vmt-ubuntu supports check-out/check-in versioning." }
+  - { id: sub, x: 700, y: 200, w: 250, h: 64, label: "lib-lab-sub", sublabel: "subscribed · when needed", kind: storage, info: "Read-only. Content downloaded on first use to the host's local datastore." }
+  - { id: web01, x: 280, y: 330, w: 180, h: 56, label: "web01", sublabel: "rp-prod", kind: vm, info: "Deployed from tpl-ubuntu with linux-lab; used for migrations." }
+  - { id: web02, x: 510, y: 330, w: 180, h: 56, label: "web02", sublabel: "rp-prod (PowerCLI)", kind: vm, info: "Deployed with New-VM -Template ... -OSCustomizationSpec." }
+  - { id: esxa, x: 50, y: 470, w: 180, h: 56, label: "esx-lab-01", kind: compute, info: "Source host for vMotion." }
+  - { id: esxb, x: 280, y: 470, w: 180, h: 56, label: "esx-lab-02", kind: compute, info: "Target host for vMotion." }
+  - { id: nfs, x: 510, y: 470, w: 180, h: 56, label: "nfs-ds01", sublabel: "shared", kind: storage, info: "Shared datastore; HA can only restart VMs whose files live here." }
+  - { id: local, x: 740, y: 470, w: 210, h: 56, label: "local datastore", sublabel: "per host", kind: storage, info: "Storage vMotion target; also backs the subscribed library." }
+edges:
+  - { from: golden, to: tpl, label: "clone to template", kind: mgmt }
+  - { from: golden, to: pub, label: "clone to library", kind: mgmt }
+  - { from: pub, to: sub, label: "subscription URL", kind: data }
+  - { from: tpl, to: web01, label: "deploy", kind: mgmt }
+  - { from: spec, to: web02, label: "customize", kind: control, dashed: true }
+  - { from: tpl, to: web02, kind: mgmt }
+  - { from: esxa, to: esxb, label: "vMotion", kind: data }
+  - { from: nfs, to: local, label: "Storage vMotion", kind: storage }
+  - { from: web01, to: esxa, kind: dependency, dashed: true }
+steps:
+  - { title: "Golden image to template", text: "Clone the golden VM to an inventory template and create a customization spec.", highlight: [golden, tpl, spec] }
+  - { title: "Deploy", text: "Deploy web01 and web02 with unique identities into rp-prod.", highlight: [tpl, spec, web01, web02] }
+  - { title: "Libraries", text: "Publish a local library and subscribe to it; subscribers are read-only.", highlight: [pub, sub] }
+  - { title: "Migrate", text: "Move web01 between hosts and datastores without powering it off.", highlight: [web01, esxa, esxb, nfs, local] }

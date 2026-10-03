@@ -1,0 +1,133 @@
+id: lab-vm-templates-content-library
+title: Templates, customization specs, content libraries and migrations
+level: beginner
+complexity: 2
+minutes: 150
+version: vcf9
+technologies: [vCenter 9, ESX 9, Content Library, Guest Customization, vMotion, Storage vMotion, PowerCLI]
+topics: [vm-management, virtual-hardware, vsphere-cluster]
+lessons: [vm-lifecycle-templates, drs-resource-management]
+objectives:
+  - Build a golden Linux VM with open-vm-tools and turn it into a template.
+  - Create a Linux VM customization specification and deploy two unique VMs from the template.
+  - Create a published local content library, add a VM template and an OVF template, and subscribe to it.
+  - Check out, change and check in a VM template in the library.
+  - Migrate a running VM with vMotion, Storage vMotion and a combined compute + storage migration.
+prerequisites:
+  - "lab-vcenter-cluster-ha-drs completed: vCenter, cluster cl-lab01 with three hosts, nfs-ds01, vMotion network."
+  - "A Linux server ISO (for example Ubuntu Server LTS) uploaded to nfs-ds01."
+topology:
+  logical: d-lab-vm-templates-content-library-logical
+requirements:
+  network:
+    - "VM Network port group with DHCP or a small static range for test VMs."
+    - "vMotion network from the previous lab."
+  vms:
+    - "golden-ubuntu: 2 vCPU, 2 GB RAM, 20 GB thin disk, vmxnet3."
+    - "Two VMs deployed from the template (web01, web02)."
+  ip:
+    - "Two static IPs on the VM network for web01 and web02 (or use DHCP in the customization spec)."
+startingState: |
+  The cluster `cl-lab01` from the previous lab is running with HA and DRS on, `nfs-ds01` is shared, and each host still has
+  its local datastore. No templates, customization specs or content libraries exist.
+
+  :::note
+  Everything here is standard vCenter functionality and runs fine nested on Proxmox. In VCF the same libraries feed VCF
+  Automation catalogs and the Supervisor VM Service.
+  :::
+steps:
+  - id: golden-vm
+    title: Build the golden VM
+    why: A template is only as good as the VM it came from; VMware Tools is required for guest customization.
+    instructions: |
+      1. Right-click `cl-lab01` → **New Virtual Machine** → *Create a new virtual machine* → name `golden-ubuntu` in a new folder
+         `Templates` → storage `nfs-ds01` → compatibility: keep the default for your hosts → guest OS Ubuntu Linux (64-bit).
+      2. Attach the ISO from the datastore, install the OS, then `sudo apt install open-vm-tools` and patch it.
+      3. Clean it for cloning (remove SSH host keys and machine-id per your distribution's guidance), then shut it down.
+    validate: VM **Summary** shows VMware Tools *Running* (before shutdown) and the guest's IP address.
+    expected: A powered-off, patched VM with open-vm-tools installed.
+  - id: template-and-spec
+    title: Convert to template and create a customization spec
+    why: Templates plus customization specs give consistent builds with unique identities.
+    instructions: |
+      1. Right-click `golden-ubuntu` → **Clone → Clone to Template** → `tpl-ubuntu` in folder `Templates` (keeps the golden VM).
+      2. **Policies and Profiles → VM Customization Specifications → New** → Linux → `linux-lab`: computer name = use the
+         virtual machine name, your domain, time zone, network = prompt for IP (or DHCP), DNS servers.
+    validate: The `Templates` folder shows `tpl-ubuntu` with a template icon; `linux-lab` appears in the specification list.
+    expected: One template and one specification.
+  - id: deploy
+    title: Deploy two VMs from the template
+    why: Proves the template and customization flow; this is objective 2.2 "deploy and configure virtual machines".
+    instructions: |
+      1. Right-click `tpl-ubuntu` → **New VM from This Template** → `web01` → cluster `cl-lab01`, resource pool `rp-prod` →
+         `nfs-ds01` → tick **Customize the operating system** → `linux-lab` → enter IP → tick **Power on after creation**.
+      2. Repeat with PowerCLI for `web02`:
+         `New-VM -Name web02 -Template (Get-Template tpl-ubuntu) -ResourcePool (Get-ResourcePool rp-prod) -Datastore nfs-ds01 -OSCustomizationSpec (Get-OSCustomizationSpec linux-lab)`
+         (with a "prompt" network spec, use a non-interactive copy of the spec or set DHCP for this step).
+    validate: Log in to both VMs; `hostname` returns `web01` / `web02` and each has its own IP.
+    expected: Two running VMs with unique hostnames and addresses.
+  - id: content-library
+    title: Create a published library and add items
+    why: Content libraries are how templates are shared across clusters, vCenters and VCF Automation.
+    instructions: |
+      1. **Content Libraries → Create** → `lib-lab-pub`, **Local content library**, **Enable publishing**
+         (optionally enable authentication) → storage `nfs-ds01`.
+      2. Right-click `golden-ubuntu` → **Clone → Clone as Template to Library** → `lib-lab-pub`, item `vmt-ubuntu` (a VM template item).
+      3. Export or download a small OVA (any vendor appliance you are licensed to use, or export `golden-ubuntu` as OVF) and
+         **Import item** into the library as an OVF template.
+      4. Copy the library's **subscription URL** from its Summary.
+    validate: The library shows two items of different types (VM Template and OVF Template).
+    expected: A published library with a VM template and an OVF template.
+  - id: subscribe
+    title: Subscribe to the library
+    why: Simulates a second workload domain consuming the platform team's images; shows subscriber limits.
+    instructions: |
+      1. **Content Libraries → Create** → `lib-lab-sub` → **Subscribed content library** → paste the subscription URL →
+         download content **when needed** → storage: a host's local datastore.
+      2. Try **Import item** on `lib-lab-sub`.
+    validate: The subscribed library lists the published items (metadata); the import action is not available.
+    expected: Items visible but read-only; content downloads only when first used.
+  - id: checkout-checkin
+    title: Check out, update and check in the VM template
+    why: VM template versioning is how golden images are patched without breaking consumers.
+    instructions: |
+      1. In `lib-lab-pub`, open `vmt-ubuntu` → **Check out VM from this template** → name `vmt-ubuntu-edit`, power it on.
+      2. Patch it (`sudo apt upgrade`), shut it down.
+      3. **Check in VM to template** with a note ("monthly patches").
+    validate: The template's **Versioning** view shows a new version with your note.
+    expected: Two versions of `vmt-ubuntu`; the checked-out VM is gone after check-in.
+  - id: migrations
+    title: vMotion, Storage vMotion and combined migration
+    why: Lifecycle remediation and DRS rely on vMotion; Storage vMotion empties datastores for maintenance.
+    instructions: |
+      1. `web01` → **Migrate → Change compute resource only** → another host.
+      2. `web01` → **Migrate → Change storage only** → the local datastore of the host it runs on.
+      3. `web01` → **Migrate → Change both compute resource and storage** → another host and its local datastore (no shared storage needed).
+      4. Move it back to `nfs-ds01` so HA can protect it.
+    validate: Each migration finishes while a continuous `ping web01` from your workstation keeps answering (a single lost packet is normal).
+    expected: The VM changes host and datastore without being powered off.
+troubleshooting:
+  - symptom: "Customization did not apply (hostname still golden-ubuntu)"
+    fix: open-vm-tools missing or not running in the template; check the guest's customization log under /var/log/vmware-imc/ and rebuild the template.
+  - symptom: "Clone as Template to Library is greyed out"
+    fix: The VM must be powered off (or use a template) and you need content library privileges; check that the library is a local library, not subscribed.
+  - symptom: "Subscribed library fails to sync"
+    fix: Check the subscription URL, the password if authentication is enabled, and HTTPS reachability to the publisher vCenter.
+  - symptom: "Migration blocked by a device"
+    fix: Disconnect the CD/DVD drive pointing at a host-local ISO, or move the ISO to shared storage.
+  - symptom: "CPU compatibility error during vMotion"
+    fix: All nested hosts should present the same CPU (same Proxmox CPU type); otherwise configure EVC on the cluster.
+challenge: |
+  1. Deploy a VM from the **subscribed** library item and observe the download happening on first use.
+  2. Create a snapshot of `web02`, change a file, revert, then delete the snapshot. Explain why snapshots are not backups.
+  3. Use PowerCLI to deploy from the library: `New-VM -Name web03 -ContentLibraryItem (Get-ContentLibraryItem -Name vmt-ubuntu) -ResourcePool (Get-Cluster cl-lab01)`.
+cleanup: |
+  Delete `web01`/`web02`/`web03` if not needed (**Delete from Disk**), delete the subscribed library, keep `lib-lab-pub` and the
+  template for later automation labs. Remove any leftover snapshots.
+sources:
+  - title: "vSphere 9.0 – Deploying Virtual Machines"
+    url: https://techdocs.broadcom.com/us/en/vmware-cis/vsphere/vsphere/9-0/vsphere-virtual-machine-administration/deploying-virtual-machines.html
+  - title: "vSphere 9.0 – Using Content Libraries"
+    url: https://techdocs.broadcom.com/us/en/vmware-cis/vsphere/vsphere/9-0/vsphere-virtual-machine-administration/using-content-libraries.html
+  - title: "vSphere 9.0 – vSphere Virtual Machines Migration"
+    url: https://techdocs.broadcom.com/us/en/vmware-cis/vsphere/vsphere/9-0/vcenter-and-host-management/migrating-virtual-machines.html

@@ -1,0 +1,1478 @@
+questions:
+  # ---------------------------------------------------------------- deployment-planning-prereqs
+  - id: dep-plan-001
+    type: single
+    kind: concept
+    difficulty: foundation
+    version: vcf9
+    topics: [deployment-planning, vcf-installer]
+    objective: "4.1"
+    lesson: deployment-planning-prereqs
+    section: concept
+    diagnostic: vcf
+    stem: "Which tool does Broadcom provide to gather the inputs and check the prerequisites for deploying a VCF 9.0 fleet?"
+    options:
+      - { id: a, text: "The Planning and Preparation Workbook", correct: true, why: "An Excel workbook that gathers inputs, lists prerequisites, helps sizing and acts as a living specification." }
+      - { id: b, text: "The Deployment Parameters Workbook uploaded to Cloud Builder", why: "That is the VCF 5.x bring-up process; the VCF 9.0 installer no longer requires it.", confusedWith: vcf-installer }
+      - { id: c, text: "VCF Operations fleet management", why: "Fleet management runs after deployment; it does not plan the first deployment.", confusedWith: fleet-management }
+      - { id: d, text: "The SDDC Manager API explorer", why: "An API tool, not a planning and prerequisite checklist." }
+    explanation:
+      correct: "The VCF 9.0 Planning and Preparation Workbook is the planning tool: prerequisite checklist, sizing and the values for every wizard field."
+      concept: "Planning artefact vs deployment input"
+      architecture: "The workbook is used before the VCF Installer exists; the installer itself takes wizard input or a JSON spec."
+      trap: "Do not carry the VCF 5.x Deployment Parameters Workbook / Cloud Builder flow into VCF 9."
+  - id: dep-plan-002
+    type: multi
+    kind: scenario
+    difficulty: intermediate
+    version: vcf9
+    topics: [deployment-planning, host-commissioning]
+    objective: "4.1"
+    lesson: deployment-planning-prereqs
+    section: deep-dive
+    select: 3
+    context: |
+      You are preparing four freshly installed ESX 9 hosts for a new VCF 9.0 management domain on vSAN ESA.
+    stem: "Which three host preparation tasks are required? (Choose three.)"
+    options:
+      - { id: a, text: "Set the hostname to the FQDN and create forward and reverse DNS records", correct: true, why: "Hostname must equal the FQDN, with A and PTR records." }
+      - { id: b, text: "Regenerate the self-signed certificate after setting the FQDN", correct: true, why: "The certificate must be regenerated based on the FQDN." }
+      - { id: c, text: "Delete all existing partitions on the disks vSAN will claim", correct: true, why: "vSAN claims only empty devices." }
+      - { id: d, text: "Create a vSphere Distributed Switch on each host", why: "The installer creates the VDS; hosts start with management on the standard switch.", confusedWith: vds }
+      - { id: e, text: "Join the hosts to an existing vCenter", why: "For a new deployment the installer deploys vCenter; existing vCenter means convergence.", confusedWith: vcenter-import }
+    explanation:
+      correct: "FQDN with forward/reverse DNS, a regenerated certificate and empty disks are explicit host prerequisites."
+      concept: "ESX host preparation for VCF"
+      architecture: "The installer migrates the management VMkernel from the standard switch to a VDS it creates."
+      trap: "Pre-building VDS or vCenter is not preparation — it changes the workflow into convergence."
+  - id: dep-plan-003
+    type: single
+    kind: design
+    difficulty: intermediate
+    version: vcf9
+    topics: [deployment-planning, wld-storage, management-domain]
+    objective: "4.1"
+    lesson: deployment-planning-prereqs
+    section: concept
+    stem: "Which storage types can be selected as principal storage for the default cluster of a new VCF 9.0 management domain?"
+    options:
+      - { id: a, text: "vSAN (ESA or OSA), NFS v3, VMFS on Fibre Channel", correct: true, why: "These are the principal options in the installer and the Storage Models table." }
+      - { id: b, text: "vSAN only", why: "That was the rule in earlier VCF versions.", confusedWith: vsan-architecture }
+      - { id: c, text: "vSAN, NFS v4.1 and iSCSI", why: "NFS v4.1 and iSCSI are supplemental only.", confusedWith: datastores }
+      - { id: d, text: "vSAN storage cluster or vSAN compute cluster", why: "Not supported for the management domain default cluster." }
+    explanation:
+      correct: "VCF 9.0 allows vSAN ESA/OSA, NFS v3 and VMFS on FC as principal storage for the management domain default cluster."
+      concept: "Principal storage options"
+      architecture: "The choice is made on the installer's storage page and cannot be changed later."
+      trap: "NFS v3 is principal; NFS v4.1 is supplemental."
+  - id: dep-plan-004
+    type: single
+    kind: concept
+    difficulty: foundation
+    version: vcf9
+    topics: [deployment-models, deployment-planning]
+    objective: "4.1"
+    lesson: deployment-planning-prereqs
+    section: concept
+    stem: "Compared with the simple model, what does the high availability deployment model change for a new fleet?"
+    options:
+      - { id: a, text: "NSX Manager, VCF Operations and VCF Automation are deployed as three-node clusters", correct: true, why: "HA triples the clustered components (minimum 13 appliances vs 7)." }
+      - { id: b, text: "vCenter is deployed with vCenter HA", why: "The model does not add vCenter HA.", confusedWith: vcenter }
+      - { id: c, text: "Two SDDC Manager appliances are deployed", why: "There is one SDDC Manager per instance." }
+      - { id: d, text: "The management domain is stretched across two sites", why: "Stretching is a separate design decision." , confusedWith: design-availability }
+    explanation:
+      correct: "The HA model deploys three-node NSX Manager, VCF Operations and VCF Automation clusters and is recommended for production."
+      concept: "Simple vs HA deployment model"
+      architecture: "The selected model applies only to appliances the installer deploys new."
+      trap: "HA here means component clustering, not vCenter HA or stretched clusters."
+  - id: dep-plan-005
+    type: single
+    kind: scenario
+    difficulty: intermediate
+    version: vcf9
+    topics: [deployment-planning, vcf-installer, lcm-concepts]
+    objective: "4.1"
+    lesson: deployment-planning-prereqs
+    section: deep-dive
+    context: |
+      A bank's VCF Installer appliance will run in an isolated management network without internet access.
+    stem: "How should the deployment binaries be provided?"
+    options:
+      - { id: a, text: "Populate an offline depot with the VCF Download Tool on an internet-connected system and point the installer at it", correct: true, why: "This is the documented path when the installer cannot reach the online depot." }
+      - { id: b, text: "They are already in the installer OVA", why: "The installer does not include software binaries." }
+      - { id: c, text: "Upload the binaries to SDDC Manager in the management domain first", why: "No management domain exists yet." , confusedWith: sddc-manager }
+      - { id: d, text: "Download them from VCF Operations", why: "VCF Operations is deployed by the installer; it cannot supply day-0 binaries." , confusedWith: fleet-management }
+    explanation:
+      correct: "Offline depot + VCF Download Tool is the air-gapped path; one depot can serve several instances."
+      concept: "Online vs offline depot"
+      architecture: "The installer pulls from a depot over HTTPS by default."
+      trap: "The OVA has no product binaries."
+  - id: dep-plan-006
+    type: ordering
+    kind: concept
+    difficulty: intermediate
+    version: vcf9
+    topics: [deployment-planning, certificates]
+    objective: "4.1"
+    lesson: deployment-planning-prereqs
+    section: deep-dive
+    stem: "Put the host preparation steps for a freshly installed ESX host in the correct order."
+    items:
+      - { id: s1, text: "Configure the management IP, VLAN, gateway and DNS servers in the DCUI" }
+      - { id: s2, text: "Set the hostname as an FQDN (esxcli system hostname set --fqdn=...)" }
+      - { id: s3, text: "Regenerate the self-signed certificate (/sbin/generate-certificates)" }
+      - { id: s4, text: "Restart hostd and vpxa" }
+      - { id: s5, text: "Confirm forward and reverse lookup and NTP before running validation" }
+    explanation:
+      correct: "Network first, then FQDN, then certificate regeneration and agent restart, then verification."
+      concept: "Order dependency between hostname and certificate"
+      trap: "Regenerating the certificate before the FQDN is set produces a certificate for the old name."
+  - id: dep-plan-007
+    type: single
+    kind: scenario
+    difficulty: advanced
+    version: vcf9
+    topics: [deployment-planning, vcf-installer]
+    objective: "4.1"
+    lesson: deployment-planning-prereqs
+    section: deep-dive
+    context: |
+      The management hosts have different root passwords that the security team will not align, and the uplinks
+      must use Link Aggregation Groups.
+    stem: "How should the deployment be performed?"
+    options:
+      - { id: a, text: "Use a JSON specification with the VCF Installer", correct: true, why: "JSON is required for LAG uplinks and for hosts with different passwords." }
+      - { id: b, text: "Use the wizard; it asks for each host's password and LAG settings", why: "The wizard takes one common ESX password and does not cover LAG." }
+      - { id: c, text: "Use Cloud Builder with the Deployment Parameters Workbook", why: "VCF 5.x tooling.", confusedWith: vcf-installer }
+      - { id: d, text: "Deploy vCenter manually and converge it", why: "Convergence is for existing environments, not a workaround for passwords.", confusedWith: vcenter-import }
+    explanation:
+      correct: "The installer UI requires a common host password; LAG and per-host passwords need a JSON spec."
+      concept: "UI vs JSON spec"
+      architecture: "The JSON spec (SddcSpec) can be downloaded after review, edited and uploaded."
+      trap: "Choosing Cloud Builder because 'JSON = Cloud Builder'."
+  - id: dep-plan-008
+    type: truefalse
+    kind: concept
+    difficulty: foundation
+    version: vcf9
+    topics: [deployment-planning, wld-storage]
+    objective: "4.1"
+    lesson: deployment-planning-prereqs
+    section: concept
+    stem: "The principal storage type selected for the management domain can be changed later from SDDC Manager."
+    options:
+      - { id: "true", text: "True", why: "There is no workflow to change principal storage after creation." }
+      - { id: "false", text: "False", correct: true, why: "Principal storage cannot be changed after creation; changing it means rebuilding." }
+    explanation:
+      correct: "False. The installer explicitly notes principal storage cannot be changed after creation."
+      concept: "Irreversible design decisions"
+      trap: "Supplemental storage can be added later; principal storage cannot be changed."
+  # ---------------------------------------------------------------- vcf-installer-workflow
+  - id: dep-inst-001
+    type: single
+    kind: architecture
+    difficulty: foundation
+    version: vcf9
+    topics: [vcf-installer, sddc-manager]
+    objective: "4.1"
+    lesson: vcf-installer-workflow
+    section: concept
+    diagnostic: vcf
+    stem: "Which component replaces Cloud Builder in VCF 9.0?"
+    options:
+      - { id: a, text: "VCF Installer", correct: true, why: "The VCF Installer appliance deploys new VCF/VVF platforms and converges existing vSphere." }
+      - { id: b, text: "VCF Operations fleet management", why: "Fleet management handles day-2 lifecycle of management components.", confusedWith: fleet-management }
+      - { id: c, text: "vSphere Lifecycle Manager", why: "vLCM manages host images.", confusedWith: vlcm }
+      - { id: d, text: "VCF Automation", why: "Self-service consumption, not deployment.", confusedWith: vcf-automation }
+    explanation:
+      correct: "The VCF Installer replaces Cloud Builder and adds binary download and convergence workflows."
+      concept: "VCF 9 renames and new components"
+      architecture: "It ships in the SDDC Manager OVA."
+      trap: "Cloud Builder and bring-up are VCF 5.x terms."
+  - id: dep-inst-002
+    type: single
+    kind: architecture
+    difficulty: intermediate
+    version: vcf9
+    topics: [vcf-installer, sddc-manager]
+    objective: "4.1"
+    lesson: vcf-installer-workflow
+    section: concept
+    context: |
+      An architect deploys the VCF Installer OVA on one of the four ESX hosts that will form the management domain,
+      and plans to reuse the same installer next month for a second VCF instance at another site.
+    stem: "What is the problem with this plan?"
+    options:
+      - { id: a, text: "On a management host the appliance switches to SDDC Manager mode and loses its installer capabilities", correct: true, why: "TechDocs: deployed inside the management infrastructure it becomes SDDC Manager." }
+      - { id: b, text: "The installer cannot run on ESX hosts at all", why: "It is an OVA deployed on ESX." }
+      - { id: c, text: "One installer can only download binaries for one version", why: "Not the issue described." }
+      - { id: d, text: "The installer must be deployed in VCF Operations", why: "VCF Operations does not host the installer.", confusedWith: vcf-ops-architecture }
+    explanation:
+      correct: "Deploy the installer outside the management infrastructure if you want to reuse it for several platforms."
+      concept: "Installer dual personality"
+      architecture: "Installer and SDDC Manager share the VCF-SDDC-Manager-Appliance OVA."
+      trap: "Assuming the installer stays an installer after deployment."
+  - id: dep-inst-003
+    type: ordering
+    kind: concept
+    difficulty: intermediate
+    version: vcf9
+    topics: [vcf-installer]
+    objective: "4.1"
+    lesson: vcf-installer-workflow
+    section: how-it-works
+    stem: "Order the high-level VCF Installer process for a new VCF fleet."
+    items:
+      - { id: s1, text: "Prepare the ESX hosts" }
+      - { id: s2, text: "Deploy the VCF Installer appliance" }
+      - { id: s3, text: "Connect a depot and download the binaries" }
+      - { id: s4, text: "Complete the deployment wizard (or upload a JSON spec)" }
+      - { id: s5, text: "Validate and fix errors" }
+      - { id: s6, text: "Deploy and monitor tasks" }
+      - { id: s7, text: "License in VCF Operations and deploy the remaining components" }
+    explanation:
+      correct: "Preparation, deployment wizard and validation, deploy, then post-deployment tasks."
+      concept: "Preparation / deployment / post-deployment phases"
+      trap: "Binaries must be downloaded before deployment can start."
+  - id: dep-inst-004
+    type: multi
+    kind: scenario
+    difficulty: intermediate
+    version: vcf9
+    topics: [vcf-installer, vcf-ops-logs, network-ops]
+    objective: "4.1"
+    lesson: vcf-installer-workflow
+    section: components
+    select: 2
+    context: |
+      The VCF Installer reports success for a new VCF fleet deployed with the simple model.
+    stem: "Which two components must the administrator still deploy to complete the platform? (Choose two.)"
+    options:
+      - { id: a, text: "VCF Operations for logs", correct: true, why: "Deployed after the installer finishes." }
+      - { id: b, text: "VCF Operations for networks", correct: true, why: "Deployed after the installer finishes (VCF only)." }
+      - { id: c, text: "NSX Manager for the management domain", why: "The installer deploys it.", confusedWith: nsx-architecture }
+      - { id: d, text: "The VCF Operations collector", why: "The installer deploys a collector." }
+      - { id: e, text: "SDDC Manager", why: "Deployed by the installer (or the installer converts into it).", confusedWith: sddc-manager }
+    explanation:
+      correct: "Logs, networks, the orchestrator and optionally a three-node identity broker are post-deployment components."
+      concept: "Additional components required to complete deployment (objective 4.1)"
+      architecture: "VCF Operations, fleet management and the collector come from the installer."
+      trap: "Logs and networks are VCF Operations family members but are not deployed by the installer."
+  - id: dep-inst-005
+    type: single
+    kind: scenario
+    difficulty: intermediate
+    version: vcf9
+    topics: [vcf-installer, vcf-automation]
+    objective: "4.1"
+    lesson: vcf-installer-workflow
+    section: how-it-works
+    context: |
+      A customer will first upgrade its existing Aria Automation 8.x and wants VCF Automation in the new fleet only
+      after that.
+    stem: "What should be selected on the VCF Automation page of the installer wizard?"
+    options:
+      - { id: a, text: "I want to connect a VCF Automation instance later", correct: true, why: "VCF Automation can be deferred and deployed or connected as a day-N operation." }
+      - { id: b, text: "Deploy a new VCF Automation instance and delete it later", why: "Wasteful and unnecessary." }
+      - { id: c, text: "Leave the page empty; deployment fails until it is filled in", why: "There is an explicit deferral option." }
+      - { id: d, text: "Select the existing vCenter instead", why: "Unrelated to VCF Automation; selecting vCenter triggers convergence.", confusedWith: vcenter-import }
+    explanation:
+      correct: "The deferral option exists precisely for upgrading Aria Automation 8.x first or deploying later."
+      concept: "Optional components at day 0"
+      trap: "Assuming every fleet component must be deployed by the installer."
+  - id: dep-inst-006
+    type: matching
+    kind: concept
+    difficulty: intermediate
+    version: vcf9
+    topics: [vcf-installer]
+    objective: "4.1"
+    lesson: vcf-installer-workflow
+    section: how-it-works
+    stem: "Match each wizard decision with the page where it is made."
+    pairs:
+      - { id: p1, left: "New fleet vs instance in existing fleet", right: "Deployment type" }
+      - { id: p2, left: "Simple vs High Availability", right: "General information" }
+      - { id: p3, left: "vSAN ESA, VMFS on FC or NFS v3", right: "Storage" }
+      - { id: p4, left: "Default vs storage/NSX traffic separation", right: "Distributed switch" }
+      - { id: p5, left: "Download the JSON specification", right: "Review" }
+    explanation:
+      correct: "Each design decision lives on a specific wizard page; the JSON spec is offered at review."
+      concept: "Installer wizard structure"
+      trap: "The deployment model is chosen in general information, not on the VCF Operations page."
+  - id: dep-inst-007
+    type: single
+    kind: command
+    difficulty: advanced
+    version: vcf9
+    topics: [vcf-installer, apis-powercli]
+    objective: "4.1"
+    lesson: vcf-installer-workflow
+    section: cli-api
+    stem: "Which VCF Installer API call validates a deployment specification without deploying it?"
+    options:
+      - { id: a, text: "POST /v1/sddcs/validations", correct: true, why: "Validates an SddcSpec and returns executionStatus/resultStatus." }
+      - { id: b, text: "POST /v1/sddcs", why: "This starts the deployment." }
+      - { id: c, text: "POST /v1/hosts/validations", why: "SDDC Manager API for host commissioning specs.", confusedWith: host-commissioning }
+      - { id: d, text: "GET /v1/sddcs/latest", why: "Returns the latest deployment task." }
+    explanation:
+      correct: "POST /v1/sddcs/validations runs validation; POST /v1/sddcs deploys."
+      concept: "VCF Installer API"
+      architecture: "Authenticate with POST /v1/tokens first."
+      trap: "Confusing installer and SDDC Manager endpoints."
+  - id: dep-inst-008
+    type: single
+    kind: scenario
+    difficulty: advanced
+    version: vcf9
+    topics: [vcf-installer, vcf-fleet]
+    objective: "4.1"
+    lesson: vcf-installer-workflow
+    section: real-world-scenario
+    context: |
+      A second data centre will become a new VCF instance that shares VCF Operations with the first instance.
+    stem: "Which option is selected in the installer and what does it deploy for VCF Operations?"
+    options:
+      - { id: a, text: "A VCF instance in an existing VCF fleet; connect to the existing VCF Operations and deploy a new collector", correct: true, why: "The new instance joins the fleet; only a collector is added for VCF Operations." }
+      - { id: b, text: "A new VCF fleet; deploy a new VCF Operations and link it to the first", why: "That creates a separate fleet.", confusedWith: vcf-fleet }
+      - { id: c, text: "Converge the first site's vCenter", why: "Convergence is for existing vSphere." , confusedWith: vcenter-import }
+      - { id: d, text: "Deploy a new fleet management appliance and a new VCF Operations in HA", why: "Fleet-level components already exist in the fleet." }
+    explanation:
+      correct: "Instance in existing fleet: connect to the existing VCF Operations; enter new collector details."
+      concept: "Fleet vs instance"
+      architecture: "Fleet-level services (VCF Operations, fleet management, VCF Automation) are shared; each instance has its own management domain."
+      trap: "Custom networking for VCF Operations is unavailable in this scenario."
+  # ---------------------------------------------------------------- deployment-validation-failures
+  - id: dep-val-001
+    type: single
+    kind: concept
+    difficulty: foundation
+    version: vcf9
+    topics: [deployment-validation]
+    objective: "4.1"
+    lesson: deployment-validation-failures
+    section: concept
+    diagnostic: troubleshooting
+    stem: "During VCF Installer validation, what is the difference between a warning and an error?"
+    options:
+      - { id: a, text: "Warnings can be acknowledged to proceed; errors must be resolved before deploying", correct: true, why: "As documented for the validation step." }
+      - { id: b, text: "Both block deployment", why: "Warnings can be acknowledged." }
+      - { id: c, text: "Errors can be acknowledged; warnings must be fixed", why: "Reversed." }
+      - { id: d, text: "Neither blocks deployment; they are informational", why: "Errors block." }
+    explanation:
+      correct: "Acknowledge warnings consciously; fix errors in the wizard or by uploading a corrected JSON."
+      concept: "Validation outcomes"
+      trap: "Acknowledging warnings without understanding them stores up problems (e.g. NTP)."
+  - id: dep-val-002
+    type: single
+    kind: troubleshooting
+    difficulty: intermediate
+    version: vcf9
+    topics: [deployment-validation, dns]
+    objective: "4.1"
+    lesson: deployment-validation-failures
+    section: deep-dive
+    context: |
+      ```shell
+      $ nslookup esx03.lab.local
+      Address: 10.0.10.13
+      $ nslookup 10.0.10.13
+      13.10.0.10.in-addr.arpa  name = esx-old-03.lab.local.
+      ```
+      Validation reports a DNS error for esx03.
+    stem: "What is the root cause?"
+    options:
+      - { id: a, text: "The PTR record for 10.0.10.13 points to an old name", correct: true, why: "Reverse lookup must return the same FQDN." }
+      - { id: b, text: "The host certificate is stale", why: "A certificate problem shows as a thumbprint/certificate failure.", confusedWith: certificates }
+      - { id: c, text: "NTP skew", why: "Time does not affect name resolution.", confusedWith: ntp }
+      - { id: d, text: "The vSAN IP range is too small", why: "Unrelated to DNS." }
+    explanation:
+      correct: "Forward is fine but reverse returns a different name; fix the PTR record and re-validate."
+      concept: "Forward and reverse DNS consistency"
+      trap: "Adding hosts-file entries instead of fixing DNS."
+  - id: dep-val-003
+    type: single
+    kind: troubleshooting
+    difficulty: intermediate
+    version: vcf9
+    topics: [deployment-validation, mtu]
+    objective: "4.1"
+    lesson: deployment-validation-failures
+    section: deep-dive
+    context: |
+      ```shell
+      [root@esx01:~] vmkping -I vmk2 10.0.12.12
+      3 packets transmitted, 3 packets received
+      [root@esx01:~] vmkping -I vmk2 -d -s 8972 10.0.12.12
+      3 packets transmitted, 0 packets received, 100% packet loss
+      ```
+    stem: "What does this output indicate on the vSAN VLAN?"
+    options:
+      - { id: a, text: "A device in the path does not pass 9000-byte frames (MTU mismatch)", correct: true, why: "Small pings pass, large don't-fragment pings fail." }
+      - { id: b, text: "The VLAN is not trunked", why: "Then the small ping would also fail.", confusedWith: l2-l3 }
+      - { id: c, text: "DNS is broken", why: "The test uses IP addresses.", confusedWith: dns }
+      - { id: d, text: "vmk2 has no IP address", why: "Small pings work." }
+    explanation:
+      correct: "The classic MTU signature: connectivity works, jumbo frames with DF bit are dropped."
+      concept: "End-to-end MTU"
+      trap: "Concluding the network is fine because ping works."
+  - id: dep-val-004
+    type: single
+    kind: troubleshooting
+    difficulty: advanced
+    version: vcf9
+    topics: [deployment-validation, certificates]
+    objective: "4.1"
+    lesson: deployment-validation-failures
+    section: deep-dive
+    context: |
+      A host was installed as `localhost`, then renamed to esx04.lab.local with esxcli. DNS forward and reverse are
+      correct. Validation fails on certificate/thumbprint validation for esx04 only.
+    stem: "What is the best fix?"
+    options:
+      - { id: a, text: "Run /sbin/generate-certificates on esx04, restart hostd and vpxa, then re-confirm its thumbprint", correct: true, why: "The certificate still matches the old name." }
+      - { id: b, text: "Set skipEsxThumbprintValidation in the JSON spec", why: "Hides the problem; the certificate still does not match." }
+      - { id: c, text: "Reinstall the VCF Installer", why: "The installer is not the problem." , confusedWith: vcf-installer }
+      - { id: d, text: "Add a PTR record for localhost", why: "DNS is already correct.", confusedWith: dns }
+    explanation:
+      correct: "Regenerate the self-signed certificate after the FQDN change and restart the agents."
+      concept: "Certificate identity must match the FQDN"
+      trap: "Skipping validation instead of fixing identity."
+  - id: dep-val-005
+    type: ordering
+    kind: troubleshooting
+    difficulty: intermediate
+    version: vcf9
+    topics: [deployment-validation, troubleshooting-method]
+    objective: "4.1"
+    lesson: deployment-validation-failures
+    section: how-it-works
+    stem: "Order the diagnostic loop for a failed VCF Installer validation."
+    items:
+      - { id: s1, text: "Read the exact check that failed and the object it names" }
+      - { id: s2, text: "Classify the layer (DNS, NTP, network/MTU, host, certificate, password)" }
+      - { id: s3, text: "Test from the installer's point of view" }
+      - { id: s4, text: "Fix the source (record, switch, host, password)" }
+      - { id: s5, text: "Re-run validation" }
+    explanation:
+      correct: "Read, classify, test from the right vantage point, fix the source, re-validate."
+      concept: "Structured troubleshooting"
+      trap: "Testing from your laptop instead of the installer, whose resolver and routes are what matter."
+  - id: dep-val-006
+    type: single
+    kind: scenario
+    difficulty: intermediate
+    version: vcf9
+    topics: [deployment-validation, vcf-installer]
+    objective: "4.1"
+    lesson: deployment-validation-failures
+    section: real-world-scenario
+    context: |
+      Deployment validated cleanly but failed at the NSX Manager deployment task. You found and removed a duplicate
+      IP address on the NSX Manager address.
+    stem: "What is the next step?"
+    options:
+      - { id: a, text: "Retry the failed task from the Tasks panel", correct: true, why: "TechDocs: review failed tasks, address issues and retry." }
+      - { id: b, text: "Redeploy the VCF Installer and start over", why: "Unnecessary; deployment resumes from the failed task." }
+      - { id: c, text: "Re-image all hosts", why: "Hosts are not the problem." }
+      - { id: d, text: "Deploy NSX Manager manually from OVA", why: "Breaks the automated workflow." , confusedWith: nsx-architecture }
+    explanation:
+      correct: "After fixing the cause, retry the failed task."
+      concept: "Resuming deployments"
+      trap: "Starting from scratch after every failure."
+  - id: dep-val-007
+    type: multi
+    kind: troubleshooting
+    difficulty: advanced
+    version: vcf9
+    topics: [deployment-validation, host-commissioning]
+    objective: "4.1"
+    lesson: deployment-validation-failures
+    section: deep-dive
+    select: 2
+    context: |
+      In a nested lab the installer reports the management NIC is below the required speed, and vSAN ESA validation
+      says no certified disks were found.
+    stem: "Which two statements are correct? (Choose two.)"
+    options:
+      - { id: a, text: "VCF validates that physical NICs are at least 10 Gbps by default", correct: true, why: "A documented prerequisite." }
+      - { id: b, text: "Workarounds for these checks exist for labs but are not supported for production", correct: true, why: "Lam's properties and mock VIB are explicitly unsupported." }
+      - { id: c, text: "These checks only apply to workload domains, not the management domain", why: "They apply at deployment too." }
+      - { id: d, text: "Using NFS v3 principal storage still requires vSAN ESA certified disks", why: "Disk certification is a vSAN requirement.", confusedWith: wld-storage }
+    explanation:
+      correct: "NIC speed and vSAN HCL are real checks; lab bypasses exist but are unsupported."
+      concept: "Hardware validation"
+      trap: "Treating lab workarounds as supported configuration."
+  - id: dep-val-008
+    type: single
+    kind: troubleshooting
+    difficulty: expert
+    version: vcf9
+    topics: [deployment-validation, ntp, certificates]
+    objective: "4.1"
+    lesson: deployment-validation-failures
+    section: deep-dive
+    context: |
+      After an otherwise successful deployment, logins between components intermittently fail with token errors,
+      and one appliance logs a certificate "not yet valid" message. Validation had shown an NTP warning that was
+      acknowledged.
+    stem: "What is the most likely root cause?"
+    options:
+      - { id: a, text: "Time skew between hosts and appliances (NTP)", correct: true, why: "Skew breaks token lifetimes and certificate validity checks." }
+      - { id: b, text: "Missing PTR records", why: "Would surface as name-resolution failures.", confusedWith: dns }
+      - { id: c, text: "MTU mismatch on the management VLAN", why: "Would cause transfer failures, not 'not yet valid' certificates.", confusedWith: mtu }
+      - { id: d, text: "Expired licences", why: "Licensing does not produce certificate validity errors." , confusedWith: licensing }
+    explanation:
+      correct: "'Not yet valid' and token errors are time symptoms; fix NTP everywhere."
+      concept: "NTP as a hard dependency"
+      trap: "Acknowledging NTP warnings at validation time."
+  # ---------------------------------------------------------------- import-existing-vcenter
+  - id: dep-imp-001
+    type: single
+    kind: concept
+    difficulty: foundation
+    version: vcf9
+    topics: [vcenter-import]
+    objective: "4.2"
+    lesson: import-existing-vcenter
+    section: concept
+    diagnostic: vcf
+    stem: "A company already runs a VCF 9.0 instance and wants an existing vCenter to become a new workload domain. Which workflow applies?"
+    options:
+      - { id: a, text: "Import a vCenter from VCF Operations", correct: true, why: "Import adds a vCenter as a VI workload domain to an existing instance." }
+      - { id: b, text: "Converge the vCenter with the VCF Installer", why: "Convergence creates a management domain for a new instance.", confusedWith: vcf-installer }
+      - { id: c, text: "Commission the vCenter as a host", why: "Commissioning is for ESX hosts.", confusedWith: host-commissioning }
+      - { id: d, text: "Upgrade the vCenter with fleet management", why: "Not an adoption path." , confusedWith: fleet-management }
+    explanation:
+      correct: "Import = workload domain in an existing instance; convergence = management domain of a new instance."
+      concept: "Import vs convergence"
+      trap: "Both are brownfield; the target domain type differs."
+  - id: dep-imp-002
+    type: multi
+    kind: scenario
+    difficulty: intermediate
+    version: vcf9
+    topics: [vcenter-import, vlcm, drs]
+    objective: "4.2"
+    lesson: import-existing-vcenter
+    section: components
+    select: 3
+    stem: "Which three conditions must be true before a vCenter can be imported as a workload domain? (Choose three.)"
+    options:
+      - { id: a, text: "Clusters use vSphere Lifecycle Manager images, not baselines", correct: true, why: "Baselines are not supported." }
+      - { id: b, text: "DRS is fully automated on every cluster", correct: true, why: "Manual or partial DRS is not supported." }
+      - { id: c, text: "Hosts use a VDS 8.0 or later with static VMkernel IPs", correct: true, why: "Network prerequisites." }
+      - { id: d, text: "vCenter is in Enhanced Linked Mode with the management vCenter", why: "ELM is not supported in VCF 9.", confusedWith: vcenter }
+      - { id: e, text: "Principal storage is vVols", why: "vVols is not supported for import.", confusedWith: wld-storage }
+    explanation:
+      correct: "Images, fully automated DRS and VDS 8.0+ with static IPs are required; ELM and vVols block import."
+      concept: "Import prerequisites"
+      trap: "ELM was common in vSphere 7/8 designs but is unsupported in VCF 9."
+  - id: dep-imp-003
+    type: ordering
+    kind: concept
+    difficulty: intermediate
+    version: vcf9
+    topics: [vcenter-import]
+    objective: "4.2"
+    lesson: import-existing-vcenter
+    section: how-it-works
+    stem: "Order the steps of importing a vCenter as a workload domain in VCF Operations."
+    items:
+      - { id: s1, text: "Inventory > VCF Instances > instance > Add Workload Domain > Import a vCenter" }
+      - { id: s2, text: "Enter the workload domain name and vCenter details" }
+      - { id: s3, text: "Confirm certificate thumbprints" }
+      - { id: s4, text: "Run prechecks and resolve issues" }
+      - { id: s5, text: "Configure NSX (connect existing or deploy new)" }
+      - { id: s6, text: "Run final validation, review and finish" }
+    explanation:
+      correct: "Name and connect, trust (thumbprints), precheck, NSX, validate, finish; monitor in Fleet Management > Tasks."
+      concept: "Import workflow"
+      trap: "Prechecks come before NSX configuration and final validation."
+  - id: dep-imp-004
+    type: single
+    kind: scenario
+    difficulty: advanced
+    version: vcf9
+    topics: [vcenter-import, cluster-expansion]
+    objective: "4.2"
+    lesson: import-existing-vcenter
+    section: deep-dive
+    context: |
+      Six months after importing vCenter vc-legacy (clusters cl-a and cl-b) as a workload domain, operations needs
+      to add a host to cl-a.
+    stem: "How is the host added?"
+    options:
+      - { id: a, text: "Add it to cl-a with the vSphere Client like a normal vCenter host", correct: true, why: "Imported clusters keep vSphere Client host management." }
+      - { id: b, text: "Commission it and use Add Unassigned Hosts on cl-a", why: "Commissioned hosts cannot be added to an imported cluster.", confusedWith: host-commissioning }
+      - { id: c, text: "Re-import the vCenter", why: "No such step." }
+      - { id: d, text: "Convert cl-a to an SDDC cluster with the VCF Installer", why: "No such workflow.", confusedWith: vcf-installer }
+    explanation:
+      correct: "TechDocs: adding hosts to imported clusters requires the vSphere Client; new SDDC clusters can use commissioned hosts."
+      concept: "Post-import limitations"
+      trap: "Assuming import makes every cluster fully VCF-provisioned."
+  - id: dep-imp-005
+    type: single
+    kind: architecture
+    difficulty: intermediate
+    version: vcf9
+    topics: [vcenter-import, nsx-security]
+    objective: "4.2"
+    lesson: import-existing-vcenter
+    section: how-it-works
+    stem: "What happens to the NSX Distributed Firewall after a vCenter without NSX is imported and a new NSX Manager is deployed?"
+    options:
+      - { id: a, text: "NSX is activated on the distributed port groups and the DFW is enabled with default allow-all rules", correct: true, why: "Existing traffic keeps flowing." }
+      - { id: b, text: "DFW is enabled with default deny, so rules must be written first", why: "Would break running workloads.", confusedWith: nsx-security }
+      - { id: c, text: "DFW stays disabled until VCF Automation is deployed", why: "No such dependency.", confusedWith: vcf-automation }
+      - { id: d, text: "All VMs are moved to overlay segments", why: "Import does not move VMs." , confusedWith: nsx-segments }
+    explanation:
+      correct: "Import activates NSX on DVPGs with an allow-all DFW so the brownfield environment is unaffected."
+      concept: "Non-disruptive import"
+      trap: "Expecting a zero-trust default after import."
+  - id: dep-imp-006
+    type: single
+    kind: scenario
+    difficulty: advanced
+    version: vcf9
+    topics: [vcenter-import, management-domain]
+    objective: "4.2"
+    lesson: import-existing-vcenter
+    section: concept
+    context: |
+      A customer has no VCF yet: one vCenter 9.0 with three vSAN hosts and Aria Operations. They want this
+      environment to become their first VCF instance without rebuilding.
+    stem: "Which approach fits?"
+    options:
+      - { id: a, text: "Converge the vCenter with the VCF Installer into the management domain of a new instance", correct: true, why: "Convergence creates a management domain from existing vSphere." }
+      - { id: b, text: "Import the vCenter from VCF Operations", why: "Import needs an existing VCF instance." }
+      - { id: c, text: "Commission the three hosts into SDDC Manager", why: "There is no SDDC Manager yet.", confusedWith: host-commissioning }
+      - { id: d, text: "Deploy a new fleet with four new hosts and migrate VMs", why: "Possible but not 'without rebuilding'." }
+    explanation:
+      correct: "Convergence via the VCF Installer turns existing vSphere into a VCF management domain."
+      concept: "Brownfield to first instance"
+      architecture: "Minimum 3 vSAN hosts (simple) for convergence."
+      trap: "Choosing import when no fleet exists."
+  - id: dep-imp-007
+    type: truefalse
+    kind: concept
+    difficulty: foundation
+    version: vcf9
+    topics: [vcenter-import]
+    objective: "4.2"
+    lesson: import-existing-vcenter
+    section: components
+    stem: "When importing a vCenter, you can choose to import only some of its clusters."
+    options:
+      - { id: "true", text: "True", why: "All clusters are imported together." }
+      - { id: "false", text: "False", correct: true, why: "There is no selective import; all vSphere clusters of the vCenter are imported." }
+    explanation:
+      correct: "False — import is all-or-nothing per vCenter."
+      concept: "Import scope"
+      trap: "One non-compliant cluster blocks the whole import until fixed."
+  - id: dep-imp-008
+    type: single
+    kind: troubleshooting
+    difficulty: expert
+    version: vcf9
+    topics: [vcenter-import, vlcm, troubleshooting-method]
+    objective: "4.2"
+    lesson: import-existing-vcenter
+    section: failure-scenarios
+    context: |
+      Import prechecks for vc-legacy report: cluster "cl-db" uses baselines; cluster "cl-web" DRS partially
+      automated; host "10.20.1.15" is not identified by FQDN.
+    stem: "Which action plan makes the import possible with the least disruption?"
+    options:
+      - { id: a, text: "Convert cl-db to a vLCM image, set cl-web DRS to fully automated, re-add 10.20.1.15 by FQDN with DNS records, then re-run prechecks", correct: true, why: "Fixes each blocking prerequisite at the source." }
+      - { id: b, text: "Remove cl-db and cl-web from the import selection", why: "Selective import is not possible." }
+      - { id: c, text: "Import anyway and fix after import", why: "Prechecks block the import." }
+      - { id: d, text: "Converge vc-legacy instead", why: "Convergence has stricter prerequisites and targets a new management domain." }
+    explanation:
+      correct: "Each precheck maps to a prerequisite: images, DRS automation and FQDN-based host inventory."
+      concept: "Precheck-driven remediation"
+      trap: "Hoping to bypass prechecks or import partially."
+  # ---------------------------------------------------------------- host-commissioning-wld-creation
+  - id: wld-com-001
+    type: single
+    kind: concept
+    difficulty: foundation
+    version: vcf9
+    topics: [host-commissioning]
+    objective: "4.1"
+    lesson: host-commissioning-wld-creation
+    section: concept
+    diagnostic: vcf
+    stem: "What must exist before ESX hosts can be commissioned into VCF?"
+    options:
+      - { id: a, text: "A network pool that includes the networks for the hosts' storage type", correct: true, why: "Commissioning requires a pool; it later supplies VMkernel IPs." }
+      - { id: b, text: "A workload domain to put them in", why: "Hosts are commissioned first and remain unassigned until a domain uses them.", confusedWith: workload-domains }
+      - { id: c, text: "An NSX Edge cluster", why: "Not a commissioning prerequisite.", confusedWith: nsx-edge }
+      - { id: d, text: "A Supervisor", why: "Unrelated.", confusedWith: supervisor }
+    explanation:
+      correct: "Create or expand a network pool, then commission hosts."
+      concept: "Network pools"
+      trap: "Thinking hosts are commissioned into a domain directly."
+  - id: wld-com-002
+    type: single
+    kind: concept
+    difficulty: intermediate
+    version: vcf9
+    topics: [host-commissioning]
+    objective: "4.1"
+    lesson: host-commissioning-wld-creation
+    section: concept
+    stem: "Where does TechDocs for VCF 9.0 document the Commission Hosts workflow?"
+    options:
+      - { id: a, text: "vSphere Client > Global Inventory Lists > Hosts > Unassigned Hosts > Commission Hosts", correct: true, why: "With access to the management vCenter or VCF SSO with vCenter linking; SDDC Manager UI is listed as an alternative." }
+      - { id: b, text: "VCF Installer > Hosts", why: "The installer is used for initial deployment.", confusedWith: vcf-installer }
+      - { id: c, text: "NSX Manager > System > Fabric > Hosts", why: "That is NSX transport node configuration.", confusedWith: nsx-transport }
+      - { id: d, text: "ESX Host Client > Manage > VCF", why: "No such page." }
+    explanation:
+      correct: "VCF 9.0 moved commissioning and network pools into the vSphere Client Global Inventory Lists."
+      concept: "VCF 9.0 UI locations"
+      trap: "Remembering the VCF 5.x SDDC Manager-only UI."
+  - id: wld-com-003
+    type: ordering
+    kind: concept
+    difficulty: intermediate
+    version: vcf9
+    topics: [host-commissioning]
+    objective: "4.1"
+    lesson: host-commissioning-wld-creation
+    section: how-it-works
+    stem: "Order the Commission Hosts wizard steps."
+    items:
+      - { id: s1, text: "Review the checklist and select all prerequisites" }
+      - { id: s2, text: "Add hosts with FQDN, storage type, network pool and credentials (or upload JSON)" }
+      - { id: s3, text: "Confirm all fingerprints" }
+      - { id: s4, text: "Validate all hosts" }
+      - { id: s5, text: "Commission (optionally skipping failed hosts)" }
+    explanation:
+      correct: "Checklist, add, fingerprints, validate, commission."
+      concept: "Commissioning workflow"
+      trap: "Fingerprints are confirmed before validation."
+  - id: wld-com-004
+    type: single
+    kind: scenario
+    difficulty: intermediate
+    version: vcf9
+    topics: [host-commissioning, wld-storage]
+    objective: "4.1"
+    lesson: host-commissioning-wld-creation
+    section: components
+    context: |
+      Four hosts were commissioned with storage type vSAN (vSAN HCI without ESA). The architect now creates a
+      workload domain with vSAN ESA and the hosts do not appear on the host selection page.
+    stem: "Why?"
+    options:
+      - { id: a, text: "Hosts commissioned for vSAN OSA can only be used for vSAN OSA clusters", correct: true, why: "The storage type set at commissioning restricts cluster membership." }
+      - { id: b, text: "The network pool has no free IPs", why: "That would fail later, not hide hosts by storage type.", confusedWith: cluster-expansion }
+      - { id: c, text: "vSAN ESA requires an NSX Edge cluster first", why: "No such dependency.", confusedWith: nsx-edge }
+      - { id: d, text: "The hosts need to be decommissioned from the management domain", why: "They are unassigned already." }
+    explanation:
+      correct: "ESA-enabled hosts only for ESA clusters, non-ESA vSAN hosts only for OSA clusters."
+      concept: "Storage type tagging"
+      trap: "Treating vSAN as a single storage type."
+  - id: wld-com-005
+    type: single
+    kind: architecture
+    difficulty: foundation
+    version: vcf9
+    topics: [workload-domains, management-domain]
+    objective: "4.1"
+    lesson: host-commissioning-wld-creation
+    section: architecture
+    stem: "Where does the vCenter of a newly created VI workload domain run?"
+    options:
+      - { id: a, text: "In the management domain", correct: true, why: "Workload domain vCenter and NSX Managers are deployed into the management domain." }
+      - { id: b, text: "On the first host of the new workload domain", why: "The workload domain hosts run workloads, not their own vCenter.", confusedWith: workload-domains }
+      - { id: c, text: "In VCF Operations", why: "VCF Operations is a management appliance, not a host for vCenter.", confusedWith: vcf-ops-architecture }
+      - { id: d, text: "On the VCF Installer", why: "The installer is not involved in workload domain creation.", confusedWith: vcf-installer }
+    explanation:
+      correct: "Management components of every workload domain live in the management domain."
+      concept: "Management/workload separation"
+      trap: "This is why management domain capacity limits the number of workload domains."
+  - id: wld-com-006
+    type: multi
+    kind: scenario
+    difficulty: advanced
+    version: vcf9
+    topics: [workload-domains, nsx-edge, supervisor]
+    objective: "4.1"
+    lesson: host-commissioning-wld-creation
+    section: how-it-works
+    select: 2
+    context: |
+      A workload domain is created in VCF Operations with Enable vSphere Supervisor selected and Centralized
+      Connectivity for NSX.
+    stem: "Which two statements are true? (Choose two.)"
+    options:
+      - { id: a, text: "An NSX Edge cluster with an active-standby Tier-0 must be deployed after the domain is created to complete Supervisor activation", correct: true, why: "Centralized connectivity is configured after creation." }
+      - { id: b, text: "The wizard creates a Supervisor with a single control plane VM and one vSphere zone", correct: true, why: "As documented for the wizard." }
+      - { id: c, text: "The wizard deploys a three-node Edge cluster automatically", why: "Edges are deployed afterwards.", confusedWith: nsx-edge }
+      - { id: d, text: "Supervisor requires Distributed Connectivity", why: "Centralized connectivity is required for Supervisor in this flow.", confusedWith: nsx-vpc }
+    explanation:
+      correct: "Wizard Supervisor = 1 control plane VM, 1 zone; edge/Tier-0 afterwards."
+      concept: "Workload domain + Supervisor"
+      trap: "Expecting the WLD wizard to build edge networking."
+  - id: wld-com-007
+    type: cli
+    kind: command
+    difficulty: intermediate
+    version: general
+    topics: [host-commissioning, certificates]
+    objective: "4.1"
+    lesson: host-commissioning-wld-creation
+    section: deep-dive
+    context: |
+      A host fails commissioning validation because its certificate still names the old hostname. You have already
+      set the FQDN.
+    stem: "Type the command (run in the ESX shell) that regenerates the host's self-signed certificate."
+    answers: ["/sbin/generate-certificates"]
+    placeholder: "/sbin/..."
+    explanation:
+      correct: "/sbin/generate-certificates, followed by restarting hostd and vpxa."
+      concept: "Host certificate regeneration"
+      trap: "Forgetting to restart hostd/vpxa so the old certificate is still presented."
+  - id: wld-com-008
+    type: single
+    kind: scenario
+    difficulty: intermediate
+    version: vcf9
+    topics: [host-commissioning]
+    objective: "4.1"
+    lesson: host-commissioning-wld-creation
+    section: deep-dive
+    stem: "A host that was part of workload domain A must be reused in workload domain B. What is the correct sequence?"
+    options:
+      - { id: a, text: "Remove from A's cluster, decommission, re-image, commission, add to B", correct: true, why: "TechDocs: decommission, re-image and commission before reuse in another domain." }
+      - { id: b, text: "Remove from A's cluster and add to B", why: "It must be decommissioned, re-imaged and re-commissioned." }
+      - { id: c, text: "Decommission while still in A, then add to B", why: "A host must not be assigned to a domain when decommissioned." }
+      - { id: d, text: "vMotion the host to B", why: "Hosts are not vMotioned." , confusedWith: vsphere-cluster }
+    explanation:
+      correct: "Remove → decommission → re-image → commission → assign."
+      concept: "Host lifecycle in VCF"
+      trap: "Skipping the re-image for previously assigned hosts."
+  - id: wld-com-009
+    type: single
+    kind: concept
+    difficulty: advanced
+    version: vcf9
+    topics: [host-commissioning]
+    objective: "4.1"
+    lesson: host-commissioning-wld-creation
+    section: deep-dive
+    stem: "Which statement about network pools in VCF 9.0 is correct?"
+    options:
+      - { id: a, text: "You cannot change a pool's subnet after creation, but you can add IP ranges", correct: true, why: "Subnets and existing ranges are fixed; new ranges can be added." }
+      - { id: b, text: "The default pool created at deployment can be deleted once workload domains exist", why: "The default pool cannot be deleted." }
+      - { id: c, text: "Pools assign IPs to the ESX management VMkernel", why: "Pools cover vMotion, vSAN, vSAN Storage Client, NFS and iSCSI." , confusedWith: vcf-network-design }
+      - { id: d, text: "Two pools can share the same subnet", why: "Subnets cannot overlap between pools." }
+    explanation:
+      correct: "Plan subnets up front; grow by adding ranges."
+      concept: "Network pool rules"
+      trap: "Expecting pools to manage management IPs."
+  # ---------------------------------------------------------------- workload-domain-storage
+  - id: wld-sto-001
+    type: single
+    kind: concept
+    difficulty: foundation
+    version: vcf9
+    topics: [wld-storage]
+    objective: "4.1"
+    lesson: workload-domain-storage
+    section: concept
+    diagnostic: storage
+    stem: "What distinguishes principal storage from supplemental storage in VCF?"
+    options:
+      - { id: a, text: "Principal storage is configured when the domain or cluster is created; supplemental storage is added afterwards", correct: true, why: "TechDocs definitions." }
+      - { id: b, text: "Principal storage is always vSAN; supplemental is everything else", why: "NFS v3 and VMFS on FC can be principal.", confusedWith: vsan-architecture }
+      - { id: c, text: "Supplemental storage cannot run workloads", why: "It can run workloads or hold data at rest." }
+      - { id: d, text: "Principal storage is only for management VMs", why: "It runs any workloads." }
+    explanation:
+      correct: "Timing defines it: principal at creation, supplemental later."
+      concept: "Principal vs supplemental"
+      trap: "Equating principal with vSAN."
+  - id: wld-sto-002
+    type: multi
+    kind: concept
+    difficulty: intermediate
+    version: vcf9
+    topics: [wld-storage, datastores]
+    objective: "4.1"
+    lesson: workload-domain-storage
+    section: concept
+    select: 3
+    stem: "Which three storage types are supplemental-only in VCF 9.0? (Choose three.)"
+    options:
+      - { id: a, text: "iSCSI", correct: true, why: "Supplemental only." }
+      - { id: b, text: "NFS v4.1", correct: true, why: "Supplemental only; principal NFS is v3." }
+      - { id: c, text: "NVMe/TCP", correct: true, why: "NVMe transports are supplemental only." }
+      - { id: d, text: "VMFS on Fibre Channel", why: "Can be principal or supplemental." }
+      - { id: e, text: "vSAN ESA", why: "Principal." , confusedWith: vsan-architecture }
+    explanation:
+      correct: "NFS 4.1, iSCSI and NVMe/TCP, NVMe/FC, NVMe/RDMA are supplemental only."
+      concept: "Storage models table"
+      trap: "FC appears in both columns."
+  - id: wld-sto-003
+    type: single
+    kind: scenario
+    difficulty: intermediate
+    version: vcf9
+    topics: [wld-storage]
+    objective: "4.1"
+    lesson: workload-domain-storage
+    section: real-world-scenario
+    context: |
+      A customer has a modern FC SAN and compute-only blades and wants a VCF 9.0 workload domain without buying vSAN
+      hardware. A consultant suggests vVols.
+    stem: "What is the best principal storage recommendation?"
+    options:
+      - { id: a, text: "VMFS on Fibre Channel", correct: true, why: "Supported principal storage that uses the existing SAN; vVols is deprecated in 9.0." }
+      - { id: b, text: "vVols, the recommended external storage in VCF 9", why: "vVols is deprecated starting with VCF 9.0.", confusedWith: datastores }
+      - { id: c, text: "iSCSI", why: "Supplemental only." }
+      - { id: d, text: "NFS v4.1", why: "Supplemental only." }
+    explanation:
+      correct: "VMFS on FC as principal; prepare zoning and LUNs beforehand."
+      concept: "External principal storage"
+      trap: "vVols still appears in the wizard but is deprecated."
+  - id: wld-sto-004
+    type: single
+    kind: architecture
+    difficulty: advanced
+    version: vcf9
+    topics: [wld-storage, vsan-architecture, management-domain]
+    objective: "4.1"
+    lesson: workload-domain-storage
+    section: concept
+    stem: "Where can a vSAN storage cluster be used as principal storage?"
+    options:
+      - { id: a, text: "In VI workload domains and additional management domain clusters, but not the management domain default cluster", correct: true, why: "Per the Storage Models table." }
+      - { id: b, text: "Only in the management domain default cluster", why: "Reversed." }
+      - { id: c, text: "Nowhere; it is supplemental only", why: "It is a principal option outside the default management cluster." }
+      - { id: d, text: "Only in imported workload domains", why: "No such restriction." , confusedWith: vcenter-import }
+    explanation:
+      correct: "vSAN storage clusters and compute clusters are not supported for the management default cluster."
+      concept: "Disaggregated vSAN in VCF"
+      trap: "Assuming every vSAN model is allowed everywhere."
+  - id: wld-sto-005
+    type: matching
+    kind: concept
+    difficulty: intermediate
+    version: vcf9
+    topics: [wld-storage, host-commissioning]
+    objective: "4.1"
+    lesson: workload-domain-storage
+    section: architecture
+    stem: "Match the commissioning storage type value with the cluster type the host can join."
+    pairs:
+      - { id: p1, left: "VSAN_ESA", right: "vSAN ESA cluster" }
+      - { id: p2, left: "VSAN", right: "vSAN OSA cluster" }
+      - { id: p3, left: "VSAN_MAX", right: "vSAN storage cluster" }
+      - { id: p4, left: "VSAN_REMOTE", right: "vSAN compute cluster" }
+      - { id: p5, left: "VMFS_FC", right: "VMFS on FC cluster" }
+    explanation:
+      correct: "Each storage tag maps to one cluster type."
+      concept: "Commissioning storage types"
+      trap: "VSAN means OSA; ESA has its own tag."
+  - id: wld-sto-006
+    type: single
+    kind: scenario
+    difficulty: advanced
+    version: vcf9
+    topics: [wld-storage, cluster-expansion]
+    objective: "4.1"
+    lesson: workload-domain-storage
+    section: deep-dive
+    stem: "An administrator deletes a cluster that used vSAN as principal storage and also had an NFS supplemental datastore. What happens to the storage?"
+    options:
+      - { id: a, text: "The vSAN datastore is destroyed; the NFS datastore is unmounted", correct: true, why: "TechDocs: vSAN datastores are destroyed, other storage types unmounted." }
+      - { id: b, text: "Both datastores are preserved and remounted on the management domain", why: "No such behaviour." }
+      - { id: c, text: "Both are destroyed", why: "NFS is only unmounted." }
+      - { id: d, text: "vSAN data is migrated automatically to another cluster", why: "Migration is the administrator's job before deletion." , confusedWith: vsan-resilience }
+    explanation:
+      correct: "Move workloads and data first; vSAN on deleted clusters is destroyed."
+      concept: "Shrinking domains"
+      trap: "Assuming VCF protects vSAN data during cluster deletion."
+  - id: wld-sto-007
+    type: truefalse
+    kind: concept
+    difficulty: foundation
+    version: vcf9
+    topics: [wld-storage]
+    objective: "4.1"
+    lesson: workload-domain-storage
+    section: deep-dive
+    stem: "Different clusters in the same workload domain can use different principal storage types."
+    options:
+      - { id: "true", text: "True", correct: true, why: "Each cluster can use a different type, as long as all hosts within a cluster use the same type." }
+      - { id: "false", text: "False", why: "The add-cluster page states the opposite." }
+    explanation:
+      correct: "True: storage type is per cluster, not per domain."
+      concept: "Per-cluster principal storage"
+      trap: "Confusing domain-level and cluster-level decisions."
+  - id: wld-sto-008
+    type: single
+    kind: scenario
+    difficulty: expert
+    version: vcf9
+    topics: [wld-storage, host-commissioning]
+    objective: "4.1"
+    lesson: workload-domain-storage
+    section: failure-scenarios
+    context: |
+      You create network pool wld02-np with vMotion and vSAN networks. You then try to commission hosts with storage
+      type NFS using this pool for an NFS-based workload domain.
+    stem: "What will happen and why?"
+    options:
+      - { id: a, text: "The pool cannot be used because it lacks an NFS network for the NFS VMkernels", correct: true, why: "The pool must support the storage type selected for the host." }
+      - { id: b, text: "It works; NFS traffic uses the vSAN network", why: "VCF assigns NFS VMkernel IPs from an NFS network in the pool." }
+      - { id: c, text: "It works; NFS uses the management VMkernel", why: "VCF uses a dedicated NFS network from the pool in this workflow." , confusedWith: vcf-network-design }
+      - { id: d, text: "The hosts commission but the domain will use vSAN instead", why: "Storage type is explicit." }
+    explanation:
+      correct: "Create a pool with vMotion and NFS networks; subnets cannot be added by editing an existing network."
+      concept: "Pool and storage type consistency"
+      trap: "Treating the pool as storage-agnostic."
+  # ---------------------------------------------------------------- cluster-host-expansion
+  - id: wld-exp-001
+    type: single
+    kind: concept
+    difficulty: foundation
+    version: vcf9
+    topics: [cluster-expansion]
+    objective: "4.1"
+    lesson: cluster-host-expansion
+    section: concept
+    stem: "In VCF 9.0, where does TechDocs document adding an unassigned host to an existing SDDC cluster?"
+    options:
+      - { id: a, text: "vSphere Client > cluster > Actions > Add Hosts > Add Unassigned Hosts", correct: true, why: "Documented path." }
+      - { id: b, text: "VCF Installer > Expand", why: "The installer is for deployment.", confusedWith: vcf-installer }
+      - { id: c, text: "ESX Host Client > Join cluster", why: "Not a VCF workflow." }
+      - { id: d, text: "NSX Manager > Transport Nodes > Add", why: "NSX preparation is automated by VCF.", confusedWith: nsx-transport }
+    explanation:
+      correct: "Expansion is started in the vSphere Client and executed by SDDC Manager."
+      concept: "Expansion UI"
+      trap: "Adding hosts with plain vCenter 'Add Host' bypasses VCF for SDDC clusters."
+  - id: wld-exp-002
+    type: multi
+    kind: architecture
+    difficulty: intermediate
+    version: vcf9
+    topics: [cluster-expansion, vlcm]
+    objective: "4.1"
+    lesson: cluster-host-expansion
+    section: architecture
+    select: 3
+    stem: "Which three actions does VCF perform automatically when a commissioned host is added to an SDDC cluster? (Choose three.)"
+    options:
+      - { id: a, text: "Remediates the new host to the cluster's vLCM image", correct: true, why: "Remediation is scoped to the newly added hosts." }
+      - { id: b, text: "Assigns vMotion and storage VMkernel IPs from the network pool", correct: true, why: "Pool IPs are consumed on assignment." }
+      - { id: c, text: "Prepares the host as an NSX transport node", correct: true, why: "TEPs from the static pool or DHCP." }
+      - { id: d, text: "Zones FC LUNs to the new host", why: "FC zoning must be done beforehand." , confusedWith: datastores }
+      - { id: e, text: "Remediates every host in the cluster to the latest ESX build", why: "Only the new hosts are remediated." , confusedWith: lcm-workflow }
+    explanation:
+      correct: "Image, VDS, pool IPs, storage and NSX preparation are automated for the new host."
+      concept: "Automated expansion"
+      trap: "External storage preparation remains manual."
+  - id: wld-exp-003
+    type: ordering
+    kind: scenario
+    difficulty: intermediate
+    version: vcf9
+    topics: [cluster-expansion, host-commissioning]
+    objective: "4.1"
+    lesson: cluster-host-expansion
+    section: how-it-works
+    stem: "Order the steps to replace an old host in a vSAN SDDC cluster without dropping below capacity."
+    items:
+      - { id: s1, text: "Commission the new host with the same storage type" }
+      - { id: s2, text: "Add the new host to the cluster (Add Unassigned Hosts)" }
+      - { id: s3, text: "Wait for DRS rebalancing and vSAN resync" }
+      - { id: s4, text: "Move any NSX Edge node off the old host" }
+      - { id: s5, text: "Remove the old host from the cluster" }
+      - { id: s6, text: "Decommission the old host" }
+    explanation:
+      correct: "Grow first, then shrink: commission, add, stabilise, clear edges, remove, decommission."
+      concept: "Hardware refresh order"
+      trap: "Removing first can leave vSAN below its policy minimum."
+  - id: wld-exp-004
+    type: single
+    kind: scenario
+    difficulty: intermediate
+    version: vcf9
+    topics: [cluster-expansion, nsx-edge]
+    objective: "4.1"
+    lesson: cluster-host-expansion
+    section: how-it-works
+    stem: "Removing a host from a workload domain cluster is blocked. The host runs an NSX Edge node VM. What must be done first?"
+    options:
+      - { id: a, text: "Relocate or delete the NSX Edge node", correct: true, why: "Hosts cannot be removed while they host NSX Edge nodes." }
+      - { id: b, text: "Decommission the host first", why: "Decommission requires the host to be unassigned." }
+      - { id: c, text: "Force remove", why: "Force is for host-count warnings, not edges; and risky." }
+      - { id: d, text: "Delete the Tier-0 gateway", why: "Unnecessarily disruptive.", confusedWith: nsx-routing }
+    explanation:
+      correct: "Move edges first, then remove the host."
+      concept: "Shrink prerequisites"
+      trap: "Using Force Remove as a universal fix."
+  - id: wld-exp-005
+    type: single
+    kind: design
+    difficulty: advanced
+    version: vcf9
+    topics: [cluster-expansion, wld-storage]
+    objective: "4.1"
+    lesson: cluster-host-expansion
+    section: deep-dive
+    context: |
+      A workload domain has one NFS-backed cluster. The customer now buys vSAN ESA ready nodes for a new database
+      workload that must stay in the same workload domain (same vCenter and NSX).
+    stem: "What should the administrator do?"
+    options:
+      - { id: a, text: "Commission the nodes as vSAN ESA and add a new SDDC cluster to the existing workload domain", correct: true, why: "Each cluster can have its own principal storage type." }
+      - { id: b, text: "Add the nodes to the NFS cluster and enable vSAN on it", why: "Principal storage cannot be changed and hosts must share the cluster's type." }
+      - { id: c, text: "Create a new workload domain", why: "Would create a new vCenter/NSX, violating the requirement.", confusedWith: workload-domains }
+      - { id: d, text: "Import the nodes as an existing vCenter", why: "Import is for vCenters, not hosts.", confusedWith: vcenter-import }
+    explanation:
+      correct: "New cluster in the same domain with vSAN ESA principal storage."
+      concept: "Add cluster vs add host vs new domain"
+      trap: "Trying to change the storage type of an existing cluster."
+  - id: wld-exp-006
+    type: single
+    kind: troubleshooting
+    difficulty: advanced
+    version: vcf9
+    topics: [cluster-expansion, host-commissioning]
+    objective: "4.1"
+    lesson: cluster-host-expansion
+    section: failure-scenarios
+    context: |
+      Adding two hosts to a cluster fails at the VMkernel configuration subtask. The network pool shows vMotion range
+      10.0.21.11-10.0.21.14, all four addresses in use.
+    stem: "What is the fix?"
+    options:
+      - { id: a, text: "Add a new IP range to the network pool and retry", correct: true, why: "Ranges cannot be edited, but new ranges can be added." }
+      - { id: b, text: "Edit the existing range to .11-.30", why: "IP ranges cannot be edited after creation." }
+      - { id: c, text: "Change the pool subnet to a /23", why: "The subnet cannot be changed." }
+      - { id: d, text: "Assign IPs manually in vCenter", why: "Creates drift from SDDC Manager's inventory." , confusedWith: compliance-drift }
+    explanation:
+      correct: "Grow the pool by adding a range, then retry the task."
+      concept: "Pool exhaustion"
+      trap: "Expecting to edit existing pool ranges."
+  - id: wld-exp-007
+    type: truefalse
+    kind: concept
+    difficulty: foundation
+    version: vcf9
+    topics: [cluster-expansion]
+    objective: "4.1"
+    lesson: cluster-host-expansion
+    section: how-it-works
+    stem: "After a host is removed from a VCF cluster, it can immediately be added to a cluster in another workload domain."
+    options:
+      - { id: "true", text: "True", why: "It must first be decommissioned, re-imaged and commissioned." }
+      - { id: "false", text: "False", correct: true, why: "Remove, decommission, re-image and commission before reuse." }
+    explanation:
+      correct: "False."
+      concept: "Host reuse"
+      trap: "Unassigned after removal does not mean reusable."
+  - id: wld-exp-008
+    type: single
+    kind: scenario
+    difficulty: expert
+    version: vcf9
+    topics: [cluster-expansion, vsan-resilience]
+    objective: "4.1"
+    lesson: cluster-host-expansion
+    section: deep-dive
+    context: |
+      A three-host vSAN OSA cluster uses a storage policy with FTT=1 RAID-1. The team wants to remove one host
+      permanently to reuse it elsewhere, and the wizard offers Force Remove.
+    stem: "What is the correct assessment?"
+    options:
+      - { id: a, text: "Do not remove it until another host is added; two hosts cannot satisfy FTT=1 RAID-1 and data availability is at risk", correct: true, why: "FTT=1 mirroring needs at least three hosts; forced removal can make objects non-compliant or the datastore unavailable." }
+      - { id: b, text: "Force Remove is safe because vSAN rebuilds on the remaining hosts", why: "There are not enough hosts to rebuild compliant objects.", confusedWith: vsan-resilience }
+      - { id: c, text: "Change the policy to FTT=2 first", why: "FTT=2 needs even more hosts.", confusedWith: vsan-policies }
+      - { id: d, text: "Decommission the host directly", why: "Assigned hosts cannot be decommissioned." }
+    explanation:
+      correct: "Keep enough hosts for configured vSAN availability before removing."
+      concept: "Shrink safety"
+      trap: "Treating Force Remove as harmless."
+  # ---------------------------------------------------------------- supervisor-in-workload-domain
+  - id: wld-sup-001
+    type: single
+    kind: concept
+    difficulty: foundation
+    version: vcf9
+    topics: [supervisor]
+    objective: "4.1"
+    lesson: supervisor-in-workload-domain
+    section: concept
+    stem: "What is vSphere Supervisor in VCF 9.0?"
+    options:
+      - { id: a, text: "A workload domain capability that adds a Kubernetes control plane to vSphere for declarative VMs, Kubernetes clusters and services", correct: true, why: "TechDocs definition." }
+      - { id: b, text: "A new name for SDDC Manager", why: "SDDC Manager is unrelated.", confusedWith: sddc-manager }
+      - { id: c, text: "A VCF Operations dashboard", why: "Not a monitoring feature." , confusedWith: dashboards-alerts }
+      - { id: d, text: "An NSX Edge form factor", why: "Not an edge.", confusedWith: nsx-edge }
+    explanation:
+      correct: "Supervisor = Kubernetes control plane in vSphere, consumed via namespaces."
+      concept: "Supervisor basics"
+      trap: "Formerly vSphere with Tanzu / IaaS control plane."
+  - id: wld-sup-002
+    type: single
+    kind: architecture
+    difficulty: intermediate
+    version: vcf9
+    topics: [supervisor]
+    objective: "4.1"
+    lesson: supervisor-in-workload-domain
+    section: concept
+    stem: "What makes each ESX host in a Supervisor cluster a Kubernetes node?"
+    options:
+      - { id: a, text: "Spherelet, a kubelet ported natively to ESX", correct: true, why: "TechDocs architecture page." }
+      - { id: b, text: "A Linux worker VM per host", why: "Not how the Supervisor works." }
+      - { id: c, text: "The NSX host switch", why: "Networking only.", confusedWith: nsx-transport }
+      - { id: d, text: "vpxa", why: "The vCenter agent.", confusedWith: esx-host }
+    explanation:
+      correct: "Spherelet runs on every host."
+      concept: "Supervisor architecture"
+      trap: "Confusing host agents."
+  - id: wld-sup-003
+    type: multi
+    kind: design
+    difficulty: advanced
+    version: vcf9
+    topics: [supervisor, nsx-vpc]
+    objective: "4.1"
+    lesson: supervisor-in-workload-domain
+    section: components
+    select: 2
+    stem: "Which two Supervisor networking and load balancer combinations are valid? (Choose two.)"
+    options:
+      - { id: a, text: "VCF Networking with VPC and the NSX load balancer", correct: true, why: "NSX LB is the default for VPC." }
+      - { id: b, text: "VDS networking with the Foundation Load Balancer", correct: true, why: "Foundation LB is for VDS (VLAN) networking." }
+      - { id: c, text: "VPC networking with the Foundation Load Balancer", why: "Foundation LB is VDS-only.", confusedWith: nsx-vpc }
+      - { id: d, text: "VDS networking with the NSX load balancer", why: "NSX LB requires NSX networking.", confusedWith: vds }
+    explanation:
+      correct: "VPC/segments with NSX or Avi; VDS with Avi or Foundation LB."
+      concept: "Networking stacks and LBs"
+      trap: "Mixing Foundation LB with NSX-based networking."
+  - id: wld-sup-004
+    type: single
+    kind: scenario
+    difficulty: intermediate
+    version: vcf9
+    topics: [supervisor]
+    objective: "4.4"
+    lesson: supervisor-in-workload-domain
+    section: how-it-works
+    context: |
+      A team activated a simplified Supervisor. They now try to install Harbor as a Supervisor Service and it is
+      not possible.
+    stem: "What must they do first?"
+    options:
+      - { id: a, text: "Add a load balancer to the Supervisor", correct: true, why: "The simplified Supervisor supports VM Service only until a load balancer is added." }
+      - { id: b, text: "Scale the control plane to three VMs", why: "HA does not enable Supervisor Services." }
+      - { id: c, text: "Deploy VCF Automation", why: "Not required for Supervisor Services.", confusedWith: vcf-automation }
+      - { id: d, text: "Convert the cluster to vSAN", why: "Storage type is not the blocker." , confusedWith: wld-storage }
+    explanation:
+      correct: "Load balancer first; then vSphere Pods and Supervisor Services become available."
+      concept: "Simplified Supervisor growth path"
+      trap: "Scaling the control plane is optional and unrelated."
+  - id: wld-sup-005
+    type: ordering
+    kind: concept
+    difficulty: intermediate
+    version: vcf9
+    topics: [supervisor]
+    objective: "4.4"
+    lesson: supervisor-in-workload-domain
+    section: how-it-works
+    stem: "Order the steps to deploy a Supervisor Service such as Contour."
+    items:
+      - { id: s1, text: "Make sure the Supervisor has a load balancer" }
+      - { id: s2, text: "Download the service definition YAML from the Broadcom support portal" }
+      - { id: s3, text: "Add (register) the service version in vCenter" }
+      - { id: s4, text: "Install the service on the Supervisor, optionally with values.yaml" }
+      - { id: s5, text: "Consume it from namespaces" }
+    explanation:
+      correct: "LB prerequisite, download, register in vCenter, install on the Supervisor, consume."
+      concept: "Supervisor-based services (objective 4.4)"
+      trap: "Services are installed through vCenter, not through SDDC Manager."
+  - id: wld-sup-006
+    type: single
+    kind: concept
+    difficulty: intermediate
+    version: vcf9
+    topics: [supervisor, design-availability]
+    objective: "4.1"
+    lesson: supervisor-in-workload-domain
+    section: components
+    stem: "Which Supervisor topology is valid?"
+    options:
+      - { id: a, text: "Three vSphere zones with three control plane VMs", correct: true, why: "Three zones require three control plane VMs." }
+      - { id: b, text: "Two vSphere zones with two control plane VMs", why: "Supervisor uses one or three zones." }
+      - { id: c, text: "Three vSphere zones with one control plane VM", why: "HA control plane required for three zones." }
+      - { id: d, text: "One zone with five control plane VMs", why: "One or three control plane VMs." }
+    explanation:
+      correct: "1 zone (1 or 3 CP VMs) or 3 zones (3 CP VMs)."
+      concept: "Zones and control plane HA"
+      trap: "Two-zone designs."
+  - id: wld-sup-007
+    type: single
+    kind: scenario
+    difficulty: advanced
+    version: vcf9
+    topics: [supervisor, nsx-edge]
+    objective: "4.1"
+    lesson: supervisor-in-workload-domain
+    section: real-world-scenario
+    context: |
+      A workload domain was created with Enable vSphere Supervisor and centralized connectivity. The wizard succeeded,
+      but developers cannot reach the Supervisor API and activation does not complete.
+    stem: "What is the most likely missing step?"
+    options:
+      - { id: a, text: "Deploying an NSX Edge cluster with an active-standby Tier-0 gateway", correct: true, why: "Required to complete activation with centralized connectivity." }
+      - { id: b, text: "Installing VKS as a Supervisor Service", why: "VKS is not needed for the API to be reachable." }
+      - { id: c, text: "Commissioning more hosts", why: "Host count is not the issue described." , confusedWith: host-commissioning }
+      - { id: d, text: "Importing the vCenter", why: "Unrelated." , confusedWith: vcenter-import }
+    explanation:
+      correct: "The WLD wizard leaves Edge/Tier-0 for afterwards."
+      concept: "Completing Supervisor activation"
+      trap: "Assuming the wizard builds north-south networking."
+  - id: wld-sup-008
+    type: matching
+    kind: concept
+    difficulty: intermediate
+    version: vcf9
+    topics: [supervisor]
+    objective: "4.4"
+    lesson: supervisor-in-workload-domain
+    section: how-it-works
+    stem: "Match each Supervisor Service with its purpose."
+    pairs:
+      - { id: p1, left: "vSphere Kubernetes Service (VKS)", right: "Provision Kubernetes clusters" }
+      - { id: p2, left: "Harbor", right: "Container image registry" }
+      - { id: p3, left: "Contour", right: "Ingress controller (Envoy)" }
+      - { id: p4, left: "ExternalDNS", right: "Publish DNS records for services" }
+      - { id: p5, left: "Velero", right: "Backup and restore of Kubernetes resources" }
+    explanation:
+      correct: "Common Supervisor Services and their roles."
+      concept: "Supervisor Services catalogue"
+      trap: "VKS itself is delivered as a Supervisor Service."
+  - id: wld-sup-009
+    type: single
+    kind: design
+    difficulty: expert
+    version: vcf9
+    topics: [supervisor, vcf-automation, nsx-vpc]
+    objective: "4.1"
+    lesson: supervisor-in-workload-domain
+    section: deep-dive
+    context: |
+      A provider plans to offer self-service Kubernetes and VMs to tenants through VCF Automation on a new workload
+      domain Supervisor, with cluster-level resilience.
+    stem: "Which Supervisor design fits best?"
+    options:
+      - { id: a, text: "Three zones, three control plane VMs, VCF Networking with VPC and an NSX Edge cluster with Tier-0", correct: true, why: "VPC is the supported stack for VCF Automation; three zones give cluster-level HA." }
+      - { id: b, text: "Simplified Supervisor on VDS with no load balancer", why: "VM Service only; no services, no HA." }
+      - { id: c, text: "One zone, one control plane VM, VDS with Foundation LB", why: "No HA and not the VCF Automation stack." , confusedWith: vds }
+      - { id: d, text: "Two zones with Avi", why: "Two zones are not supported." }
+    explanation:
+      correct: "VPC + three zones + HA control plane + Edge/Tier-0."
+      concept: "Supervisor design for VCF Automation"
+      trap: "Choosing the cheapest model for a multi-tenant production platform."
+  - id: wld-sup-010
+    type: single
+    kind: concept
+    difficulty: foundation
+    version: vcf9
+    topics: [supervisor]
+    objective: "4.1"
+    lesson: supervisor-in-workload-domain
+    section: deep-dive
+    stem: "In which Supervisor construct does a DevOps user get quotas, storage policies and VM classes?"
+    options:
+      - { id: a, text: "A vSphere Namespace", correct: true, why: "Namespaces carry quotas, permissions, storage policies and VM classes." }
+      - { id: b, text: "A vSphere Zone", why: "Zones map clusters for placement.", confusedWith: design-availability }
+      - { id: c, text: "A network pool", why: "Pools are for host VMkernel IPs.", confusedWith: host-commissioning }
+      - { id: d, text: "A workload domain", why: "Too coarse; namespaces live inside a Supervisor." , confusedWith: workload-domains }
+    explanation:
+      correct: "Namespaces are the tenancy unit of the Supervisor."
+      concept: "vSphere Namespaces"
+      trap: "Mixing VCF infrastructure constructs with Supervisor constructs."
+  # ---------------------------------------------------------------- extra cross-lesson
+  - id: dep-plan-009
+    type: cli
+    kind: command
+    difficulty: foundation
+    version: general
+    topics: [deployment-planning, esx-host]
+    objective: "4.1"
+    lesson: deployment-planning-prereqs
+    section: deep-dive
+    stem: "Type the esxcli command that sets the host name of an ESX host to the FQDN esx01.lab.local."
+    answers: ["esxcli system hostname set --fqdn=esx01.lab.local", "esxcli system hostname set --fqdn esx01.lab.local"]
+    placeholder: "esxcli system ..."
+    explanation:
+      correct: "esxcli system hostname set --fqdn=esx01.lab.local (verify with esxcli system hostname get)."
+      concept: "Hostname = FQDN prerequisite"
+      trap: "Afterwards regenerate the certificate."
+  - id: dep-inst-009
+    type: multi
+    kind: concept
+    difficulty: advanced
+    version: vcf9
+    topics: [vcf-installer, lcm-concepts]
+    objective: "4.1"
+    lesson: vcf-installer-workflow
+    section: concept
+    select: 2
+    stem: "Which two statements about the VCF Installer's release support are correct? (Choose two.)"
+    options:
+      - { id: a, text: "It supports deploying major, minor and maintenance releases", correct: true, why: "Documented scope." }
+      - { id: b, text: "Express patches are not supported at deployment and must be applied afterwards", correct: true, why: "Documented limitation." }
+      - { id: c, text: "It can only deploy the version it was shipped with", why: "It downloads binaries for supported versions from a depot." }
+      - { id: d, text: "It automatically applies the newest express patch during deployment", why: "Express patches are applied after deployment." , confusedWith: lcm-workflow }
+    explanation:
+      correct: "Major/minor/maintenance at day 0; express patches afterwards."
+      concept: "Installer scope"
+      trap: "Expecting day-0 express patching."
+  - id: dep-val-009
+    type: single
+    kind: log
+    difficulty: advanced
+    version: vcf9
+    topics: [deployment-validation, logs-locations]
+    objective: "4.1"
+    lesson: deployment-validation-failures
+    section: cli-api
+    stem: "On the VCF Installer / SDDC Manager appliance, which log is most useful for following deployment orchestration in real time?"
+    options:
+      - { id: a, text: "/var/log/vmware/vcf/domainmanager/domainmanager.log", correct: true, why: "The domain manager orchestrates deployments and domain workflows." }
+      - { id: b, text: "/var/log/vmkernel.log", why: "An ESX host log.", confusedWith: esx-host }
+      - { id: c, text: "/var/log/hostd.log", why: "An ESX host agent log.", confusedWith: esx-host }
+      - { id: d, text: "The vCenter vpxd log", why: "vCenter service log; not deployment orchestration.", confusedWith: vcenter }
+    explanation:
+      correct: "Tail domainmanager.log on the appliance while the deployment runs."
+      concept: "Where to look"
+      trap: "Starting with host logs when the orchestration step failed."
+  - id: wld-com-010
+    type: single
+    kind: command
+    difficulty: advanced
+    version: vcf9
+    topics: [host-commissioning, apis-powercli]
+    objective: "4.1"
+    lesson: host-commissioning-wld-creation
+    section: cli-api
+    stem: "Which SDDC Manager API call lists commissioned hosts that are ready to be used in a new cluster?"
+    options:
+      - { id: a, text: "GET /v1/hosts?status=UNASSIGNED_USEABLE", correct: true, why: "Filters hosts by status." }
+      - { id: b, text: "GET /v1/hosts?status=ASSIGNED", why: "Those are already in domains." }
+      - { id: c, text: "POST /v1/hosts", why: "That commissions hosts." }
+      - { id: d, text: "GET /v1/network-pools", why: "Lists pools, not hosts." }
+    explanation:
+      correct: "UNASSIGNED_USEABLE = commissioned and usable."
+      concept: "Host status values"
+      trap: "UNASSIGNED_UNUSEABLE hosts need attention first."

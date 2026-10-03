@@ -1,0 +1,41 @@
+id: d09-lifecycle-workflow
+title: Core component update workflow in VCF Operations
+description: >
+  The workflow for updating the core components of a domain. Connect a depot, download the binaries to SDDC
+  Manager, run the precheck on the domain and fix every error, click Plan Upgrade and choose the target VCF version,
+  optionally Customize Upgrade (flexible BOM) and Validate Selection, review the generated update sequence, then
+  Update Now or Schedule Update. SDDC Manager takes resource locks while each component is updated. Verify and
+  repeat for the next component and domain.
+width: 1000
+height: 520
+groups:
+  - { id: g-prep, x: 20, y: 20, w: 460, h: 220, label: "Prepare", kind: zone }
+  - { id: g-exec, x: 520, y: 20, w: 460, h: 480, label: "Execute (per domain)", kind: zone }
+nodes:
+  - { id: s1, x: 40, y: 70, w: 190, h: 60, label: "1. Connect depot", sublabel: "online or offline", kind: external, info: "Fleet Management > Lifecycle > Binary Management / depot settings. Online needs a download token; offline needs your HTTPS depot URL and its certificate trusted." }
+  - { id: s2, x: 270, y: 70, w: 190, h: 60, label: "2. Download binaries", kind: mgmt, component: sddc-manager, info: "Core-component binaries go to SDDC Manager (VCF Instances > Binary Management). Wait for the download to show as successful before planning." }
+  - { id: s3, x: 40, y: 160, w: 190, h: 60, label: "3. Backups", sublabel: "SDDC Mgr, vCenter, NSX", kind: storage, info: "Confirm recent successful file-based backups (and know your recovery steps). The upgrade itself is forward-only." }
+  - { id: s4, x: 270, y: 160, w: 190, h: 60, label: "4. Precheck", sublabel: "fix all errors", kind: security, info: "Domain > Updates > Precheck. Errors block the upgrade; warnings must be read and accepted consciously." }
+  - { id: s5, x: 560, y: 70, w: 190, h: 60, label: "5. Plan Upgrade", sublabel: "target VCF version", kind: ops, info: "In Available Updates click Plan Upgrade and choose the target VCF version." }
+  - { id: s6, x: 780, y: 70, w: 180, h: 60, label: "6. Customize", sublabel: "flexible BOM", kind: ops, info: "Customize Upgrade lets you pick a supported target version per core component, then Validate Selection and Confirm." }
+  - { id: s7, x: 560, y: 180, w: 190, h: 60, label: "7. Review sequence", kind: ops, info: "VCF generates the update order (SDDC Manager, NSX, vCenter, ESX, vSAN) from your selection." }
+  - { id: s8, x: 780, y: 180, w: 180, h: 60, label: "8. Update now", sublabel: "or schedule", kind: mgmt, info: "Start each component update immediately or in a maintenance window. Resource locks block conflicting day-N tasks." }
+  - { id: s9, x: 560, y: 300, w: 190, h: 60, label: "9. Monitor tasks", kind: ops, info: "Watch the task in the console; on failure read the task error, then the SDDC Manager LCM log (/var/log/vmware/vcf/lcm/lcm-debug.log)." }
+  - { id: s10, x: 780, y: 300, w: 180, h: 60, label: "10. Verify", sublabel: "versions, health", kind: security, info: "Check component versions, cluster image compliance, NSX and vSAN health, then continue with the next component or domain." }
+  - { id: s11, x: 670, y: 410, w: 190, h: 60, label: "Next domain", kind: compute, info: "Repeat for each workload domain after the management domain." }
+edges:
+  - { from: s1, to: s2, kind: dependency }
+  - { from: s2, to: s3, kind: dependency }
+  - { from: s3, to: s4, kind: dependency }
+  - { from: s4, to: s5, label: "green", kind: dependency }
+  - { from: s5, to: s6, kind: dependency }
+  - { from: s6, to: s7, kind: dependency }
+  - { from: s7, to: s8, kind: dependency }
+  - { from: s8, to: s9, kind: dependency }
+  - { from: s9, to: s10, kind: dependency }
+  - { from: s10, to: s11, kind: dependency }
+steps:
+  - { title: "Get the bits", text: "Connect a depot and download the target binaries to SDDC Manager.", highlight: [s1, s2] }
+  - { title: "Make it safe", text: "Backups, then a precheck with zero errors.", highlight: [s3, s4] }
+  - { title: "Plan", text: "Pick the target version, optionally customize per component, review the order.", highlight: [s5, s6, s7] }
+  - { title: "Run and verify", text: "Update, monitor, verify, then move to the next domain.", highlight: [s8, s9, s10, s11] }

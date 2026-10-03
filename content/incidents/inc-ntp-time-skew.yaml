@@ -1,0 +1,205 @@
+id: inc-ntp-time-skew
+title: Host commissioning fails at 39% on four new hosts
+difficulty: advanced
+version: vcf9
+topics: [ntp, host-commissioning, certificates, troubleshooting-method]
+lessons: [dns-ntp-dependencies]
+summary: Four new ESX hosts in a newly cabled rack fail commissioning while installing a temporary certificate. One log says "no route to host", which sends the team chasing routing – but the real problem is time.
+symptoms:
+  - Commissioning of esx-05..esx-08 fails at 39% on the subtask "Install Temporary VMCA Certificate For Host Commissioning".
+  - The task error mentions a connection failure to https://esx-05.lab.internal:443/sdk.
+  - Hosts esx-01..04 in the original rack were commissioned months ago without issues.
+  - The new rack uses a new ESX management subnet 172.16.21.0/24 behind a new firewall context on the core.
+environment: |
+  VCF 9 instance with SDDC Manager `sddc-manager.lab.internal` running the commissioning workflow. New hosts esx-05..08
+  (172.16.21.15-18) were installed from the same ESX 9 image, configured with DNS 172.16.0.10/11 and NTP 172.16.0.10,
+  and racked last week. The original hosts live in 172.16.11.0/24.
+evidence:
+  - id: ev-task
+    category: logs
+    action: Open the failed commissioning task and its subtasks
+    output: |
+      ```log
+      Commission Hosts .................................. FAILED (39%)
+        Validate host credentials .......................  SUCCESSFUL
+        Install Temporary VMCA Certificate For Host Commissioning  FAILED
+      ```
+    relevance: useful
+    note: Credentials work (the host is reachable over HTTPS for authentication); the failure is during certificate installation.
+  - id: ev-domainmgr
+    category: logs
+    action: Search domainmanager.log on SDDC Manager for esx-05
+    output: |
+      ```log
+      /var/log/vmware/vcf/domainmanager/domainmanager.log
+      ERROR ... Failed to connect to https://esx-05.lab.internal:443/sdk invocation failed with java.net.NoRouteToHostException
+      ```
+    relevance: useful
+    note: Looks like a routing failure, but the earlier subtask reached the same host successfully. Treat it as a symptom of a dropped connection, not a proven routing fault.
+  - id: ev-opsmgr
+    category: logs
+    action: Search operationsmanager.log on SDDC Manager for time or certificate errors
+    output: |
+      ```log
+      /var/log/vmware/vcf/operationsmanager/operationsmanager.log
+      ERROR ... Time validation failed. Check host Time and/or Certificate expiration data (notBefore, notAfter).
+      ```
+    relevance: key
+    note: The certificate is rejected because the host's clock is outside the certificate validity window.
+  - id: ev-time
+    category: ntp
+    action: Compare time on SDDC Manager and esx-05
+    output: |
+      ```shell
+      vcf@sddc-manager [ ~ ]$ date -u
+      Fri Oct  2 14:02:11 UTC 2026
+      [root@esx-05:~] esxcli system time get
+      2026-10-02T11:47:36Z
+      ```
+    relevance: key
+    note: esx-05 is about 2h15m behind. A certificate issued "now" by SDDC Manager is not yet valid on the host.
+  - id: ev-ntpq
+    category: ntp
+    action: Run ntpq -p on esx-05 and on esx-01
+    output: |
+      ```shell
+      [root@esx-05:~] ntpq -p
+           remote        refid  st t when poll reach   delay   offset  jitter
+      ======================================================================
+       172.16.0.10     .INIT.  16 u    -   64    0    0.000    0.000   0.000
+      [root@esx-01:~] ntpq -p
+      *172.16.0.10     192.0.2.123  3 u   21   64  377    0.351   -0.112   0.020
+      ```
+    relevance: key
+    note: Reach 0 and stratum 16 (.INIT.) on the new host means it has never received an NTP reply; the old host is healthy against the same server.
+  - id: ev-ntpget
+    category: ntp
+    action: Run esxcli system ntp get on esx-05
+    output: |
+      ```shell
+         Enabled: true
+         Server: 172.16.0.10
+      ```
+    relevance: useful
+    note: Configuration is correct. Configured is not the same as synchronized.
+  - id: ev-vmkping
+    category: network
+    action: vmkping -I vmk0 172.16.0.10 from esx-05
+    output: |
+      ```shell
+      3 packets transmitted, 3 packets received, 0% packet loss
+      ```
+    relevance: noise
+    note: ICMP works. This does not prove UDP 123 is allowed – a classic false reassurance.
+  - id: ev-tcpdump
+    category: network
+    action: Capture NTP on esx-05 with tcpdump-uw
+    output: |
+      ```shell
+      [root@esx-05:~] tcpdump-uw -c 5 -n -i vmk0 host 172.16.0.10 and port 123
+      14:05:01.221 IP 172.16.21.15.123 > 172.16.0.10.123: NTPv4, Client, length 48
+      14:06:05.223 IP 172.16.21.15.123 > 172.16.0.10.123: NTPv4, Client, length 48
+      14:07:09.224 IP 172.16.21.15.123 > 172.16.0.10.123: NTPv4, Client, length 48
+      ```
+    relevance: key
+    note: Requests leave, no replies return. Something between the new subnet and the NTP server drops UDP 123.
+  - id: ev-dns
+    category: dns
+    action: Check forward and reverse DNS for esx-05 from SDDC Manager
+    output: |
+      ```shell
+      $ nslookup esx-05.lab.internal   -> 172.16.21.15
+      $ nslookup 172.16.21.15          -> esx-05.lab.internal
+      ```
+    relevance: useful
+    note: DNS is correct both ways; rules out the other common commissioning blocker.
+  - id: ev-hcl
+    category: storage
+    action: Review the vSAN disk compatibility warning on esx-07
+    output: |
+      ```log
+      Warning: NVMe device firmware version not found in the compatibility list (advisory)
+      ```
+    relevance: noise
+    note: A separate hardware compliance item; it does not explain a certificate time validation failure on all four hosts.
+  - id: ev-fw
+    category: network
+    action: Ask the network team for the new firewall context rules for 172.16.21.0/24
+    output: |
+      ```log
+      permit tcp 172.16.21.0/24 any eq 443
+      permit udp 172.16.21.0/24 172.16.0.10 eq 53
+      permit udp 172.16.21.0/24 172.16.0.11 eq 53
+      permit icmp 172.16.21.0/24 any
+      deny ip any any log
+      ```
+    relevance: key
+    note: No rule for UDP 123 – NTP from the new subnet is denied. The old subnet's context had it.
+idealSequence: [ev-task, ev-opsmgr, ev-time, ev-ntpq, ev-tcpdump, ev-fw]
+rootCause:
+  - id: rc-a
+    text: The new subnet's firewall context blocks UDP 123, so the new hosts never synchronized time; their clocks drifted and SDDC Manager's temporary certificate fails time validation.
+    correct: true
+    why: Reach 0, requests without replies, the missing rule and the "Time validation failed" log line form one consistent chain.
+  - id: rc-b
+    text: There is no route from SDDC Manager to the new subnet.
+    why: The credential validation subtask reached the hosts over HTTPS, and vmkping/DNS work; NoRouteToHostException here is a consequence of the dropped TLS connection.
+  - id: rc-c
+    text: Reverse DNS for the new hosts is missing.
+    why: Forward and reverse lookups both return the expected answers.
+  - id: rc-d
+    text: The NVMe firmware is not on the compatibility list.
+    why: An advisory on one host cannot explain a time validation failure on four hosts.
+nextStep:
+  - id: ns-a
+    text: Compare host and SDDC Manager time, then check NTP synchronization status (ntpq -p) and whether NTP packets get replies.
+    correct: true
+    why: The operations manager log names time; verifying skew and sync status turns the hint into proof.
+  - id: ns-b
+    text: Open a ticket to add static routes for 172.16.21.0/24 on SDDC Manager.
+    why: Routing works; adding routes would not change the clock.
+  - id: ns-c
+    text: Re-image the four hosts and retry.
+    why: The image is not the problem; the hosts would drift again without NTP.
+remediation:
+  - id: rm-a
+    text: Add a rule permitting UDP 123 from 172.16.21.0/24 to the NTP servers, restart ntpd on the hosts so they step to the correct time, confirm sync, then retry commissioning.
+    correct: true
+    why: Fixes the cause (NTP reachability) and the effect (clock skew) before retrying, matching Broadcom's guidance for this failure.
+  - id: rm-b
+    text: Set the clock on each host manually with the current time and retry.
+    why: Commissioning may pass, but without NTP the hosts drift again and later certificate or SSO operations fail.
+  - id: rm-c
+    text: Disable certificate time validation in SDDC Manager.
+    why: There is no supported option to do this, and it would hide a real security control.
+  - id: rm-d
+    text: Point the new hosts at a public internet NTP pool.
+    why: VCF requires an internal NTP source shared by all management components; the firewall would likely block it too.
+validation:
+  - id: vl-a
+    text: ntpq -p on each new host shows '*' on 172.16.0.10 with reach rising to 377, the offset to SDDC Manager is under one second, and the retried commissioning completes.
+    correct: true
+    why: Proves sustained synchronization, not a one-off clock change, and that the workflow succeeds.
+  - id: vl-b
+    text: vmkping to the NTP server succeeds.
+    why: It succeeded before the fix as well; ICMP says nothing about UDP 123.
+hints:
+  - Read both logs. Which one names a cause rather than a symptom?
+  - How far apart are the clocks of SDDC Manager and the new hosts?
+  - The hosts are configured for NTP. Are they actually receiving replies? What changed for this subnet?
+debrief: |
+  This is the pattern documented in Broadcom KB 448781: UDP 123 blocked → host clocks drift on hardware time → SDDC
+  Manager issues a temporary VMCA certificate the host considers "not yet valid" → the TLS connection is dropped and the
+  domain manager logs a generic `NoRouteToHostException`. The routing-looking error is the main red herring; ICMP to the
+  NTP server, DNS and the NVMe advisory are the others.
+
+  Efficient path: subtask → operations manager log (time) → compare clocks → `ntpq -p` (reach 0) → `tcpdump-uw`
+  (no replies) → firewall rules (no UDP 123). Fix the rule, resync, verify reach 377, retry. Prevention: include
+  "NTP sync verified (reach 377)" in the host readiness checklist for every new subnet, not just "NTP configured".
+sources:
+  - title: "Broadcom KB 448781 – Host commissioning fails at 39% with NoRouteToHostException and checkTime errors"
+    url: https://knowledge.broadcom.com/external/article/448781/host-commissioning-fails-at-39-with-noro.html
+  - title: "Broadcom KB 443781 – NTP synchronization issues on ESXi hosts"
+    url: https://knowledge.broadcom.com/external/article/443781/ntp-synchronization-issues-on-esxi-host.html
+  - title: "Broadcom KB 442868 – ESXi NTP test fails (tcpdump-uw on UDP 123)"
+    url: https://knowledge.broadcom.com/external/article/442868

@@ -1,0 +1,20 @@
+# Badges reward real learning milestones (evaluated from learner state, see src/engine/gamification.ts).
+badges:
+  - { id: first-lesson, name: "Primul pas", description: "Ai finalizat prima lecție.", icon: "📘", rule: { metric: lessons, gte: 1 } }
+  - { id: ten-lessons, name: "Pe drumul cel bun", description: "10 lecții finalizate.", icon: "📚", rule: { metric: lessons, gte: 10 } }
+  - { id: thirty-lessons, name: "Bibliotecar VCF", description: "30 de lecții finalizate.", icon: "🏛️", rule: { metric: lessons, gte: 30 } }
+  - { id: all-lessons, name: "Curriculum complet", description: "60 de lecții finalizate.", icon: "🎓", rule: { metric: lessons, gte: 60 } }
+  - { id: correct-50, name: "Ochi ager", description: "50 de răspunsuri corecte.", icon: "🎯", rule: { metric: correct, gte: 50 } }
+  - { id: correct-250, name: "Mașină de quiz", description: "250 de răspunsuri corecte.", icon: "⚙️", rule: { metric: correct, gte: 250 } }
+  - { id: first-lab, name: "Mâinile pe tastatură", description: "Primul laborator finalizat.", icon: "🧪", rule: { metric: labs, gte: 1 } }
+  - { id: five-labs, name: "Inginer de laborator", description: "5 laboratoare finalizate.", icon: "🔧", rule: { metric: labs, gte: 5 } }
+  - { id: first-incident, name: "Detectiv", description: "Primul incident rezolvat.", icon: "🔍", rule: { metric: incidents, gte: 1 } }
+  - { id: five-incidents, name: "Pompier de serviciu", description: "5 incidente rezolvate.", icon: "🚒", rule: { metric: incidents, gte: 5 } }
+  - { id: clean-diagnosis, name: "Diagnostic curat", description: "Un incident rezolvat cu scor ≥90 și fără indicii.", icon: "🩺", rule: { metric: perfect-incident, gte: 1 } }
+  - { id: streak-3, name: "Ritm", description: "3 zile de studiu la rând.", icon: "🔥", rule: { metric: streak, gte: 3 } }
+  - { id: streak-14, name: "Disciplină", description: "14 zile de studiu la rând.", icon: "🗓️", rule: { metric: streak, gte: 14 } }
+  - { id: reviews-50, name: "Memorie de elefant", description: "50 de recapitulări spaced repetition.", icon: "🧠", rule: { metric: reviews, gte: 50 } }
+  - { id: mock-pass, name: "Gata de examen", description: "Ai trecut un examen simulat complet.", icon: "🏅", rule: { metric: mock-pass, gte: 1 } }
+  - { id: mock-pass-3, name: "Consecvent", description: "3 examene simulate trecute.", icon: "🏆", rule: { metric: mock-pass, gte: 3 } }
+  - { id: mastered-5, name: "Specialist", description: "5 topicuri stăpânite.", icon: "⭐", rule: { metric: mastered-topics, gte: 5 } }
+  - { id: mastered-20, name: "Expert VCF", description: "20 de topicuri stăpânite.", icon: "🌟", rule: { metric: mastered-topics, gte: 20 } }

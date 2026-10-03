@@ -1,0 +1,36 @@
+id: d07-validation-failure-map
+title: Where VCF deployment validation fails
+description: >
+  A layered map of what the VCF Installer validates and the typical failure at each layer, from the bottom up:
+  physical network and gateways, DNS forward and reverse lookup, NTP time, MTU on vSAN/vMotion/overlay VLANs,
+  ESX host state (version, NIC speed, disks), host certificate and thumbprint, and passwords. Troubleshoot from the
+  lowest broken layer upward, fix the source, re-validate, and retry failed tasks.
+width: 1000
+height: 600
+groups:
+  - { id: g-ext, x: 20, y: 300, w: 470, h: 280, label: "External dependencies", kind: network }
+  - { id: g-host, x: 510, y: 300, w: 470, h: 280, label: "Host and credentials", kind: compute }
+nodes:
+  - { id: inst, x: 400, y: 30, w: 200, h: 64, label: "VCF Installer", sublabel: "validation", kind: mgmt, component: vcf-installer, info: "Validates everything before deployment. Warnings can be acknowledged; errors block." }
+  - { id: res, x: 380, y: 160, w: 240, h: 56, label: "Result: warnings / errors", kind: security, info: "API: executionStatus (IN_PROGRESS, COMPLETED, FAILED...) and resultStatus (SUCCEEDED, FAILED, WARNING...)." }
+  - { id: gw, x: 40, y: 500, w: 200, h: 56, label: "1. Network / gateway", kind: network, component: physical-network, info: "VLAN trunked? Gateway answers ping? (skipGatewayPingValidation exists in the JSON spec - avoid using it.)" }
+  - { id: dns, x: 270, y: 500, w: 200, h: 56, label: "2. DNS A + PTR", kind: network, component: dns-service, info: "Every FQDN forward and reverse; PTR returns the same FQDN. The most common failure." }
+  - { id: ntp, x: 40, y: 360, w: 200, h: 56, label: "3. NTP", kind: network, component: ntp-service, info: "Same time source for all hosts and appliances; skew breaks certificates and tokens." }
+  - { id: mtu, x: 270, y: 360, w: 200, h: 56, label: "4. MTU", sublabel: "vSAN/vMotion/TEP", kind: network, info: "Large frames dropped while small pings work. Test with vmkping -d -s 8972." }
+  - { id: hst, x: 530, y: 500, w: 200, h: 56, label: "5. Host state", sublabel: "build, NICs, disks", kind: compute, component: esx-host, info: "Supported ESX build, 10 Gbps NICs, empty disks, vSAN-certified devices, healthy hardware." }
+  - { id: cert, x: 760, y: 500, w: 200, h: 56, label: "6. Certificate / thumbprint", kind: security, info: "Certificate regenerated after the FQDN was set; thumbprint confirmed; re-imaged hosts have new thumbprints." }
+  - { id: pw, x: 645, y: 360, w: 200, h: 56, label: "7. Passwords", kind: security, info: "Complexity rules per component; no % in vCenter password; different host passwords need a JSON spec." }
+edges:
+  - { from: inst, to: res, kind: control }
+  - { from: res, to: gw, kind: dependency, dashed: true }
+  - { from: res, to: dns, kind: dependency, dashed: true }
+  - { from: res, to: ntp, kind: dependency, dashed: true }
+  - { from: res, to: mtu, kind: dependency, dashed: true }
+  - { from: res, to: hst, kind: dependency, dashed: true }
+  - { from: res, to: cert, kind: dependency, dashed: true }
+  - { from: res, to: pw, kind: dependency, dashed: true }
+steps:
+  - { title: "Read the result", text: "Identify which check failed and which object it names.", highlight: [inst, res] }
+  - { title: "Lowest layers first", text: "Network/gateway and DNS failures cause many secondary errors.", highlight: [gw, dns] }
+  - { title: "Time and frames", text: "NTP skew and MTU mismatches look like other problems.", highlight: [ntp, mtu] }
+  - { title: "Host and identity", text: "Host build, NICs, disks, then certificate/thumbprint and passwords.", highlight: [hst, cert, pw] }

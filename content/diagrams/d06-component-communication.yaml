@@ -1,0 +1,66 @@
+id: d06-component-communication
+title: "Who talks to whom in a VCF instance"
+description: >
+  Communication map of a VCF 9 instance. The VCF Operations collector polls vCenter, NSX Manager and SDDC Manager and
+  forwards data to VCF Operations. VCF Operations drives the fleet management appliance (for VCF Operations, VCF
+  Automation, Identity Broker, logs) and SDDC Manager (for core components). SDDC Manager calls vCenter, NSX Manager
+  and ESX hosts and downloads binaries from a depot. vCenter manages ESX hosts (TCP 443/902; heartbeat UDP 902 from
+  the host). NSX Manager uses vCenter as compute manager and talks to transport nodes on TCP 1234 (management) and
+  1235 (control). Hosts and edges exchange Geneve overlay on UDP 6081; edges peer with the physical network.
+  Components authenticate users through the VCF Identity Broker, which talks to an external IdP. Components send
+  logs to VCF Operations for logs. Every component depends on DNS and NTP.
+width: 1000
+height: 620
+groups:
+  - { id: g-fleet, x: 10, y: 10, w: 560, h: 110, label: "Fleet services", kind: ops }
+  - { id: g-inst, x: 10, y: 140, w: 560, h: 200, label: "Instance management", kind: mgmt }
+  - { id: g-data, x: 10, y: 360, w: 560, h: 150, label: "Data plane", kind: compute }
+  - { id: g-ext, x: 600, y: 10, w: 390, h: 600, label: "Shared and external services", kind: external }
+nodes:
+  - { id: ops, x: 25, y: 50, w: 160, h: 56, label: "VCF Operations", kind: ops, component: vcf-operations, info: "Console. Receives data from collectors; drives fleet management and SDDC Manager." }
+  - { id: fm, x: 205, y: 50, w: 160, h: 56, label: "Fleet mgmt appliance", kind: ops, component: vcf-operations-fleet-management, info: "Lifecycle for management components; downloads their binaries from the depot." }
+  - { id: vcfa, x: 385, y: 50, w: 170, h: 56, label: "VCF Automation", kind: ops, component: vcf-automation, info: "Calls vCenter/NSX/Supervisor APIs of its regions to provision." }
+  - { id: coll, x: 25, y: 180, w: 160, h: 56, label: "Ops collector", kind: ops, component: vcf-operations-collector, info: "Collects locally from vCenter, NSX Manager and SDDC Manager over HTTPS APIs." }
+  - { id: sddc, x: 205, y: 180, w: 160, h: 56, label: "SDDC Manager", kind: mgmt, component: sddc-manager, info: "Orchestrates core components: domains, host commissioning, LCM, certificates, passwords." }
+  - { id: nsx, x: 385, y: 180, w: 170, h: 56, label: "NSX Manager", kind: nsx, component: nsx-manager, info: "Management and control plane. vCenter is registered as a compute manager." }
+  - { id: vc, x: 205, y: 270, w: 160, h: 56, label: "vCenter", kind: mgmt, component: vcenter, info: "Manages ESX hosts through vpxa/hostd." }
+  - { id: esx, x: 25, y: 410, w: 200, h: 56, label: "ESX transport nodes", kind: compute, component: esx-host, info: "Run VMs; TEPs exchange Geneve UDP 6081; heartbeat to vCenter UDP 902." }
+  - { id: edge, x: 260, y: 410, w: 140, h: 56, label: "NSX Edges", kind: nsx, component: nsx-edge-cluster, info: "Tier-0 SR peers with physical routers; edges are transport nodes too." }
+  - { id: phys, x: 420, y: 410, w: 135, h: 56, label: "Physical network", kind: network, component: physical-network, info: "ToR switches and routers: VLANs, MTU, routing (BGP/static)." }
+  - { id: idb, x: 615, y: 50, w: 170, h: 56, label: "Identity Broker", kind: security, component: vcf-identity-broker, info: "Authenticates users for VCF SSO (not for SDDC Manager or ESX)." }
+  - { id: idp, x: 805, y: 50, w: 170, h: 56, label: "External IdP", sublabel: "AD/LDAP, OIDC, SAML", kind: external, info: "Corporate identity provider." }
+  - { id: logs, x: 615, y: 170, w: 170, h: 56, label: "Ops for logs", kind: ops, component: vcf-operations-logs, info: "Ingestion via CFAPI 9000/9543 or syslog 514/1514/6514." }
+  - { id: depot, x: 805, y: 170, w: 170, h: 56, label: "Depot", sublabel: "online or offline", kind: external, info: "Binary source for SDDC Manager and the fleet management appliance." }
+  - { id: lic, x: 805, y: 290, w: 170, h: 56, label: "VCF Business Services", sublabel: "console", kind: external, info: "License reporting in connected mode (outbound internet)." }
+  - { id: dns, x: 615, y: 410, w: 170, h: 56, label: "DNS", sublabel: "forward + reverse", kind: network, component: dns-service, info: "Every component resolves every other by FQDN; reverse records are required." }
+  - { id: ntp, x: 805, y: 410, w: 170, h: 56, label: "NTP", kind: network, component: ntp-service, info: "Time sync for tokens, certificates and log correlation." }
+edges:
+  - { from: coll, to: ops, label: "data", kind: mgmt }
+  - { from: coll, to: vc, label: "collect", kind: mgmt, dashed: true }
+  - { from: coll, to: sddc, label: "collect", kind: mgmt, dashed: true }
+  - { from: ops, to: fm, label: "fleet LCM", kind: control }
+  - { from: fm, to: vcfa, label: "deploy/upgrade", kind: control }
+  - { from: ops, to: sddc, label: "fleet mgmt", kind: control }
+  - { from: sddc, to: vc, label: "API", kind: control }
+  - { from: sddc, to: nsx, label: "API", kind: control }
+  - { from: sddc, to: depot, label: "binaries", kind: dependency, dashed: true }
+  - { from: fm, to: depot, label: "binaries", kind: dependency, dashed: true }
+  - { from: nsx, to: vc, label: "compute manager", kind: mgmt }
+  - { from: vc, to: esx, label: "443/902", kind: mgmt }
+  - { from: esx, to: nsx, label: "1234 mgmt / 1235 ctrl", kind: control }
+  - { from: esx, to: edge, label: "Geneve UDP 6081", kind: overlay, bidirectional: true }
+  - { from: edge, to: phys, label: "uplinks / BGP", kind: north-south, bidirectional: true }
+  - { from: vc, to: idb, label: "SSO", kind: dependency, dashed: true }
+  - { from: idb, to: idp, label: "authN", kind: dependency }
+  - { from: nsx, to: logs, label: "syslog", kind: mgmt, dashed: true }
+  - { from: ops, to: lic, label: "usage", kind: dependency, dashed: true }
+  - { from: vcfa, to: vc, label: "provision", kind: control, dashed: true }
+steps:
+  - { title: "Monitoring flow", text: "The collector polls vCenter, NSX and SDDC Manager locally and forwards data to VCF Operations.", highlight: [coll, vc, sddc, nsx, ops] }
+  - { title: "Fleet management flow", text: "VCF Operations drives the fleet management appliance for management components and SDDC Manager for core components; both pull binaries from the depot.", highlight: [ops, fm, vcfa, sddc, depot] }
+  - { title: "Core orchestration", text: "SDDC Manager calls vCenter and NSX Manager APIs to build domains, upgrade, rotate passwords and replace certificates.", highlight: [sddc, vc, nsx] }
+  - { title: "Element management", text: "vCenter manages hosts (TCP 443/902, heartbeat UDP 902 host to vCenter). NSX Manager talks to transport nodes on TCP 1234 (management) and 1235 (control).", highlight: [vc, esx, nsx] }
+  - { title: "Data plane", text: "TEPs on hosts and edges exchange Geneve (UDP 6081); edges route north-south to the physical network. This is the only flow that carries workload traffic.", highlight: [esx, edge, phys] }
+  - { title: "Identity", text: "SSO-enabled components redirect logins to the Identity Broker, which authenticates against the external IdP.", highlight: [vc, idb, idp] }
+  - { title: "Logs and licensing", text: "Components send logs to VCF Operations for logs; VCF Operations reports license usage to the VCF Business Services console in connected mode.", highlight: [nsx, logs, ops, lic] }
+  - { title: "Shared dependencies", text: "DNS (forward and reverse) and NTP underpin every one of these flows.", highlight: [dns, ntp] }

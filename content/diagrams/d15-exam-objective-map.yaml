@@ -1,0 +1,42 @@
+id: d15-exam-objective-map
+title: "2V0-17.25 objective map: sections, objectives and item counts"
+description: >
+  The exam guide has four sections. Section 1 (IT Architectures, Technologies, Standards) and Section 3 (Plan and
+  Design) have no testable objectives. Section 2 (VCF Fundamentals) contains objectives 2.1 Private Cloud Vision
+  (3 items), 2.2 Compute Fundamentals (4), 2.3 Storage Fundamentals (6) and 2.4 Network Fundamentals (4). Section 4
+  (Deploy, Configure, and Operate VCF) contains 4.1 Deploy and Configure (9 items), 4.2 Manage (7), 4.3 Operations (14)
+  and 4.4 Consume and Automate (12). The exam has 60 items in 135 minutes with a scaled passing score of 300 and is
+  based on VCF 9.0. Item counts are the number of bullet items each objective lists in the guide, not official weights.
+width: 1000
+height: 560
+groups:
+  - { id: g-s1, x: 20, y: 20, w: 470, h: 90, label: "Section 1 – no testable objectives", kind: zone }
+  - { id: g-s3, x: 510, y: 20, w: 470, h: 90, label: "Section 3 – no testable objectives", kind: zone }
+  - { id: g-s2, x: 20, y: 140, w: 470, h: 300, label: "Section 2 – VCF Fundamentals", kind: compute }
+  - { id: g-s4, x: 510, y: 140, w: 470, h: 300, label: "Section 4 – Deploy, Configure, Operate", kind: mgmt }
+nodes:
+  - { id: s1, x: 60, y: 50, w: 390, h: 44, label: "IT Architectures, Technologies, Standards", kind: external, info: "No testable objectives, but the minimally qualified candidate is expected to know hardware, storage, networking, DNS, NTP and certificates." }
+  - { id: s3, x: 550, y: 50, w: 390, h: 44, label: "Plan and Design", kind: external, info: "No testable objectives. Design reasoning still helps with scenario questions in Section 4." }
+  - { id: o21, x: 40, y: 190, w: 200, h: 56, label: "2.1 Private Cloud", sublabel: "3 items", kind: compute, info: "Principles, use cases and value proposition of private cloud." }
+  - { id: o22, x: 270, y: 190, w: 200, h: 56, label: "2.2 Compute", sublabel: "4 items", kind: compute, info: "Deploy and configure vCenter and ESX, configure a vSphere cluster, deploy and manage VMs." }
+  - { id: o23, x: 40, y: 330, w: 200, h: 56, label: "2.3 Storage", sublabel: "6 items", kind: storage, info: "vSphere storage, vSAN ESA vs OSA, deploy vSAN, storage policies, resilience and data availability, space efficiency." }
+  - { id: o24, x: 270, y: 330, w: 200, h: 56, label: "2.4 Network", sublabel: "4 items", kind: network, info: "VCF networking components, fabrics and features, connectivity and routing, networking services." }
+  - { id: o41, x: 530, y: 190, w: 200, h: 56, label: "4.1 Deploy/Configure", sublabel: "9 items", kind: mgmt, info: "Components, deployment models, deployment, additional components, VCF Network Gateway, VCF Networking, workload domains, WLD storage, Supervisor." }
+  - { id: o42, x: 760, y: 190, w: 200, h: 56, label: "4.2 Manage", sublabel: "7 items", kind: security, info: "Fleet management capabilities, identity and RBAC, licensing, certificates, passwords, vCenter import, lifecycle." }
+  - { id: o43, x: 530, y: 330, w: 200, h: 56, label: "4.3 Operations", sublabel: "14 items", kind: ops, info: "Network operations and logs, VCF Operations cluster and deployment, metrics vs properties, views/reports, dashboards, alerts, log events, health and diagnostics, network and vSAN monitoring, policies, application monitoring, compliance, drift." }
+  - { id: o44, x: 760, y: 330, w: 200, h: 56, label: "4.4 Automate", sublabel: "12 items", kind: ops, info: "VCF Automation use cases, components, regions, multi-org tenancy, provider networking, provider content library, org admin tasks, org networks, content, extensibility, governance policies, Supervisor services." }
+  - { id: exam, x: 300, y: 470, w: 400, h: 64, label: "60 items · 135 min · 300 scaled", sublabel: "based on VCF 9.0", kind: external, info: "Official facts from the exam guide. Broadcom does not publish objective weights or the raw cut score." }
+edges:
+  - { from: o21, to: exam, kind: dependency, dashed: true }
+  - { from: o22, to: exam, kind: dependency, dashed: true }
+  - { from: o23, to: exam, kind: dependency, dashed: true }
+  - { from: o24, to: exam, kind: dependency, dashed: true }
+  - { from: o41, to: exam, kind: dependency, dashed: true }
+  - { from: o42, to: exam, kind: dependency, dashed: true }
+  - { from: o43, to: exam, kind: dependency, dashed: true }
+  - { from: o44, to: exam, kind: dependency, dashed: true }
+steps:
+  - { title: "Untested sections", text: "Sections 1 and 3 carry no testable objectives.", highlight: [s1, s3] }
+  - { title: "Fundamentals", text: "Section 2: private cloud, compute, storage and network fundamentals.", highlight: [o21, o22, o23, o24] }
+  - { title: "VCF operations of the platform", text: "Section 4 lists the most items, especially 4.3 Operations and 4.4 Automate.", highlight: [o41, o42, o43, o44] }
+  - { title: "The exam", text: "60 items in 135 minutes, passing score 300 (scaled).", highlight: [exam] }

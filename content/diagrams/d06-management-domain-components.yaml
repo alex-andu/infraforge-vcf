@@ -1,0 +1,50 @@
+id: d06-management-domain-components
+title: "What runs in the management domain (first VCF instance)"
+description: >
+  The default cluster of the management domain of the first VCF instance, built on at least three ESX hosts (simple)
+  or four (high availability) with principal storage such as vSAN ESA. On it run four groups of appliances: fleet
+  components (VCF Operations, fleet management appliance, VCF Automation, Day-2 VCF Operations for logs and for
+  networks, Identity Broker appliance), instance components (SDDC Manager, management vCenter, management NSX
+  Manager, VCF Operations collector), the vCenter and NSX Manager appliances of the workload domains, and optional
+  NSX Edge nodes and business workloads in their own resource pools. All management appliances use the VM
+  management network.
+width: 1000
+height: 600
+groups:
+  - { id: g-cluster, x: 10, y: 10, w: 980, h: 580, label: "Management domain default cluster", kind: mgmt }
+  - { id: g-fleet, x: 25, y: 45, w: 470, h: 215, label: "Fleet components (first instance only)", kind: ops }
+  - { id: g-inst, x: 505, y: 45, w: 470, h: 215, label: "Instance components (every instance)", kind: mgmt }
+  - { id: g-wldm, x: 25, y: 275, w: 470, h: 130, label: "Workload-domain management appliances", kind: mgmt }
+  - { id: g-opt, x: 505, y: 275, w: 470, h: 130, label: "Optional: edges and business workloads", kind: compute }
+  - { id: g-infra, x: 25, y: 420, w: 950, h: 155, label: "Infrastructure", kind: storage }
+nodes:
+  - { id: ops, x: 40, y: 85, w: 140, h: 56, label: "VCF Operations", sublabel: "1 or 3 nodes", kind: ops, component: vcf-operations, info: "Simple: one node. HA: three nodes (primary, replica, data) with DRS anti-affinity." }
+  - { id: fm, x: 195, y: 85, w: 140, h: 56, label: "Fleet mgmt", sublabel: "1 node", kind: ops, component: vcf-operations-fleet-management, info: "Single node in both simple and HA installs. Lifecycles the fleet components." }
+  - { id: vcfa, x: 350, y: 85, w: 135, h: 56, label: "VCF Automation", sublabel: "1 or 3 nodes", kind: ops, component: vcf-automation, info: "Deployed by the installer (or later). Simple one node, HA three nodes." }
+  - { id: logs, x: 40, y: 175, w: 140, h: 56, label: "Ops for logs", sublabel: "Day 2", kind: ops, component: vcf-operations-logs, info: "VCF Operations for logs: 1 node (simple) or 3 nodes (HA, integrated load balancer). Deployed from fleet management." }
+  - { id: net, x: 195, y: 175, w: 140, h: 56, label: "Ops for networks", sublabel: "Day 2", kind: ops, component: vcf-operations-networks, info: "VCF Operations for networks platform; its collector is an instance-level component." }
+  - { id: idb, x: 350, y: 175, w: 135, h: 56, label: "Identity Broker", sublabel: "appliance option", kind: security, component: vcf-identity-broker, info: "As an appliance, a 3-node cluster. Alternatively embedded in the management vCenter." }
+  - { id: sddc, x: 520, y: 85, w: 140, h: 56, label: "SDDC Manager", sublabel: "1 per instance", kind: mgmt, component: sddc-manager, info: "Deployed with every instance, on the VM management network in the first availability zone." }
+  - { id: vcm, x: 675, y: 85, w: 140, h: 56, label: "vCenter (mgmt)", kind: mgmt, component: vcenter, info: "Management domain vCenter. Can host the embedded Identity Broker." }
+  - { id: nsxm, x: 830, y: 85, w: 135, h: 56, label: "NSX Manager", sublabel: "1 or 3 nodes", kind: nsx, component: nsx-manager, info: "Dedicated NSX instance for the management domain. Simple: 1 node with VIP; HA: 3 nodes." }
+  - { id: coll, x: 520, y: 175, w: 140, h: 56, label: "Ops collector", sublabel: "1 per instance", kind: ops, component: vcf-operations-collector, info: "Collects data locally; additional instances only get this part of VCF Operations." }
+  - { id: vcw, x: 40, y: 320, w: 210, h: 56, label: "vCenter per workload domain", kind: mgmt, component: vcenter, info: "Each workload domain adds one vCenter appliance here." }
+  - { id: nsxw, x: 270, y: 320, w: 215, h: 56, label: "NSX Manager per WLD", sublabel: "dedicated or shared", kind: nsx, component: nsx-manager, info: "A dedicated NSX instance adds 1 or 3 NSX Manager nodes here; shared NSX adds nothing." }
+  - { id: edges, x: 520, y: 320, w: 210, h: 56, label: "NSX Edge nodes", kind: nsx, component: nsx-edge-cluster, info: "Allowed in the management domain (rp-sddc-edge / rp-user-edge resource pools)." }
+  - { id: biz, x: 750, y: 320, w: 215, h: 56, label: "Business VMs", sublabel: "rp-user-vm pool", kind: vm, info: "Allowed; recommendation VCF-WLD-RCMD-CFG-001 is to use resource pools so management always wins." }
+  - { id: hosts, x: 40, y: 470, w: 210, h: 56, label: "ESX hosts", sublabel: "3 simple / 4 HA", kind: compute, component: esx-host, info: "Default cluster minimum: 3 hosts (simple install) or 4 hosts (highly available install)." }
+  - { id: stor, x: 270, y: 470, w: 215, h: 56, label: "Principal storage", sublabel: "vSAN ESA/OSA, FC, NFS v3", kind: storage, component: vsan, info: "Default cluster cannot be a vSAN storage cluster or vSAN compute cluster." }
+  - { id: vds, x: 520, y: 470, w: 210, h: 56, label: "Distributed switch", kind: network, component: vds, info: "VDS with management, vMotion, storage and host TEP networks." }
+  - { id: mgmtnet, x: 750, y: 470, w: 215, h: 56, label: "VM management network", kind: network, component: physical-network, info: "Default network for all management appliances, including the fleet components and collectors." }
+edges:
+  - { from: fm, to: ops, label: "lifecycle", kind: control }
+  - { from: coll, to: ops, label: "data", kind: mgmt }
+  - { from: ops, to: sddc, label: "fleet mgmt", kind: control }
+  - { from: sddc, to: vcw, label: "deploys", kind: control }
+  - { from: hosts, to: stor, kind: storage }
+steps:
+  - { title: "Fleet components", text: "Only the first instance's management domain hosts VCF Operations, the fleet management appliance and VCF Automation; logs, networks and the Identity Broker appliance are added on Day 2.", highlight: [g-fleet, ops, fm, vcfa, logs, net, idb] }
+  - { title: "Instance components", text: "Every instance's management domain has SDDC Manager, a management vCenter, a dedicated NSX Manager and a collector.", highlight: [g-inst, sddc, vcm, nsxm, coll] }
+  - { title: "Workload-domain management", text: "Each new workload domain adds its vCenter (and, if NSX is dedicated, NSX Manager nodes) here, so size the management domain for growth.", highlight: [g-wldm, vcw, nsxw] }
+  - { title: "Optional contents", text: "Edges and business workloads may run here, protected by resource pools.", highlight: [g-opt, edges, biz] }
+  - { title: "Infrastructure", text: "3 or 4 hosts minimum, supported principal storage, VDS and the VM management network.", highlight: [g-infra, hosts, stor, vds, mgmtnet] }

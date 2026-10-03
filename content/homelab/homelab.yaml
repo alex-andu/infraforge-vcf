@@ -1,0 +1,591 @@
+intro: |
+  This section is the build guide for a **VMware Cloud Foundation 9 home lab**: what hardware it really takes, which
+  platform to run it on, how to lay out storage, networks, DNS and NTP, and in which order to deploy. Every lab in this
+  course points here for the environment itself.
+
+  Two honest ground rules:
+
+  - **Nested labs are not supported by Broadcom.** Running ESX as a VM (on ESX, Proxmox VE or VMware Workstation) is a
+    learning tool. The VCF *workflows*, UIs, APIs and failure modes you practise are the same as on real hardware;
+    performance, hardware compatibility checks and some features are not.
+  - **Several lab shortcuts are unsupported workarounds** documented by William Lam (Broadcom) on williamlam.com: single-host
+    management domains, the vSAN ESA hardware mock VIB, HCL-file refreshes and pre-check bypasses. They are labelled as
+    such below. Never use them in production, and expect them to change between 9.0.0, 9.0.1 and 9.1.
+
+  The default VCF 9.0 topology needs **three ESX hosts with vSAN (ESA or OSA)** or **two hosts with external storage
+  (FC VMFS or NFS)** for the management domain (per William Lam's single-host post, which describes these as the
+  installer's default minimums). Single-node component deployments (one NSX Manager, one VCF Operations node) are
+  available for small environments. The resource figures in the profiles come from William Lam's measured VCF 9.0
+  lab deployment (simple, single-node components) and from Broadcom sizing KBs; where a value is an estimate, it says so.
+
+platforms:
+  - id: physical-esx
+    name: Physical ESX hosts (bare metal)
+    verdict: Best fidelity; the only option close to a real deployment. Needs compatible CPUs, NICs and NVMe.
+    notes: |
+      - **Host count**: 3 hosts for vSAN-based management domain, 2 with NFS/FC principal storage; 1 host only with the
+        unsupported single-host workaround (see *VCF Installer lab workarounds*).
+      - **CPU support matters in ESX 9.** Broadcom KB 318697 lists discontinued Intel families for VCF 9.x — including
+        **Skylake-SP (Xeon Platinum 8100, Gold 6100/5100, Silver 4100, Bronze 3100)**, Broadwell-EP/DE, Kabylake-S and
+        Skylake-S/D/W — and deprecated (still working, support ending) families including **Cascade Lake-SP (Platinum
+        8200, Gold 6200/5200)**. Discontinued CPUs need the unsupported `allowLegacyCPU=true` boot option, and William Lam
+        notes the CPU must still support **XSAVE**.
+      - **Memory**: VCF 9.0 supports NVMe Tiering (memory tiering onto NVMe), which lets small hosts run more appliances.
+        In 9.0 it is **not interoperable with nested ESX** or VMs with hardware-assisted virtualization.
+      - **NICs**: VCF 9.0 can deploy with a single physical NIC (via JSON/API), but the installer pre-checks for 10 GbE;
+        lab posts describe disabling that check. Enhanced Data Path is the default switch mode; non-certified NICs may need
+        `"hostSwitchOperationalMode": "STANDARD"` in the deployment JSON.
+      - **vSAN ESA** expects certified NVMe devices; consumer NVMe needs the mock-VIB/HCL workarounds.
+  - id: nested-esx-on-esx
+    name: Nested ESX on a physical ESX host
+    verdict: The most common and best-documented lab approach; William Lam's automated VCF 9 lab script targets it.
+    notes: |
+      - Outer host: ESX 8.x/9.x managed by vCenter with DRS (the script uses a vApp). Lam's automated fleet lab asks for
+        the ability to create VMs with up to **24 vCPU**, about **275 GB** of memory and **1.25 TB** thin storage, and
+        uses **3 management hosts (32 vCPU / 112 GB each)** plus **3 workload hosts (16 vCPU / 32 GB each)** by default.
+      - Port groups for nested hosts must allow nested VM MACs: enable **MAC Learning** or **Promiscuous mode**, plus
+        **Forged transmits**.
+      - Enable *Expose hardware-assisted virtualization to the guest* (VHV) on each nested ESX VM.
+      - Do **not** enable NVMe Tiering on the outer ESX 9.0 host: nested ESX VMs (VHV) will fail to power on.
+      - Lam's *Nested ESXi Virtual Appliance* for 9.0 is distributed via the Broadcom Support Portal (Flings) and needs a
+        VCF/VVF entitlement (or VMUG Advantage with VCP-VCF).
+  - id: nested-proxmox
+    name: Nested ESX on Proxmox VE (KVM)
+    verdict: Works for learning and is the learner's platform. Not supported by Broadcom or Proxmox for this use; requires careful VM settings.
+    notes: |
+      **Host preparation**
+      - Enable nested virtualization in KVM: `cat /sys/module/kvm_intel/parameters/nested` must show `Y` (AMD:
+        `/sys/module/kvm_amd/parameters/nested` shows `1`). If not: `echo "options kvm-intel nested=Y" > /etc/modprobe.d/kvm-intel.conf`
+        and reload the module with all VMs stopped (Proxmox wiki *Nested Virtualization*).
+      - AMD hosts: community reports that nested ESX 8 could not power on its own VMs on older Proxmox kernels; it was
+        fixed with Proxmox 8.1 / kernel 6.5. Stay on a current Proxmox release.
+      - Limit the ZFS ARC (see *Storage layout*) so ZFS caching does not compete with nested ESX memory.
+
+      **Nested ESX VM settings**
+      | Setting | Value | Why |
+      |---|---|---|
+      | CPU type | `host` | Passes VT-x/EPT and flags like AES-NI and 1 GB pages to ESX; NSX Edge DPDK needs AES-NI and 1 GB huge pages. VMs with nesting cannot be live-migrated. |
+      | Sockets × cores, NUMA | e.g. 2 × 12, `numa: 1` | Keep each nested host inside physical NUMA boundaries where possible. |
+      | Machine / firmware | `q35`; OVMF (UEFI) with an EFI disk, `pre-enrolled-keys=0` | UEFI is the modern ESX boot path. Community reports some EFI quirks (e.g. `local.sh`); SeaBIOS is a fallback. |
+      | OS type | `other` | There is no ESX OS type in Proxmox. |
+      | Memory | Fixed, `balloon: 0` | ESX cannot use the KVM balloon driver; do not overcommit physical RAM. |
+      | Boot disk | **SATA**, 64 GB, `ssd=1`, `discard=on` | ESX has drivers for AHCI. It has **no VirtIO drivers**, so VirtIO SCSI/Block disks are invisible to it. |
+      | vSAN ESA devices | **Emulated NVMe** via `args:` (`-drive ... if=none,id=NVME1 -device nvme,drive=NVME1,serial=...`) | The Proxmox GUI has no NVMe bus; QEMU's NVMe controller presents real NVMe devices, which ESA expects. Give each a unique `serial`. Verify in ESX with `vdq -q` / `esxcli storage core device list`. |
+      | NICs | **vmxnet3** ×2, `bridge=vmbr0`, **no VLAN tag**, `firewall=0` | ESX has a native vmxnet3 driver; e1000e is reported unreliable in community threads and VirtIO has no ESX driver. No tag on a VLAN-aware bridge = trunk of all bridge VLANs, so ESX port groups tag VLANs themselves. |
+      | MTU | Set **9000 on physical NICs, bond and vmbr0** | Proxmox sets each VM tap device to the bridge MTU at start-up (qemu-server/pve-common source). The `mtu=` NIC option is VirtIO-only. |
+
+      **Known quirks**
+      - Linux bridges learn MAC addresses by default, so nested VMs behind a nested ESX (vCenter, NSX, edges) are reachable
+        without promiscuous-mode settings. Keep `firewall=0` on nested ESX NICs.
+      - Community fix when the ESX Host Client returns TLS errors while ping works: disable checksum offload on the nested
+        uplink, `esxcli network nic cso set -e 0 -n vmnic0` (reported for ESXi 7/8 on Proxmox; test on 9).
+      - NVMe drives attached through `args:` are not managed by Proxmox (no GUI, not in `qm snapshot`). Use ZFS zvols and
+        snapshot the pool for whole-lab restore points.
+  - id: vmware-workstation
+    name: VMware Workstation (desktop)
+    verdict: Fine for ESX/vCenter fundamentals; too small for a VCF 9 management domain on typical desktops.
+    notes: |
+      - Supports nested ESX with *Virtualize Intel VT-x/EPT or AMD-V/RVI*. On Windows hosts with Hyper-V/VBS enabled,
+        nested hardware virtualization has historically not been available — check the current Workstation release notes.
+      - A VCF 9.0 management domain with single-node components needs roughly **194 GB of RAM for appliances alone**
+        including VCF Automation (about **98 GB** without it) before ESX and vSAN overhead — beyond most desktops.
+      - Good uses: one or two nested ESX hosts, vCenter, vSAN/NSX concepts, VCF Installer UI exploration.
+      - Laptop/desktop SSD endurance and sleep/hibernate events are real risks for long-running nested vSAN.
+
+profiles:
+  - id: minimal
+    name: Minimal – single host (unsupported shortcut)
+    purpose: Run the core VCF 9 management components on one ESX host to learn the installer, VCF Operations and day-2 workflows with the least hardware. Uses William Lam's unsupported single-host workaround.
+    cpu: "16 cores / 32 threads recommended (8c/16t boots the core stack but cannot run VCF Automation, which needs a 24-vCPU VM)"
+    ram: "128 GB on a physical ESX host with NVMe Tiering; about 160 GB+ if the host is nested (NVMe Tiering does not work nested in 9.0)"
+    disk: "1 x boot/OSData device + 1 x NVMe for vSAN ESA (2 TB recommended) + optional NVMe for tiering (physical only)"
+    nics: "1 x 2.5/10 GbE is enough (single-NIC deployment via JSON); 2 NICs make VLAN work and recovery easier"
+    storageLayout: |
+      - vSAN ESA on a single host requires a storage policy without host failure tolerance; William Lam's
+        `vcf-9x-in-box` repo ships a script that fixes the vSAN ESA default policy during deployment for one/two-host setups.
+      - Alternative: NFS principal storage (must be on a VLAN separate from ESX management per Lam's notes; NFS normally
+        needs 2 hosts).
+      - Provisioned (thin) space for the core appliances is about 2.6 TB, actually used about 260 GB (Lam's measurements).
+    nested: |
+      Possible nested, but the memory saving from NVMe Tiering is lost. Give the nested host 16 vCPU and ~144 GB and keep
+      VCF Automation out of scope. Deploy with the **JSON spec** (the installer UI still enforces the minimum host count)
+      after adding the single-host feature property to the installer (see the *VCF Installer lab workarounds* section).
+    network: |
+      One management VLAN plus vMotion, vSAN and host TEP VLANs (vMotion/vSAN can be skipped functionally on one host but
+      the spec still needs networks). Jumbo frames optional on a single host.
+    vms:
+      - { name: esx01, role: Single ESX host (physical, or nested VM), vcpu: 16, ramGb: 144, diskGb: 1064, notes: "Nested sizing; 64 GB boot + ~1 TB vSAN ESA device" }
+      - { name: sddcm01, role: VCF Installer reused as SDDC Manager, vcpu: 4, ramGb: 16, diskGb: 931, notes: "Thin; ~77 GB used" }
+      - { name: vc01, role: Management vCenter, vcpu: 4, ramGb: 21, diskGb: 642, notes: "Thin; ~30 GB used" }
+      - { name: nsx01a, role: NSX Manager (single node, medium), vcpu: 6, ramGb: 24, diskGb: 300, notes: "Thin; ~14 GB used" }
+      - { name: ops01, role: VCF Operations (single node), vcpu: 4, ramGb: 16, diskGb: 290, notes: "Thin; ~13 GB used" }
+      - { name: opsfm01, role: VCF Operations fleet management, vcpu: 4, ramGb: 12, diskGb: 206, notes: "Thin; ~117 GB used" }
+      - { name: opscp01, role: VCF Operations collector, vcpu: 4, ramGb: 16, diskGb: 280, notes: "Thin; ~11 GB used" }
+    limitations:
+      - Unsupported topology; the single-host feature property name differs between 9.0.0 and 9.0.1 and may change again.
+      - No vSAN redundancy, no vSphere HA, no realistic maintenance-mode or upgrade behaviour.
+      - No NSX Edge cluster or VCF Automation in the base footprint; north-south routing and 4.4 objectives stay theoretical.
+      - Lam reports VCF Automation could not run on a 128 GB single host even with NVMe Tiering.
+
+  - id: recommended
+    name: Recommended – three nested hosts (fits the learner's server)
+    purpose: A realistic VCF 9 management domain with vSAN ESA across three hosts, NSX with an edge cluster and Tier-0 BGP to a lab router, VCF Operations and fleet management. VCF Automation is a stretch goal.
+    cpu: "32+ physical cores / 64+ threads (the learner has 2 x 28c/56t = 56 cores / 112 threads)"
+    ram: "256 GB (tight but workable without VCF Automation running concurrently)"
+    disk: "1 TB+ NVMe for all nested ESX disks (2 TB more comfortable), SSD mirror for the hypervisor, HDD pool for depot and backups"
+    nics: "2 x 10 GbE (bonded) recommended; 1 x 1/2.5/10 GbE works because nearly all traffic stays inside the server"
+    storageLayout: |
+      | Pool | Devices | Holds |
+      |---|---|---|
+      | `rpool` (ZFS mirror) | 2 x 256 GB SSD | Proxmox OS, ISO library, infra01 (DNS/NTP), rtr01, jump01 |
+      | `nvmepool` (ZFS, storage id `nvme-fast`, thin/sparse) | 1 TB NVMe | Nested ESX boot disks, vSAN ESA device zvols, esx01 temporary local VMFS for the installer |
+      | `bulk` (ZFS RAID10 or RAIDZ1) | 4 x 2 TB HDD | VCF offline depot, SFTP backup target data, vzdump backups, ISO archive, optional NFS datastore |
+
+      vSAN ESA inside the nested hosts stores everything twice (RAID-1, FTT=1) or 1.5x (RAID-5 2+1 on 3 hosts). With ~260 GB
+      used by the core appliances, expect roughly 400–550 GB of vSAN usage plus edges and test VMs: watch the NVMe pool.
+    nested: |
+      Three nested ESX VMs, CPU type `host`, 2 sockets x 12 cores, NUMA on, 72 GB fixed RAM each, SATA 64 GB boot, one
+      emulated NVMe device (500 GB thin zvol) for vSAN ESA, 2 x vmxnet3 on a VLAN-aware bridge (trunk). esx01 temporarily
+      gets a second SATA disk (200 GB thin) as local VMFS for the VCF Installer.
+    network: |
+      VLAN-aware `vmbr0` with MTU 9000 trunked to the switch; VLANs per the VLAN plan (management 1500, vMotion/vSAN/TEP
+      9000, edge uplinks 1500). A router VM (rtr01) provides gateways for every VLAN and BGP for the Tier-0.
+    vms:
+      - { name: infra01, role: "DNS (forward + reverse) and NTP server (Proxmox VM)", vcpu: 2, ramGb: 2, diskGb: 20 }
+      - { name: rtr01, role: "Inter-VLAN router + BGP peer (Proxmox VM)", vcpu: 2, ramGb: 2, diskGb: 16 }
+      - { name: jump01, role: "Jump host: browser, PowerCLI, ovftool, SSH (Proxmox VM, optional)", vcpu: 2, ramGb: 4, diskGb: 40 }
+      - { name: esx01, role: Nested ESX management host 1, vcpu: 24, ramGb: 72, diskGb: 764, notes: "64 GB boot + 500 GB NVMe vSAN + 200 GB temporary local VMFS (all thin)" }
+      - { name: esx02, role: Nested ESX management host 2, vcpu: 24, ramGb: 72, diskGb: 564 }
+      - { name: esx03, role: Nested ESX management host 3, vcpu: 24, ramGb: 72, diskGb: 564 }
+      - { name: sddcm01, role: VCF Installer → SDDC Manager (inside nested), vcpu: 4, ramGb: 16, diskGb: 931, notes: "Thin" }
+      - { name: vc01, role: Management vCenter (inside nested), vcpu: 4, ramGb: 21, diskGb: 642, notes: "Thin" }
+      - { name: nsx01a, role: NSX Manager single node medium (inside nested), vcpu: 6, ramGb: 24, diskGb: 300, notes: "Thin" }
+      - { name: ops01, role: VCF Operations (inside nested), vcpu: 4, ramGb: 16, diskGb: 290, notes: "Thin" }
+      - { name: opsfm01, role: VCF Operations fleet management (inside nested), vcpu: 4, ramGb: 12, diskGb: 206, notes: "Thin" }
+      - { name: opscp01, role: VCF Operations collector (inside nested), vcpu: 4, ramGb: 16, diskGb: 280, notes: "Thin" }
+      - { name: edge01a, role: NSX Edge node medium (inside nested), vcpu: 4, ramGb: 8, diskGb: 200 }
+      - { name: edge01b, role: NSX Edge node medium (inside nested), vcpu: 4, ramGb: 8, diskGb: 200 }
+      - { name: auto01, role: "VCF Automation (inside nested) – stretch goal, see yourLab", vcpu: 24, ramGb: 96, diskGb: 626, notes: "Does not fit concurrently in 256 GB without ESX memory overcommit" }
+    limitations:
+      - Nested on KVM is unsupported; vSAN ESA performance depends entirely on the single NVMe and is not representative.
+      - 256 GB leaves no room for VCF Automation (96 GB) alongside the rest; plan a RAM upgrade (384–512 GB) if 4.4 hands-on matters.
+      - Single NVMe = no redundancy for the whole nested lab; keep backups and pool snapshots on the HDD pool.
+      - One physical server is one failure domain; HA and vSAN tests are logical only.
+      - Hardware checks (vSAN ESA HCL, 10 GbE pre-check) need the documented lab workarounds.
+
+  - id: advanced
+    name: Advanced – management + workload domain
+    purpose: Full fleet practice — management domain with VCF Automation and VCF Operations for logs, plus a VI workload domain with its own vCenter/NSX and Supervisor.
+    cpu: "64+ cores / 128 threads, or two servers"
+    ram: "512–768 GB (Lam's automated lab uses 3 x 112 GB management + 3 x 32 GB workload hosts)"
+    disk: "4 TB+ NVMe (or one NVMe per nested host group), plus bulk storage for depot and backups"
+    nics: "2 x 25 GbE or 2 x 10 GbE per server; a real L3 switch with jumbo frames if two servers"
+    storageLayout: |
+      Management hosts and workload hosts on separate NVMe devices so vSAN I/O of one domain does not starve the other;
+      optional NFS supplemental datastore from the bulk pool on its own VLAN.
+    nested: |
+      4 management hosts (allows maintenance mode with FTT=1 and still 3 hosts), 3 workload hosts. Same Proxmox VM
+      template as the recommended profile.
+    network: |
+      Same VLAN plan; workload domain can share VLANs in a lab or use its own vMotion/vSAN/TEP VLANs (closer to production).
+    vms:
+      - { name: esx01-esx04, role: "Nested management hosts (each)", vcpu: 24, ramGb: 112, diskGb: 664 }
+      - { name: esx05-esx07, role: "Nested workload domain hosts (each)", vcpu: 16, ramGb: 48, diskGb: 364 }
+      - { name: auto01, role: VCF Automation, vcpu: 24, ramGb: 96, diskGb: 626, notes: "Lam: vCPU can be lowered to 16/12 at unknown performance cost" }
+      - { name: logs01, role: VCF Operations for logs (small), vcpu: 4, ramGb: 8, diskGb: 530, notes: "Small = proof-of-concept size per KB 397782; disk size from 8.x sizing, verify for 9.0" }
+      - { name: vc02, role: Workload domain vCenter, vcpu: 4, ramGb: 21, diskGb: 642 }
+      - { name: nsx02a, role: Workload domain NSX Manager (single node), vcpu: 6, ramGb: 24, diskGb: 300 }
+      - { name: edge02a-b, role: "Workload domain edges (each, medium)", vcpu: 4, ramGb: 8, diskGb: 200 }
+    limitations:
+      - VCF Operations for networks and HCX sizing are not covered here; check the sizing guidance for your build.
+      - Still unsupported nested; licensing/entitlement required for binaries.
+      - Two-server builds need a real switch fabric and reintroduce physical MTU/VLAN troubleshooting (useful practice).
+
+yourLab: |
+  ### Your server and what it can do
+
+  | Resource | You have | Budget for the lab |
+  |---|---|---|
+  | CPU | 2 × 28 cores / 56 threads = **56 cores, 112 threads** | 3 nested hosts × 24 vCPU = 72 vCPU + ~6 for infra VMs: comfortable |
+  | RAM | **256 GB** | The constraint. See the budget below |
+  | Fast storage | 1 × 1 TB NVMe | All nested ESX disks (boot + vSAN ESA devices) |
+  | SSD | 2 × 256 GB | Proxmox OS mirror + small infra VMs + ISOs |
+  | HDD | 4 × 2 TB | Depot, backups, archives, optional NFS |
+
+  **Verdict:** the **Recommended profile fits** — a three-host vSAN ESA management domain with vCenter, NSX (single
+  manager), an edge cluster with Tier-0 BGP to your router VM, VCF Operations, fleet management and the collector.
+  **VCF Automation (24 vCPU / 96 GB) does not fit at the same time** in 256 GB.
+
+  **First check your CPU generation** (`lscpu | grep "Model name"`). 28-core Xeons exist in several generations:
+
+  | If the model is… | ESX 9 status (KB 318697) | What to do |
+  |---|---|---|
+  | Platinum 8180/8176, Gold 6100 series (Skylake-SP) | **Discontinued** | Nested ESX will see this CPU (CPU type host). Expect the unsupported `allowLegacyCPU=true` boot option; XSAVE required |
+  | Platinum 8280/8276, Gold 6258R and other 6200/5200 (Cascade Lake) | **Deprecated** | Works with warnings; fine for a lab |
+  | Gold 6330/6348, Platinum 83xx (Ice Lake) or newer | Supported | Nothing special |
+
+  ### Disk placement
+
+  | What | Pool / device | Size (thin) | Why |
+  |---|---|---|---|
+  | Proxmox OS | `rpool` SSD mirror | ~30 GB | Redundant boot |
+  | infra01 (DNS/NTP), rtr01, jump01 | `rpool` | ~80 GB | Must survive and start first; small |
+  | ESX boot disks esx01–03 (SATA) | `nvme-fast` | 3 × 64 GB | Boot + OSData; ESX logs live here |
+  | vSAN ESA devices (emulated NVMe) | `nvmepool` zvols | 3 × 500 GB (thin) | vSAN latency = NVMe latency; **never on HDD** |
+  | esx01 local VMFS (installer) | `nvme-fast` | 200 GB, temporary | VCF Installer OVA; Storage vMotion to vSAN after bring-up, then remove |
+  | VCF offline depot | `bulk` HDD | 200–400 GB | Sequential reads; speed not critical |
+  | SFTP backup target (VCF backups) | `bulk` (served by infra01 or a small VM) | 100+ GB | Off the NVMe so a dead NVMe does not take backups with it |
+  | Proxmox vzdump backups, ZFS snapshot copies | `bulk` | as needed | Restore points |
+  | Optional NFS datastore (VLAN 70) | `bulk` | 1 TB | Supplemental storage for test VMs and templates |
+
+  ### RAM budget (256 GB)
+
+  | Consumer | GB | Note |
+  |---|---|---|
+  | Proxmox host + ZFS ARC capped at 8 GB | 12 | Set `zfs_arc_max`; without a cap ZFS may take much more |
+  | infra01 + rtr01 | 4 | |
+  | jump01 (optional) | 4 | Or use your workstation |
+  | esx01 / esx02 / esx03 | 3 × 72 = 216 | Fixed, `balloon: 0` |
+  | **Total** | **236** | ~20 GB headroom; never let Proxmox swap or OOM-kill a nested host |
+
+  Inside the 216 GB the nested hosts need their own ESX + vSAN ESA overhead (estimate ~8 GB per host — measure it
+  in your lab), leaving roughly 190 GB for VMs:
+
+  | Inside nested | GB |
+  |---|---|
+  | SDDC Manager (reused installer) | 16 |
+  | vCenter | 21 |
+  | NSX Manager (single, medium) | 24 |
+  | VCF Operations + fleet management + collector | 16 + 12 + 16 |
+  | 2 × NSX Edge (medium) | 16 |
+  | **Subtotal** | **121** |
+  | Free for Supervisor, test VMs | ~70 |
+
+  VCF Automation (96 GB) would need ESX memory overcommit (swapping to vSAN on the NVMe — very slow) or more RAM. Treat it
+  as a later project after a RAM upgrade, or deploy it briefly with everything non-essential powered off and accept the
+  slowness.
+
+  ### What to deploy first
+
+  1. **Proxmox preparation** – nested KVM, ZFS pools, ARC cap, VLAN-aware `vmbr0` at MTU 9000 (lab `lab-homelab-proxmox-prep`).
+  2. **Foundations** – infra01 (DNS forward/reverse + NTP), rtr01 (gateways for all VLANs), MTU tests (lab `lab-network-readiness`).
+  3. **Learn on one host** – a single nested ESX + vCenter for phases 1–4 while VCF binaries are pending (labs `lab-esx-host-first-vm`, `lab-vcenter-cluster-ha-drs`).
+  4. **Three VCF-ready nested hosts** – fresh ESX 9 installs, NTP, DNS, SSH, certificates regenerated for the FQDN, vSAN ESA devices visible.
+  5. **Pool snapshot** (`zfs snapshot -r nvmepool@pre-bringup`) with everything powered off.
+  6. **VCF Installer → management domain** (vCenter, vSAN ESA, NSX, VCF Operations, fleet management, collector).
+  7. **Snapshot again**, then NSX Edge cluster + Tier-0 BGP to rtr01, then Supervisor.
+  8. Optional later: VCF Automation (RAM permitting), VCF Operations for logs.
+
+ipPlan:
+  - { hostname: rtr01, fqdn: rtr01.vcf.lab, ip: 10.10.10.1, vlan: "10 (gateway; also .1 on every VLAN)", role: "Router VM: default gateway for all lab VLANs, BGP peer for the Tier-0" }
+  - { hostname: pve01, fqdn: pve01.vcf.lab, ip: 10.10.10.5, vlan: "10", role: "Proxmox VE host management (vmbr0.10)" }
+  - { hostname: infra01, fqdn: infra01.vcf.lab, ip: 10.10.10.10, vlan: "10", role: "DNS (forward + reverse) and NTP server" }
+  - { hostname: jump01, fqdn: jump01.vcf.lab, ip: 10.10.10.11, vlan: "10", role: "Jump host (optional)" }
+  - { hostname: vc01, fqdn: vc01.vcf.lab, ip: 10.10.10.20, vlan: "10", role: "Management domain vCenter" }
+  - { hostname: sddcm01, fqdn: sddcm01.vcf.lab, ip: 10.10.10.21, vlan: "10", role: "VCF Installer, reused as SDDC Manager" }
+  - { hostname: nsx01, fqdn: nsx01.vcf.lab, ip: 10.10.10.22, vlan: "10", role: "NSX Manager cluster VIP (management domain)" }
+  - { hostname: nsx01a, fqdn: nsx01a.vcf.lab, ip: 10.10.10.23, vlan: "10", role: "NSX Manager node A" }
+  - { hostname: ops01, fqdn: ops01.vcf.lab, ip: 10.10.10.24, vlan: "10", role: "VCF Operations (single node)" }
+  - { hostname: opsfm01, fqdn: opsfm01.vcf.lab, ip: 10.10.10.25, vlan: "10", role: "VCF Operations fleet management" }
+  - { hostname: opscp01, fqdn: opscp01.vcf.lab, ip: 10.10.10.26, vlan: "10", role: "VCF Operations collector" }
+  - { hostname: auto01, fqdn: auto01.vcf.lab, ip: 10.10.10.27, vlan: "10", role: "VCF Automation (stretch goal). The deployment also asks for additional node IPs; reserve 10.10.10.40-49 and check the installer's form for the exact count" }
+  - { hostname: logs01, fqdn: logs01.vcf.lab, ip: 10.10.10.28, vlan: "10", role: "VCF Operations for logs (advanced profile)" }
+  - { hostname: edge01a, fqdn: edge01a.vcf.lab, ip: 10.10.10.31, vlan: "10", role: "NSX Edge node A management interface" }
+  - { hostname: edge01b, fqdn: edge01b.vcf.lab, ip: 10.10.10.32, vlan: "10", role: "NSX Edge node B management interface" }
+  - { hostname: esx01, fqdn: esx01.vcf.lab, ip: 10.10.10.101, vlan: "10", role: "Nested ESX management host 1 (vmk0)" }
+  - { hostname: esx02, fqdn: esx02.vcf.lab, ip: 10.10.10.102, vlan: "10", role: "Nested ESX management host 2 (vmk0)" }
+  - { hostname: esx03, fqdn: esx03.vcf.lab, ip: 10.10.10.103, vlan: "10", role: "Nested ESX management host 3 (vmk0)" }
+  - { hostname: esx04, fqdn: esx04.vcf.lab, ip: 10.10.10.104, vlan: "10", role: "Nested ESX management host 4 (advanced profile)" }
+  - { hostname: esx05, fqdn: esx05.vcf.lab, ip: 10.10.10.105, vlan: "10", role: "Nested ESX workload domain host 1 (advanced)" }
+  - { hostname: esx06, fqdn: esx06.vcf.lab, ip: 10.10.10.106, vlan: "10", role: "Nested ESX workload domain host 2 (advanced)" }
+  - { hostname: esx07, fqdn: esx07.vcf.lab, ip: 10.10.10.107, vlan: "10", role: "Nested ESX workload domain host 3 (advanced)" }
+  - { hostname: vc02, fqdn: vc02.vcf.lab, ip: 10.10.10.50, vlan: "10", role: "Workload domain vCenter (advanced)" }
+  - { hostname: nsx02, fqdn: nsx02.vcf.lab, ip: 10.10.10.51, vlan: "10", role: "Workload domain NSX Manager VIP (advanced)" }
+  - { hostname: nsx02a, fqdn: nsx02a.vcf.lab, ip: 10.10.10.52, vlan: "10", role: "Workload domain NSX Manager node A (advanced)" }
+
+vlanPlan:
+  - { vlan: 10, name: mgmt, subnet: 10.10.10.0/24, gateway: 10.10.10.1, mtu: 1500, purpose: "ESX vmk0, all management appliances, Proxmox host, DNS/NTP, jump host" }
+  - { vlan: 20, name: vmotion, subnet: 10.10.20.0/24, gateway: 10.10.20.1, mtu: 9000, purpose: "vMotion vmknics (IP pool .101-.120). Lam's lab JSON uses MTU 8900 here; 9000 also works when every hop is 9000" }
+  - { vlan: 30, name: vsan, subnet: 10.10.30.0/24, gateway: 10.10.30.1, mtu: 9000, purpose: "vSAN ESA vmknics (IP pool .101-.120)" }
+  - { vlan: 40, name: host-tep, subnet: 10.10.40.0/24, gateway: 10.10.40.1, mtu: 9000, purpose: "NSX host TEPs (Geneve), IP pool .101-.150; NSX needs at least 1600" }
+  - { vlan: 50, name: edge-tep, subnet: 10.10.50.0/24, gateway: 10.10.50.1, mtu: 9000, purpose: "NSX Edge TEPs; routed to the host TEP VLAN through rtr01" }
+  - { vlan: 60, name: edge-uplink-1, subnet: 10.10.60.0/24, gateway: 10.10.60.1, mtu: 1500, purpose: "Tier-0 uplink 1; BGP peering edge01a/b (.11/.12) with rtr01 (.1)" }
+  - { vlan: 61, name: edge-uplink-2, subnet: 10.10.61.0/24, gateway: 10.10.61.1, mtu: 1500, purpose: "Tier-0 uplink 2; second BGP session per edge" }
+  - { vlan: 70, name: nfs, subnet: 10.10.70.0/24, gateway: 10.10.70.1, mtu: 9000, purpose: "Optional NFS supplemental datastore from the HDD pool; separate from management" }
+  - { vlan: 100, name: vm-workloads, subnet: 10.10.100.0/24, gateway: 10.10.100.1, mtu: 1500, purpose: "VLAN-backed test VMs; NSX overlay segments use 172.16.0.0/16 routed via the Tier-0" }
+
+dnsPlan: |
+  **Server:** infra01 (10.10.10.10). Everything in the lab — Proxmox, nested ESX, all appliances — uses it as the only
+  DNS server. It forwards other names to your home router or a public resolver.
+
+  **Zones**
+
+  | Zone | Type | Contents |
+  |---|---|---|
+  | `vcf.lab` | Forward | A record for **every** entry of the IP plan |
+  | `10.10.10.in-addr.arpa` | Reverse | PTR for every management IP (hosts, appliances, NSX VIP *and* nodes, edges) |
+  | `20/30/40/50.10.10.in-addr.arpa` | Reverse (optional) | Only if you give vmknics/TEPs names; VCF uses IP pools here |
+
+  **Unbound example** (William Lam's `vcf-9x-in-box` uses Unbound on Photon OS; the same records work in BIND or
+  Windows DNS):
+
+  ```text
+  server:
+    interface: 10.10.10.10
+    access-control: 10.10.0.0/16 allow
+    local-zone: "vcf.lab." static
+    local-data: "vc01.vcf.lab. A 10.10.10.20"
+    local-data-ptr: "10.10.10.20 vc01.vcf.lab"
+    local-data: "nsx01.vcf.lab. A 10.10.10.22"
+    local-data-ptr: "10.10.10.22 nsx01.vcf.lab"
+    # ... one A + one PTR line per IP plan entry
+  forward-zone:
+    name: "."
+    forward-addr: 192.168.1.1
+  ```
+
+  **Verify** every name both ways (from infra01, and later from the VCF Installer appliance):
+
+  ```shell
+  for h in rtr01 pve01 infra01 vc01 sddcm01 nsx01 nsx01a ops01 opsfm01 opscp01 edge01a edge01b esx01 esx02 esx03; do
+    ip=$(dig +short $h.vcf.lab); ptr=$(dig +short -x $ip)
+    echo "$h.vcf.lab -> $ip -> $ptr"
+  done
+  ```
+
+  Every line must end with the same FQDN it started with (with a trailing dot). A missing or different PTR is the
+  number-one cause of failed VCF validation.
+
+naming: |
+  | Object | Pattern | Examples |
+  |---|---|---|
+  | Lab DNS domain | one domain you control; avoid `.local` (mDNS conflicts) | `vcf.lab` (or a subdomain of `home.arpa`) |
+  | ESX hosts | `esxNN` | `esx01` … `esx07` (01–04 management, 05+ workload) |
+  | vCenter | `vcNN` per domain | `vc01` (management), `vc02` (workload) |
+  | NSX Manager | `nsxNN` VIP, `nsxNNa/b/c` nodes | `nsx01`, `nsx01a` |
+  | NSX Edges | `edgeNNa/b` | `edge01a`, `edge01b` |
+  | VCF Operations family | `ops01`, `opsfm01` (fleet mgmt), `opscp01` (collector), `logs01` | |
+  | Infrastructure | `infra01`, `rtr01`, `jump01`, `pve01` | |
+  | Proxmox VM IDs | 1xx infra, 2xx management hosts, 3xx workload hosts | `101 infra01`, `201 esx01`, `305 esx05` |
+  | vSphere objects | `<site>-<domain>-<object>` | datacenter `lab-m01-dc`, cluster `lab-m01-cl01`, VDS `lab-m01-vds01` |
+
+  Hostnames are lowercase, no underscores, and the hostname you type into the ESX DCUI, the OVA form and DNS must be
+  identical. In OVA forms the *Host Name* field takes the FQDN and the *DNS Domain Name* field only the domain — mixing
+  them broke VCF Installer validation in Broadcom KB 418890.
+
+sections:
+  - id: dns
+    title: DNS service design
+    body: |
+      - One authoritative lab DNS server (infra01) on the management VLAN, started first after Proxmox boots
+        (`onboot: 1`, startup order 1).
+      - Forward **and** reverse records for every IP plan entry before you install the first ESX host.
+      - Create records for the NSX VIP as well as the node(s); forgetting the VIP PTR is a classic bring-up failure.
+      - Keep a text export of the zone files on the HDD pool; a rebuilt DNS server without its reverse zone silently breaks
+        VCF validation the next day.
+  - id: ntp
+    title: NTP design
+    body: |
+      - infra01 runs an NTP server (for example chrony) that syncs to public pool servers and serves the lab
+        (`allow 10.10.0.0/16` in chrony). Optionally also rtr01 as a second source.
+      - Configure the same NTP server(s) in: Proxmox host, every nested ESX host, the VCF Installer deployment spec, and
+        every appliance (VCF pushes this during deployment).
+      - Verify on ESX with `esxcli system ntp get` and compare `date -u` everywhere. Never fix skew by setting one clock by
+        hand.
+  - id: gateway-router
+    title: Gateway and router design
+    body: |
+      - **rtr01** (a small Linux VM with FRR, VyOS, or OPNsense with its FRR plugin — your choice) has one trunk NIC on
+        `vmbr0` with a sub-interface `.1` on every lab VLAN, and one NIC (or VLAN) towards your home LAN for internet.
+      - Routes: all lab VLANs are directly connected; NAT the lab to the home LAN for internet/depot downloads.
+      - Later: BGP with the Tier-0 on VLANs 60/61 (for example rtr01 AS 65001, Tier-0 AS 65000) so overlay networks
+        (172.16.0.0/16) are learned dynamically.
+      - Alternative: your physical L3 switch as gateway. Keep the MTU 9000 sub-interfaces for vMotion, vSAN and TEP VLANs,
+        and remember that inter-VLAN routing at 9000 needs the router interfaces at 9000 too (edge TEP ↔ host TEP).
+  - id: mtu
+    title: MTU end-to-end
+    body: |
+      Jumbo frames must be consistent on every hop or large frames silently drop:
+
+      | Hop | Setting |
+      |---|---|
+      | Physical switch ports to the server | 9216 (or the switch's max ≥ 9000) |
+      | Proxmox physical NICs, bond0, vmbr0 | `mtu 9000` in `/etc/network/interfaces` |
+      | VM tap devices | Inherit the bridge MTU automatically at VM start |
+      | rtr01 sub-interfaces for VLAN 20/30/40/50/70 | 9000 |
+      | Nested VDS | 9000 |
+      | vmknics vMotion / vSAN | 9000 (or 8900) |
+      | NSX TEP | from the uplink profile / VDS, ≥ 1600 |
+
+      Example `/etc/network/interfaces` (Proxmox, ifupdown2):
+
+      ```text
+      auto bond0
+      iface bond0 inet manual
+          bond-slaves enp65s0f0 enp65s0f1
+          bond-miimon 100
+          bond-mode active-backup
+          mtu 9000
+
+      auto vmbr0
+      iface vmbr0 inet manual
+          bridge-ports bond0
+          bridge-stp off
+          bridge-fd 0
+          bridge-vlan-aware yes
+          bridge-vids 2-4094
+          mtu 9000
+
+      auto vmbr0.10
+      iface vmbr0.10 inet static
+          address 10.10.10.5/24
+          gateway 10.10.10.1
+          mtu 1500
+      ```
+
+      Each physical NIC also needs `mtu 9000`. Prove it from a nested host: `vmkping -I vmk2 -d -s 8972 10.10.30.102`
+      (payload = MTU − 28).
+  - id: storage
+    title: Storage layout and ZFS settings
+    body: |
+      - Create `nvmepool` on the 1 TB NVMe (`zpool create -o ashift=12 nvmepool /dev/disk/by-id/<nvme-id>`), add it in
+        Proxmox as ZFS storage `nvme-fast` with **Thin provision** enabled (sparse zvols).
+      - `bulk` on the four HDDs: ZFS RAID10 (two mirrors) for better random I/O if you serve NFS; RAIDZ1 if you mainly
+        store depot files and backups.
+      - Cap ARC: `echo "options zfs zfs_arc_max=8589934592" > /etc/modprobe.d/zfs.conf`, then `update-initramfs -u -k all`
+        and reboot (8 GiB).
+      - vSAN ESA device per nested host: `pvesm alloc nvme-fast 201 vm-201-disk-9 500G`, then add to the VM config:
+        `args: -drive file=/dev/zvol/nvmepool/vm-201-disk-9,if=none,id=NVME1,format=raw -device nvme,drive=NVME1,serial=esx01nvme1`.
+      - In each nested ESX, confirm the device: `vdq -q` should list it as eligible for vSAN; William Lam's 9.1 workaround
+        list also suggests nested-vSAN settings such as `esxcli system settings advanced set -o /LSOM/VSANDeviceMonitoring -i 0`
+        (unsupported tuning; apply only if you see device-monitoring false alarms).
+  - id: proxmox-vm-template
+    title: Nested ESX VM definition on Proxmox
+    body: |
+      ```shell
+      qm create 201 --name esx01 --ostype other --machine q35 --bios ovmf \
+        --efidisk0 nvme-fast:1,efitype=4m,pre-enrolled-keys=0 \
+        --cpu host --sockets 2 --cores 12 --numa 1 --memory 73728 --balloon 0 \
+        --sata0 nvme-fast:64,ssd=1,discard=on \
+        --net0 vmxnet3,bridge=vmbr0,firewall=0 --net1 vmxnet3,bridge=vmbr0,firewall=0 \
+        --cdrom local:iso/<ESX-9-installer>.iso --boot "order=sata0;ide2"
+      pvesm alloc nvme-fast 201 vm-201-disk-9 500G
+      qm set 201 --args "-drive file=/dev/zvol/nvmepool/vm-201-disk-9,if=none,id=NVME1,format=raw -device nvme,drive=NVME1,serial=esx01nvme1"
+      qm config 201
+      ```
+
+      Clone the definition for esx02/esx03 with new VM IDs, new zvols and **unique NVMe serials and MAC addresses**.
+      Install ESX on `sata0`, never on the NVMe device intended for vSAN.
+  - id: vcf-installer-workarounds
+    title: VCF Installer lab workarounds (unsupported)
+    body: |
+      All from William Lam's VCF 9 posts; use at your own risk, lab only.
+
+      | Problem in a lab | Workaround | Version notes |
+      |---|---|---|
+      | Fewer hosts than the minimum | Add `feature.vcf.internal.single.host.domain=true` (9.0.0) or `feature.vcf.vgl-29121.single.host.domain=true` (9.0.1) to `/home/vcf/feature.properties`, restart services with `echo 'y' \| /opt/vmware/vcf/operationsmanager/scripts/cli/sddcmanager_restart_services.sh`, deploy via **JSON** | UI still enforces the host minimum |
+      | "No vSAN ESA certified disks found" | Install the vSAN ESA Hardware Mock VIB on each host, restart vSAN management service, re-validate | Not needed from 9.0.1 (installer bypass) |
+      | Hosts "not on vSAN HCL" because embedded HCL JSON is >90 days old | Replace `/nfs/vmware/vcf/nfs-mount/vsan-hcl/all.json` with a current copy (also Broadcom KB 442952) | |
+      | 10 GbE NIC pre-check | Disable per Lam's dedicated post | |
+      | Non-certified NICs with EDP | `"hostSwitchOperationalMode": "STANDARD"` in the JSON spec | |
+      | Self-signed host thumbprints / no ping to gateway | `"skipEsxThumbprintValidation": true`, `"skipGatewayPingValidation": true` | |
+      | Reuse the installer as SDDC Manager | `"useExistingDeployment": true` | |
+      | vSAN ESA default policy fails with < 3 hosts | Lam's `fix_vsan_esa_default_storage_policy.ps1` | |
+      | Hourly NSX Manager backups fill a small lab | Reduce backup frequency | |
+  - id: deployment-order
+    title: Deployment order
+    body: |
+      1. Switch: VLANs and MTU on the server ports.
+      2. Proxmox: nested KVM, pools, ARC cap, `vmbr0` (VLAN-aware, 9000).
+      3. infra01 (DNS + NTP) → verify every record both ways.
+      4. rtr01 → gateways reachable from VLAN 10; `ping -M do -s 8972` between sub-interfaces on 9000 VLANs.
+      5. Nested ESX hosts: install, set FQDN/IP/DNS/NTP, enable SSH, regenerate the host certificate after setting the
+         final hostname (per the VCF host preparation docs), confirm the NVMe device.
+      6. Upload the VCF Installer OVA to esx01's local VMFS, configure the depot (offline depot on `bulk` or online).
+      7. Validate the deployment spec; fix every warning you understand; snapshot the pool with all VMs off.
+      8. Deploy the management domain; snapshot again.
+      9. Edge cluster (vCenter → Network → Network Connectivity), Tier-0 with BGP to rtr01.
+      10. Supervisor, VCF Operations content; optional VCF Automation / logs.
+  - id: backups-snapshots
+    title: Backups and snapshots of a nested lab
+    body: |
+      - **Whole-lab restore points:** shut down VCF in the documented order (or at least shut down all nested ESX VMs),
+        then `zfs snapshot -r nvmepool@<name>`; roll back with `zfs rollback` per dataset/zvol (newest snapshot) with all
+        VMs off. This captures the args-attached NVMe zvols that `qm snapshot` does not.
+      - **Never snapshot or roll back a single nested host** of a vSAN cluster in isolation: vSAN and VCF state span all
+        hosts and appliances.
+      - **VCF-native backups:** configure the SFTP backup target in VCF Operations (*Fleet Management → Lifecycle →
+        Settings*) pointing at storage on the HDD pool — this is also exam-relevant practice.
+      - **Infra VMs:** nightly `vzdump` of infra01 and rtr01 to the HDD pool; DNS is the lab's single point of failure.
+      - Keep at least one snapshot from *before* each major step (pre-bring-up, post-bring-up, post-edge). Delete old ones:
+        ZFS snapshots of busy vSAN devices grow quickly on a 1 TB NVMe.
+
+dependencyChecklist:
+  - { id: dep-cpu-virt, item: "Nested virtualization enabled on Proxmox", how: "cat /sys/module/kvm_intel/parameters/nested shows Y (AMD: kvm_amd shows 1)" }
+  - { id: dep-cpu-gen, item: "CPU generation checked against ESX 9 support (KB 318697)", how: "lscpu | grep 'Model name'; compare with the discontinued/deprecated table in Your Lab" }
+  - { id: dep-switch, item: "Switch ports trunk all lab VLANs with jumbo MTU", how: "Switch config shows VLANs 10,20,30,40,50,60,61,70,100 tagged and MTU >= 9000 on server ports" }
+  - { id: dep-bridge, item: "vmbr0 is VLAN-aware with MTU 9000 on NICs, bond and bridge", how: "ip -d link show vmbr0 shows vlan_filtering 1 and mtu 9000; ip link show bond0 shows mtu 9000" }
+  - { id: dep-dns-fwd, item: "Forward DNS records for every IP plan entry", how: "dig +short <name>.vcf.lab returns the planned IP for every entry" }
+  - { id: dep-dns-rev, item: "Reverse DNS (PTR) for every management IP, including the NSX VIP", how: "dig +short -x <ip> returns the same FQDN; run the loop from the DNS plan" }
+  - { id: dep-ntp, item: "NTP server synchronised and reachable from all VLAN 10 clients", how: "chronyc tracking on infra01 shows a synced source; esxcli system ntp get on each host lists infra01" }
+  - { id: dep-gateway, item: "Gateway .1 reachable on every VLAN", how: "From a nested host: vmkping -I <vmk> 10.10.<vlan-net>.1 for each vmknic" }
+  - { id: dep-mtu, item: "Jumbo path proven on vMotion, vSAN and TEP VLANs", how: "vmkping -I <vmk> -d -s 8972 to another host succeeds; -s 1472 succeeds" }
+  - { id: dep-depot, item: "VCF binaries/depot reachable from the installer", how: "Installer depot connection test succeeds; for an offline depot, the web server serves the expected directory structure (PROD/COMP/... metadata)" }
+  - { id: dep-ram, item: "RAM budget leaves Proxmox headroom", how: "Sum of fixed VM memory + 12 GB host reserve <= 244 GB; free -g on Proxmox after start shows available memory" }
+
+readinessChecklist:
+  - { id: rdy-esx-version, item: "All nested hosts run the same ESX 9 build", how: "esxcli system version get on each host shows identical Version and Build" }
+  - { id: rdy-esx-fqdn, item: "Each host's hostname/FQDN matches DNS", how: "esxcli system hostname get shows the FQDN; nslookup from the host resolves itself both ways" }
+  - { id: rdy-esx-cert, item: "Host certificates issued for the final FQDN", how: "openssl s_client -connect esx01.vcf.lab:443 | openssl x509 -noout -subject shows esx01.vcf.lab" }
+  - { id: rdy-esx-ntp, item: "Hosts use NTP and agree on time", how: "esxcli system ntp get shows enabled with infra01; date -u on each host within a second" }
+  - { id: rdy-ssh, item: "SSH enabled on hosts for the installer", how: "ssh root@esx01.vcf.lab works; Host Client shows the SSH service running" }
+  - { id: rdy-vsan-disk, item: "vSAN ESA device visible, empty and eligible on each host", how: "vdq -q lists the NVMe device as eligible; no leftover partitions (partedUtil getptbl shows none)" }
+  - { id: rdy-nics, item: "Two vmxnet3 uplinks visible with link", how: "esxcli network nic list shows vmnic0 and vmnic1 Up" }
+  - { id: rdy-installer, item: "VCF Installer deployed with correct Host Name (FQDN) and DNS Domain Name (domain only)", how: "Installer UI loads at https://sddcm01.vcf.lab; nslookup sddcm01.vcf.lab both ways from the installer" }
+  - { id: rdy-spec-validated, item: "Deployment spec validation passes (or only understood lab warnings remain)", how: "VCF Installer validation report; tail /var/log/vmware/vcf/domainmanager/domainmanager.log for errors" }
+  - { id: rdy-snapshot, item: "Pre-bring-up restore point exists", how: "zfs list -t snapshot | grep pre-bringup shows a snapshot for every nested ESX zvol" }
+  - { id: rdy-backup-target, item: "SFTP backup target ready on the HDD pool", how: "sftp backup@infra01.vcf.lab from jump01 logs in and can write a test file" }
+
+sources:
+  - title: "William Lam – Ultimate lab resource for VCF 9.0"
+    url: https://williamlam.com/2025/06/ultimate-lab-resource-for-vcf-9-0.html
+  - title: "William Lam – Minimal resources for deploying VCF 9.0 in a lab"
+    url: https://williamlam.com/2025/06/minimal-resources-for-deploying-vcf-9-0-in-a-lab.html
+  - title: "William Lam – Deploying VCF 9.0 on a single ESXi host"
+    url: https://williamlam.com/2025/06/deploying-vcf-9-0-on-a-single-esxi-host.html
+  - title: "William Lam – vSAN ESA disk & HCL workaround for VCF 9.0"
+    url: https://williamlam.com/2025/06/vsan-esa-disk-hcl-workaround-for-vcf-9-0.html
+  - title: "William Lam – NVMe Tiering with nested virtualization in VCF 9.0"
+    url: https://williamlam.com/2025/06/nvme-tiering-with-nested-virtualization-in-vcf-9-0.html
+  - title: "William Lam – Automated VCF 9.0 lab deployment script"
+    url: https://williamlam.com/2025/09/automated-vmware-cloud-foundation-vcf-9-0-lab-deployment-script.html
+  - title: "lamw/vcf-fleet-automated-lab-deployment (GitHub)"
+    url: https://github.com/lamw/vcf-fleet-automated-lab-deployment
+  - title: "lamw/vcf-9x-in-box (GitHub)"
+    url: https://github.com/lamw/vcf-9x-in-box
+  - title: "William Lam – VCF 9.1 comprehensive ESX configuration workarounds for lab deployments"
+    url: https://williamlam.com/2026/05/vcf-9-1-comprehensive-esx-configuration-workarounds-for-lab-deployments.html
+  - title: "Broadcom KB 318697 – CPU Support Deprecation and Discontinuation in VCF Releases"
+    url: https://knowledge.broadcom.com/external/article/318697
+  - title: "Broadcom KB 397782 – VCF Operations 9.0 Sizing Guidelines"
+    url: https://knowledge.broadcom.com/external/article/397782/vcf-operations-90-sizing-guidelines.html
+  - title: "Broadcom KB 442952 – Resolving VCF 9 deployment failures: disk eligibility and false-positive HCL warnings"
+    url: https://knowledge.broadcom.com/external/article/442952/resolving-vcf-9-deployment-failures-disk.html
+  - title: "Broadcom KB 418890 – VCF Installer fails SDDC specification validation with SSH authentication error"
+    url: https://knowledge.broadcom.com/external/article/418890
+  - title: "NSX 4.2 – NSX Edge VM system requirements"
+    url: https://docs.vmware.com/en/VMware-NSX/4.2/installation/GUID-22F87CA8-01A9-4F2E-B7DB-9350CA60EA4E.html
+  - title: "Proxmox VE wiki – Nested Virtualization"
+    url: https://pve.proxmox.com/wiki/Nested_Virtualization
+  - title: "Proxmox forum – How do you set up a VM with NVMe interface?"
+    url: https://forum.proxmox.com/posts/563618/
+  - title: "Proxmox forum – Nested ESXi 8.0U2 on PVE 8.2 (vmxnet3, checksum offload)"
+    url: https://forum.proxmox.com/threads/nested-esxi-8-0u2-on-pve-8-2-1.163139/
+  - title: "Proxmox forum – Nested ESXi 8.0 fails with AMD-V implementation is incompatible"
+    url: https://forum.proxmox.com/threads/nested-esxi-8-0-fails-with-amd-v-implementation-is-incompatible.119874/
+  - title: "Proxmox qemu-server source – network device model list and MTU option"
+    url: https://github.com/proxmox/qemu-server/blob/master/src/PVE/QemuServer/Network.pm
+  - title: "Proxmox pve-common source – tap devices take the bridge MTU"
+    url: https://github.com/proxmox/pve-common/blob/master/src/PVE/Network.pm
+  - title: "VMware Cloud Foundation blog – 10 VCF 9 enhancements simplifying day-2 operations"
+    url: https://blogs.vmware.com/cloud-foundation/2025/09/18/10-vmware-cloud-foundation-9-enhancements-simplifying-your-day-2-operations/

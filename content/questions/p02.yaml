@@ -1,0 +1,1057 @@
+questions:
+  # ---------------------------------------------------------------------------
+  # ESX architecture and host management
+  # ---------------------------------------------------------------------------
+  - id: p02-esx-001
+    type: single
+    kind: architecture
+    difficulty: foundation
+    version: vcf9
+    topics: [esx-host]
+    objective: "2.2"
+    lesson: esx-architecture-host-management
+    section: concept
+    stem: "Which ESX component receives the actions that vCenter sends to a managed host and relays them to the host agent?"
+    options:
+      - { id: a, text: "hostd", why: "hostd is the host agent that ultimately executes actions, but vCenter does not talk to it directly; it talks to vpxa.", confusedWith: vcenter }
+      - { id: b, text: "vpxa", correct: true, why: "vpxa is the vCenter agent installed when the host is added; vCenter sends actions to it and it relays them to hostd." }
+      - { id: c, text: "FDM", why: "FDM is the vSphere HA agent; it handles heartbeats and restarts, not general vCenter actions.", confusedWith: vsphere-ha }
+      - { id: d, text: "The DCUI", why: "The DCUI is a local console interface, not a management relay." }
+    explanation:
+      correct: "vCenter manages a host through vpxa (using the vpxuser account it creates). vpxa relays actions to hostd, the host's own management service."
+      concept: "ESX user-world management agents: hostd, vpxa, FDM."
+      architecture: "vSphere Client → vCenter → vpxa → hostd → VMkernel. The Host Client skips vCenter and vpxa and talks to hostd."
+      trap: "hostd is the host's API, but the vCenter-to-host hop goes through vpxa."
+    diagnostic: esxi
+  - id: p02-esx-002
+    type: single
+    kind: troubleshooting
+    difficulty: foundation
+    version: vcf9
+    topics: [esx-host]
+    objective: "2.2"
+    lesson: esx-architecture-host-management
+    section: failure-scenarios
+    context: |
+      A host in a VCF workload domain shows **Not responding** in vCenter. The host answers ping, and users report that
+      the applications on its VMs work normally.
+    stem: "What is the most likely explanation, and what is the least disruptive first fix?"
+    options:
+      - { id: a, text: "The host has failed; wait for vSphere HA to restart its VMs.", why: "VMs are still serving users and the host answers ping, so it has not failed.", confusedWith: vsphere-ha }
+      - { id: b, text: "The management agents (hostd/vpxa) are unhealthy; restart the management agents.", correct: true, why: "Agents can fail while the VMkernel keeps running VMs. Restarting hostd/vpxa does not affect running VMs." }
+      - { id: c, text: "The VMkernel crashed; reboot the host immediately.", why: "A VMkernel crash would stop the VMs. Rebooting would cause an outage that is not needed." }
+      - { id: d, text: "Lockdown mode is enabled; disable lockdown on the host.", why: "Lockdown restricts direct access but never disconnects the host from vCenter (vCenter's vpxuser is always allowed).", confusedWith: esx-host }
+    explanation:
+      correct: "VMs run on the VMkernel, not on the agents. A Not responding host that still answers ping and runs its VMs usually has a hostd/vpxa or management-path problem."
+      concept: "Separation of the VM data path (VMkernel) from management agents."
+      architecture: "hostd and vpxa are user-world processes; restarting them is non-disruptive to VMs."
+      trap: "Do not confuse a management-plane outage with a host failure."
+    diagnostic: esxi
+  - id: p02-esx-003
+    type: single
+    kind: scenario
+    difficulty: intermediate
+    version: vcf9
+    topics: [esx-host]
+    objective: "2.2"
+    lesson: esx-architecture-host-management
+    section: access-paths-and-lockdown-mode
+    stem: "A security team enables strict lockdown mode on all hosts. vCenter later becomes unavailable. Which users can still log in to a host's DCUI?"
+    options:
+      - { id: a, text: "Users listed in DCUI.Access", why: "That is true for normal lockdown. In strict lockdown the DCUI service is stopped." }
+      - { id: b, text: "Exception users with administrator privileges", why: "Exception users keep API and shell/SSH access (if enabled), but the DCUI service is stopped in strict lockdown." }
+      - { id: c, text: "The root user", why: "Root has no special DCUI right in lockdown; and the DCUI is stopped anyway." }
+      - { id: d, text: "Nobody: the DCUI service is stopped in strict lockdown mode", correct: true, why: "Strict lockdown deactivates the DCUI service entirely." }
+    explanation:
+      correct: "In strict lockdown mode the DCUI service is stopped. Only exception users or DCUI.Access users can use ESX Shell/SSH if those services were enabled beforehand."
+      concept: "Normal versus strict lockdown mode."
+      architecture: "Lockdown forces management through vCenter's vpxuser; exception users exist for tools and emergencies."
+      trap: "DCUI.Access helps in normal lockdown only."
+  - id: p02-esx-004
+    type: multi
+    kind: concept
+    difficulty: intermediate
+    version: vcf9
+    topics: [esx-host]
+    objective: "2.2"
+    lesson: esx-architecture-host-management
+    section: access-paths-and-lockdown-mode
+    stem: "Which statements about lockdown mode on ESX 9 are correct? (Choose two.)"
+    select: 2
+    options:
+      - { id: a, text: "Normal lockdown mode can be activated and deactivated from the DCUI.", correct: true, why: "The docs state normal lockdown can be toggled from the DCUI." }
+      - { id: b, text: "Strict lockdown mode can be activated from the DCUI.", why: "Strict lockdown can only be activated from the vSphere Client." }
+      - { id: c, text: "In lockdown mode, vCenter keeps managing the host through the vpxuser account.", correct: true, why: "The Web Services API remains available to vpxuser (vCenter) and exception users." }
+      - { id: d, text: "Lockdown mode disables the host firewall.", why: "Lockdown has nothing to do with the host firewall." }
+    explanation:
+      correct: "Normal lockdown is toggled in the DCUI or vSphere Client; strict only in the vSphere Client. vCenter (vpxuser) and exception users keep API access."
+      concept: "Lockdown mode behaviour."
+      trap: "Strict lockdown is a vSphere Client-only action and stops the DCUI."
+  - id: p02-esx-005
+    type: single
+    kind: scenario
+    difficulty: intermediate
+    version: vcf9
+    topics: [esx-host, host-commissioning]
+    objective: "2.2"
+    lesson: esx-architecture-host-management
+    section: how-vcf-changes-this
+    stem: "An administrator wants to add a new server to an existing cluster that was created by a VCF workload domain workflow. What is the correct approach?"
+    options:
+      - { id: a, text: "Use Add Host on the cluster in the vSphere Client with the host's root credentials.", why: "Plain Add Host bypasses VCF; VCF would not configure the host's VDS, VMkernel adapters, NSX and image consistently. It is only appropriate for clusters that came in through a vCenter import.", confusedWith: vcenter }
+      - { id: b, text: "Prepare the host, commission it into the VCF inventory, then expand the cluster with the VCF workflow.", correct: true, why: "VCF expects hosts to be commissioned and then consumed by cluster expansion so it can configure networking, NSX and the cluster image." }
+      - { id: c, text: "Deploy a new VCF instance with the VCF Installer for the new host.", why: "Far beyond what is needed; a host is added to an existing domain." }
+      - { id: d, text: "Add the host to vCenter as a standalone host and let DRS move it into the cluster.", why: "DRS moves VMs, not hosts." }
+    explanation:
+      correct: "In VCF, hosts are prepared, commissioned, and then added to clusters by VCF workflows. Clusters imported from an existing vCenter are the exception and are still managed directly in vCenter."
+      concept: "Host commissioning and cluster expansion in VCF."
+      architecture: "SDDC Manager workflows configure VDS membership, vMotion/vSAN VMkernel adapters, NSX host preparation and the vLCM image."
+      trap: "vSphere habits (Add Host) cause drift in VCF-built clusters."
+  - id: p02-esx-006
+    type: cli
+    kind: command
+    difficulty: foundation
+    version: vcf9
+    topics: [esx-host]
+    objective: "2.2"
+    lesson: esx-architecture-host-management
+    section: cli-api
+    stem: "From an ESX Shell session, which esxcli command lists all VMkernel interfaces (vmk0, vmk1, ...) with their port group and MTU?"
+    answers: ["esxcli network ip interface list"]
+    placeholder: "esxcli ..."
+    explanation:
+      correct: "`esxcli network ip interface list` lists VMkernel adapters with port group, netstack and MTU. Use `esxcli network ip interface ipv4 get` for the IP addresses."
+      concept: "Inspecting host networking from the CLI."
+      trap: "`esxcli network nic list` lists physical NICs (vmnics), not VMkernel adapters."
+  - id: p02-esx-007
+    type: matching
+    kind: concept
+    difficulty: foundation
+    version: vcf9
+    topics: [esx-host]
+    objective: "2.2"
+    lesson: esx-architecture-host-management
+    section: components
+    stem: "Match each ESX log file to the component that writes it."
+    pairs:
+      - { id: p1, left: "/var/log/hostd.log", right: "Host agent" }
+      - { id: p2, left: "/var/log/vpxa.log", right: "vCenter agent" }
+      - { id: p3, left: "/var/log/fdm.log", right: "vSphere HA agent" }
+      - { id: p4, left: "/var/log/vmkernel.log", right: "Kernel storage, network and driver events" }
+    explanation:
+      correct: "hostd → hostd.log, vpxa → vpxa.log, FDM (HA) → fdm.log, VMkernel → vmkernel.log."
+      concept: "Where to look first when troubleshooting a host."
+      trap: "HA problems are in fdm.log on the hosts, not in a vCenter log."
+  - id: p02-esx-008
+    type: single
+    kind: scenario
+    difficulty: intermediate
+    version: vcf9
+    topics: [esx-host, drs]
+    objective: "2.2"
+    lesson: esx-architecture-host-management
+    section: cli-api
+    stem: "An engineer runs `esxcli system maintenanceMode set --enable true` on a host in a DRS cluster that still runs 12 VMs. What happens?"
+    options:
+      - { id: a, text: "DRS immediately vMotions the 12 VMs to other hosts.", why: "esxcli talks to the host, not vCenter/DRS; it does not trigger evacuation.", confusedWith: drs }
+      - { id: b, text: "The VMs are powered off and the host enters maintenance mode.", why: "Maintenance mode never powers off VMs automatically." }
+      - { id: c, text: "The host waits and does not enter maintenance mode until no powered-on VMs remain on it.", correct: true, why: "A host only enters maintenance mode when no VMs run on it; esxcli does not evacuate them." }
+      - { id: d, text: "vSphere HA restarts the VMs on other hosts.", why: "HA reacts to failures, not to maintenance requests.", confusedWith: vsphere-ha }
+    explanation:
+      correct: "Maintenance mode completes only when no powered-on VMs remain. Entering it from vCenter lets DRS evacuate VMs; esxcli does not."
+      concept: "Maintenance mode and DRS evacuation."
+      trap: "Same state, different entry point: vCenter + DRS evacuates, the host CLI does not."
+  # ---------------------------------------------------------------------------
+  # vCenter architecture and inventory
+  # ---------------------------------------------------------------------------
+  - id: p02-vc-001
+    type: single
+    kind: architecture
+    difficulty: foundation
+    version: vcf9
+    topics: [vcenter, workload-domains]
+    objective: "2.2"
+    lesson: vcenter-architecture-inventory
+    section: architecture
+    stem: "In a VCF 9 instance with a management domain and one VI workload domain, where does the workload domain's vCenter appliance run?"
+    options:
+      - { id: a, text: "On the first cluster of the VI workload domain it manages", why: "Workload domain management appliances are placed in the management domain, not in the domain they manage.", confusedWith: workload-domains }
+      - { id: b, text: "On the management domain cluster", correct: true, why: "The management domain contains vCenter, NSX Manager and SDDC Manager appliances for all workload domains." }
+      - { id: c, text: "Embedded inside SDDC Manager", why: "SDDC Manager is a separate appliance; it does not host vCenter." }
+      - { id: d, text: "On the VCF Installer appliance", why: "The VCF Installer is a deployment tool, not a runtime host for vCenter." }
+    explanation:
+      correct: "Per the VCF 9.0 design guide, the management domain holds the vCenter and NSX Manager appliances for all workload domains; each VI workload domain gets its own dedicated vCenter."
+      concept: "One vCenter per domain, all running in the management domain."
+      architecture: "This keeps management components separate from tenant workloads and lets the management domain protect them with HA."
+      trap: "The vCenter manages the workload domain but does not live in it."
+    diagnostic: vsphere
+  - id: p02-vc-002
+    type: single
+    kind: concept
+    difficulty: intermediate
+    version: vcf9
+    topics: [vcenter, identity-sso]
+    objective: "2.2"
+    lesson: vcenter-architecture-inventory
+    section: sso-domains-enhanced-linked-mode-and-vcf-9
+    stem: "A new VI workload domain is deployed in a freshly installed VCF 9 instance. How is its vCenter Single Sign-On configured?"
+    options:
+      - { id: a, text: "It joins the management domain's SSO domain in Enhanced Linked Mode.", why: "That was typical of VCF 4.x/5.x. In VCF 9 a VI workload domain has a dedicated vCenter and SSO domain; ELM is deprecated in vCenter 9.0.", confusedWith: vcenter }
+      - { id: b, text: "It has a dedicated vCenter and vCenter Single Sign-On domain.", correct: true, why: "The VCF 9.0 design guide lists this as a workload domain attribute." }
+      - { id: c, text: "It uses no SSO; users authenticate on the ESX hosts.", why: "Every vCenter has an SSO domain." }
+      - { id: d, text: "It shares SDDC Manager's local user database.", why: "SDDC Manager does not provide SSO for vCenter." }
+    explanation:
+      correct: "VCF 9 workload domains get a dedicated vCenter and SSO domain. Single sign-on across components comes from VCF SSO via the Identity Broker. Upgraded instances may still share SSO domains."
+      concept: "SSO domain per workload domain in VCF 9."
+      trap: "ELM-based answers describe legacy VCF; ELM is deprecated in vCenter 9.0."
+  - id: p02-vc-003
+    type: multi
+    kind: scenario
+    difficulty: intermediate
+    version: vcf9
+    topics: [vcenter, vsphere-ha, drs]
+    objective: "2.2"
+    lesson: vcenter-architecture-inventory
+    section: what-still-works-when-vcenter-is-down
+    stem: "A workload domain vCenter is powered off for 30 minutes. During that window, which functions still work? (Choose two.)"
+    select: 2
+    options:
+      - { id: a, text: "Running VMs continue to run", correct: true, why: "VMs run on ESX hosts and do not depend on vCenter." }
+      - { id: b, text: "vSphere HA restarts VMs if a host fails", correct: true, why: "HA failover is executed by FDM agents on the hosts; vCenter is only needed to configure HA." }
+      - { id: c, text: "DRS load balancing with vMotion", why: "DRS is a vCenter service and stops when vCenter is down.", confusedWith: drs }
+      - { id: d, text: "Deploying new VMs from a template", why: "Provisioning is a vCenter operation." }
+      - { id: e, text: "VCF workflows that expand the domain's clusters", why: "VCF workflows act through the domain vCenter and fail while it is down." }
+    explanation:
+      correct: "VMs and HA failover continue; DRS, vMotion, provisioning and VCF workflows for that domain stop."
+      concept: "Control plane versus data plane in vSphere."
+      architecture: "HA agents (FDM) run on every host; DRS runs in vCenter."
+      trap: "HA works without vCenter; DRS does not."
+  - id: p02-vc-004
+    type: single
+    kind: concept
+    difficulty: foundation
+    version: vcf9
+    topics: [vcenter]
+    objective: "2.2"
+    lesson: vcenter-architecture-inventory
+    section: concept
+    stem: "An administrator needs to check vCenter appliance health, restart services and configure file-based backup. Which interface should they use?"
+    options:
+      - { id: a, text: "The vSphere Client at https://<vcenter>/ui", why: "The vSphere Client manages inventory, not the appliance's backup and health settings." }
+      - { id: b, text: "The vCenter Management Interface on port 5480", correct: true, why: "Port 5480 hosts appliance health, services, networking, time and backup." }
+      - { id: c, text: "The VMware Host Client of the host running vCenter", why: "The Host Client manages the ESX host, not the services inside the vCenter VM.", confusedWith: esx-host }
+      - { id: d, text: "The DCUI of the vCenter appliance", why: "The appliance has a console, but backup scheduling is in the management interface." }
+    explanation:
+      correct: "The vCenter Management Interface (https://<fqdn>:5480) manages the appliance itself, including services and file-based backup."
+      concept: "vCenter interfaces: vSphere Client, management interface, appliance shell."
+      trap: "Inventory management and appliance management are different UIs."
+  - id: p02-vc-005
+    type: matching
+    kind: architecture
+    difficulty: intermediate
+    version: vcf9
+    topics: [vcenter]
+    objective: "2.2"
+    lesson: vcenter-architecture-inventory
+    section: components
+    stem: "Match each vCenter appliance service to its function."
+    pairs:
+      - { id: p1, left: "vCenter Single Sign-On", right: "Token-based authentication for vSphere components" }
+      - { id: p2, left: "VMware Certificate Authority (VMCA)", right: "Signs ESX host certificates by default" }
+      - { id: p3, left: "PostgreSQL", right: "Stores inventory, configuration, tasks and events" }
+      - { id: p4, left: "vSphere Lifecycle Manager", right: "Image-based lifecycle of hosts in clusters" }
+      - { id: p5, left: "Lookup Service", right: "Registry of service endpoints" }
+    explanation:
+      correct: "SSO authenticates; VMCA issues certificates; embedded PostgreSQL stores state; vLCM manages host images; Lookup Service registers endpoints."
+      concept: "Services inside the vCenter 9 appliance."
+      trap: "All of these are inside the single appliance; there is no external database or separate PSC in vSphere 9."
+  - id: p02-vc-006
+    type: single
+    kind: concept
+    difficulty: foundation
+    version: vcf9
+    topics: [vcenter, vsphere-cluster]
+    objective: "2.2"
+    lesson: vcenter-architecture-inventory
+    section: inventory-objects
+    stem: "Which vCenter inventory object can NOT be renamed?"
+    options:
+      - { id: a, text: "Cluster", why: "Clusters can be renamed." }
+      - { id: b, text: "Datastore", why: "Datastores can be renamed." }
+      - { id: c, text: "Host", correct: true, why: "vSphere 9.0 docs: all inventory objects except hosts can be renamed." }
+      - { id: d, text: "VM folder", why: "Folders can be renamed." }
+    explanation:
+      correct: "Hosts appear by the name (FQDN) used when they were added and cannot be renamed in the inventory — another reason to get DNS right before adding or commissioning them."
+      concept: "Inventory objects and naming."
+      trap: "Renaming a host requires removing and re-adding it with the new name."
+  - id: p02-vc-007
+    type: single
+    kind: troubleshooting
+    difficulty: advanced
+    version: vcf9
+    topics: [vcenter, drs]
+    objective: "2.2"
+    lesson: vcenter-architecture-inventory
+    section: vsphere-cluster-services-vcls
+    context: |
+      In a vSphere 9 cluster, DRS has stopped generating recommendations and no longer balances load. vCenter is
+      healthy, vMotion works manually, and the cluster Summary shows a vSphere Cluster Services warning.
+    stem: "What should the administrator investigate first?"
+    options:
+      - { id: a, text: "The health of the vCLS VMs in the cluster", correct: true, why: "DRS depends on the availability of vCLS VMs; unhealthy vCLS stops DRS." }
+      - { id: b, text: "The HA heartbeat datastores", why: "Heartbeat datastores affect HA failure detection, not DRS.", confusedWith: vsphere-ha }
+      - { id: c, text: "The SSO identity source", why: "Authentication problems would affect logins, not DRS logic." }
+      - { id: d, text: "The ESX lockdown mode setting", why: "vCenter keeps managing locked-down hosts via vpxuser." }
+    explanation:
+      correct: "vSphere DRS depends on healthy vCLS VMs. In vSphere 9.0 vCLS is Embedded vCLS with up to two VMs per cluster; it is deprecated but still required where present."
+      concept: "vCLS and its relationship to DRS."
+      trap: "Do not delete or rename vCLS VMs to 'clean up'; that breaks DRS."
+  - id: p02-vc-008
+    type: truefalse
+    kind: concept
+    difficulty: intermediate
+    version: vcf9
+    topics: [vcenter, identity-sso]
+    objective: "2.2"
+    lesson: vcenter-architecture-inventory
+    section: sso-domains-enhanced-linked-mode-and-vcf-9
+    stem: "True or false: vCenter Enhanced Linked Mode is deprecated as of vCenter 9.0."
+    options:
+      - { id: "true", text: "True", correct: true, why: "The vSphere 9.0 documentation states ELM is deprecated as of vCenter 9.0 and will be removed in a future release." }
+      - { id: "false", text: "False", why: "ELM still exists in 9.0 but is deprecated; VCF Operations grouping is the recommended alternative." }
+    explanation:
+      correct: "ELM (up to 15 vCenters in one SSO domain) still works in 9.0 but is deprecated. VCF 9 relies on per-domain SSO, VCF SSO and VCF Operations for the unified view."
+      concept: "ELM deprecation."
+      trap: "Upgraded VCF instances may still run ELM; new VCF 9 workload domains do not need it."
+  # ---------------------------------------------------------------------------
+  # vSphere permissions
+  # ---------------------------------------------------------------------------
+  - id: p02-perm-001
+    type: single
+    kind: scenario
+    difficulty: intermediate
+    version: vcf9
+    topics: [vsphere-permissions]
+    objective: "4.2"
+    lesson: vsphere-permissions
+    section: worked-examples
+    context: |
+      On folder **App-Prod**, group *AppOps* has the **Administrator** role (propagate). User **alice**, a member of AppOps,
+      also has a **Read-only** permission assigned directly to her user account on the same folder.
+    stem: "What can alice do on VMs inside App-Prod?"
+    options:
+      - { id: a, text: "Everything the Administrator role allows, because group permissions are additive", why: "Group permissions combine as a union only when there is no user permission at that level." }
+      - { id: b, text: "Only view them (Read-only)", correct: true, why: "A permission assigned directly to the user takes precedence over all group permissions." }
+      - { id: c, text: "Nothing; conflicting permissions result in No access", why: "vSphere does not resolve conflicts to No access." }
+      - { id: d, text: "Administrator on the folder, Read-only on the VMs", why: "Both permissions are on the folder and propagate equally; the user permission wins." }
+    explanation:
+      correct: "If a user has a direct permission on an object, it takes precedence over all group permissions for that user on that object."
+      concept: "User versus group precedence."
+      trap: "'Most permissive' and 'most restrictive' are both wrong mental models; the rule is user beats group."
+  - id: p02-perm-002
+    type: single
+    kind: scenario
+    difficulty: intermediate
+    version: vcf9
+    topics: [vsphere-permissions]
+    objective: "4.2"
+    lesson: vsphere-permissions
+    section: worked-examples
+    stem: "Bob belongs to groups *Ops* (role Virtual Machine Power User on folder Web, propagate) and *Audit* (role Read-only on folder Web, propagate). He has no user-level permission. What does Bob get on VMs in Web?"
+    options:
+      - { id: a, text: "Read-only, because the most restrictive role wins", why: "vSphere does not use most-restrictive logic between groups." }
+      - { id: b, text: "The union of both roles, effectively Virtual Machine Power User", correct: true, why: "Without a user permission, the user gets the union of the permissions of his groups." }
+      - { id: c, text: "No access until the conflict is resolved", why: "There is no conflict state." }
+      - { id: d, text: "Whichever permission was created last", why: "Creation order does not matter." }
+    explanation:
+      correct: "Multiple group permissions on the same object combine as a union of privileges."
+      concept: "Group permission union."
+      trap: "Distractors based on 'most restrictive wins' come from other products."
+  - id: p02-perm-003
+    type: single
+    kind: troubleshooting
+    difficulty: intermediate
+    version: vcf9
+    topics: [vsphere-permissions, identity-sso]
+    objective: "4.2"
+    lesson: vsphere-permissions
+    section: global-permissions
+    stem: "An administrator adds a global permission giving group *ContentAdmins* a content-library role but leaves Propagate unchecked. Members can log in but cannot see any inventory objects. Why?"
+    options:
+      - { id: a, text: "Global permissions only apply to tags", why: "They also cover content libraries and every inventory hierarchy." }
+      - { id: b, text: "Without Propagate, a global permission does not grant access to objects in the hierarchy", correct: true, why: "The docs: without Propagate users only get some global functionality such as creating roles." }
+      - { id: c, text: "Global permissions require Enhanced Linked Mode", why: "Global permissions work in any SSO domain.", confusedWith: vcenter }
+      - { id: d, text: "The group must also exist as an ESX local group", why: "ESX local permissions are only for standalone hosts." }
+    explanation:
+      correct: "A global permission without Propagate gives access only to some global functionality; tick Propagate to reach objects."
+      concept: "Global permissions and propagation."
+      trap: "The permission looks correct in the list; the missing checkbox is the problem."
+  - id: p02-perm-004
+    type: multi
+    kind: concept
+    difficulty: foundation
+    version: vcf9
+    topics: [vsphere-permissions]
+    objective: "4.2"
+    lesson: vsphere-permissions
+    section: system-roles
+    stem: "Which are vCenter system roles that cannot be edited or deleted? (Choose three.)"
+    select: 3
+    options:
+      - { id: a, text: "Administrator", correct: true, why: "System role." }
+      - { id: b, text: "Read-only", correct: true, why: "System role." }
+      - { id: c, text: "No access", correct: true, why: "System role; also the default for new users." }
+      - { id: d, text: "Virtual Machine Power User", why: "A sample role you can clone and modify." }
+      - { id: e, text: "Resource Pool Administrator", why: "A sample role, not a system role." }
+    explanation:
+      correct: "System roles (Administrator, Read-only, No access) are permanent. Sample roles can be cloned into custom roles."
+      concept: "System versus sample versus custom roles."
+      trap: "Clone a sample role before editing; a modified role cannot be reset."
+  - id: p02-perm-005
+    type: single
+    kind: scenario
+    difficulty: advanced
+    version: vcf9
+    topics: [vsphere-permissions]
+    objective: "4.2"
+    lesson: vsphere-permissions
+    section: how-it-works
+    context: |
+      Group *Contractors* has **No access** on VM folder *Finance* (propagate). VM *fin-db01* is in that folder and runs in
+      resource pool *Shared*, where *Contractors* has **Virtual Machine Power User** (propagate).
+    stem: "Why must the administrator be careful about relying on the folder No access permission to protect fin-db01?"
+    options:
+      - { id: a, text: "Because No access never propagates", why: "No access propagates like any other role when Propagate is set." }
+      - { id: b, text: "Because VMs inherit permissions through both the VM folder chain and the host/cluster/resource pool chain", correct: true, why: "VMs have two parent chains, so a permission from the resource pool chain also applies; the docs warn No access has limitations for VMs." }
+      - { id: c, text: "Because resource pool permissions always override folder permissions", why: "There is no fixed folder-vs-pool precedence; both chains contribute." }
+      - { id: d, text: "Because No access only applies to datastores", why: "No access can be applied to any managed entity." }
+    explanation:
+      correct: "VMs and vApps inherit from two chains. A carve-out on one chain does not necessarily remove rights granted on the other; verify effective permissions on the VM itself."
+      concept: "Dual inheritance for VMs."
+      trap: "Testing only the folder chain gives a false sense of security."
+  - id: p02-perm-006
+    type: ordering
+    kind: scenario
+    difficulty: intermediate
+    version: vcf9
+    topics: [vsphere-permissions, rbac]
+    objective: "4.2"
+    lesson: vsphere-permissions
+    section: configuration
+    stem: "Put the steps to give an AD group least-privilege control of the VMs in one folder in the correct order."
+    items:
+      - { id: s1, text: "Add the AD/LDAP identity source (or VCF Identity Broker) so the group is visible to vCenter" }
+      - { id: s2, text: "Clone a sample role and adjust its privileges into a custom role" }
+      - { id: s3, text: "Create or choose the VM folder and move the VMs into it" }
+      - { id: s4, text: "Add a permission on the folder: group + custom role + Propagate to children" }
+      - { id: s5, text: "Log in as a test member and verify allowed and denied actions" }
+    explanation:
+      correct: "Identity first, then role, then the object structure, then the permission, then verification."
+      concept: "Building RBAC in vCenter."
+      trap: "Assign roles to groups, not to individual users."
+  - id: p02-perm-007
+    type: single
+    kind: design
+    difficulty: advanced
+    version: vcf9
+    topics: [vsphere-permissions, identity-sso, rbac]
+    objective: "4.2"
+    lesson: vsphere-permissions
+    section: global-permissions
+    stem: "A VCF 9 customer has two VI workload domains. The app team needs the same VM operator rights in both. A global permission was added in wld01's vCenter, but the team sees nothing in wld02. What is the best fix?"
+    options:
+      - { id: a, text: "Join wld02's vCenter to wld01's SSO domain with Enhanced Linked Mode", why: "ELM is deprecated in vCenter 9.0 and VCF 9 domains use dedicated SSO domains; reconfiguring SSO this way is not the supported design.", confusedWith: vcenter }
+      - { id: b, text: "Use VCF SSO with the enterprise IdP and assign the group a permission in each workload domain vCenter", correct: true, why: "Each VCF 9 workload domain has its own SSO domain, so permissions are designed per vCenter, while VCF SSO gives one login." }
+      - { id: c, text: "Add the team to administrator@vsphere.local", why: "That is a single account, not a group, and grants full admin." }
+      - { id: d, text: "Set the global permission's Propagate flag", why: "Propagation does not cross SSO domains." }
+    explanation:
+      correct: "Global permissions are scoped to one SSO domain. With dedicated SSO domains per workload domain, assign group-based permissions in each vCenter and rely on VCF SSO for single sign-on."
+      concept: "Permissions across VCF 9 workload domains."
+      architecture: "VCF Identity Broker federates the external IdP for VCF components (except SDDC Manager)."
+      trap: "Global does not mean fleet-wide."
+  - id: p02-perm-008
+    type: truefalse
+    kind: concept
+    difficulty: foundation
+    version: vcf9
+    topics: [vsphere-permissions]
+    objective: "4.2"
+    lesson: vsphere-permissions
+    section: how-it-works
+    stem: "True or false: a permission assigned directly on a child object overrides a permission propagated from its parent."
+    options:
+      - { id: "true", text: "True", correct: true, why: "The vSphere 9.0 docs: permissions defined for a child object always override permissions propagated from parents." }
+      - { id: "false", text: "False", why: "Child permissions do override inherited ones." }
+    explanation:
+      correct: "Explicit child permissions win over inherited ones, which is how you narrow or widen access lower in the tree."
+      concept: "Inheritance and override."
+      trap: "Combine with the user-over-group rule when several principals are involved."
+  # ---------------------------------------------------------------------------
+  # vSphere HA
+  # ---------------------------------------------------------------------------
+  - id: p02-ha-001
+    type: single
+    kind: concept
+    difficulty: foundation
+    version: vcf9
+    topics: [vsphere-ha]
+    objective: "2.2"
+    lesson: vsphere-ha-deep-dive
+    section: detecting-what-happened-to-a-silent-host
+    stem: "The HA primary stops receiving network heartbeats from a secondary host. The host is still updating its heartbeat datastores. How does HA classify the host?"
+    options:
+      - { id: a, text: "Failed; its VMs are restarted elsewhere immediately", why: "A host still writing datastore heartbeats is alive, not failed." }
+      - { id: b, text: "Isolated or partitioned; HA keeps monitoring it", correct: true, why: "Datastore heartbeats prove the host is alive; it lost network contact (isolation or partition)." }
+      - { id: c, text: "In maintenance mode", why: "Maintenance mode is an administrative state, not a detection result." }
+      - { id: d, text: "Disconnected; HA stops protecting its VMs", why: "Disconnect is a vCenter action, not an HA detection outcome." }
+    explanation:
+      correct: "No network heartbeats + datastore heartbeats present = isolated or partitioned. No network + no datastore heartbeat + no ping = failed."
+      concept: "Failure, isolation and partition detection."
+      trap: "Datastore heartbeats exist precisely to avoid restarting VMs that are still running."
+    diagnostic: vsphere
+  - id: p02-ha-002
+    type: single
+    kind: architecture
+    difficulty: intermediate
+    version: vcf9
+    topics: [vsphere-ha, vsan-architecture]
+    objective: "2.2"
+    lesson: vsphere-ha-deep-dive
+    section: ha-with-vsan-typical-in-vcf
+    stem: "In a VCF management domain cluster that uses vSAN as principal storage, which network carries vSphere HA inter-agent heartbeat traffic?"
+    options:
+      - { id: a, text: "The management network", why: "That is the default without vSAN. With vSAN enabled, HA traffic moves to the vSAN network.", confusedWith: vsphere-ha }
+      - { id: b, text: "The vSAN network", correct: true, why: "When vSAN is enabled, HA inter-agent traffic flows over the vSAN storage network." }
+      - { id: c, text: "The vMotion network", why: "vMotion is never used for HA heartbeats." }
+      - { id: d, text: "The NSX overlay (TEP) network", why: "TEPs carry Geneve overlay traffic, not HA heartbeats.", confusedWith: nsx-transport }
+    explanation:
+      correct: "HA uses the vSAN network for inter-agent traffic when vSAN is on, so HA and vSAN agree on which hosts are reachable."
+      concept: "HA and vSAN interoperability."
+      trap: "Set isolation addresses reachable on the vSAN network too."
+  - id: p02-ha-003
+    type: single
+    kind: scenario
+    difficulty: intermediate
+    version: vcf9
+    topics: [vsphere-ha, vsan-architecture]
+    objective: "2.2"
+    lesson: vsphere-ha-deep-dive
+    section: datastore-heartbeating
+    stem: "An all-vSAN cluster shows the HA warning that the number of heartbeat datastores is less than required. What is the reason?"
+    options:
+      - { id: a, text: "vSAN datastores cannot be used as heartbeat datastores", correct: true, why: "The docs: vSAN datastores cannot participate in datastore heartbeating." }
+      - { id: b, text: "The vSAN datastore needs a .vSphere-HA folder created manually", why: "HA creates the folder itself; the issue is that vSAN is not eligible." }
+      - { id: c, text: "HA is not supported on vSAN clusters", why: "HA is fully supported on vSAN." }
+      - { id: d, text: "das.heartbeatdsperhost is set to 0", why: "The default is two; the problem is eligibility, not the count setting." }
+    explanation:
+      correct: "Only non-vSAN shared datastores mounted on more than one host qualify. Add an NFS/VMFS datastore on an independent path, or accept the warning by design."
+      concept: "Datastore heartbeating eligibility."
+      trap: "The warning on all-vSAN clusters is expected, not a fault in vSAN."
+  - id: p02-ha-004
+    type: single
+    kind: concept
+    difficulty: foundation
+    version: vcf9
+    topics: [vsphere-ha]
+    objective: "2.2"
+    lesson: vsphere-ha-deep-dive
+    section: admission-control
+    stem: "With vSphere HA admission control enabled, which operation can be refused because it would violate the failover capacity?"
+    options:
+      - { id: a, text: "Powering on a virtual machine", correct: true, why: "Power-on, migrations and reservation increases are blocked when they would break the reserve." }
+      - { id: b, text: "Taking a snapshot", why: "Snapshots do not change compute reservations." }
+      - { id: c, text: "Powering off a virtual machine", why: "Powering off frees capacity." }
+      - { id: d, text: "Renaming a virtual machine", why: "Renaming has no resource impact." }
+    explanation:
+      correct: "Admission control disallows powering on VMs, migrating VMs and increasing CPU/memory reservations when that would violate the configured failover capacity."
+      concept: "HA admission control."
+      trap: "Admission control does not stop running VMs."
+  - id: p02-ha-005
+    type: single
+    kind: scenario
+    difficulty: advanced
+    version: vcf9
+    topics: [vsphere-ha]
+    objective: "2.2"
+    lesson: vsphere-ha-deep-dive
+    section: admission-control
+    context: |
+      A three-host cluster uses the cluster resource percentage policy reserving 33% CPU and memory. Almost no VM has a
+      reservation. HA admission control keeps allowing power-ons, and after a host failure many VMs restart but perform poorly.
+    stem: "What explains this, and which setting would warn the administrator beforehand?"
+    options:
+      - { id: a, text: "VMs without reservations are counted with a 32 MHz CPU and 0 MB memory default; the 'Performance degradation VMs tolerate' threshold warns about it", correct: true, why: "Admission control uses reservations (defaults 32 MHz / 0 MB), so actual demand is underestimated. The degradation threshold (requires DRS) warns about expected performance loss." }
+      - { id: b, text: "The slot policy was used by mistake; switch to dedicated failover hosts", why: "The scenario states the percentage policy is in use." }
+      - { id: c, text: "Admission control is broken; reinstall the FDM agents", why: "Admission control works as designed." }
+      - { id: d, text: "Heartbeat datastores were missing, so HA restarted VMs too late", why: "Heartbeats affect detection, not post-restart performance." }
+    explanation:
+      correct: "Admission control reasons in reservations. With almost no reservations, capacity looks plentiful. The performance degradation threshold (default 100% = no warning) can warn when a failover would degrade performance."
+      concept: "How the percentage policy calculates capacity."
+      trap: "Reserved capacity is not the same as capacity for actual demand."
+  - id: p02-ha-006
+    type: single
+    kind: concept
+    difficulty: intermediate
+    version: vcf9
+    topics: [vsphere-ha]
+    objective: "2.2"
+    lesson: vsphere-ha-deep-dive
+    section: responses-you-configure-failures-and-responses-tab
+    stem: "What is the default vSphere HA host isolation response for a new cluster?"
+    options:
+      - { id: a, text: "Power off and restart VMs", why: "A configurable option, not the default." }
+      - { id: b, text: "Shut down and restart VMs", why: "A configurable option that needs VMware Tools; not the default." }
+      - { id: c, text: "Disabled (VMs keep running on the isolated host)", correct: true, why: "By default the isolated host leaves its VMs running." }
+      - { id: d, text: "Migrate VMs with vMotion", why: "An isolated host cannot vMotion; this is not an option." }
+    explanation:
+      correct: "The default isolation response is Disabled. Power off/Shut down and restart are used when the storage is still reachable by other hosts and you want VMs restarted where the network works."
+      concept: "Isolation response."
+      trap: "vMotion is never an HA response."
+  - id: p02-ha-007
+    type: ordering
+    kind: architecture
+    difficulty: intermediate
+    version: vcf9
+    topics: [vsphere-ha]
+    objective: "2.2"
+    lesson: vsphere-ha-deep-dive
+    section: restart-sequence-after-a-host-failure
+    diagram: d02-ha-failure-restart
+    stem: "Order the steps vSphere HA follows when a host suffers a power failure."
+    items:
+      - { id: s1, text: "The primary stops receiving network heartbeats from the host" }
+      - { id: s2, text: "The primary checks datastore heartbeats for that host and finds none" }
+      - { id: s3, text: "The primary pings the host's management IP and gets no response" }
+      - { id: s4, text: "The host is declared failed" }
+      - { id: s5, text: "Its protected VMs are restarted on surviving hosts in restart-priority order" }
+    explanation:
+      correct: "Missing network heartbeats trigger the datastore heartbeat and ICMP checks; only when both fail is the host declared failed and VMs restarted by priority."
+      concept: "HA failure detection and restart flow."
+      trap: "Restart starts only after the liveness checks."
+  - id: p02-ha-008
+    type: multi
+    kind: concept
+    difficulty: intermediate
+    version: vcf9
+    topics: [vsphere-ha]
+    objective: "2.2"
+    lesson: vsphere-ha-deep-dive
+    section: admission-control
+    stem: "Which are valid vSphere HA admission control policies? (Choose three.)"
+    select: 3
+    options:
+      - { id: a, text: "Cluster resource percentage", correct: true, why: "Reserves a percentage of CPU and memory." }
+      - { id: b, text: "Slot policy", correct: true, why: "Tolerates a number of host failures measured in slots." }
+      - { id: c, text: "Dedicated failover hosts", correct: true, why: "Keeps named hosts free for failover." }
+      - { id: d, text: "DRS migration threshold", why: "A DRS setting, not an HA admission control policy.", confusedWith: drs }
+      - { id: e, text: "Storage policy failures to tolerate", why: "A vSAN storage policy rule, not HA admission control.", confusedWith: vsan-policies }
+    explanation:
+      correct: "HA admission control policies: cluster resource percentage, slot policy, dedicated failover hosts (or disabled)."
+      concept: "Admission control policies."
+      trap: "vSAN FTT must be coordinated with HA admission control, but it is a different setting."
+  - id: p02-ha-009
+    type: single
+    kind: scenario
+    difficulty: advanced
+    version: vcf9
+    topics: [vsphere-ha, vsan-architecture]
+    objective: "2.2"
+    lesson: vsphere-ha-deep-dive
+    section: ha-with-vsan-typical-in-vcf
+    stem: "An administrator must change the vSAN VMkernel network configuration on a cluster that runs vSphere HA. What should be done to avoid unexpected HA behaviour?"
+    options:
+      - { id: a, text: "Nothing; HA adapts automatically", why: "HA uses the vSAN network for its traffic; changing it underneath HA can cause false isolations or partitions." }
+      - { id: b, text: "Deactivate Host Monitoring, make the change, reconfigure HA on all hosts, then re-enable Host Monitoring", correct: true, why: "This is the documented procedure for vSAN network changes on HA clusters." }
+      - { id: c, text: "Put all hosts in maintenance mode simultaneously", why: "Unnecessary outage; the documented approach is to suspend host monitoring." }
+      - { id: d, text: "Switch HA heartbeats to the vMotion network", why: "Not a configurable option." }
+    explanation:
+      correct: "Because HA rides on the vSAN network, deactivate Host Monitoring before changing it, then reconfigure HA and re-enable Host Monitoring. Similarly, vSAN can be enabled only while HA is deactivated."
+      concept: "HA and vSAN operational dependencies."
+      trap: "Changing the network under a running HA cluster can trigger isolation responses."
+  - id: p02-ha-010
+    type: single
+    kind: design
+    difficulty: expert
+    version: vcf9
+    topics: [vsphere-ha, drs]
+    objective: "2.2"
+    lesson: vsphere-ha-deep-dive
+    section: proactive-ha-and-vm-dependencies
+    stem: "A customer wants VMs moved off a host automatically when the server's vendor tools report a failed redundant power supply, before the host actually fails. What is required?"
+    options:
+      - { id: a, text: "vSphere HA host monitoring only", why: "Host monitoring reacts after a failure; it does not evacuate on degradation." }
+      - { id: b, text: "Proactive HA with a vendor provider, and vSphere DRS enabled", correct: true, why: "Proactive HA reacts to partial hardware failures and needs DRS to evacuate." }
+      - { id: c, text: "VM Component Protection set to aggressive", why: "VMCP handles storage PDL/APD, not hardware health.", confusedWith: vsphere-ha }
+      - { id: d, text: "Fault Tolerance on every VM", why: "FT protects individual VMs with a secondary copy; it does not evacuate hosts." }
+    explanation:
+      correct: "Proactive HA uses hardware health from a vendor provider to quarantine or evacuate a host, and it depends on DRS to move the VMs."
+      concept: "Proactive HA."
+      trap: "Proactive HA needs DRS; plain HA only restarts after failure."
+  # ---------------------------------------------------------------------------
+  # DRS and resource management
+  # ---------------------------------------------------------------------------
+  - id: p02-drs-001
+    type: single
+    kind: concept
+    difficulty: foundation
+    version: vcf9
+    topics: [drs]
+    objective: "2.2"
+    lesson: drs-resource-management
+    section: automation-levels
+    stem: "Which DRS automation level automatically places VMs at power-on but only recommends load-balancing migrations?"
+    options:
+      - { id: a, text: "Manual", why: "Manual only recommends, both for placement and balancing." }
+      - { id: b, text: "Partially automated", correct: true, why: "Initial placement is automatic; migrations stay recommendations." }
+      - { id: c, text: "Fully automated", why: "Fully automated also performs migrations." }
+      - { id: d, text: "Conservative", why: "Conservative is a migration threshold level, not an automation level." }
+    explanation:
+      correct: "Partially automated = automatic initial placement + migration recommendations."
+      concept: "DRS automation levels."
+      trap: "Threshold (Conservative…Aggressive) and automation level are different settings."
+    diagnostic: vsphere
+  - id: p02-drs-002
+    type: single
+    kind: scenario
+    difficulty: intermediate
+    version: vcf9
+    topics: [drs, cpu-memory-virt]
+    objective: "2.2"
+    lesson: drs-resource-management
+    section: worked-contention-example
+    context: |
+      Two 2-vCPU VMs run on the same host and compete for 6 GHz of CPU. VM *fin01* has CPU shares **High**, VM *test01*
+      has CPU shares **Normal**. Neither has a reservation or limit.
+    stem: "How much CPU does each VM get while both demand more than is available?"
+    options:
+      - { id: a, text: "3 GHz each", why: "Equal split would apply only if shares were equal." }
+      - { id: b, text: "fin01 4 GHz, test01 2 GHz", correct: true, why: "High = 2000 × 2 = 4000 shares, Normal = 1000 × 2 = 2000; 4000/6000 × 6 GHz = 4 GHz." }
+      - { id: c, text: "fin01 6 GHz, test01 0 GHz", why: "Shares are proportional, they never starve the other VM completely." }
+      - { id: d, text: "fin01 5 GHz, test01 1 GHz", why: "The ratio is 2:1, not 5:1." }
+    explanation:
+      correct: "CPU shares presets are 500/1000/2000 per vCPU. Under contention, resources split proportionally: 4000:2000 = 2:1."
+      concept: "Shares under contention."
+      trap: "Shares do nothing if there is no contention."
+  - id: p02-drs-003
+    type: single
+    kind: troubleshooting
+    difficulty: intermediate
+    version: vcf9
+    topics: [drs]
+    objective: "2.2"
+    lesson: drs-resource-management
+    section: failure-scenarios
+    stem: "A VM is consistently slow even at night when its host is almost idle. Which setting is the most likely cause?"
+    options:
+      - { id: a, text: "Low CPU shares", why: "Shares only matter under contention; the host is idle." }
+      - { id: b, text: "A CPU limit on the VM or its resource pool", correct: true, why: "Limits cap the VM even when resources are free." }
+      - { id: c, text: "A CPU reservation", why: "A reservation guarantees a minimum; it does not slow the VM." }
+      - { id: d, text: "DRS partially automated", why: "Automation level does not throttle a VM." }
+    explanation:
+      correct: "A limit is a hard ceiling enforced regardless of available capacity."
+      concept: "Reservations, limits and shares."
+      trap: "Low shares are a red herring when there is no contention."
+  - id: p02-drs-004
+    type: single
+    kind: scenario
+    difficulty: advanced
+    version: vcf9
+    topics: [drs]
+    objective: "2.2"
+    lesson: drs-resource-management
+    section: resource-pools
+    context: |
+      Resource pool *Prod* has a memory reservation of 64 GB, all already used by running VMs. Its parent (the cluster root)
+      has plenty of unreserved memory. An administrator powers on another VM in *Prod* with a 16 GB memory reservation, and it succeeds.
+    stem: "Which setting allowed this?"
+    options:
+      - { id: a, text: "Expandable reservation on Prod", correct: true, why: "Expandable reservation lets the pool borrow unreserved capacity from its ancestors." }
+      - { id: b, text: "High memory shares on Prod", why: "Shares do not affect admission of reservations." }
+      - { id: c, text: "DRS fully automated", why: "DRS places VMs, but pool admission control is about reservations." }
+      - { id: d, text: "HA admission control disabled", why: "HA admission control is a different check; the pool reservation was the constraint." }
+    explanation:
+      correct: "With expandable reservation (the default), resource pool admission control looks at the parent's unreserved resources when the pool's own reservation is exhausted."
+      concept: "Resource pool admission control."
+      trap: "With a fixed reservation the power-on would fail."
+  - id: p02-drs-005
+    type: single
+    kind: design
+    difficulty: advanced
+    version: vcf9
+    topics: [drs, vsphere-ha]
+    objective: "2.2"
+    lesson: drs-resource-management
+    section: affinity-rules
+    stem: "A licensing contract requires that a database VM runs only on hosts 1 and 2 of a four-host cluster. The admin also wants HA to restart it if host 1 fails. Which rule type meets both requirements, and what is the risk?"
+    options:
+      - { id: a, text: "VM-Host 'should run on' rule; HA may restart the VM on hosts 3 or 4", why: "A preferential rule can be violated by HA, which breaks the licensing requirement." }
+      - { id: b, text: "VM-Host 'must run on' rule; HA restarts it on host 2 but will not use hosts 3/4, so if both hosts 1 and 2 are down it stays off", correct: true, why: "Required rules are never violated by DRS, HA or DPM; HA will use host 2 only." }
+      - { id: c, text: "VM-VM anti-affinity rule", why: "VM-VM rules relate VMs to each other, not to hosts." }
+      - { id: d, text: "A resource pool containing hosts 1 and 2", why: "Resource pools do not contain hosts." }
+    explanation:
+      correct: "Must-run-on is required for licensing compliance; HA honours it, so the VM can only fail over to the other host in the group."
+      concept: "Required versus preferential VM-Host rules."
+      trap: "Required rules can also block maintenance mode when only one compliant host remains."
+  - id: p02-drs-006
+    type: matching
+    kind: concept
+    difficulty: foundation
+    version: vcf9
+    topics: [drs]
+    objective: "2.2"
+    lesson: drs-resource-management
+    section: resource-controls-on-a-vm-or-pool
+    stem: "Match each resource control to its behaviour."
+    pairs:
+      - { id: p1, left: "Reservation", right: "Guaranteed minimum; must be satisfiable to power on" }
+      - { id: p2, left: "Limit", right: "Hard maximum even when resources are free" }
+      - { id: p3, left: "Shares", right: "Relative priority applied only under contention" }
+      - { id: p4, left: "Expandable reservation", right: "Lets a pool borrow unreserved capacity from its parent" }
+    explanation:
+      correct: "Reservation = floor, limit = ceiling, shares = priority under contention, expandable reservation = borrow from ancestors."
+      concept: "Resource allocation settings."
+      trap: "Reservations also count against HA admission control."
+  - id: p02-drs-007
+    type: single
+    kind: troubleshooting
+    difficulty: advanced
+    version: vcf9
+    topics: [drs, vsphere-ha, vlcm]
+    objective: "2.2"
+    lesson: drs-resource-management
+    section: ha-and-drs-together
+    context: |
+      During a vSphere Lifecycle Manager remediation of a three-host cluster, host esx03 stays in "Entering maintenance mode".
+      DRS is fully automated, all VMs are on shared storage, and there are no VM-Host rules. HA admission control is set to
+      tolerate one host failure.
+    stem: "What is the most likely blocker?"
+    options:
+      - { id: a, text: "HA admission control: evacuating esx03 would consume the failover capacity reserved for a host failure", correct: true, why: "The docs note VMs might not be evacuated from a host entering maintenance mode when admission control is on." }
+      - { id: b, text: "vMotion requires DRS to be manual", why: "Fully automated DRS performs evacuations." }
+      - { id: c, text: "The cluster needs EVC to enter maintenance mode", why: "EVC affects vMotion compatibility, not maintenance mode." }
+      - { id: d, text: "esx03 is the HA primary and cannot enter maintenance mode", why: "A new primary is elected; being primary does not block maintenance mode." }
+    explanation:
+      correct: "In a small cluster, putting one host in maintenance mode already removes one host's worth of capacity; HA admission control may refuse the evacuation. Temporarily adjusting admission control or capacity resolves it."
+      concept: "HA and DRS interaction during maintenance."
+      trap: "Don't permanently disable admission control; restore it after the window."
+  - id: p02-drs-008
+    type: multi
+    kind: concept
+    difficulty: intermediate
+    version: vcf9
+    topics: [drs, vsphere-cluster]
+    objective: "2.2"
+    lesson: drs-resource-management
+    section: concept
+    stem: "Which are prerequisites or dependencies for DRS load balancing to work in a vSphere 9 cluster? (Choose three.)"
+    select: 3
+    options:
+      - { id: a, text: "A vMotion network between the hosts", correct: true, why: "DRS moves VMs with vMotion." }
+      - { id: b, text: "vCenter available", correct: true, why: "DRS is a vCenter service." }
+      - { id: c, text: "Healthy vCLS VMs", correct: true, why: "In vSphere 9.0 DRS depends on vCLS availability." }
+      - { id: d, text: "vSphere HA enabled", why: "DRS works without HA.", confusedWith: vsphere-ha }
+      - { id: e, text: "Strict lockdown mode on hosts", why: "Lockdown is unrelated to DRS." }
+    explanation:
+      correct: "DRS needs vCenter, vMotion (and shared storage for the VMs it moves) and healthy vCLS."
+      concept: "DRS dependencies."
+      trap: "HA and DRS are independent features that work well together."
+  - id: p02-drs-009
+    type: single
+    kind: design
+    difficulty: expert
+    version: vcf9
+    topics: [drs, design-sizing]
+    objective: "2.2"
+    lesson: drs-resource-management
+    section: resource-pools
+    context: |
+      Sibling resource pools: **Gold** has CPU shares High and 40 VMs; **Bronze** has CPU shares Normal and 4 VMs. All VMs
+      are the same size. The cluster is under CPU contention. Gold users complain that their VMs are slower than Bronze VMs.
+    stem: "What is happening?"
+    options:
+      - { id: a, text: "Pool shares are divided among the VMs in the pool, so each Gold VM gets a smaller slice than each Bronze VM", correct: true, why: "Gold gets 2/3 of contended CPU for 40 VMs; Bronze gets 1/3 for 4 VMs, so each Bronze VM gets far more." }
+      - { id: b, text: "DRS ignores resource pool shares", why: "DRS enforces the resource pool tree." }
+      - { id: c, text: "High shares only apply to memory", why: "Shares apply to both CPU and memory." }
+      - { id: d, text: "Bronze has an implicit reservation", why: "No reservation was set." }
+    explanation:
+      correct: "Pool shares are relative between siblings, then split among children. Scale pool shares to the number/size of VMs (or use scalable shares) to keep per-VM priority."
+      concept: "Resource pool share dilution."
+      trap: "A 'High' label on a crowded pool does not mean high priority per VM."
+  # ---------------------------------------------------------------------------
+  # VM lifecycle, templates, content libraries, migration
+  # ---------------------------------------------------------------------------
+  - id: p02-vm-001
+    type: single
+    kind: concept
+    difficulty: foundation
+    version: vcf9
+    topics: [vm-management]
+    objective: "2.2"
+    lesson: vm-lifecycle-templates
+    section: content-libraries
+    stem: "An administrator tries to import an ISO into a content library and the Import item action is unavailable. What type of library is it most likely?"
+    options:
+      - { id: a, text: "A local library with publishing enabled", why: "Published libraries are local and accept new items." }
+      - { id: b, text: "A subscribed library", correct: true, why: "Subscribers cannot upload or import items; only the publisher manages content." }
+      - { id: c, text: "A local library without publishing", why: "Local libraries accept items." }
+      - { id: d, text: "A library stored on vSAN", why: "Backing storage does not restrict imports." }
+    explanation:
+      correct: "Subscribed libraries are read-only copies of a published library."
+      concept: "Content library types."
+      trap: "Add the item to the publisher; subscribers sync it."
+  - id: p02-vm-002
+    type: single
+    kind: scenario
+    difficulty: intermediate
+    version: vcf9
+    topics: [vm-management]
+    objective: "2.2"
+    lesson: vm-lifecycle-templates
+    section: how-it-works
+    stem: "VMs deployed from a Linux template all boot with the template's hostname even though a customization specification was selected. What is the most likely cause?"
+    options:
+      - { id: a, text: "VMware Tools (open-vm-tools) is not installed in the template", correct: true, why: "Guest customization runs through VMware Tools in the guest." }
+      - { id: b, text: "The template's VM hardware version is too new", why: "That would block deployment on older hosts, not customization." }
+      - { id: c, text: "The template is stored in a content library", why: "Library templates support customization as well." }
+      - { id: d, text: "DRS is in manual mode", why: "DRS placement has nothing to do with guest customization.", confusedWith: drs }
+    explanation:
+      correct: "Customization specs are applied on first boot by VMware Tools; without it nothing changes."
+      concept: "Guest customization requirements."
+      trap: "Check Tools first, then the guest's customization log."
+  - id: p02-vm-003
+    type: single
+    kind: scenario
+    difficulty: intermediate
+    version: vcf9
+    topics: [vm-management]
+    objective: "2.2"
+    lesson: vm-lifecycle-templates
+    section: migration-types-vsphere-9-0
+    stem: "A running VM must move from a host's local datastore on esx01 to esx02, which cannot see that datastore. No shared storage exists between them. Which migration achieves this without downtime?"
+    options:
+      - { id: a, text: "vMotion (change compute resource only)", why: "Compute-only vMotion requires storage visible to both hosts." }
+      - { id: b, text: "Storage vMotion (change storage only)", why: "That would keep the VM on esx01." }
+      - { id: c, text: "Change both compute resource and storage", correct: true, why: "Combined migration moves memory and disks together; no shared storage is needed." }
+      - { id: d, text: "Cold migration", why: "Works, but requires powering off the VM." }
+    explanation:
+      correct: "A combined compute + storage migration moves a powered-on VM between hosts that share no storage."
+      concept: "vSphere migration types."
+      trap: "'vMotion needs shared storage' is only true for compute-only vMotion."
+  - id: p02-vm-004
+    type: single
+    kind: scenario
+    difficulty: intermediate
+    version: vcf9
+    topics: [vm-management, vsphere-cluster]
+    objective: "2.2"
+    lesson: vm-lifecycle-templates
+    section: evc
+    stem: "A cluster of Intel Ice Lake hosts is being expanded with Intel Sapphire Rapids hosts. vMotion between old and new hosts must keep working. What should be configured?"
+    options:
+      - { id: a, text: "EVC on the cluster set to a baseline supported by all hosts (for example Ice Lake)", correct: true, why: "EVC masks CPU features to a common baseline so VMs can move across generations of the same vendor." }
+      - { id: b, text: "DRS fully automated", why: "DRS cannot fix CPU incompatibility.", confusedWith: drs }
+      - { id: c, text: "Upgrade all VM hardware versions", why: "Hardware version does not mask CPU features." }
+      - { id: d, text: "Nothing; vMotion always works within one vendor", why: "Newer CPU features exposed to VMs can block migration to older hosts." }
+    explanation:
+      correct: "Set the cluster EVC mode to the oldest CPU generation present. vSphere 9.0 can also build custom EVC modes."
+      concept: "EVC."
+      trap: "EVC never enables Intel ↔ AMD vMotion."
+  - id: p02-vm-005
+    type: multi
+    kind: concept
+    difficulty: intermediate
+    version: vcf9
+    topics: [vm-management]
+    objective: "2.2"
+    lesson: vm-lifecycle-templates
+    section: content-libraries
+    stem: "Which item types can be stored in a vSphere 9 content library? (Choose three.)"
+    select: 3
+    options:
+      - { id: a, text: "OVF templates", correct: true, why: "Core library item type." }
+      - { id: b, text: "VM templates", correct: true, why: "Supported since vSphere 7.0 U1, with check-out/check-in." }
+      - { id: c, text: "ISO images", correct: true, why: "Libraries can store ISO and other files." }
+      - { id: d, text: "Running VMs", why: "Libraries store templates and files, not running VMs." }
+      - { id: e, text: "Distributed switch configurations", why: "Not a library item type.", confusedWith: vds }
+    explanation:
+      correct: "Content libraries hold OVF templates, VM templates, ISOs and other files."
+      concept: "Content library contents."
+      trap: "VM templates distribute across vCenters only when linked; use OVF templates otherwise."
+  - id: p02-vm-006
+    type: single
+    kind: design
+    difficulty: advanced
+    version: vcf9
+    topics: [vm-management, vcfa-tenancy]
+    objective: "2.2"
+    lesson: vm-lifecycle-templates
+    section: real-world-scenario
+    stem: "In VCF 9, two VI workload domains have separate vCenters and SSO domains (not linked). The platform team wants one set of golden images shared to both, with storage used at the subscriber only for images actually deployed. What is the best design?"
+    options:
+      - { id: a, text: "Publish OVF templates from a library in wld01 and subscribe from wld02 with 'download content when needed'", correct: true, why: "OVF templates distribute across unlinked vCenters; on-demand download saves subscriber space." }
+      - { id: b, text: "Publish VM templates and subscribe with immediate download", why: "VM template distribution requires linked vCenters, and immediate download copies everything." }
+      - { id: c, text: "Copy templates manually to each datastore with the datastore browser", why: "Works but has no versioning or sync." }
+      - { id: d, text: "Join both vCenters in Enhanced Linked Mode", why: "Deprecated in vCenter 9.0 and contrary to the VCF 9 dedicated-SSO design.", confusedWith: vcenter }
+    explanation:
+      correct: "Published local library + subscribed library with on-demand download, using OVF templates for unlinked vCenters."
+      concept: "Content library distribution design."
+      trap: "VM templates vs OVF templates across vCenters."
+  - id: p02-vm-007
+    type: truefalse
+    kind: concept
+    difficulty: foundation
+    version: vcf9
+    topics: [vm-management]
+    objective: "2.2"
+    lesson: vm-lifecycle-templates
+    section: snapshots
+    stem: "True or false: a VM snapshot is a suitable backup because it captures the VM's disk state."
+    options:
+      - { id: "true", text: "True", why: "Snapshots live on the same datastore and depend on the base disk; losing the datastore loses both." }
+      - { id: "false", text: "False", correct: true, why: "Snapshots are short-term rollback points, not backups." }
+    explanation:
+      correct: "Snapshots redirect writes to delta disks that depend on the base disk. Keep them short-lived and use a real backup product."
+      concept: "Snapshots versus backups."
+      trap: "Lingering snapshots consume space and hurt performance."
+  - id: p02-vm-008
+    type: single
+    kind: troubleshooting
+    difficulty: expert
+    version: vcf9
+    topics: [vm-management, vds]
+    objective: "2.2"
+    lesson: vm-lifecycle-templates
+    section: troubleshooting
+    context: |
+      vMotion between two hosts in the same cluster fails at about 20% with a timeout. Compatibility checks pass. Each host has
+      a vMotion VMkernel adapter. The adapters were configured on different VLAN IDs by mistake.
+    stem: "What is the root cause and the right verification?"
+    options:
+      - { id: a, text: "The vMotion VMkernel adapters cannot reach each other; verify with vmkping from the vMotion interface", correct: true, why: "vMotion data flows between vMotion vmk adapters; a VLAN mismatch breaks connectivity mid-migration." }
+      - { id: b, text: "EVC is missing; enable EVC", why: "CPU compatibility issues fail the compatibility check up front, which passed." }
+      - { id: c, text: "The VM has a CPU limit", why: "Limits don't stop migrations." }
+      - { id: d, text: "HA admission control blocks the migration", why: "Admission control would refuse the migration at start, not time out at 20%.", confusedWith: vsphere-ha }
+    explanation:
+      correct: "A timeout during the memory copy usually means the vMotion network is broken (VLAN, IP, MTU). Test vmk-to-vmk with vmkping and fix the port group VLAN."
+      concept: "vMotion network requirements (≥250 Mbps per concurrent vMotion, vMotion vmk on each host)."
+      trap: "Compatibility checks validate configuration, not the data path."
+  - id: p02-vm-009
+    type: ordering
+    kind: scenario
+    difficulty: intermediate
+    version: vcf9
+    topics: [vm-management]
+    objective: "2.2"
+    lesson: vm-lifecycle-templates
+    section: how-it-works
+    stem: "Order the steps to produce consistent, uniquely named VMs from a golden image."
+    items:
+      - { id: s1, text: "Build and patch the golden VM and install VMware Tools" }
+      - { id: s2, text: "Shut it down and clone or convert it to a template" }
+      - { id: s3, text: "Create a VM customization specification" }
+      - { id: s4, text: "Deploy a new VM from the template, selecting the customization specification" }
+      - { id: s5, text: "On first boot, VMware Tools applies the hostname and network settings" }
+    explanation:
+      correct: "Golden VM → template → customization spec → deploy → customization runs in the guest."
+      concept: "Template-based provisioning."
+      trap: "Without VMware Tools in step 1, step 5 never happens."

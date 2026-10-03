@@ -1,0 +1,177 @@
+id: inc-mtu-overlay
+title: Overlay VMs on new hosts half-load web pages
+difficulty: intermediate
+version: vcf9
+topics: [mtu, nsx-segments, vcf-network-design, troubleshooting-method]
+lessons: [network-fundamentals-for-vcf, vcf-network-design, vsphere-distributed-switch]
+summary: After a workload domain cluster is expanded into a new rack, VMs placed on the new hosts can ping and SSH but large transfers hang. NSX tunnel status looks healthy, and a recent firewall change is the obvious suspect.
+symptoms:
+  - Users report web pages from app VMs half-load and file copies stall – only when the VM runs on esx-09..esx-12.
+  - Ping and SSH to the same VMs work.
+  - vMotion to esx-09 occasionally fails or is very slow.
+  - The security team pushed new distributed firewall rules the same afternoon.
+environment: |
+  VCF 9 workload domain `wld01`, cluster `wld01-cl01`, single VDS model with MTU 9000. Hosts esx-01..08 in rack A/B
+  (ToR pairs A and B), new hosts esx-09..12 added yesterday in rack C (new ToR pair C). Host TEP VLAN 1714
+  (172.17.14.0/24) stretched across all racks; app VMs on NSX overlay segments with MTU 1500.
+evidence:
+  - id: ev-ping-small
+    category: network
+    action: From esx-09, vmkping the TEP of esx-02 without DF and with default size
+    output: |
+      ```shell
+      [root@esx-09:~] vmkping -I vmk10 -S vxlan 172.17.14.12
+      3 packets transmitted, 3 packets received, 0% packet loss
+      ```
+    relevance: useful
+    note: Basic TEP reachability is fine – this is not a VLAN or routing outage.
+  - id: ev-ping-df-new
+    category: network
+    action: From esx-09, vmkping the TEP of esx-02 with -d -s 1572 and -d -s 8972
+    output: |
+      ```shell
+      [root@esx-09:~] vmkping -I vmk10 -S vxlan -d -s 1572 172.17.14.12
+      3 packets transmitted, 0 packets received, 100% packet loss
+      [root@esx-09:~] vmkping -I vmk10 -S vxlan -d -s 8972 172.17.14.12
+      3 packets transmitted, 0 packets received, 100% packet loss
+      ```
+    relevance: key
+    note: Packets above ~1500 bytes with DF cannot cross the path. Geneve adds overhead to every 1500-byte VM frame, so full-size VM packets are dropped.
+  - id: ev-ping-df-old
+    category: network
+    action: From esx-02, vmkping the TEP of esx-03 with -d -s 8972
+    output: |
+      ```shell
+      [root@esx-02:~] vmkping -I vmk10 -S vxlan -d -s 8972 172.17.14.13
+      3 packets transmitted, 3 packets received, 0% packet loss
+      ```
+    relevance: key
+    note: The old racks carry 9000 end to end. The problem is specific to the path involving rack C.
+  - id: ev-vds
+    category: hosts
+    action: Run esxcli network vswitch dvs vmware list on esx-09
+    output: |
+      ```shell
+      wld01-cl01-vds01
+         MTU: 9000
+         Uplinks: vmnic1, vmnic0
+      ```
+    relevance: useful
+    note: The host side is correct – the VDS was pushed from vCenter with MTU 9000.
+  - id: ev-vmk
+    category: hosts
+    action: Run esxcli network ip interface list on esx-09 and look at vmk10
+    output: |
+      ```shell
+      vmk10
+         Netstack Instance: vxlan
+         MTU: 9000
+      ```
+    relevance: useful
+    note: The TEP vmk MTU is also correct. Remaining suspects are outside the host.
+  - id: ev-switch
+    category: network
+    action: Ask the network team for "show interface" on the rack C ToR ports facing esx-09
+    output: |
+      ```log
+      Ethernet1/9 is up, trunk mode, allowed vlans 1711-1714
+        MTU 1500 bytes, BW 25000000 Kbit
+      Ethernet1/10 is up, trunk mode, allowed vlans 1711-1714
+        MTU 1500 bytes, BW 25000000 Kbit
+      ```
+    relevance: key
+    note: The new ToR ports were left at the default 1500. Racks A and B use 9216.
+  - id: ev-tunnels
+    category: nsx
+    action: Check NSX tunnel status for esx-09 in NSX Manager
+    output: |
+      ```log
+      Transport node esx-09: Tunnels 22 Up / 0 Down   BFD status: UP
+      ```
+    relevance: noise
+    note: BFD keepalives are small packets that fit in 1500 bytes; healthy tunnel status does not prove the path carries full-size encapsulated frames.
+  - id: ev-dfw
+    category: nsx
+    action: Review the distributed firewall rules pushed this afternoon and their hit counts
+    output: |
+      ```log
+      Rule 3051 "app-web-allow-443"  Action: ALLOW  Hits: 18 422
+      Rule 3052 "app-default-deny"   Action: DROP   Hits: 0
+      ```
+    relevance: noise
+    note: The new rules allow the traffic and the deny rule has no hits. The firewall change is a coincidence – and it would block small packets too.
+  - id: ev-dns
+    category: dns
+    action: Check forward and reverse DNS for esx-09
+    output: |
+      ```shell
+      esx-09.lab.internal -> 172.17.11.19 ; 172.17.11.19 -> esx-09.lab.internal
+      ```
+    relevance: noise
+    note: DNS is fine and irrelevant to data-plane packet size.
+idealSequence: [ev-ping-small, ev-ping-df-new, ev-ping-df-old, ev-vds, ev-vmk, ev-switch]
+rootCause:
+  - id: rc-a
+    text: The rack C top-of-rack ports facing the new hosts are at MTU 1500, so Geneve-encapsulated full-size frames (DF set) from or to esx-09..12 are dropped.
+    correct: true
+    why: Small packets pass, DF pings above 1500 fail only on rack C paths, host-side MTU is 9000, and the switch ports show 1500.
+  - id: rc-b
+    text: The new distributed firewall rules drop large packets.
+    why: The DFW does not filter by packet size, the deny rule has zero hits, and the problem follows the hosts, not the rules.
+  - id: rc-c
+    text: The VDS MTU on the new hosts is 1500.
+    why: esxcli shows the VDS and vmk10 at 9000.
+  - id: rc-d
+    text: The TEP VLAN is missing from the new trunks.
+    why: Small TEP pings work and tunnels are up, so VLAN 1714 is present.
+nextStep:
+  - id: ns-a
+    text: Run DF-bit vmkping tests at 1572/1672 and 8972 between new and old hosts, and between old hosts, to locate the failing hop.
+    correct: true
+    why: Classifies the fault as MTU and isolates it to paths through rack C.
+  - id: ns-b
+    text: Roll back the distributed firewall change.
+    why: Disruptive for security and unsupported by the evidence (deny rule has no hits).
+  - id: ns-c
+    text: Restart the NSX Manager cluster.
+    why: Management/control plane restarts do not change data-plane packet sizes.
+remediation:
+  - id: rm-a
+    text: Set the rack C host-facing ports (and any inter-switch links in the path) to the same jumbo MTU as racks A/B (e.g. 9216), then retest.
+    correct: true
+    why: Restores end-to-end MTU so encapsulated frames and vMotion jumbo frames fit.
+  - id: rm-b
+    text: Reduce the VDS MTU on all hosts to 1500.
+    why: The host overlay switch would then be below the 1600 minimum VCF requires; it breaks the whole cluster's overlay.
+  - id: rm-c
+    text: Lower the MTU inside every VM to 1400.
+    why: Hides the problem for some traffic but leaves vMotion broken and violates the design instead of fixing the network.
+  - id: rm-d
+    text: Put the new hosts into maintenance mode permanently.
+    why: Avoids the symptom, wastes the capacity and leaves the fault in place.
+validation:
+  - id: vl-a
+    text: vmkping -I vmk10 -S vxlan -d -s 8972 succeeds from esx-09..12 to hosts in every rack (and vice versa), vMotion to esx-09 completes normally, and large transfers from VMs on the new hosts succeed.
+    correct: true
+    why: Proves the data path in both directions at the design MTU and confirms user-visible recovery.
+  - id: vl-b
+    text: NSX shows all tunnels Up for esx-09.
+    why: Tunnels were already Up while the problem existed.
+hints:
+  - Small things work and big things fail. What property of the network depends on packet size?
+  - Compare a DF ping between two old hosts with one between a new and an old host.
+  - The hosts say 9000. Who else is on the path between rack C and the rest?
+debrief: |
+  Overlay traffic is encapsulated in Geneve with the DF bit set; VCF 9 guidance says Host/Edge TEP networks need at
+  least 1600 (1700 design minimum, 9000 recommended) end to end. The new ToR ports were left at 1500, so every
+  full-size VM frame on the new hosts became a too-large Geneve packet and was dropped silently. Pings, SSH and BFD
+  keepalives are small and passed – which is why tunnel status and the firewall change were convincing red herrings.
+
+  Efficient path: classify the symptom (size-dependent) → DF vmkping at the right sizes → compare old-old vs new-old
+  paths → verify host-side MTU → check switch ports. Prevention: make DF vmkping at 8972 between every rack part of the
+  host expansion checklist, and configure MTU as part of the switch port template.
+sources:
+  - title: "VCF 9.0 Design Library – Network Fabric Detailed Design (MTU requirements)"
+    url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/design/design-library/external-services-design/datacenter-network-requirements/network-fabric-design.html
+  - title: "Broadcom KB 344313 – Testing VMkernel connectivity with vmkping"
+    url: https://knowledge.broadcom.com/external/article/344313

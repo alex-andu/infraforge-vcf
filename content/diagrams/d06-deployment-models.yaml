@@ -1,0 +1,41 @@
+id: d06-deployment-models
+title: "Deployment models: simple vs HA, and fleet designs"
+description: >
+  Top half: the two VCF Installer component models. Simple uses at least 3 management hosts and 7 appliances
+  (single vCenter, SDDC Manager, NSX Manager, VCF Operations, fleet management appliance, collector, VCF Automation).
+  High availability uses at least 4 management hosts and 13 appliances (3 NSX Manager nodes, 3 VCF Operations nodes,
+  3 VCF Automation nodes, the rest single). Bottom half: the four fleet deployment designs from basic (one zone) to
+  site high availability across zones, disaster recovery across regions, and fault domains plus DR.
+width: 1000
+height: 600
+groups:
+  - { id: g-simple, x: 10, y: 10, w: 480, h: 290, label: "Simple: 3 hosts, 7 appliances", kind: mgmt }
+  - { id: g-ha, x: 510, y: 10, w: 480, h: 290, label: "High availability: 4 hosts, 13 appliances", kind: mgmt }
+  - { id: g-fleet, x: 10, y: 320, w: 980, h: 270, label: "Fleet deployment designs", kind: zone }
+nodes:
+  - { id: s-core, x: 25, y: 50, w: 210, h: 56, label: "vCenter + SDDC Manager", sublabel: "1 + 1", kind: mgmt, component: sddc-manager, info: "Always single appliances, protected by vSphere HA." }
+  - { id: s-nsx, x: 265, y: 50, w: 210, h: 56, label: "NSX Manager", sublabel: "1 node + VIP", kind: nsx, component: nsx-manager, info: "Single node; VIP kept for future expansion; management plane impact during upgrades." }
+  - { id: s-ops, x: 25, y: 140, w: 210, h: 56, label: "VCF Operations", sublabel: "1 node", kind: ops, component: vcf-operations, info: "Single analytics node, relies on vSphere HA." }
+  - { id: s-fm, x: 265, y: 140, w: 210, h: 56, label: "Fleet mgmt + collector", sublabel: "1 + 1", kind: ops, component: vcf-operations-fleet-management, info: "Single in both models." }
+  - { id: s-vcfa, x: 25, y: 230, w: 210, h: 56, label: "VCF Automation", sublabel: "1 node", kind: ops, component: vcf-automation, info: "POC, dev/test, small non-critical use; can be expanded to 3 nodes by resizing." }
+  - { id: s-hosts, x: 265, y: 230, w: 210, h: 56, label: "Mgmt cluster", sublabel: ">= 3 ESX hosts", kind: compute, component: esx-host, info: "Three hosts tolerate one failure, but vSAN cannot rebuild to compliance." }
+  - { id: h-core, x: 525, y: 50, w: 210, h: 56, label: "vCenter + SDDC Manager", sublabel: "1 + 1", kind: mgmt, component: sddc-manager, info: "Still single appliances in the HA model." }
+  - { id: h-nsx, x: 765, y: 50, w: 210, h: 56, label: "NSX Manager", sublabel: "3 nodes + VIP", kind: nsx, component: nsx-manager, info: "Three nodes with anti-affinity; optional external load balancer." }
+  - { id: h-ops, x: 525, y: 140, w: 210, h: 56, label: "VCF Operations", sublabel: "3 nodes", kind: ops, component: vcf-operations, info: "Primary, replica and data nodes; optional external load balancer." }
+  - { id: h-fm, x: 765, y: 140, w: 210, h: 56, label: "Fleet mgmt + collector", sublabel: "1 + 1", kind: ops, component: vcf-operations-fleet-management, info: "Not tripled. Collectors can be grouped later." }
+  - { id: h-vcfa, x: 525, y: 230, w: 210, h: 56, label: "VCF Automation", sublabel: "3 nodes", kind: ops, component: vcf-automation, info: "Production, mission-critical, enterprise use." }
+  - { id: h-hosts, x: 765, y: 230, w: 210, h: 56, label: "Mgmt cluster", sublabel: ">= 4 ESX hosts", kind: compute, component: esx-host, info: "Four hosts tolerate one failure and allow automatic vSAN rebuild." }
+  - { id: f-basic, x: 30, y: 370, w: 220, h: 70, label: "Basic", sublabel: "one zone / region", kind: compute, info: "vSphere HA and hardware best practice only; a zone failure takes the fleet down." }
+  - { id: f-ha, x: 270, y: 370, w: 220, h: 70, label: "Site HA across zones", sublabel: "stretched clusters", kind: compute, info: "Two availability zones, fault domains, stretched IP; needs low latency and high bandwidth." }
+  - { id: f-dr, x: 510, y: 370, w: 220, h: 70, label: "DR across regions", sublabel: "second instance", kind: compute, info: "Replication and failover (e.g. VMware Live Recovery); VCF Operations replicated or backed up, VCF Automation backup/restore." }
+  - { id: f-fddr, x: 750, y: 370, w: 220, h: 70, label: "Fault domains + DR", sublabel: "both", kind: compute, info: "Maximum resilience: stretched across zones plus DR to another region." }
+  - { id: f-note, x: 270, y: 490, w: 460, h: 70, label: "Cluster models", sublabel: "single-rack, L2/L3 multi-rack, stretched", kind: network, info: "L3 multi-rack not allowed for the management default cluster and cannot be stretched; stretching the management cluster is Day 2." }
+edges:
+  - { from: f-basic, to: f-ha, label: "+ zones", kind: dependency }
+  - { from: f-basic, to: f-dr, label: "+ region", kind: dependency, dashed: true }
+  - { from: f-ha, to: f-fddr, label: "+ region", kind: dependency, dashed: true }
+steps:
+  - { title: "Simple model", text: "Seven single appliances on at least three hosts. Smallest footprint; recovery relies on vSphere HA restarts.", highlight: [g-simple, s-core, s-nsx, s-ops, s-fm, s-vcfa, s-hosts] }
+  - { title: "High availability model", text: "NSX Manager, VCF Operations and VCF Automation become three-node clusters: 13 appliances on at least four hosts. vCenter, SDDC Manager, fleet management and collector stay single.", highlight: [g-ha, h-nsx, h-ops, h-vcfa, h-hosts, h-fm, h-core] }
+  - { title: "Fleet designs", text: "Basic, site HA across zones, DR across regions, and fault domains plus DR protect against progressively larger failures.", highlight: [f-basic, f-ha, f-dr, f-fddr] }
+  - { title: "Cluster models", text: "Underneath, each cluster is single-rack, L2/L3 multi-rack or stretched.", highlight: [f-note] }

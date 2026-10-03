@@ -1,0 +1,34 @@
+id: d00-fleet-hierarchy
+title: VCF 9 hierarchy - private cloud, fleet, instance, domain, cluster, host
+description: >
+  The VCF 9 taxonomy from the top down. A VCF private cloud contains one or more fleets. A fleet is defined by one set
+  of fleet-level management components (VCF Operations and VCF Automation) and contains one or more VCF instances and
+  optionally standalone vCenter instances. An instance contains a management domain and optional workload domains and
+  has its own SDDC Manager. A domain has one vCenter and one or more vSphere clusters. A cluster is a group of ESX
+  hosts with HA and DRS enabled.
+width: 1000
+height: 600
+nodes:
+  - { id: pc, x: 400, y: 20, w: 200, h: 56, label: "VCF private cloud", kind: external, info: "Highest level. Can contain one or more VCF fleets." }
+  - { id: fleet, x: 400, y: 115, w: 200, h: 56, label: "VCF fleet", sublabel: "VCF Ops + VCF Automation", kind: ops, component: vcf-fleet, info: "Everything managed by one set of fleet-level management components: one VCF Operations and one VCF Automation." }
+  - { id: inst, x: 250, y: 215, w: 200, h: 56, label: "VCF instance", sublabel: "own SDDC Manager", kind: mgmt, component: vcf-instance, info: "Compute, storage and networking infrastructure built from a management domain and optional workload domains. Components: SDDC Manager, NSX, vCenter, ESX." }
+  - { id: svc, x: 560, y: 215, w: 200, h: 56, label: "Standalone vCenter", sublabel: "optional", kind: external, info: "Existing vSphere managed by the fleet's VCF Operations without being an instance." }
+  - { id: md, x: 100, y: 320, w: 200, h: 56, label: "Management domain", sublabel: "exactly one per instance", kind: mgmt, component: management-domain, info: "Created at deployment/convergence; hosts the instance's management appliances (and fleet components in the first instance)." }
+  - { id: wd, x: 400, y: 320, w: 200, h: 56, label: "Workload domain(s)", sublabel: "0..n per instance", kind: compute, component: workload-domain, info: "Created from VCF Operations to run consumer workloads; each has its own vCenter." }
+  - { id: vc, x: 250, y: 420, w: 200, h: 56, label: "vCenter", sublabel: "one per domain", kind: mgmt, component: vcenter, info: "Every domain has exactly one vCenter instance." }
+  - { id: cl, x: 250, y: 510, w: 200, h: 56, label: "vSphere cluster(s)", sublabel: "HA + DRS", kind: compute, info: "One or more clusters per domain." }
+  - { id: host, x: 530, y: 510, w: 200, h: 56, label: "ESX hosts", kind: compute, component: esx-host, info: "The physical servers running the ESX hypervisor." }
+edges:
+  - { from: pc, to: fleet, label: "1..n", kind: dependency }
+  - { from: fleet, to: inst, label: "1..n", kind: mgmt }
+  - { from: fleet, to: svc, label: "0..n", kind: mgmt, dashed: true }
+  - { from: inst, to: md, label: "1", kind: mgmt }
+  - { from: inst, to: wd, label: "0..n", kind: mgmt }
+  - { from: md, to: vc, kind: mgmt }
+  - { from: wd, to: vc, kind: mgmt }
+  - { from: vc, to: cl, label: "1..n", kind: mgmt }
+  - { from: cl, to: host, label: "hosts", kind: mgmt }
+steps:
+  - { title: "Fleet level", text: "One VCF Operations and one VCF Automation define a fleet.", highlight: [pc, fleet, svc] }
+  - { title: "Instance level", text: "Each instance has its own SDDC Manager, management domain and optional workload domains.", highlight: [inst, md, wd] }
+  - { title: "Domain and cluster level", text: "One vCenter per domain, one or more clusters per vCenter, hosts in clusters.", highlight: [vc, cl, host] }

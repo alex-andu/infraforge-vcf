@@ -1,0 +1,53 @@
+id: d07-deployment-sequence
+title: VCF 9.0 new-fleet deployment sequence
+description: >
+  The end-to-end sequence for a new VCF fleet. Preparation: plan with the Planning and Preparation Workbook, create
+  DNS and NTP, prepare the ESX hosts, deploy the VCF Installer and download binaries from a depot. Deployment, in
+  dependency order: vCenter and the default cluster on principal storage, distributed switches and VMkernel
+  networking, NSX Manager and host preparation, SDDC Manager, then VCF Operations with the fleet management appliance
+  and collector, then VCF Automation unless deferred. Post-deployment: license in VCF Operations and manually deploy
+  VCF Operations for logs, VCF Operations for networks, the orchestrator and optionally a three-node VCF Identity Broker.
+width: 1000
+height: 600
+groups:
+  - { id: g-prep, x: 20, y: 20, w: 960, h: 130, label: "Prepare", kind: zone }
+  - { id: g-deploy, x: 20, y: 180, w: 960, h: 250, label: "Deploy (VCF Installer, dependency order)", kind: mgmt }
+  - { id: g-post, x: 20, y: 460, w: 960, h: 120, label: "Post-deployment", kind: ops }
+nodes:
+  - { id: wb, x: 40, y: 70, w: 160, h: 56, label: "Planning workbook", kind: external, info: "Planning and Preparation Workbook (Excel): prerequisite checklist, sizing, values for every wizard field." }
+  - { id: dns, x: 225, y: 70, w: 160, h: 56, label: "DNS + NTP", sublabel: "A + PTR records", kind: network, component: dns-service, info: "Forward and reverse records for every host and appliance; one NTP source for hosts and appliances." }
+  - { id: hosts, x: 410, y: 70, w: 160, h: 56, label: "Prepare ESX hosts", kind: compute, component: esx-host, info: "Supported ESX build, hostname = FQDN, certificate regenerated, clean disks, 10 Gbps NICs, management IP on the standard switch." }
+  - { id: inst, x: 595, y: 70, w: 160, h: 56, label: "Deploy VCF Installer", kind: mgmt, component: vcf-installer, info: "VCF-SDDC-Manager-Appliance OVA. On a management host it later becomes SDDC Manager." }
+  - { id: depot, x: 780, y: 70, w: 180, h: 56, label: "Download binaries", sublabel: "online / offline depot", kind: external, info: "The installer ships without binaries. Online depot with a download token, or an offline depot filled by the VCF Download Tool." }
+  - { id: vc, x: 40, y: 230, w: 170, h: 56, label: "1. vCenter + cluster", sublabel: "principal storage", kind: mgmt, component: vcenter, info: "Management vCenter deployed; default cluster formed on vSAN ESA/OSA, NFS v3 or VMFS on FC. Principal storage cannot be changed later." }
+  - { id: net, x: 235, y: 230, w: 170, h: 56, label: "2. VDS + VMkernels", kind: network, component: vds, info: "Distributed switch profile applied; vMotion and vSAN VMkernel IPs from the ranges you entered (they become the default network pool)." }
+  - { id: nsx, x: 430, y: 230, w: 170, h: 56, label: "3. NSX Manager", sublabel: "1 or 3 nodes", kind: nsx, component: nsx-manager, info: "One node (simple) or three nodes (HA); registered with vCenter; hosts prepared as transport nodes." }
+  - { id: sddc, x: 625, y: 230, w: 170, h: 56, label: "4. SDDC Manager", kind: mgmt, component: sddc-manager, info: "Deployed, or the installer itself converts into SDDC Manager when it sits on a management host." }
+  - { id: ops, x: 140, y: 340, w: 260, h: 56, label: "5. VCF Operations + fleet mgmt + collector", kind: ops, component: vcf-operations, info: "VCF Operations (1 or 3 nodes), the fleet management appliance and a collector. New or existing VCF Operations." }
+  - { id: auto, x: 460, y: 340, w: 230, h: 56, label: "6. VCF Automation", sublabel: "optional / deferrable", kind: ops, component: vcf-automation, info: "Deploy now (1 or 3 nodes), connect an existing one, or 'connect a VCF Automation instance later'." }
+  - { id: lic, x: 40, y: 505, w: 200, h: 56, label: "License in VCF Operations", kind: security, info: "Open VCF Operations, apply licensing and register with the VCF Business Services console." }
+  - { id: logs, x: 270, y: 505, w: 200, h: 56, label: "Ops for logs", sublabel: "manual", kind: ops, component: vcf-operations-logs, info: "Deployed after the installer finishes." }
+  - { id: netops, x: 500, y: 505, w: 200, h: 56, label: "Ops for networks + orchestrator", kind: ops, component: vcf-operations-networks, info: "VCF Operations for networks (VCF only) and the VCF Operations orchestrator are deployed manually." }
+  - { id: idb, x: 730, y: 505, w: 220, h: 56, label: "Identity Broker (3-node)", sublabel: "optional", kind: security, component: vcf-identity-broker, info: "Optional; otherwise the identity broker is embedded in vCenter." }
+edges:
+  - { from: wb, to: dns, kind: dependency }
+  - { from: dns, to: hosts, kind: dependency }
+  - { from: hosts, to: inst, kind: dependency }
+  - { from: inst, to: depot, kind: mgmt }
+  - { from: depot, to: vc, label: "validate, deploy", kind: mgmt }
+  - { from: vc, to: net, kind: dependency }
+  - { from: net, to: nsx, kind: dependency }
+  - { from: nsx, to: sddc, kind: dependency }
+  - { from: sddc, to: ops, kind: dependency }
+  - { from: ops, to: auto, kind: dependency }
+  - { from: ops, to: lic, kind: mgmt }
+  - { from: lic, to: logs, kind: dependency }
+  - { from: logs, to: netops, kind: dependency }
+  - { from: netops, to: idb, kind: dependency, dashed: true }
+steps:
+  - { title: "Plan", text: "Fill the Planning and Preparation Workbook, create DNS A/PTR records and confirm NTP.", highlight: [wb, dns] }
+  - { title: "Prepare hosts and installer", text: "Prepare ESX hosts, deploy the VCF Installer and download binaries from a depot.", highlight: [hosts, inst, depot] }
+  - { title: "Core infrastructure", text: "vCenter and the cluster on principal storage, then distributed switches and VMkernel networking.", highlight: [vc, net] }
+  - { title: "Network and management", text: "NSX Manager and host preparation, then SDDC Manager.", highlight: [nsx, sddc] }
+  - { title: "Fleet services", text: "VCF Operations with fleet management and collector, then VCF Automation unless deferred.", highlight: [ops, auto] }
+  - { title: "Complete the platform", text: "License, then deploy logs, networks, orchestrator and optionally the identity broker.", highlight: [lic, logs, netops, idb] }

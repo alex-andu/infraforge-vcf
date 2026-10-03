@@ -1,0 +1,48 @@
+id: d00-vcf-big-picture
+title: VCF 9 big picture - fleet, instance, domains and components
+description: >
+  A VCF fleet is managed by one VCF Operations and one VCF Automation, both running in the management domain of the
+  first VCF instance alongside VCF Operations fleet management and the VCF Identity Broker. Each VCF instance has its
+  own SDDC Manager and a management domain (management vCenter, NSX Manager, ESX hosts with vSAN). Workload domains
+  have their own ESX clusters for business VMs, but their vCenter and NSX Manager appliances run in the management
+  domain. A second instance has its own SDDC Manager and domains but is still operated by the same fleet-level
+  VCF Operations. A standalone vCenter can also be managed by the fleet's VCF Operations.
+width: 1000
+height: 640
+groups:
+  - { id: g-fleet, x: 10, y: 10, w: 980, h: 620, label: "VCF fleet", kind: zone }
+  - { id: g-inst1, x: 25, y: 120, w: 700, h: 495, label: "VCF instance 1", kind: zone }
+  - { id: g-mgmt, x: 40, y: 150, w: 380, h: 450, label: "Management domain (instance 1)", kind: mgmt }
+  - { id: g-wld, x: 440, y: 150, w: 270, h: 450, label: "Workload domain WLD-01", kind: compute }
+  - { id: g-inst2, x: 745, y: 120, w: 235, h: 300, label: "VCF instance 2", kind: zone }
+nodes:
+  - { id: vcfops, x: 40, y: 40, w: 170, h: 56, label: "VCF Operations", sublabel: "one per fleet", kind: ops, component: vcf-operations, info: "Central console for the fleet: monitoring, logs, licensing, certificates, passwords, lifecycle and fleet management. Workload domains are created from here in VCF 9. Runs in the management domain of the first instance." }
+  - { id: fleetmgmt, x: 225, y: 40, w: 170, h: 56, label: "Fleet management", sublabel: "VCF Ops fleet mgmt", kind: ops, component: vcf-operations-fleet-management, info: "VCF Operations fleet management appliance (formerly Aria Suite Lifecycle in the VCF 5.x era): deploys and lifecycle-manages the fleet-level components." }
+  - { id: vcfa, x: 410, y: 40, w: 170, h: 56, label: "VCF Automation", sublabel: "one per fleet", kind: ops, component: vcf-automation, info: "Self-service provisioning platform (IaaS, VMs, Kubernetes) with organizations and policy-based governance. Formerly Aria Automation." }
+  - { id: idb, x: 595, y: 40, w: 170, h: 56, label: "VCF Identity Broker", kind: security, component: vcf-identity-broker, info: "Connects an external identity provider for VCF single sign-on across components. Replaces the Enhanced Linked Mode approach of earlier versions." }
+  - { id: sddcm1, x: 60, y: 190, w: 160, h: 56, label: "SDDC Manager", sublabel: "instance 1", kind: mgmt, component: sddc-manager, info: "One per VCF instance. Automation engine for the instance: host commissioning, domain workflows, lifecycle, certificates and passwords. In 9.0 its UI is deprecated; most tasks are driven from VCF Operations." }
+  - { id: mvc, x: 240, y: 190, w: 160, h: 56, label: "Mgmt vCenter", kind: mgmt, component: vcenter, info: "Manages the management domain cluster(s)." }
+  - { id: mnsx, x: 60, y: 280, w: 160, h: 56, label: "NSX Manager", sublabel: "mgmt domain", kind: nsx, component: nsx-manager, info: "Network virtualization management/control plane for the management domain." }
+  - { id: wvc, x: 240, y: 280, w: 160, h: 56, label: "WLD-01 vCenter", sublabel: "runs here", kind: mgmt, component: vcenter, info: "The workload domain's vCenter appliance is deployed INTO the management domain, but it manages the workload domain's hosts." }
+  - { id: wnsx, x: 240, y: 370, w: 160, h: 56, label: "WLD-01 NSX Mgr", sublabel: "runs here", kind: nsx, component: nsx-manager, info: "NSX Manager for the workload domain, also placed in the management domain (it can be shared by several workload domains)." }
+  - { id: mhosts, x: 60, y: 470, w: 340, h: 56, label: "ESX hosts + vSAN", sublabel: "mgmt cluster (HA + DRS)", kind: compute, component: esx-host, info: "Management domain cluster. Every domain has at least one vSphere cluster with HA and DRS enabled and its storage (vSAN is typical for the management domain)." }
+  - { id: whosts, x: 460, y: 470, w: 230, h: 56, label: "ESX hosts", sublabel: "WLD-01 cluster", kind: compute, component: esx-host, info: "Dedicated hosts of the workload domain, managed by the WLD-01 vCenter that runs in the management domain." }
+  - { id: wvms, x: 460, y: 190, w: 230, h: 56, label: "Business VMs", sublabel: "and containers", kind: vm, info: "Consumer workloads run here, not in the management domain (although the management domain can also run workloads)." }
+  - { id: sddcm2, x: 765, y: 160, w: 195, h: 56, label: "SDDC Manager", sublabel: "instance 2", kind: mgmt, component: sddc-manager, info: "Each additional instance has its own SDDC Manager, management vCenter, NSX and ESX hosts." }
+  - { id: i2domains, x: 765, y: 250, w: 195, h: 56, label: "Mgmt + workload domains", kind: compute, info: "Instance 2 has its own management domain and optional workload domains." }
+  - { id: svc, x: 765, y: 470, w: 195, h: 56, label: "Standalone vCenter", sublabel: "not part of an instance", kind: external, component: vcenter, info: "A fleet can include standalone vCenter instances managed by the fleet's VCF Operations without being converted into a VCF instance." }
+edges:
+  - { from: vcfops, to: sddcm1, label: "manages instance", kind: mgmt }
+  - { from: vcfops, to: sddcm2, label: "manages instance", kind: mgmt }
+  - { from: vcfops, to: svc, label: "monitors", kind: mgmt, dashed: true }
+  - { from: sddcm1, to: mvc, label: "automates", kind: mgmt }
+  - { from: sddcm1, to: mnsx, kind: mgmt }
+  - { from: wvc, to: whosts, label: "manages", kind: mgmt }
+  - { from: mvc, to: mhosts, label: "manages", kind: mgmt }
+  - { from: whosts, to: wvms, label: "runs", kind: data }
+  - { from: vcfa, to: wvms, label: "self-service", kind: dependency, dashed: true }
+steps:
+  - { title: "The fleet", text: "Fleet-level components: one VCF Operations and one VCF Automation per fleet, plus fleet management and the Identity Broker.", highlight: [vcfops, fleetmgmt, vcfa, idb] }
+  - { title: "Instance 1 management domain", text: "The first instance's management domain hosts SDDC Manager, the management vCenter and NSX Manager, and the fleet components.", highlight: [sddcm1, mvc, mnsx, mhosts] }
+  - { title: "Workload domain", text: "A workload domain has its own hosts, but its vCenter and NSX Manager appliances run in the management domain.", highlight: [wvc, wnsx, whosts, wvms] }
+  - { title: "More instances", text: "Another instance (another site, region or compliance zone) has its own SDDC Manager and domains but is operated by the same VCF Operations.", highlight: [sddcm2, i2domains, svc] }

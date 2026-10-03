@@ -1,0 +1,38 @@
+id: d01-type1-vs-type2
+title: Type 1 (bare-metal) vs type 2 (hosted) hypervisors
+description: >
+  Left: a type 1 hypervisor such as ESX runs directly on the server hardware; the VMkernel schedules CPU and memory
+  and provides storage and network stacks, and each VM runs on its own virtual machine monitor. Management agents
+  (hostd, vpxa) let the Host Client and vCenter manage the host. Right: a type 2 hypervisor such as VMware Workstation
+  runs as an application on top of a general-purpose operating system, which owns the hardware. In the home lab, ESX
+  runs nested as a VM on Proxmox (KVM), which is itself a type 1 hypervisor.
+width: 1000
+height: 560
+groups:
+  - { id: g-t1, x: 20, y: 20, w: 470, h: 520, label: "Type 1: ESX (bare metal)", kind: compute }
+  - { id: g-t2, x: 510, y: 20, w: 470, h: 520, label: "Type 2: hosted (e.g. Workstation)", kind: zone }
+nodes:
+  - { id: t1vm1, x: 40, y: 60, w: 130, h: 56, label: "VM 1", sublabel: "guest OS", kind: vm, info: "Each VM has virtual hardware and its own guest OS." }
+  - { id: t1vm2, x: 190, y: 60, w: 130, h: 56, label: "VM 2", kind: vm, info: "Isolated from VM 1 by the hypervisor." }
+  - { id: t1agents, x: 340, y: 60, w: 130, h: 56, label: "hostd / vpxa", sublabel: "mgmt agents", kind: mgmt, info: "hostd serves the Host Client and API; vpxa is the vCenter agent installed when a host is added to vCenter." }
+  - { id: t1vmm, x: 40, y: 170, w: 280, h: 56, label: "VMM per VM", sublabel: "vCPU execution", kind: compute, info: "Virtual machine monitor: runs each VM's vCPUs using hardware-assisted virtualization (Intel VT-x / AMD-V)." }
+  - { id: t1vmk, x: 40, y: 280, w: 430, h: 56, label: "VMkernel", sublabel: "scheduler, memory, storage + network stacks, drivers", kind: compute, info: "The ESX kernel. Owns the hardware directly; no general-purpose OS underneath." }
+  - { id: t1hw, x: 40, y: 420, w: 430, h: 56, label: "Server hardware", sublabel: "CPU, RAM, NICs, disks", kind: external, info: "Must be on the compatibility guide for production; ESX 9.0 needs at least 2 cores, 8 GB RAM and a 32 GB boot device (128 GB recommended)." }
+  - { id: t2vm, x: 540, y: 60, w: 200, h: 56, label: "VM", kind: vm, info: "Runs inside an application." }
+  - { id: t2app, x: 760, y: 60, w: 200, h: 56, label: "Other apps", sublabel: "browser, email", kind: external, info: "Compete with the VMs for resources." }
+  - { id: t2hv, x: 540, y: 170, w: 420, h: 56, label: "Hypervisor application", kind: compute, info: "Uses the host OS for drivers and scheduling." }
+  - { id: t2os, x: 540, y: 280, w: 420, h: 56, label: "Host OS (Windows / Linux / macOS)", kind: external, info: "Owns the hardware; a crash or reboot of the host OS takes all VMs down." }
+  - { id: t2hw, x: 540, y: 420, w: 420, h: 56, label: "PC / laptop hardware", kind: external, info: "Desktop-class hardware." }
+edges:
+  - { from: t1vm1, to: t1vmm, kind: data }
+  - { from: t1vm2, to: t1vmm, kind: data }
+  - { from: t1vmm, to: t1vmk, kind: data }
+  - { from: t1agents, to: t1vmk, kind: mgmt }
+  - { from: t1vmk, to: t1hw, label: "direct", kind: data }
+  - { from: t2vm, to: t2hv, kind: data }
+  - { from: t2hv, to: t2os, kind: data }
+  - { from: t2os, to: t2hw, kind: data }
+steps:
+  - { title: "Type 1", text: "ESX's VMkernel sits directly on the hardware.", highlight: [t1vmk, t1hw, t1vmm] }
+  - { title: "Management agents", text: "hostd and vpxa expose the host to the Host Client and vCenter.", highlight: [t1agents] }
+  - { title: "Type 2", text: "A hosted hypervisor depends on a general-purpose OS.", highlight: [t2hv, t2os, t2hw] }

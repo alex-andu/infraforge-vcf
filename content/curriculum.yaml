@@ -1,0 +1,198 @@
+# The curriculum follows a technical progression first; exam objectives are mapped per lesson.
+# Every lesson id listed here must have a file under content/lessons/<phase-id>/<lesson-id>.md
+phases:
+  - id: p00-orientation
+    number: 0
+    title: Orientation
+    summary: What VMware Cloud Foundation is, the problem it solves, and the vocabulary used everywhere else.
+    modules:
+      - id: m00-vcf-intro
+        title: Welcome to VCF
+        summary: Private cloud, SDDC, and how VCF differs from a standalone vSphere estate.
+        lessons: [what-is-vcf, private-cloud-and-sddc, vcf-vs-vsphere, vcf9-terminology]
+
+  - id: p01-virtualization
+    number: 1
+    title: Virtualization Foundations
+    summary: Hypervisors, virtual machines and the resource virtualization every later topic builds on.
+    modules:
+      - id: m01-virt-basics
+        title: Virtualization Basics
+        summary: How a hypervisor turns one server into many isolated machines.
+        lessons: [hypervisors-and-esx, cpu-memory-virtualization, storage-network-virtualization-basics, clusters-ha-drs-intro]
+
+  - id: p02-vsphere
+    number: 2
+    title: vSphere Core
+    summary: ESX hosts, vCenter, clusters, HA, DRS and the day-to-day vSphere operations VCF automates.
+    modules:
+      - id: m02-hosts-vcenter
+        title: Hosts and vCenter
+        summary: The building blocks of every VCF domain.
+        lessons: [esx-architecture-host-management, vcenter-architecture-inventory, vsphere-permissions]
+      - id: m02-clusters-vms
+        title: Clusters and Virtual Machines
+        summary: Availability, resource scheduling and VM lifecycle.
+        lessons: [vsphere-ha-deep-dive, drs-resource-management, vm-lifecycle-templates]
+
+  - id: p03-storage-vsan
+    number: 3
+    title: Storage and vSAN
+    summary: Datastores, vSAN ESA/OSA, storage policies, resilience and capacity.
+    modules:
+      - id: m03-storage
+        title: Storage Foundations
+        summary: Block, file and vSAN storage in vSphere.
+        lessons: [storage-fundamentals-datastores, vsan-architecture-esa-osa]
+      - id: m03-vsan-ops
+        title: vSAN Policies and Operations
+        summary: Policies, fault domains, space efficiency and health.
+        lessons: [vsan-storage-policies, vsan-resilience-fault-domains, vsan-space-efficiency-capacity, vsan-health-troubleshooting]
+
+  - id: p04-networking
+    number: 4
+    title: Networking
+    summary: L2/L3, VLANs, MTU, DNS, NTP and vSphere distributed switching, all tied back to VCF.
+    modules:
+      - id: m04-net-fundamentals
+        title: Network Fundamentals for VCF
+        summary: The physical and service dependencies VCF cannot live without.
+        lessons: [network-fundamentals-for-vcf, dns-ntp-dependencies]
+      - id: m04-vsphere-networking
+        title: vSphere Networking
+        summary: Distributed switches and VCF network design.
+        lessons: [vsphere-distributed-switch, vcf-network-design]
+
+  - id: p05-nsx
+    number: 5
+    title: NSX
+    summary: NSX planes, transport nodes, segments, edges, Tier-0/Tier-1 routing, VPCs and firewalling.
+    modules:
+      - id: m05-nsx-fabric
+        title: NSX Fabric
+        summary: Management, control and data planes and how hosts join the fabric.
+        lessons: [nsx-architecture, nsx-transport-nodes-teps, nsx-segments-overlay]
+      - id: m05-nsx-routing
+        title: Routing and Edges
+        summary: How traffic leaves and enters the virtual network.
+        lessons: [nsx-edge-nodes-clusters, nsx-tier0-tier1-routing, nsx-vpcs-and-vcf-networking]
+      - id: m05-nsx-security
+        title: NSX Security
+        summary: Distributed firewall, gateway firewall and NAT.
+        lessons: [nsx-security-dfw-gateway-firewall]
+
+  - id: p06-vcf-architecture
+    number: 6
+    title: VCF Architecture
+    summary: Fleet, instances, domains and the management components that hold VCF together.
+    modules:
+      - id: m06-structure
+        title: Structure of VCF
+        summary: From fleet down to cluster.
+        lessons: [vcf9-architecture-overview, management-domain, workload-domains-architecture]
+      - id: m06-management
+        title: Management and Communication
+        summary: Fleet management, component communication and deployment models.
+        lessons: [vcf-operations-fleet-management, component-communication, vcf-deployment-models]
+
+  - id: p07-deployment
+    number: 7
+    title: VCF Deployment
+    summary: Planning, prerequisites, the VCF Installer workflow, validation and common failures.
+    modules:
+      - id: m07-deploy
+        title: Deploying VCF
+        summary: From planning workbook to a running management domain.
+        lessons: [deployment-planning-prereqs, vcf-installer-workflow, deployment-validation-failures, import-existing-vcenter]
+
+  - id: p08-workload-domains
+    number: 8
+    title: Workload Domains
+    summary: Creating, growing and operating workload domains, their storage and Supervisor.
+    modules:
+      - id: m08-wld
+        title: Workload Domain Operations
+        summary: Host commissioning, domain creation, storage and expansion.
+        lessons: [host-commissioning-wld-creation, workload-domain-storage, cluster-host-expansion, supervisor-in-workload-domain]
+
+  - id: p09-lifecycle
+    number: 9
+    title: Lifecycle Management
+    summary: Planning, sequencing, prechecks, remediation and recovery of VCF upgrades.
+    modules:
+      - id: m09-lcm
+        title: Lifecycle Management
+        summary: Keeping a fleet patched and upgraded safely.
+        lessons: [lifecycle-concepts, lifecycle-upgrade-workflow, vlcm-images-host-remediation, lifecycle-failures-recovery]
+
+  - id: p10-operations
+    number: 10
+    title: VCF Operations
+    summary: Monitoring, metrics, dashboards, alerts, logs, network and storage operations, compliance.
+    modules:
+      - id: m10-ops-core
+        title: VCF Operations Core
+        summary: Architecture, metrics, views, reports, dashboards and alerts.
+        lessons: [vcf-operations-architecture, metrics-properties-views-reports, dashboards-alerts-policies]
+      - id: m10-ops-extended
+        title: Logs, Networks and Compliance
+        summary: Log events, network operations, health, compliance and drift.
+        lessons: [vcf-operations-logs-network-ops, compliance-drift-app-monitoring]
+
+  - id: p11-automation
+    number: 11
+    title: Automation and APIs
+    summary: VCF Automation for self-service private cloud, plus REST APIs and PowerCLI.
+    modules:
+      - id: m11-vcfa
+        title: VCF Automation
+        summary: Regions, organizations, networking, content and governance.
+        lessons: [vcf-automation-architecture, vcf-automation-tenancy-regions, vcf-automation-org-admin]
+      - id: m11-apis
+        title: APIs and Scripting
+        summary: Automating VCF through its APIs and PowerCLI.
+        lessons: [vcf-apis-powercli]
+
+  - id: p12-security
+    number: 12
+    title: Identity, Security and Certificates
+    summary: SSO, RBAC, certificates, passwords and licensing across the fleet.
+    modules:
+      - id: m12-identity
+        title: Identity and Access
+        summary: VCF single sign-on and role-based access control.
+        lessons: [vcf-identity-sso-rbac]
+      - id: m12-trust
+        title: Certificates, Passwords and Licenses
+        summary: Trust and credential lifecycle.
+        lessons: [certificate-management, password-management, license-management]
+
+  - id: p13-troubleshooting
+    number: 13
+    title: Troubleshooting
+    summary: Observe, Scope, Hypothesize, Validate, Remediate, Verify across every VCF layer.
+    modules:
+      - id: m13-method
+        title: Troubleshooting Practice
+        summary: A repeatable diagnostic method and where the evidence lives.
+        lessons: [troubleshooting-methodology, troubleshooting-core-dependencies, troubleshooting-vcf-services, troubleshooting-network-nsx-vsan]
+
+  - id: p14-design
+    number: 14
+    title: Architecture and Design
+    summary: Availability, failure domains, sizing, network and security design trade-offs.
+    modules:
+      - id: m14-design
+        title: Design Decisions
+        summary: Turning requirements into a defensible VCF design.
+        lessons: [design-availability-failure-domains, design-sizing-scalability, design-network-security-tradeoffs]
+
+  - id: p15-certification
+    number: 15
+    title: Certification Preparation
+    summary: The 2V0-17.25 exam, objective map and final preparation strategy.
+    modules:
+      - id: m15-exam
+        title: Exam Strategy
+        summary: How the exam works and how to prepare for it.
+        lessons: [exam-strategy-2v0-17-25]

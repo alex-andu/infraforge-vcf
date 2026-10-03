@@ -1,0 +1,46 @@
+id: d13-troubleshooting-framework
+title: The six-step troubleshooting framework and its evidence sources
+description: >
+  Six steps arranged as a loop. Observe (precise symptom, timestamps, exact error) leads to Scope (breadth, plane,
+  time), then Hypothesize (ranked causes using the dependency chain), then Validate (cheap discriminating tests),
+  then Remediate (smallest safe change), then Verify (re-test the original symptom). If verification fails, the loop
+  returns to Observe with the new evidence. Below the loop are the evidence sources used by the steps: VCF Health and
+  Diagnostics Findings in VCF Operations (observe and scope), the Troubleshooting Workbench (scope and validate),
+  component logs and VCF Operations for logs (validate), CLI tests such as nslookup, vmkping and esxcli (validate and
+  verify) and support bundles collected with sos or Log Assist (preserve evidence before remediation).
+width: 1000
+height: 560
+groups:
+  - { id: g-loop, x: 20, y: 20, w: 960, h: 320, label: "Method (repeat until verified)", kind: zone }
+  - { id: g-evidence, x: 20, y: 380, w: 960, h: 160, label: "Evidence sources", kind: ops }
+nodes:
+  - { id: observe, x: 60, y: 70, w: 200, h: 64, label: "1. Observe", sublabel: "exact symptom + time", kind: ops, info: "Write a precise symptom statement: exact error text, object/FQDN, first seen, frequency, what triggered it and what still works. Record timestamps in one time zone." }
+  - { id: scope, x: 400, y: 70, w: 200, h: 64, label: "2. Scope", sublabel: "breadth, plane, time", kind: ops, info: "Find the blast radius (VM, host, cluster, domain, instance, fleet), the plane (management, control, data) and correlation with changes or schedules. Many components failing at once points to shared dependencies." }
+  - { id: hypo, x: 740, y: 70, w: 200, h: 64, label: "3. Hypothesize", sublabel: "ranked causes", kind: ops, info: "List causes that explain exactly this pattern, ranked by likelihood and cheapness to test. Walk the dependency chain DNS, NTP, certificates, identity, services, workflow." }
+  - { id: validate, x: 740, y: 240, w: 200, h: 64, label: "4. Validate", sublabel: "discriminating tests", kind: ops, info: "Run tests that eliminate hypotheses: reverse lookup from the complaining component, time comparison, openssl certificate check, vmkping -d at full size, packet capture of UDP 902. Read the first error in the owning log." }
+  - { id: remediate, x: 400, y: 240, w: 200, h: 64, label: "5. Remediate", sublabel: "smallest safe change", kind: security, info: "Collect a support bundle first. Then fix the dependency (DNS record, NTP source), the configuration (MTU, VLAN), or restart a single failed service. Change one thing at a time." }
+  - { id: verify, x: 60, y: 240, w: 200, h: 64, label: "6. Verify", sublabel: "re-test original path", kind: ops, info: "Repeat the original action through the original path (for example retry commissioning in the vCenter wizard), check that health is green and no new alarms appeared, then write symptom, scope, root cause, fix and prevention." }
+  - { id: health, x: 40, y: 430, w: 170, h: 64, label: "VCF Health", sublabel: "Findings", kind: ops, component: vcf-operations, info: "VCF Operations diagnostics: VCF Health cards (certificates, NTP and DNS, vCenter, VM operations, vMotion, snapshots) and Diagnostics Findings that match known issues." }
+  - { id: workbench, x: 230, y: 430, w: 170, h: 64, label: "Troubleshooting", sublabel: "Workbench", kind: ops, component: vcf-operations, info: "VCF Operations Infrastructure Operations > Troubleshooting Workbench: investigate an object or alert with adjustable scope and time range." }
+  - { id: logs, x: 420, y: 430, w: 170, h: 64, label: "Logs", sublabel: "component + central", kind: ops, component: vcf-operations-logs, info: "Component logs (ESX, vCenter, SDDC Manager, NSX) and VCF Operations for logs to correlate events across components by time." }
+  - { id: cli, x: 610, y: 430, w: 170, h: 64, label: "CLI tests", sublabel: "nslookup, vmkping, esxcli", kind: ops, info: "Fast, targeted proofs run from the component that reports the error." }
+  - { id: bundles, x: 800, y: 430, w: 160, h: 64, label: "Support bundles", sublabel: "sos, Log Assist", kind: ops, component: sddc-manager, info: "sos utility on SDDC Manager or VCF Installer and Log Assist in VCF Operations preserve evidence before you change anything and speed up support cases." }
+edges:
+  - { from: observe, to: scope, label: "symptom", kind: control }
+  - { from: scope, to: hypo, label: "blast radius", kind: control }
+  - { from: hypo, to: validate, label: "ranked list", kind: control }
+  - { from: validate, to: remediate, label: "confirmed cause", kind: control }
+  - { from: remediate, to: verify, label: "one change", kind: control }
+  - { from: verify, to: observe, label: "not fixed: loop", kind: control, dashed: true }
+  - { from: health, to: scope, kind: dependency, dashed: true }
+  - { from: workbench, to: validate, kind: dependency, dashed: true }
+  - { from: logs, to: validate, kind: dependency, dashed: true }
+  - { from: cli, to: verify, kind: dependency, dashed: true }
+  - { from: bundles, to: remediate, label: "collect first", kind: dependency, dashed: true }
+steps:
+  - { title: "Observe", text: "Start with a precise, timestamped symptom statement. Do not touch anything yet.", highlight: [observe, health] }
+  - { title: "Scope", text: "Find the lowest unhealthy layer and the blast radius. VCF Health and the Troubleshooting Workbench help here.", highlight: [scope, health, workbench] }
+  - { title: "Hypothesize", text: "Rank causes; check shared dependencies first when many components fail at once.", highlight: [hypo] }
+  - { title: "Validate", text: "Run the cheapest test that distinguishes your hypotheses; read the first error in the owning log.", highlight: [validate, logs, cli, workbench] }
+  - { title: "Remediate", text: "Collect a bundle, then apply the smallest safe change.", highlight: [remediate, bundles] }
+  - { title: "Verify", text: "Re-test the original symptom through the original path; loop back if it is not fixed.", highlight: [verify, cli, observe] }

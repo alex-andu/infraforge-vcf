@@ -1,0 +1,293 @@
+terms:
+  - id: ops-primary-node
+    term: VCF Operations primary node
+    definition: The first node of the VCF Operations analytics cluster. It coordinates the cluster and serves the UI and API; in the Simple model it is the only analytics node.
+    whyItMatters: In the Simple model its failure stops monitoring, alerting and fleet management pages until vSphere HA restarts it.
+    version: vcf9
+    related: [ops-replica-node, ops-data-node, vcf-operations]
+    lessons: [vcf-operations-architecture]
+  - id: ops-replica-node
+    term: VCF Operations replica node
+    definition: A standby copy of the primary node, present when high availability is enabled (High Availability model). It takes over if the primary fails.
+    whyItMatters: Gives availability, not capacity - a common exam distractor.
+    version: vcf9
+    related: [ops-primary-node, ops-data-node]
+    lessons: [vcf-operations-architecture]
+  - id: ops-data-node
+    term: VCF Operations data node
+    definition: An additional analytics node that adds processing and storage capacity to the VCF Operations cluster. The HA model includes one; more are added to scale out. All nodes must be the same size.
+    whyItMatters: Scale-out is done with data nodes; mixing node sizes is not supported.
+    version: vcf9
+    related: [ops-primary-node, ops-replica-node]
+    lessons: [vcf-operations-architecture]
+  - id: collector-group
+    term: Collector group
+    definition: A set of VCF Operations collectors (cloud proxies) that share adapter instances so collection can continue if one collector fails.
+    whyItMatters: In the HA model the collector must be expanded to a collector group manually; without it a collector failure stops its adapters.
+    version: vcf9
+    related: [vcf-operations-collector, adapter-instance]
+    lessons: [vcf-operations-architecture]
+  - id: adapter-instance
+    term: Adapter instance (integration)
+    definition: A configured connection from VCF Operations to a data source such as vCenter, NSX or SDDC Manager. It runs on a collector, stores credentials, trusts the source certificate and collects metrics, properties and events.
+    whyItMatters: Most "metrics stopped for some objects" problems are an adapter problem - credentials, certificate trust or its collector.
+    version: vcf9
+    related: [vcf-operations-collector, metric, property]
+    lessons: [vcf-operations-architecture, metrics-properties-views-reports]
+    labs: [lab-vcf-ops-dashboards-alerts]
+  - id: metric
+    term: Metric
+    definition: A numeric measurement of an object collected every collection cycle and stored as a time series, for example CPU usage or datastore latency.
+    whyItMatters: Metrics drive performance analysis, trends, forecasts, capacity and threshold symptoms. Differentiating them from properties is an exam item.
+    version: general
+    related: [property, super-metric]
+    lessons: [metrics-properties-views-reports]
+  - id: property
+    term: Property
+    definition: An attribute that describes an object, such as number of vCPUs, guest OS, ESX build or power state. Properties change rarely and are used in symptom definitions, views and reports.
+    whyItMatters: Configuration and inventory questions (compliance, versions) are answered with properties, not metrics.
+    version: general
+    related: [metric, symptom-definition]
+    lessons: [metrics-properties-views-reports]
+  - id: super-metric
+    term: Super metric
+    definition: A custom metric defined by a formula over one or more objects' metrics, for example the maximum CPU ready across all VMs in a cluster. It is calculated only where a policy activates it.
+    whyItMatters: Lets you alert and report on derived values without external tooling.
+    version: vcf9
+    related: [metric, ops-policy]
+    lessons: [metrics-properties-views-reports]
+  - id: ops-view
+    term: View (VCF Operations)
+    definition: A reusable presentation of metrics and properties for a subject object type. Types are List, Summary, Trend, Distribution, Text and Image. Views appear in dashboards (View widget), reports and object pages.
+    whyItMatters: Custom views are the building block of custom reports - an exam item.
+    version: vcf9
+    related: [report-template, ops-dashboard]
+    lessons: [metrics-properties-views-reports]
+    labs: [lab-vcf-ops-dashboards-alerts]
+  - id: report-template
+    term: Report template
+    definition: A definition of a report made of views and dashboards with optional cover page, table of contents and footer; it can be run or scheduled and outputs PDF or CSV.
+    whyItMatters: Scheduled reports deliver evidence to auditors and managers without console access.
+    version: vcf9
+    related: [ops-view]
+    lessons: [metrics-properties-views-reports]
+    labs: [lab-vcf-ops-dashboards-alerts]
+  - id: ops-dashboard
+    term: Dashboard (VCF Operations)
+    definition: A canvas of widgets and views that shows the performance and state of objects. Dashboards can be shared with user groups (optionally editable) or by URL, exported as JSON and imported as ZIP, PAK or JSON.
+    whyItMatters: Creating and sharing dashboards is an exam item; sharing a dashboard does not grant object permissions.
+    version: vcf9
+    related: [ops-view]
+    lessons: [dashboards-alerts-policies]
+    labs: [lab-vcf-ops-dashboards-alerts]
+  - id: symptom-definition
+    term: Symptom definition
+    definition: A condition that indicates a problem, evaluated against collected data. Types are metric/property, message event, fault and log based (new in 9.0).
+    whyItMatters: Alerts are only as good as their symptoms; use a series of symptoms (Warning then Critical) to show escalating concern.
+    version: vcf9
+    related: [alert-definition, metric, property]
+    lessons: [dashboards-alerts-policies]
+  - id: alert-definition
+    term: Alert definition
+    definition: Combination of symptom sets (all or any) and recommendations for a base object type, with impact (Health, Risk or Efficiency), criticality and wait/cancel cycles.
+    whyItMatters: Configuring alerting is an exam item; definitions only fire where the effective policy activates them.
+    version: vcf9
+    related: [symptom-definition, recommendation, ops-policy]
+    lessons: [dashboards-alerts-policies]
+    labs: [lab-vcf-ops-dashboards-alerts]
+  - id: recommendation
+    term: Recommendation
+    definition: Remediation guidance attached to an alert definition and shown with the alert. A recommendation can be linked to an action that performs the fix.
+    whyItMatters: Recommendations are text; actions execute changes - do not confuse them.
+    version: vcf9
+    related: [alert-definition]
+    lessons: [dashboards-alerts-policies]
+  - id: notification-rule
+    term: Notification rule
+    definition: A filter that selects alerts (by object, criticality, definition and more) and sends them through an outbound plugin such as email, using payload templates.
+    whyItMatters: Without a notification nobody is told about an alert outside the console.
+    version: vcf9
+    related: [alert-definition]
+    lessons: [dashboards-alerts-policies]
+    labs: [lab-vcf-ops-dashboards-alerts]
+  - id: ops-policy
+    term: Policy (VCF Operations)
+    definition: A set of rules VCF Operations uses to analyze and display information about objects - which metrics and properties are collected, which alerts and symptoms are active, capacity, compliance and workload automation settings. Policies inherit from a base policy and are assigned to objects and custom groups.
+    whyItMatters: The highest-priority policy wins, unless a lower-priority policy is assigned directly to the object.
+    version: vcf9
+    related: [custom-group, alert-definition, compliance-benchmark]
+    lessons: [dashboards-alerts-policies, compliance-drift-app-monitoring]
+    labs: [lab-vcf-ops-dashboards-alerts]
+  - id: custom-group
+    term: Custom group
+    definition: A group of objects defined statically or by membership criteria, used to assign policies, scope dashboards and organise monitoring.
+    whyItMatters: The usual way to apply different thresholds to production and test.
+    version: vcf9
+    related: [ops-policy]
+    lessons: [dashboards-alerts-policies]
+  - id: vcf-ops-for-networks
+    term: VCF Operations for networks
+    expansion: VCF Network Operations
+    definition: Optional Day-2 component providing network visibility, flow analytics, network maps, micro-segmentation planning and firewall rule recommendations. It has platform node(s) and a collector node.
+    whyItMatters: The Simple model needs an Extra Large platform node with 100% CPU and RAM reservation; the 3-node platform cluster is for performance, not high availability.
+    version: vcf9
+    related: [vcf-operations, vcf-operations-logs]
+    lessons: [vcf-operations-logs-network-ops, vcf-operations-architecture]
+    labs: [lab-vcf-ops-logs-network]
+  - id: storage-operations
+    term: Storage Operations
+    definition: Centralized VCF Operations page for vSAN and non-vSAN storage showing vSAN cluster health score, IOPS, latency, throughput, alerts, usage and vSAN performance diagnostics (Troubleshooting or Benchmarking and Optimizing modes).
+    whyItMatters: The exam item "monitor vSAN storage using VCF Storage Operations" maps here.
+    version: vcf9
+    related: [vcf-health]
+    lessons: [vcf-operations-logs-network-ops]
+    labs: [lab-vcf-ops-logs-network]
+  - id: compliance-benchmark
+    term: Compliance benchmark
+    definition: A set of rules objects are measured against in VCF Operations - VMware SDDC/VCF configuration (hardening) standards, regulatory benchmarks or custom benchmarks built from alert definitions - producing a compliance score.
+    whyItMatters: Benchmarks are activated through policies; objects in a policy without the benchmark show no compliance results.
+    version: vcf9
+    related: [ops-policy, configuration-drift]
+    lessons: [compliance-drift-app-monitoring]
+    labs: [lab-vcf-ops-logs-network]
+  - id: configuration-drift
+    term: Configuration drift
+    definition: Difference between a vCenter's current configuration and a configuration template captured from a source vCenter. Managed under Fleet Management > Configuration Drifts in VCF Operations.
+    whyItMatters: Requires vCenter adapters on a cloud proxy (collector); on the Default Collector Group vCenters do not appear as sources (KB 438361).
+    version: vcf9
+    related: [compliance-benchmark, vcf-operations-collector]
+    lessons: [compliance-drift-app-monitoring]
+    labs: [lab-vcf-ops-logs-network]
+  - id: telegraf-agent
+    term: Telegraf agent
+    definition: Open-source metrics agent used by VCF Operations for OS and application service monitoring, either product-managed (deployed and managed by VCF Operations) or open source (configured by you to post metrics to the cloud proxy).
+    whyItMatters: Application monitoring data travels through the cloud proxy; no proxy, no application metrics.
+    version: vcf9
+    related: [vcf-operations-collector]
+    lessons: [compliance-drift-app-monitoring]
+  - id: vcfa-region
+    term: Region (VCF Automation)
+    definition: A provider construct that combines compute, memory and networking from one or more Supervisors (from one or more vCenter instances) that share the same NSX instance and identical storage classes.
+    whyItMatters: Region name and NSX Manager cannot be changed later; non-homogeneous Supervisors are not supported.
+    version: vcf9
+    related: [region-quota, vcfa-organization]
+    lessons: [vcf-automation-tenancy-regions]
+    labs: [lab-vcfa-organization-setup]
+  - id: vcfa-organization
+    term: Organization (VCF Automation)
+    definition: A top-level tenant entity grouping resources, users, policies, IaaS services and catalog entities, with a secure boundary from other organizations. Types are All Apps, VM Apps and Provider Consumption.
+    whyItMatters: The unit of multi-tenancy; deactivating it logs out its users immediately.
+    version: vcf9
+    related: [all-apps-organization, vm-apps-organization, region-quota]
+    lessons: [vcf-automation-tenancy-regions, vcf-automation-architecture]
+    labs: [lab-vcfa-organization-setup]
+  - id: all-apps-organization
+    term: Organization for All Apps
+    definition: The primary VCF Automation multi-tenancy model, built on vSphere Supervisor, with region quotas, projects, namespaces, VPC networking, VMs and VKS clusters.
+    whyItMatters: Requires a Supervisor-enabled workload domain.
+    version: vcf9
+    related: [vcfa-organization, vm-apps-organization, vcfa-namespace]
+    lessons: [vcf-automation-architecture, vcf-automation-tenancy-regions]
+    labs: [lab-vcfa-organization-setup]
+  - id: vm-apps-organization
+    term: Organization for VM Apps
+    definition: A VCF Automation organization that provisions VM-based applications on vSphere clusters without requiring a Supervisor, shared infrastructure or tenancy isolation.
+    whyItMatters: The answer when a team needs VM self-service on clusters without Supervisor.
+    version: vcf9
+    related: [all-apps-organization, vcfa-organization]
+    lessons: [vcf-automation-architecture, vcf-automation-tenancy-regions]
+  - id: provider-gateway
+    term: Provider gateway
+    definition: A VCF Automation provider object that uses an NSX Tier-0 or Tier-0 VRF gateway and associates it with IP addresses from IP spaces that can be advertised from it.
+    whyItMatters: Organizations reach external networks through the provider gateway bound in their regional networking.
+    version: vcf9
+    related: [ip-space, tier-0]
+    lessons: [vcf-automation-tenancy-regions]
+    labs: [lab-vcfa-organization-setup]
+  - id: ip-space
+    term: IP space
+    definition: A VCF Automation construct for structured allocation of external (public) IP addresses to organizations.
+    whyItMatters: Public VPC subnets draw from it; the range must be routed on the physical network (BGP or static route).
+    version: vcf9
+    related: [provider-gateway]
+    lessons: [vcf-automation-tenancy-regions]
+    labs: [lab-vcfa-organization-setup]
+  - id: region-quota
+    term: Region quota
+    definition: The compute and storage quota an organization receives in a region. Applies only to organizations for All Apps.
+    whyItMatters: Namespace limits inside the organization cannot exceed it.
+    version: vcf9
+    related: [vcfa-region, vcfa-namespace]
+    lessons: [vcf-automation-tenancy-regions, vcf-automation-org-admin]
+    labs: [lab-vcfa-organization-setup]
+  - id: provider-content-library
+    term: Provider content library
+    definition: A content library created by the provider in VCF Automation and shared with organizations, read-only to their users.
+    whyItMatters: Distributes golden images to every tenant without letting tenants change them.
+    version: vcf9
+    related: [vcfa-organization]
+    lessons: [vcf-automation-tenancy-regions]
+    labs: [lab-vcfa-organization-setup]
+  - id: vcfa-project
+    term: Project (VCF Automation)
+    definition: A logical grouping of users and the infrastructure assigned to them inside an organization; only project members can access its deployments. Every organization has a default project.
+    whyItMatters: Separate projects give strict team isolation.
+    version: vcf9
+    related: [vcfa-namespace, vcfa-organization]
+    lessons: [vcf-automation-org-admin]
+    labs: [lab-vcfa-organization-setup]
+  - id: vcfa-namespace
+    term: Namespace (VCF Automation)
+    definition: An envelope of resources inside a project where VMs, VKS clusters and volumes are deployed with CPU, memory and storage limits; backed by a Supervisor namespace.
+    whyItMatters: Total namespace limits cannot exceed the organization quota.
+    version: vcf9
+    related: [namespace-class, vcfa-project, region-quota]
+    lessons: [vcf-automation-org-admin]
+    labs: [lab-vcfa-organization-setup]
+  - id: namespace-class
+    term: Namespace class
+    definition: A template maintained by org admins that defines resource limits, VM classes, storage classes and content libraries for new namespaces.
+    whyItMatters: Makes namespaces consistent and can be used as a policy criterion.
+    version: vcf9
+    related: [vcfa-namespace]
+    lessons: [vcf-automation-org-admin]
+  - id: event-subscription
+    term: Event subscription
+    definition: A project-specific rule in VCF Automation that runs a VCF Operations Orchestrator workflow when an event occurs. Blocking subscriptions run synchronously by priority (0 highest) and can have a recovery runnable; non-blocking run asynchronously.
+    whyItMatters: The main extensibility mechanism for automating business processes around provisioning.
+    version: vcf9
+    related: [vcfa-governance-policy]
+    lessons: [vcf-automation-org-admin, vcf-automation-architecture]
+  - id: vcfa-governance-policy
+    term: Governance policy (VCF Automation)
+    definition: Organization- or project-scoped policies that govern requests and resources - approval, day 2 action and lease policies for catalog requests, and IaaS resource policies (CEL policy-as-code) for IaaS services.
+    whyItMatters: Exam item "create and manage organizational governance policies".
+    version: vcf9
+    related: [event-subscription, vcfa-project]
+    lessons: [vcf-automation-org-admin]
+    labs: [lab-vcfa-organization-setup]
+  - id: vcf-powercli
+    term: VCF PowerCLI
+    expansion: VCF.PowerCLI module
+    definition: The PowerShell module collection for VCF 9 (renamed from VMware.PowerCLI), covering vSphere, vSAN, NSX, SDDC Manager and more, with high-level cmdlets and generated SDK cmdlets (Initialize-/Invoke-).
+    whyItMatters: Connect-VcfSddcManagerServer and the SDDC Manager cmdlets exist only in VCF.PowerCLI.
+    version: vcf9
+    related: [sddc-manager-api-token, vcenter-api-session]
+    lessons: [vcf-apis-powercli]
+    labs: [lab-vcf-api-powercli]
+  - id: sddc-manager-api-token
+    term: SDDC Manager API token
+    definition: Bearer access token obtained with POST /v1/tokens (valid 1 hour) together with a refresh token (valid 24 hours) used with PATCH /v1/tokens/access-token/refresh.
+    whyItMatters: 401 means missing/expired access token; 404 on refresh means the refresh token expired.
+    version: vcf9
+    related: [vcenter-api-session, vcf-powercli]
+    lessons: [vcf-apis-powercli]
+    labs: [lab-vcf-api-powercli]
+  - id: vcenter-api-session
+    term: vCenter API session
+    definition: Session created with POST /api/session using basic credentials; the returned ID is sent in the vmware-api-session-id header on later vCenter REST calls and ended with DELETE /api/session.
+    whyItMatters: Sending it as a Bearer token is a common mistake.
+    version: general
+    related: [sddc-manager-api-token]
+    lessons: [vcf-apis-powercli]
+    labs: [lab-vcf-api-powercli]

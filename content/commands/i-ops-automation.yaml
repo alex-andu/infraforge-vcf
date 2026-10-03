@@ -1,0 +1,224 @@
+commands:
+  - id: powercli-install-vcf-powercli
+    technology: powercli
+    title: Install the VCF.PowerCLI module
+    purpose: Install VCF PowerCLI 9.x (the renamed PowerCLI module that adds SDDC Manager and NSX VPC cmdlets) from the PowerShell Gallery.
+    syntax: Install-Module -Name VCF.PowerCLI [-Scope CurrentUser] [-RequiredVersion <version>]
+    example: |
+      Install-Module -Name VCF.PowerCLI -Scope CurrentUser
+      Get-Module -ListAvailable VCF.* | Select-Object Name, Version
+    output: |
+      Name                         Version
+      ----                         -------
+      VCF.PowerCLI                 9.0.0.24798382
+      ...
+    mistake: Leaving the old VMware.PowerCLI installed side by side; Broadcom recommends uninstalling VMware.PowerCLI and installing VCF.PowerCLI.
+    lesson: vcf-apis-powercli
+    version: vcf9
+    source:
+      title: "VMware blog - Introducing VCF PowerCLI 9.0"
+      url: https://blogs.vmware.com/cloud-foundation/2025/06/24/introducing-vcf-powercli-9-0/
+  - id: powercli-invalid-certificate-action
+    technology: powercli
+    title: Control how PowerCLI handles untrusted certificates
+    purpose: In a lab with self-signed certificates, allow connections (or warn) instead of failing; in production trust the CA instead.
+    syntax: Set-PowerCLIConfiguration -InvalidCertificateAction <Fail|Warn|Ignore|Prompt|Unset> -Scope <Session|User|AllUsers>
+    example: Set-PowerCLIConfiguration -InvalidCertificateAction Ignore -Scope User -Confirm:$false
+    output: |
+      Scope    ProxyPolicy     DefaultVIServerMode InvalidCertificateAction
+      -----    -----------     ------------------- ------------------------
+      User                                         Ignore
+    mistake: Setting Ignore in production, which hides real certificate problems (for example after a certificate replacement).
+    lesson: vcf-apis-powercli
+    version: general
+    source:
+      title: "VCF 9.0 - VMware Cloud Foundation PowerCLI"
+      url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/administration-sdks-cli-and-tools/introduction-to-vmware-vsphere-powercli.html
+  - id: powercli-connect-viserver
+    technology: powercli
+    title: Connect PowerCLI to vCenter
+    purpose: Open a PowerCLI session to a vCenter (or ESX host) so vSphere cmdlets such as Get-VM work.
+    syntax: Connect-VIServer -Server <fqdn> [-User <user>] [-Password <pw>] [-Credential <PSCredential>]
+    example: |
+      $cred = Get-Credential
+      Connect-VIServer -Server vc-mgmt.lab.local -Credential $cred
+      Get-VM | Select-Object Name, PowerState, NumCpu, MemoryGB
+    output: |
+      Name                           Port  User
+      ----                           ----  ----
+      vc-mgmt.lab.local              443   VSPHERE.LOCAL\Administrator
+
+      Name           PowerState NumCpu MemoryGB
+      ----           ---------- ------ --------
+      sddc-manager   PoweredOn       4       16
+    mistake: Typing passwords into scripts; use Get-Credential or a secret store.
+    lesson: vcf-apis-powercli
+    version: general
+    source:
+      title: "VCF 9.0 - VMware Cloud Foundation PowerCLI"
+      url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/administration-sdks-cli-and-tools/introduction-to-vmware-vsphere-powercli.html
+  - id: powercli-connect-sddc-manager
+    technology: powercli
+    title: Connect PowerCLI to SDDC Manager and list domains
+    purpose: Use the SDDC Manager module of VCF.PowerCLI 9.0 to query workload domains, clusters, hosts and vCenter instances.
+    syntax: Connect-VcfSddcManagerServer -Server <sddc-manager-fqdn> [-User <user>] [-Password <pw>]
+    example: |
+      Connect-VcfSddcManagerServer -Server sddc-manager.lab.local -User administrator@vsphere.local -Password '<password>'
+      Get-SddcDomain
+      Get-SddcHost
+    output: |
+      (domain objects: name, type MANAGEMENT/VI, status ...)
+    mistake: Running it with the old VMware.PowerCLI module, where the cmdlet does not exist.
+    lesson: vcf-apis-powercli
+    version: vcf9
+    source:
+      title: "VMware blog - Introducing VCF PowerCLI 9.0"
+      url: https://blogs.vmware.com/cloud-foundation/2025/06/24/introducing-vcf-powercli-9-0/
+  - id: powercli-get-advancedsetting
+    technology: powercli
+    title: Read an ESX advanced setting on every host
+    purpose: Check a hardening-related advanced setting before or after remediating a compliance finding.
+    syntax: Get-VMHost | Get-AdvancedSetting -Name <setting>
+    example: Get-VMHost | Get-AdvancedSetting -Name 'UserVars.SuppressShellWarning' | Select-Object Entity, Name, Value
+    output: |
+      Entity                 Name                          Value
+      ------                 ----                          -----
+      esx01.lab.local        UserVars.SuppressShellWarning     0
+      esx02.lab.local        UserVars.SuppressShellWarning     1
+    mistake: Changing the value with Set-AdvancedSetting on all hosts before checking which benchmark rule you are fixing.
+    lesson: compliance-drift-app-monitoring
+    version: general
+  - id: api-sddc-manager-token
+    technology: api
+    title: Get an SDDC Manager API token
+    purpose: Obtain an access token (1 hour) and refresh token (24 hours) for SDDC Manager REST calls.
+    syntax: "POST https://<sddc-manager>/v1/tokens  body: {\"username\": \"...\", \"password\": \"...\"}"
+    example: |
+      curl -sk -X POST https://sddc-manager.lab.local/v1/tokens \
+        -H 'Content-Type: application/json' \
+        -d '{"username":"administrator@vsphere.local","password":"<password>"}'
+    output: |
+      {"accessToken":"eyJhbGciOiJIUzI1NiJ9...","refreshToken":{"id":"4a6d0c55-..."}}
+    mistake: Re-authenticating in a loop instead of using PATCH /v1/tokens/access-token/refresh with the refresh token.
+    lesson: vcf-apis-powercli
+    version: vcf9
+    source:
+      title: SDDC Manager API 9.0
+      url: https://developer.broadcom.com/xapis/sddc-manager-api/9.0/
+  - id: api-sddc-manager-domains
+    technology: api
+    title: List workload domains through the SDDC Manager API
+    purpose: Inventory domains (management and VI) with their IDs and status.
+    syntax: "GET https://<sddc-manager>/v1/domains  header: Authorization: Bearer <accessToken>"
+    example: |
+      curl -sk https://sddc-manager.lab.local/v1/domains \
+        -H "Authorization: Bearer $TOKEN" -H 'Accept: application/json' | jq '.elements[] | {name, type, status}'
+    output: |
+      {"name":"mgmt-domain","type":"MANAGEMENT","status":"ACTIVE"}
+      {"name":"wld01","type":"VI","status":"ACTIVE"}
+    mistake: Getting 401 after an hour and assuming the password changed - the access token simply expired.
+    lesson: vcf-apis-powercli
+    version: vcf9
+    source:
+      title: SDDC Manager API 9.0
+      url: https://developer.broadcom.com/xapis/sddc-manager-api/9.0/
+  - id: api-sddc-manager-token-refresh
+    technology: api
+    title: Refresh an SDDC Manager access token
+    purpose: Get a new access token while the refresh token (24 hours) is still valid.
+    syntax: PATCH https://<sddc-manager>/v1/tokens/access-token/refresh  (body = refresh token id)
+    example: |
+      curl -sk -X PATCH https://sddc-manager.lab.local/v1/tokens/access-token/refresh \
+        -H 'Content-Type: application/json' -d '"4a6d0c55-..."'
+    output: |
+      "eyJhbGciOiJIUzI1NiJ9...(new access token)"
+    mistake: A 404 here means the refresh token is expired or invalid - request a new pair with POST /v1/tokens.
+    lesson: vcf-apis-powercli
+    version: vcf9
+    source:
+      title: SDDC Manager API 9.0
+      url: https://developer.broadcom.com/xapis/sddc-manager-api/9.0/
+  - id: api-vcenter-session
+    technology: api
+    title: Create a vCenter REST API session
+    purpose: Authenticate to the vCenter REST API and get the session ID used by later calls.
+    syntax: POST https://<vcenter>/api/session  (HTTP basic auth)
+    example: |
+      SID=$(curl -sk -X POST -u 'administrator@vsphere.local:<password>' https://vc-mgmt.lab.local/api/session | tr -d '"')
+      echo $SID
+    output: |
+      b7f3c1e0b0e3f9a1d2c4e5f6a7b8c9d0
+    mistake: 'Sending the session ID as "Authorization: Bearer"; vCenter expects the vmware-api-session-id header.'
+    lesson: vcf-apis-powercli
+    version: general
+  - id: api-vcenter-list-vms
+    technology: api
+    title: List VMs with the vCenter REST API
+    purpose: Return a summary of VMs (ID, name, power state, CPU, memory).
+    syntax: "GET https://<vcenter>/api/vcenter/vm  header: vmware-api-session-id: <session>"
+    example: |
+      curl -sk https://vc-mgmt.lab.local/api/vcenter/vm -H "vmware-api-session-id: $SID" | jq '.[] | {vm, name, power_state}'
+    output: |
+      {"vm":"vm-1012","name":"sddc-manager","power_state":"POWERED_ON"}
+      {"vm":"vm-1015","name":"ops01","power_state":"POWERED_ON"}
+    mistake: Using the legacy /rest/vcenter/vm path and session header from older releases interchangeably with /api; stick to /api in current versions.
+    lesson: vcf-apis-powercli
+    version: general
+  - id: api-nsx-cluster-status
+    technology: api
+    title: Check NSX Manager cluster status via API
+    purpose: Read the health of the NSX Manager cluster (management and control planes).
+    syntax: GET https://<nsx-vip>/api/v1/cluster/status  (basic auth)
+    example: curl -sk -u 'admin:<password>' https://nsx-mgmt.lab.local/api/v1/cluster/status | jq '.mgmt_cluster_status.status, .control_cluster_status.status'
+    output: |
+      "STABLE"
+      "STABLE"
+    mistake: Calling one manager node's IP instead of the cluster VIP/FQDN, then misreading a single-node problem as a cluster one.
+    lesson: vcf-apis-powercli
+    version: general
+  - id: api-nsx-policy-segments
+    technology: api
+    title: List NSX segments with the Policy API
+    purpose: Read the desired-state segment configuration that the NSX UI uses.
+    syntax: GET https://<nsx-vip>/policy/api/v1/infra/segments  (basic auth)
+    example: curl -sk -u 'admin:<password>' https://nsx-mgmt.lab.local/policy/api/v1/infra/segments | jq '.results[] | {display_name, path}'
+    output: |
+      {"display_name":"seg-app01","path":"/infra/segments/seg-app01"}
+      {"display_name":"seg-web01","path":"/infra/segments/seg-web01"}
+    mistake: Configuring objects through the management API (/api/v1) when the Policy API is the intended desired-state interface.
+    lesson: vcf-apis-powercli
+    version: general
+  - id: api-vcf-ops-token
+    technology: api
+    title: Acquire a VCF Operations API token
+    purpose: Authenticate to the VCF Operations suite API for scripted queries (alerts, resources, adapters, licenses).
+    syntax: "POST https://<ops>/suite-api/api/auth/token/acquire  body: {\"username\",\"password\",\"authSource\"}"
+    example: |
+      curl -sk -X POST https://ops01.lab.local/suite-api/api/auth/token/acquire \
+        -H 'Content-Type: application/json' -H 'Accept: application/json' \
+        -d '{"username":"admin","password":"<password>","authSource":"local"}'
+      curl -sk https://ops01.lab.local/suite-api/api/deployment/licenses \
+        -H 'Accept: application/json' -H "Authorization: vRealizeOpsToken $OPSTOKEN"
+    output: |
+      {"token":"8f8b2c2e-...::4a1c...","validity":1767225600000,...}
+    mistake: Omitting authSource for directory accounts, or sending the token without the expected prefix.
+    lesson: vcf-apis-powercli
+    version: vcf9
+    source:
+      title: "Broadcom KB 447072 - REST API token acquire and license query"
+      url: https://knowledge.broadcom.com/external/article/447072/
+  - id: linux-openssl-check-cert
+    technology: linux
+    title: Inspect the certificate a server presents
+    purpose: When an adapter or script reports a certificate error, see which certificate (issuer, validity, fingerprint) the endpoint presents now.
+    syntax: openssl s_client -connect <host>:443 -servername <host> </dev/null | openssl x509 -noout -subject -issuer -dates -fingerprint -sha256
+    example: openssl s_client -connect vc-wld01.lab.local:443 -servername vc-wld01.lab.local </dev/null 2>/dev/null | openssl x509 -noout -subject -issuer -dates -fingerprint -sha256
+    output: |
+      subject=CN = vc-wld01.lab.local
+      issuer=CN = lab-issuing-ca
+      notBefore=Sep 28 08:12:00 2026 GMT
+      notAfter=Sep 28 08:12:00 2028 GMT
+      sha256 Fingerprint=4C:9E:...:A1
+    mistake: Comparing against an old thumbprint from memory; compare with what the adapter or script has stored.
+    lesson: vcf-operations-architecture
+    version: general

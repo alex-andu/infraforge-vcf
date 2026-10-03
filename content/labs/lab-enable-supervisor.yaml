@@ -1,0 +1,124 @@
+id: lab-enable-supervisor
+title: Activate a simplified vSphere Supervisor and grow it
+level: challenge
+complexity: 5
+minutes: 300
+version: vcf9
+technologies: [vSphere Supervisor, vSphere Client, VM Service, Foundation Load Balancer, kubectl, Supervisor Services, ESX 9 (nested)]
+topics: [supervisor, workload-domains, vcf-automation]
+lessons: [supervisor-in-workload-domain, host-commissioning-wld-creation]
+objectives:
+  - Prepare the prerequisites for a Supervisor on the wld01 cluster (storage policy, management/workload network, IPs, DNS/NTP).
+  - Activate a Supervisor with the simplified deployment flow (single control plane VM, one network, VM Service only).
+  - Create a vSphere Namespace and deploy a VM through VM Service with kubectl.
+  - Stretch goal - add a load balancer, install one Supervisor Service, and explain how to scale the control plane to three VMs.
+prerequisites:
+  - "lab-commission-hosts-create-wld completed (workload domain wld01 on NFS, Supervisor not enabled in the wizard)."
+  - "Lesson: vSphere Supervisor in a Workload Domain."
+  - "Read TechDocs 'Requirements for Simplified Supervisor Deployment' and 'Limitations of Simplified Supervisor Configurations' for your exact build before starting."
+topology:
+  logical: d-lab-enable-supervisor-logical
+requirements:
+  network:
+    - "VLAN 60 Supervisor network 10.10.60.0/24, gateway 10.10.60.1, added as a distributed port group on the wld01 VDS"
+    - "At least 5 consecutive free IPs for the control plane (10.10.60.10-10.10.60.14) plus a range for workloads"
+    - "DNS 10.10.10.2 and NTP 10.10.10.2 routable from VLAN 60"
+  vms:
+    - "wld01 hosts esx-21..23 (consider raising them to 24-32 GB RAM each if Proxmox has headroom)"
+    - "Shut down non-essential VMs (for example VCF Operations collector, nfs test VMs) if Proxmox memory is short"
+  ip:
+    - "Control plane 10.10.60.10-14, workload range 10.10.60.100-10.10.60.199, Service CIDR 10.96.0.0/23 (not routed anywhere)"
+startingState: |
+  wld01 (3 nested hosts, NFS principal storage, single-node NSX, distributed connectivity) is healthy. No Supervisor
+  exists. Honest limitations: this is a challenge lab. Nested ESX on Proxmox is slow, Supervisor control plane VMs and
+  VKS clusters need real memory, and the simplified Supervisor runs VM Service only until a load balancer is added.
+  A full VPC-based Supervisor with an NSX Edge cluster and Tier-0 will very likely not fit next to the management
+  domain on 256 GB — that path is described, not built.
+steps:
+  - id: plan-choice
+    title: Choose the Supervisor model on paper
+    why: The networking stack and load balancer are the big decisions; the exam asks which combinations are valid.
+    instructions: |
+      Fill in the table and justify your lab choice:
+
+      | Option | Needs | Fits the lab? |
+      |---|---|---|
+      | WLD wizard Supervisor (centralized connectivity, VPC) | NSX Edge cluster + active-standby Tier-0 | Probably not (Edge RAM) |
+      | Full Supervisor on VDS + Foundation LB | VDS port groups, Foundation LB | Maybe, after simplified |
+      | **Simplified Supervisor** | 1 control plane VM, one network, no LB | Yes |
+    validate: You can explain why Foundation LB is not an option with VPC networking.
+    expected: Simplified Supervisor now, Foundation LB as the growth step.
+  - id: prereqs
+    title: Prepare storage policy, network and DNS
+    why: A Supervisor places control plane VMs and workloads by storage policy and needs routable DNS/NTP.
+    instructions: |
+      1. In vcenter-wld01 create a tag `supervisor` and tag the `wld01-nfs` datastore; create a tag-based VM storage
+         policy `wld01-supervisor` that selects it.
+      2. Add a distributed port group `wld01-supervisor` (VLAN 60) on the wld01 VDS.
+      3. Confirm 10.10.60.1 answers ping from a host VMkernel on VLAN 60 (or from a test VM) and that DNS/NTP are
+         reachable from that subnet.
+    validate: The storage policy shows `wld01-nfs` as compatible; the port group exists on all three hosts.
+    expected: Prerequisites in place.
+  - id: activate
+    title: Activate the simplified Supervisor
+    why: This is the smallest Supervisor VCF 9.0 offers and the one that fits a nested lab.
+    instructions: |
+      Follow TechDocs *Activate Supervisor Using the Simplified Deployment Flow* in vcenter-wld01: select cluster
+      `wld01-cl01` (one vSphere zone), storage policy `wld01-supervisor`, the `wld01-supervisor` network, control
+      plane IPs 10.10.60.10-14, gateway, DNS and NTP, Service CIDR 10.96.0.0/23, single control plane VM. Start
+      activation and watch the configuration status.
+    hint: "If activation stalls, check Proxmox memory first, then DNS/NTP reachability from VLAN 60, then IP conflicts in the control plane range."
+    validate: The Supervisor shows a running/configured state and a control plane address.
+    expected: One control plane VM running on wld01; Supervisor API reachable on its address.
+  - id: namespace-vm
+    title: Create a namespace and deploy a VM with VM Service
+    why: Namespaces are how Supervisor resources are consumed; VM Service is what the simplified Supervisor supports.
+    instructions: |
+      1. Create namespace `lab-dev` with a small CPU/memory quota, storage policy `wld01-supervisor`, a VM class (for
+         example best-effort-small) and a content library holding a small VM image.
+      2. From your workstation:
+      ```shell
+      kubectl vsphere login --server=10.10.60.10 --vsphere-username administrator@vsphere.local --insecure-skip-tls-verify
+      kubectl config use-context lab-dev
+      kubectl get virtualmachineclasses
+      kubectl get virtualmachineimages
+      ```
+      3. Apply a VirtualMachine manifest that uses the class, image and storage class from those outputs.
+    validate: "`kubectl get vm -n lab-dev` shows the VM PoweredOn; it also appears in vcenter-wld01 inside the namespace."
+    expected: A declaratively created VM.
+  - id: stretch
+    title: "Stretch: add a load balancer, a Supervisor Service, and plan control plane HA"
+    why: Supervisor Services and vSphere Pods require a load balancer; HA requires three control plane VMs.
+    instructions: |
+      1. Follow TechDocs *Add a Load Balancer* for the simplified Supervisor, using the Foundation Load Balancer on the
+         VDS network (it is packaged with vCenter).
+      2. Download a small Supervisor Service definition (for example Local Consumption Interface) from the Broadcom
+         support portal, add it in vCenter and install it on the Supervisor.
+      3. Write down the RAM needed to scale the control plane from 1 to 3 VMs and decide whether your server can take it.
+    validate: The service shows as installed/configured on the Supervisor.
+    expected: Supervisor now supports Supervisor Services; you have a written HA scaling plan.
+troubleshooting:
+  - symptom: "Activation stuck at configuring control plane"
+    fix: "Check memory on Proxmox and on the wld01 hosts, then IP conflicts in 10.10.60.10-14, then DNS/NTP from VLAN 60. Review the Supervisor configuration status messages in vCenter."
+  - symptom: "kubectl vsphere login fails with certificate or timeout errors"
+    fix: "Confirm the control plane address is routable from your workstation, time is in sync, and use --insecure-skip-tls-verify only in the lab."
+  - symptom: "Supervisor Service installation not possible"
+    fix: "A simplified Supervisor without a load balancer supports VM Service only; add the load balancer first."
+  - symptom: "No storage class in the namespace"
+    fix: "Assign the storage policy to the namespace; storage policies become storage classes."
+challenge: |
+  Describe, with a diagram, how you would rebuild this as a production design: three-zone Supervisor (three clusters),
+  three control plane VMs, VCF Networking with VPC, NSX Edge cluster with active-standby Tier-0, NSX load balancer,
+  and VCF Automation consuming the namespaces. List every additional resource it needs compared with the lab.
+cleanup: |
+  Deactivate the Supervisor in vcenter-wld01 when finished (namespaces and their VMs are removed), delete the
+  storage policy, tag and port group if you no longer need them.
+sources:
+  - title: "VCF 9.0 – Simplified Supervisor Deployment"
+    url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/vsphere-supervisor-installation-and-configuration/deploying-easy-supervisor.html
+  - title: "VCF 9.0 – vSphere Supervisor Models"
+    url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/design/vmware-cloud-foundation-concepts/vsphere-supervisor-deployment-types.html
+  - title: "VCF 9.0 – vSphere Supervisor Installation and Configuration"
+    url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/vsphere-supervisor-installation-and-configuration.html
+  - title: "Supervisor Services catalog"
+    url: https://github.com/vsphere-tmm/Supervisor-Services

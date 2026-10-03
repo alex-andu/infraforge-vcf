@@ -1,0 +1,37 @@
+id: d-lab-explore-vcf-fleet-logical
+title: "Lab topology: exploring a nested VCF instance"
+description: >
+  The learner's Proxmox VE server runs nested ESX VMs that form the management domain default cluster of a VCF
+  instance. On that cluster run the management appliances (vCenter, SDDC Manager, NSX Manager, VCF Operations, the
+  fleet management appliance, the VCF Operations collector and, if deployed, VCF Automation). A lab services VM
+  provides DNS and NTP. The learner's workstation reaches VCF Operations, the vSphere Client and the SDDC Manager API
+  over the management VLAN.
+width: 1000
+height: 560
+groups:
+  - { id: g-px, x: 10, y: 10, w: 700, h: 540, label: "Proxmox VE server (2 x 28 cores, 256 GB RAM)", kind: compute }
+  - { id: g-mgmt, x: 25, y: 150, w: 670, h: 385, label: "Nested management domain (VCF instance 1)", kind: mgmt }
+nodes:
+  - { id: svc, x: 40, y: 60, w: 200, h: 56, label: "Lab services VM", sublabel: "DNS + NTP", kind: network, component: dns-service, info: "Authoritative DNS with forward and reverse zones, and NTP for all components. Built in lab-network-readiness." }
+  - { id: vlan, x: 280, y: 60, w: 200, h: 56, label: "Management VLAN", sublabel: "Proxmox bridge, MTU 9000", kind: network, component: physical-network, info: "VLAN-aware Linux bridge carrying the management, vMotion, vSAN and TEP VLANs to the nested hosts." }
+  - { id: ws, x: 760, y: 60, w: 210, h: 56, label: "Your workstation", sublabel: "browser + curl/PowerShell", kind: external, info: "Used to open VCF Operations, the vSphere Client and to call the SDDC Manager API." }
+  - { id: esx, x: 40, y: 450, w: 640, h: 56, label: "Nested ESX hosts (3 for simple, 4 for HA)", sublabel: "vSAN ESA principal storage", kind: compute, component: esx-host, info: "Nested ESX VMs with virtual NVMe disks for vSAN. Performance is far below real hardware; nested vSAN ESA requires care (see Home Lab)." }
+  - { id: vc, x: 40, y: 190, w: 150, h: 56, label: "vCenter", kind: mgmt, component: vcenter, info: "Management vCenter." }
+  - { id: sddc, x: 210, y: 190, w: 150, h: 56, label: "SDDC Manager", kind: mgmt, component: sddc-manager, info: "Instance orchestrator and API endpoint used in this lab." }
+  - { id: nsx, x: 380, y: 190, w: 150, h: 56, label: "NSX Manager", kind: nsx, component: nsx-manager, info: "Single node in the simple model." }
+  - { id: ops, x: 40, y: 300, w: 150, h: 56, label: "VCF Operations", kind: ops, component: vcf-operations, info: "Fleet console you explore first." }
+  - { id: fm, x: 210, y: 300, w: 150, h: 56, label: "Fleet mgmt", kind: ops, component: vcf-operations-fleet-management, info: "Fleet management appliance." }
+  - { id: coll, x: 380, y: 300, w: 150, h: 56, label: "Ops collector", kind: ops, component: vcf-operations-collector, info: "Instance collector." }
+  - { id: vcfa, x: 550, y: 245, w: 130, h: 56, label: "VCF Automation", sublabel: "if deployed", kind: ops, component: vcf-automation, info: "Heaviest appliance in a home lab; note whether your build has it." }
+edges:
+  - { from: ws, to: vlan, label: "HTTPS", kind: mgmt }
+  - { from: vlan, to: svc, kind: mgmt }
+  - { from: coll, to: ops, label: "data", kind: mgmt }
+  - { from: ops, to: sddc, label: "fleet mgmt", kind: control }
+  - { from: sddc, to: vc, label: "API", kind: control }
+  - { from: vc, to: esx, label: "manages", kind: mgmt }
+steps:
+  - { title: "Physical layer", text: "Everything runs nested on one Proxmox server: a single physical failure domain.", highlight: [g-px, vlan] }
+  - { title: "Dependencies first", text: "DNS and NTP from the lab services VM are prerequisites for every appliance.", highlight: [svc] }
+  - { title: "Management appliances", text: "These are the VMs you will classify as fleet-level or instance-level.", highlight: [vc, sddc, nsx, ops, fm, coll, vcfa] }
+  - { title: "Your access paths", text: "You reach VCF Operations and the SDDC Manager API from your workstation.", highlight: [ws, ops, sddc] }

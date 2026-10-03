@@ -1,0 +1,162 @@
+id: lab-deploy-vcf-management-domain
+title: Deploy a VCF 9 management domain with the VCF Installer (nested on Proxmox)
+level: advanced
+complexity: 5
+minutes: 600
+version: vcf9
+technologies: [VCF Installer, ESX 9 (nested), vCenter, NSX, SDDC Manager, VCF Operations, NFS v3, Proxmox VE]
+topics: [vcf-installer, deployment-validation, management-domain, deployment-planning, dns, certificates]
+lessons: [vcf-installer-workflow, deployment-validation-failures, deployment-planning-prereqs, management-domain]
+objectives:
+  - Prepare three nested ESX 9 hosts to VCF requirements (FQDN, regenerated certificate, NTP, DNS, NICs).
+  - Deploy the VCF Installer, connect a depot and download binaries.
+  - Walk the deployment wizard for a new fleet (simple model, NFS v3, VCF Automation deferred) and download the JSON spec.
+  - Deliberately trigger and fix two validation failures (reverse DNS and stale host certificate).
+  - Deploy, monitor, recover from a failed task if one occurs, and verify the result.
+prerequisites:
+  - "lab-vcf-planning-workbook completed (plan, DNS A/PTR records, NTP)."
+  - "lab-homelab-proxmox-prep completed (nested virtualization, CPU type host, VLAN-aware bridge)."
+  - "VCF 9.0 binaries/entitlement: the VCF Installer OVA (VCF-SDDC-Manager-Appliance-9.x.x.ova) and a download token or offline depot. Without them this lab is read-only."
+topology:
+  physical: d-lab-deploy-vcf-management-domain-physical
+  logical: d-lab-deploy-vcf-management-domain-logical
+requirements:
+  network:
+    - "VLAN 10 management, 20 vMotion, 30 vSAN, 40 host TEP trunked to Proxmox, MTU 9000 on the wire"
+    - "Gateway reachable on every VLAN (the installer pings gateways)"
+    - "Internet access from 10.10.10.4 for the online depot, or an offline depot web server"
+  vms:
+    - "esx-01, esx-02, esx-03: nested ESX 9, 16 vCPU (CPU type host), 56 GB RAM, 2 x vmxnet3 on vmbr1 (trunk), 40 GB boot disk"
+    - "esx-util: temporary nested ESX 9, 8 vCPU, 24 GB RAM, 1 x vmxnet3, 200 GB local VMFS disk on the NVMe (runs the VCF Installer, deleted afterwards)"
+    - "nfs-01: Debian 12, 2 vCPU, 2 GB RAM, 800 GB disk on the NVMe, NFS v3 export /export/mgmt01"
+    - "infra-01: DNS + NTP (existing)"
+  ip:
+    - "esx-01..03 10.10.10.11-13, esx-util 10.10.10.9, vcf-installer 10.10.10.4, nfs-01 10.10.10.6"
+    - "vcenter-01 .20, nsx-01a .21, nsx-01 VIP .25, sddc-manager .30, vcf-ops-01 .40, vcf-fleet-01 .41, vcf-opscol-01 .42"
+    - "vMotion range 10.10.20.11-20, vSAN range 10.10.30.11-20, TEP pool 10.10.40.11-40"
+startingState: |
+  DNS and NTP are in place, the plan is complete, and Proxmox can run nested ESX. Nothing VCF-related is deployed.
+  Honest limitations of this lab: nested ESX on Proxmox is not a supported VCF platform; the simple model has no
+  HA for NSX or VCF Operations; NFS replaces vSAN in the management domain to save memory; performance will be slow
+  and the deployment can take several hours. Treat warnings about resources seriously — out-of-memory on Proxmox
+  will kill nested hosts mid-deployment.
+steps:
+  - id: build-hosts
+    title: Create and install the nested management hosts
+    why: VCF validates host build, NICs and storage; nested hosts must look like real ones to the installer.
+    instructions: |
+      1. In Proxmox create esx-01..03 (CPU type `host`, 16 vCPU, 56 GB RAM, ballooning off, 2 x vmxnet3 on the
+         trunked bridge without VLAN tag, firewall off on the vNIC, 40 GB boot disk on an SSD).
+      2. Install the ESX 9 build listed in the VCF 9.0 BOM.
+      3. In the DCUI set the management IP, VLAN 10, gateway 10.10.10.1, DNS 10.10.10.2 and the DNS suffix `lab.internal`.
+      4. Build esx-util the same way (one NIC, plus a 200 GB disk for a local VMFS datastore).
+    hint: "See the Home Lab section and lab-homelab-proxmox-prep for Proxmox CPU flags and NIC details."
+    validate: "`esxcli network nic list` on each host shows the vmxnet3 NICs Up; check the reported speed column."
+    expected: Three management hosts and one utility host reachable on 10.10.10.x. vmxnet3 normally reports a 10000 Mbps link, which satisfies the installer's NIC speed check.
+  - id: prepare-hosts
+    title: Set FQDN, regenerate certificates, configure NTP
+    why: Hostname = FQDN and a matching certificate are commissioning/deployment prerequisites; NTP prevents skew.
+    instructions: |
+      On each management host (SSH enabled temporarily):
+      ```shell
+      esxcli system hostname set --fqdn=esx-01.lab.internal
+      esxcli system ntp set -s 10.10.10.2 -e 1
+      /sbin/generate-certificates
+      /etc/init.d/hostd restart && /etc/init.d/vpxa restart
+      ```
+      Set the same strong root password on all three hosts (the wizard accepts one common password).
+      **Leave esx-03's certificate un-regenerated for now** — you will use it to see a validation failure, then fix it.
+    validate: "`esxcli system hostname get` shows the FQDN; `esxcli system ntp get` shows server 10.10.10.2 enabled; Host Client certificate shows CN = FQDN on esx-01 and esx-02."
+    expected: esx-01 and esx-02 fully prepared; esx-03 prepared except its certificate.
+  - id: nfs-export
+    title: Prepare the NFS v3 principal storage
+    why: In VCF 9.0 NFS v3 can be principal storage of the management domain; it must be writable by all host IPs.
+    instructions: |
+      On nfs-01: `apt install nfs-kernel-server`, create `/export/mgmt01`, and export it to 10.10.10.0/24 with
+      `rw,sync,no_root_squash,no_subtree_check`. Run `exportfs -ra`.
+    validate: "From a host: `esxcli storage nfs add -H 10.10.10.6 -s /export/mgmt01 -v test-nfs`, check it mounts, then remove it with `esxcli storage nfs remove -v test-nfs`."
+    expected: The export mounts read-write from every management host; the test datastore is removed again so the installer can create its own.
+  - id: deploy-installer
+    title: Deploy the VCF Installer on the utility host and download binaries
+    why: Placing the installer outside the management domain keeps it an installer (on a management host it would become SDDC Manager) and lets you reuse it later.
+    instructions: |
+      1. Log in to esx-util's Host Client, deploy `VCF-SDDC-Manager-Appliance-9.x.x.ova` to its local datastore with
+         FQDN vcf-installer.lab.internal, IP 10.10.10.4, DNS 10.10.10.2, NTP 10.10.10.2 and passwords.
+      2. Browse to `https://vcf-installer.lab.internal`, log in as `admin@local`.
+      3. Configure the depot (online: enter the download token; offline: point to your depot URL) and download the
+         VCF 9.0 binaries.
+    validate: The installer's binary management view shows all components for the target version as downloaded.
+    expected: Binaries available locally; the wizard can be started.
+  - id: run-wizard
+    title: Walk the wizard and download the JSON spec
+    why: The wizard is the exam's model of a VCF deployment; the JSON is your repeatable record.
+    instructions: |
+      Choose **A new VCF fleet** → deploy new VCF Operations → General: instance `lab-inst01`, domain `lab-m01`,
+      **Simple**, manual passwords → VCF Operations, fleet management and collector FQDNs → VCF Automation:
+      **I want to connect a VCF Automation instance later** → vCenter → NSX Manager → Storage: **NFS v3**
+      (server 10.10.10.6, share /export/mgmt01) → ESX hosts esx-01..03 with the common password, confirm thumbprints →
+      networks (vMotion range, and the vSAN range if the page asks for it) → **Default** switch profile → SDDC Manager → Review → **Download JSON**.
+    validate: The review page lists 3 hosts, NFS principal storage, Simple model, VCF Automation deferred.
+    expected: A JSON spec file saved outside the installer.
+  - id: break-and-fix
+    title: Validate, read the errors, fix the root causes
+    why: Learning to map a validation message to its layer is the core troubleshooting skill for objective 4.1.
+    instructions: |
+      1. On infra-01, temporarily delete the PTR record for 10.10.10.12 and reload BIND.
+      2. Click **Validate**. Read the errors: expect a reverse-lookup problem for esx-02 and a certificate/thumbprint
+         problem for esx-03.
+      3. Restore the PTR record. On esx-03 run `/sbin/generate-certificates` and restart hostd/vpxa.
+      4. Go back to the hosts page, re-confirm esx-03's (new) thumbprint, and validate again.
+    hint: "If esx-03 passes despite the stale certificate, check whether you regenerated it earlier by accident; the PTR test still demonstrates the point."
+    validate: Validation finishes with no errors (warnings acknowledged only after you understand them).
+    expected: Two distinct errors in the first run, zero errors after the fixes.
+  - id: deploy
+    title: Deploy and monitor
+    why: Deployment is long-running; knowing how to follow and resume it matters more than the click.
+    instructions: |
+      Click **Deploy**. Follow the Tasks panel. On the installer appliance (SSH as `vcf`, then `su -`) you can follow
+      `/var/log/vmware/vcf/domainmanager/domainmanager.log`. Watch Proxmox memory with `free -g` and `arc_summary`
+      if you use ZFS.
+      If a task fails: read its error, fix the cause (DNS, IP conflict, memory) and click **Retry**.
+    validate: All tasks complete; the installer offers Download JSON, Review Passwords and Open VCF Operations.
+    expected: Management domain deployed in several hours on nested hardware.
+  - id: verify
+    title: Verify and complete the platform
+    why: A deployment is only done when every component is healthy and licensed.
+    instructions: |
+      1. **Review Passwords** and store them in a password manager.
+      2. Log in to vCenter (`vcenter-01`), check the cluster, the NFS datastore and the VDS.
+      3. Log in to NSX (`nsx-01`) and check the three hosts are prepared transport nodes.
+      4. Open VCF Operations, apply licensing (or note the evaluation state) and look at the fleet inventory.
+      5. Shut down and delete esx-util to free 24 GB of RAM.
+    validate: "SDDC Manager API: `GET https://sddc-manager.lab.internal/v1/domains` lists one MANAGEMENT domain; `GET /v1/hosts?status=ASSIGNED` lists 3 hosts."
+    expected: One management domain, three assigned hosts, healthy NSX, VCF Operations reachable.
+troubleshooting:
+  - symptom: "Validation: NIC speed check fails on nested hosts"
+    fix: "Confirm the vNIC model is vmxnet3 (it reports 10 Gbps). As a last resort William Lam documents an unsupported installer property `enable.speed.of.physical.nics.validation=false`; labs only."
+  - symptom: "Nested hosts power off or Proxmox becomes unresponsive during deployment"
+    fix: "Proxmox ran out of memory. Reduce nested host RAM overcommit, stop non-essential VMs, check ZFS ARC size, and retry the failed task."
+  - symptom: "NFS datastore creation fails on one host"
+    fix: "Export not writable from that host's IP, or the NFS server firewall. Check `exportfs -v` and mount manually as a test."
+  - symptom: "Validation error for host thumbprint after re-installing a host"
+    fix: "Re-installed hosts have new certificates; regenerate after setting the FQDN and re-confirm the thumbprint in the wizard."
+  - symptom: "Depot download fails"
+    fix: "Check internet/DNS from 10.10.10.4, the token type (token vs activation code), and for an HTTP offline depot the installer's HTTPS requirement."
+challenge: |
+  Re-deploy from your saved JSON spec through the API (`POST /v1/sddcs/validations`, then `POST /v1/sddcs`) after
+  rebuilding the hosts, and compare the time and effort with the UI path.
+cleanup: |
+  Keep the management domain for the workload domain and Supervisor labs. To reclaim resources between sessions,
+  shut down in a controlled order (workload domains first, then VCF Operations, NSX, vCenter, SDDC Manager, then hosts)
+  and power on in reverse. Delete esx-util once the deployment is verified.
+sources:
+  - title: "VCF 9.0 – Start a New VCF Fleet Deployment by Using the VCF Installer Deployment Wizard"
+    url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/deployment/deploying-a-new-vmware-cloud-foundation-or-vmware-vsphere-foundation-private-cloud-/deploy-a-new-vcf-fleet-or-a-new-vcf-instance.html
+  - title: "VCF 9.0 – What is the VCF Installer?"
+    url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/deployment/what-is-the-vcf-installer-.html
+  - title: "William Lam – Minimal resources for deploying VCF 9.0 in a lab"
+    url: https://williamlam.com/2025/06/minimal-resources-for-deploying-vcf-9-0-in-a-lab.html
+  - title: "William Lam – Disable 10GbE NIC pre-check in the VCF 9.0 Installer"
+    url: https://williamlam.com/2025/06/disable-10gbe-nic-pre-check-in-the-vcf-9-0-installer.html
+  - title: "Broadcom KB 411694 – Regenerating self-signed certificates"
+    url: https://knowledge.broadcom.com/external/article/411694/

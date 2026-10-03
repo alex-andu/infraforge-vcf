@@ -1,0 +1,37 @@
+id: d-lab-vcfa-organization-setup-logical
+title: "Lab topology: VCF Automation provider and organization setup"
+description: >
+  VCF Automation (Simple, one node) in the nested management domain. A nested workload domain (or the management
+  cluster in a consolidated lab) has Supervisor enabled with NSX VPC networking. The learner, as provider, creates a
+  region, IP space, provider gateway on the Tier-0, syncs the edge cluster, creates an All Apps organization with
+  region quota and regional networking, then as org admin creates a project, namespace, VPC and policies.
+width: 1000
+height: 520
+groups:
+  - { id: g-mgmt, x: 20, y: 20, w: 460, h: 300, label: "Management domain", kind: mgmt }
+  - { id: g-wld, x: 520, y: 20, w: 460, h: 300, label: "Supervisor-enabled cluster", kind: compute }
+nodes:
+  - { id: vcfa, x: 50, y: 70, w: 190, h: 56, label: "VCF Automation", sublabel: "Simple, 2 IPs", kind: ops, component: vcf-automation, info: "Provider logs in to organization 'system'; org admin uses the organization portal." }
+  - { id: fm, x: 260, y: 70, w: 190, h: 56, label: "Fleet management", kind: mgmt, component: vcf-operations-fleet-management, info: "Deploys VCF Automation Day 2 if it was not deployed by the installer." }
+  - { id: vc, x: 50, y: 200, w: 190, h: 56, label: "vCenter", kind: mgmt, component: vcenter, info: "Hosts the Supervisor; storage policies become storage classes." }
+  - { id: nsx, x: 260, y: 200, w: 190, h: 56, label: "NSX Manager", kind: nsx, component: nsx-manager, info: "Tier-0 for the provider gateway; edge cluster; VPCs." }
+  - { id: sup, x: 550, y: 70, w: 200, h: 56, label: "Supervisor", kind: compute, component: supervisor, info: "Basis of the region. Enabled in the Supervisor lab." }
+  - { id: edge, x: 770, y: 70, w: 190, h: 56, label: "Edge cluster + Tier-0", kind: nsx, component: nsx-edge-cluster, info: "North-south path for VPC public subnets." }
+  - { id: ns, x: 550, y: 200, w: 200, h: 56, label: "Namespace", sublabel: "org-dev / project", kind: compute, info: "Created by the org admin within the region quota." }
+  - { id: vm, x: 770, y: 200, w: 190, h: 56, label: "Test VM", sublabel: "VM Service", kind: vm, info: "Deployed from the organization portal to prove the chain works." }
+  - { id: router, x: 770, y: 400, w: 190, h: 56, label: "Lab router", sublabel: "static route / BGP", kind: external, info: "Needs a route for the IP space block towards the Tier-0 uplink." }
+  - { id: admin, x: 50, y: 400, w: 190, h: 56, label: "You (jump host)", kind: external, info: "Provider in one browser profile, org admin in a private window." }
+edges:
+  - { from: admin, to: vcfa, label: "portals", kind: mgmt }
+  - { from: fm, to: vcfa, kind: mgmt, dashed: true }
+  - { from: vcfa, to: vc, label: "API", kind: mgmt }
+  - { from: vcfa, to: nsx, label: "API", kind: mgmt }
+  - { from: vc, to: sup, kind: control }
+  - { from: sup, to: ns, kind: data }
+  - { from: ns, to: vm, kind: data }
+  - { from: vm, to: edge, label: "public subnet", kind: north-south }
+  - { from: edge, to: router, label: "uplink", kind: north-south, bidirectional: true }
+steps:
+  - { title: "Provider setup", text: "Region from the Supervisor, IP space, provider gateway on the Tier-0, edge cluster sync, organization with quota and regional networking.", highlight: [vcfa, sup, nsx, edge] }
+  - { title: "Tenant setup", text: "Org admin creates project, namespace and VPC, then deploys a test VM.", highlight: [admin, vcfa, ns, vm] }
+  - { title: "North-south", text: "The IP space block must be routed on the lab router towards the Tier-0.", highlight: [vm, edge, router] }

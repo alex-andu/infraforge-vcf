@@ -1,0 +1,1517 @@
+questions:
+  # ---------------------------------------------------------------- lifecycle concepts
+  - id: lcm-001
+    type: single
+    kind: concept
+    difficulty: foundation
+    version: vcf9
+    topics: [lcm-concepts, fleet-management]
+    objective: "4.2"
+    lesson: lifecycle-concepts
+    section: what-gets-lifecycle-managed
+    stem: "In VCF 9.0, where does an administrator plan and start upgrades of both management components and core components?"
+    options:
+      - { id: a, text: "In the SDDC Manager UI, Lifecycle Management page", why: "That was the VCF 5.x location. In 9.0 the day-N lifecycle UI moved to VCF Operations.", confusedWith: sddc-manager }
+      - { id: b, text: "In the VCF Operations console, Fleet Management > Lifecycle", correct: true, why: "VCF Operations is the single console for lifecycle, with VCF Management and VCF Instances views." }
+      - { id: c, text: "In the vSphere Client, Lifecycle Manager tab of each cluster", why: "vLCM in vCenter remediates hosts, but VCF upgrades are planned and orchestrated from VCF Operations.", confusedWith: vlcm }
+      - { id: d, text: "In the VCF Installer appliance", why: "The VCF Installer deploys a new fleet; it is not the day-N lifecycle console.", confusedWith: vcf-installer }
+    explanation:
+      correct: "VCF Operations > Fleet Management > Lifecycle is where binaries, prechecks, plans and updates are managed for the whole fleet in VCF 9.0."
+      concept: "One lifecycle console, two engines: fleet management (management components) and SDDC Manager (core components)."
+      architecture: "VCF Operations drives the fleet management appliance and each instance's SDDC Manager; SDDC Manager in turn drives NSX, vCenter and vLCM."
+      trap: "SDDC Manager still does the work for core components, so it is tempting to answer 'SDDC Manager UI'. In 9.0 you drive it from VCF Operations."
+    diagnostic: vcf
+
+  - id: lcm-002
+    type: single
+    kind: architecture
+    difficulty: foundation
+    version: vcf9
+    topics: [lcm-concepts]
+    objective: "4.2"
+    lesson: lifecycle-concepts
+    section: what-gets-lifecycle-managed
+    stem: "Binaries for which components are downloaded to the VCF Operations fleet management appliance?"
+    options:
+      - { id: a, text: "SDDC Manager, vCenter, NSX Manager and ESX", why: "Those are core components; their binaries go to SDDC Manager of each instance.", confusedWith: sddc-manager }
+      - { id: b, text: "VCF Operations, VCF Automation, VCF Operations for logs and for networks, VCF Identity Broker and fleet management itself", correct: true, why: "These are the VCF management components handled by fleet management." }
+      - { id: c, text: "Only ESX components for vLCM images", why: "ESX component data belongs to SDDC Manager (and the umds-patch-store on an offline depot)." }
+      - { id: d, text: "All VCF components, because fleet management replaced SDDC Manager", why: "SDDC Manager was not replaced; it still owns core component binaries and upgrades." }
+    explanation:
+      correct: "TechDocs: fleet management handles binaries for management components; SDDC Manager handles binaries for core components in each VCF instance."
+      concept: "Management components vs core components."
+      architecture: "Fleet-wide components are few, so one engine serves the fleet; core components are per instance, so each SDDC Manager owns its own."
+      trap: "Do not assume fleet management replaced SDDC Manager."
+    diagnostic: vcf
+
+  - id: lcm-003
+    type: multi
+    select: 3
+    kind: concept
+    difficulty: intermediate
+    version: vcf9
+    topics: [lcm-concepts]
+    objective: "4.2"
+    lesson: lifecycle-concepts
+    section: what-gets-lifecycle-managed
+    stem: "Which three of these are VCF **core components** whose lifecycle is orchestrated by SDDC Manager? (Choose three.)"
+    options:
+      - { id: a, text: "vCenter", correct: true, why: "Core component, upgraded by SDDC Manager after NSX." }
+      - { id: b, text: "NSX Manager", correct: true, why: "Core component, upgraded by SDDC Manager." }
+      - { id: c, text: "ESX", correct: true, why: "Core component, remediated through vLCM under SDDC Manager orchestration." }
+      - { id: d, text: "VCF Identity Broker", why: "A management component, lifecycle-managed by fleet management.", confusedWith: identity-sso }
+      - { id: e, text: "VCF Operations for logs", why: "A management component handled by fleet management.", confusedWith: vcf-ops-logs }
+    explanation:
+      correct: "TechDocs classifies SDDC Manager, vCenter, NSX Manager and ESX as core components."
+      concept: "Component families decide which engine and which binary store apply."
+      architecture: "Core components live in each domain of each VCF instance; management components are fleet-level."
+      trap: "The Identity Broker can run embedded in vCenter, but as a product it is a management component."
+
+  - id: lcm-004
+    type: single
+    kind: scenario
+    difficulty: intermediate
+    version: vcf9
+    topics: [lcm-concepts]
+    objective: "4.2"
+    lesson: lifecycle-concepts
+    section: how-it-works
+    context: |
+      A VCF fleet runs in a plant network with no route to the internet. The appliances can reach an internal Linux
+      web server. A DMZ workstation can reach Broadcom.
+    stem: "Which binary management approach fits best?"
+    options:
+      - { id: a, text: "Online depot through the plant proxy", why: "There is no internet path from the plant, so an online depot cannot be used." }
+      - { id: b, text: "Offline depot: populate the internal web server with the VCF Download Tool from the DMZ workstation and point the appliances to it", correct: true, why: "Exactly the offline depot use case: appliances reach an internal server that you fill from a machine with internet access." }
+      - { id: c, text: "Copy ISO images to each ESX host datastore", why: "VCF lifecycle does not consume ISOs on datastores, and vCenter 9.0 removed ISO import in vLCM.", confusedWith: vlcm }
+      - { id: d, text: "Redeploy with the VCF Installer for each new version", why: "Upgrades are done in place through lifecycle management, not by redeploying." }
+    explanation:
+      correct: "An offline depot is the documented method when appliances cannot reach the internet but can reach a computer/web server that can be populated from one that does."
+      concept: "Online depot, offline depot and no depot."
+      architecture: "Fleet management and each SDDC Manager are pointed at the depot URL; the depot must be HTTPS and trusted."
+      trap: "'Offline' does not mean 'no network'; it means no internet. 'No depot' is the manual upload case."
+
+  - id: lcm-005
+    type: truefalse
+    kind: concept
+    difficulty: foundation
+    version: vcf9
+    topics: [lcm-concepts, lcm-workflow]
+    objective: "4.2"
+    lesson: lifecycle-concepts
+    section: release-types
+    stem: "True or false: according to Broadcom's VCF 9.0 update sequence guidance, patches can be applied in any order, while the documented order matters for major and minor releases."
+    options:
+      - { id: "true", text: "True", correct: true, why: "KB 390634 states that patches can be applied in any order and the order only matters for major/minor releases." }
+      - { id: "false", text: "False", why: "The KB explicitly relaxes ordering for patches." }
+    explanation:
+      correct: "Patches are not synchronised across components and can be applied independently."
+      concept: "Release types: major, minor, maintenance, patch."
+      trap: "Do not over-apply the strict sequence to patches; do not under-apply it to upgrades."
+
+  - id: lcm-006
+    type: single
+    kind: concept
+    difficulty: intermediate
+    version: vcf9
+    topics: [lcm-concepts]
+    objective: "4.2"
+    lesson: lifecycle-concepts
+    section: release-types
+    stem: "Moving a domain from VCF 9.0.0.0 to 9.0.1.0 is which type of release according to TechDocs?"
+    options:
+      - { id: a, text: "Major", why: "Major releases are platform generations with breaking changes (for example 5.x to 9.0)." }
+      - { id: b, text: "Minor", why: "Minor releases are feature releases within a major version (for example 9.0 to 9.1)." }
+      - { id: c, text: "Maintenance", correct: true, why: "TechDocs uses 9.0.0.0 to 9.0.1.0 as its maintenance update example." }
+      - { id: d, text: "Patch", why: "Patches are time-sensitive fixes between releases and are not synchronised across components." }
+    explanation:
+      correct: "Maintenance releases are scheduled cumulative updates (stability, bug and security fixes)."
+      concept: "VCF release types."
+      trap: "The third digit looks small, but it is not a 'patch' in VCF's vocabulary."
+
+  - id: lcm-007
+    type: single
+    kind: troubleshooting
+    difficulty: advanced
+    version: vcf9
+    topics: [lcm-concepts, lcm-recovery]
+    objective: "4.2"
+    lesson: lifecycle-concepts
+    section: depot-structure
+    context: |
+      An offline depot web server serves /depot/PROD and /depot/umds-patch-store. Basic authentication was enabled on
+      the whole site. SDDC Manager connects and shows SDDC Manager, NSX and vCenter binaries, but no ESX components.
+    stem: "What is the most likely cause?"
+    options:
+      - { id: a, text: "The umds-patch-store path must be reachable without authentication", correct: true, why: "The depot layout expects basic auth only on PROD; ESX content in umds-patch-store must stay unauthenticated." }
+      - { id: b, text: "ESX binaries are always downloaded by fleet management, not SDDC Manager", why: "ESX content belongs to SDDC Manager.", confusedWith: fleet-management }
+      - { id: c, text: "The download token expired", why: "An expired token would affect downloads into the depot, not the selective visibility of one path." }
+      - { id: d, text: "vSAN HCL data is missing", why: "HCL data affects compatibility checks, not the listing of ESX components." }
+    explanation:
+      correct: "William Lam's 9.0 depot deep dive: basic auth applies to PROD only; umds-patch-store must remain unauthenticated."
+      concept: "Depot structure: PROD tree vs UMDS patch store."
+      architecture: "ESX content is produced by UMDS through the VCF Download Tool and consumed by SDDC Manager."
+      trap: "Partial visibility (some binaries yes, ESX no) points at a path-level problem, not at entitlement."
+
+  - id: lcm-008
+    type: single
+    kind: troubleshooting
+    difficulty: intermediate
+    version: vcf9
+    topics: [lcm-concepts, certificates]
+    objective: "4.2"
+    lesson: lifecycle-concepts
+    section: troubleshooting
+    context: |
+      You built an offline depot on an HTTPS web server whose certificate is issued by your internal lab CA. Connecting
+      SDDC Manager to the depot fails with a TLS/certificate error. A browser on your laptop opens the depot URL without a warning.
+    stem: "What should you do?"
+    options:
+      - { id: a, text: "Switch the web server to plain HTTP for production use", why: "The depot is expected to be HTTPS; weakening it is not the fix (HTTP shortcuts exist only for labs and are version specific)." }
+      - { id: b, text: "Import the internal CA root certificate into the consuming appliance's trust store, then reconnect", correct: true, why: "The appliance must trust the depot's issuing CA; your laptop already trusts it, the appliance does not." }
+      - { id: c, text: "Regenerate the download token", why: "The token is about entitlement to Broadcom downloads, not TLS to your server." }
+      - { id: d, text: "Upgrade SDDC Manager first", why: "You cannot upgrade without binaries; and the version is not the issue." }
+    explanation:
+      correct: "TLS trust is evaluated by the client: the SDDC Manager (or fleet management) appliance must trust the CA that signed the depot certificate."
+      concept: "Trust is per client trust store."
+      architecture: "Offline depot = internal HTTPS server consumed by VCF appliances."
+      trap: "A clean browser on your laptop proves nothing about the appliance's trust store."
+
+  - id: lcm-009
+    type: matching
+    kind: concept
+    difficulty: intermediate
+    version: vcf9
+    topics: [lcm-concepts]
+    objective: "4.2"
+    lesson: lifecycle-concepts
+    section: release-types
+    stem: "Match each VCF release type with its description."
+    pairs:
+      - { id: p1, left: "Major", right: "Significant platform evolution, possible breaking changes, fully synchronised" }
+      - { id: p2, left: "Minor", right: "New features within a major version, non-disruptive, fully synchronised" }
+      - { id: p3, left: "Maintenance", right: "Scheduled cumulative stability, bug and security fixes with component selection flexibility" }
+      - { id: p4, left: "Patch", right: "Time-sensitive security/critical fixes between releases, not synchronised across components" }
+    explanation:
+      correct: "These are the four release types in the VCF 9.0 lifecycle documentation."
+      concept: "Release type decides planning effort and ordering rules."
+      trap: "Maintenance and patch are often confused; only patches are explicitly unsynchronised."
+
+  - id: lcm-010
+    type: single
+    kind: scenario
+    difficulty: expert
+    version: vcf9
+    topics: [lcm-concepts]
+    objective: "4.2"
+    lesson: lifecycle-concepts
+    section: release-types
+    context: |
+      A domain runs a recent 9.0 maintenance build. A colleague downloads a component build with a higher-looking
+      version number from an older release train (released earlier than your current build) and asks why the planner
+      does not offer it as a target.
+    stem: "What is the explanation?"
+    options:
+      - { id: a, text: "VCF upgrades are forward-only: the target must have been released after the current version's release date", correct: true, why: "TechDocs describes strict validation that upgrades only proceed to versions released after the current one." }
+      - { id: b, text: "The binary must first be imported into vLCM", why: "vLCM import applies to ESX images, not to choosing VCF target versions.", confusedWith: vlcm }
+      - { id: c, text: "Flexible BOM must be enabled in SDDC Manager settings", why: "Flexible BOM is an option in the planner (Customize Upgrade), and it still only allows supported, forward targets.", confusedWith: lcm-workflow }
+      - { id: d, text: "The download token does not include that version", why: "Entitlement is not the reason the planner rejects older-dated releases." }
+    explanation:
+      correct: "VCF enforces forward-only upgrades by release date, whichever version number looks higher."
+      concept: "Forward-only upgrade validation."
+      trap: "Version numbers across trains are not a reliable 'newer' signal; release dates are what VCF checks."
+
+  - id: lcm-011
+    type: cli
+    kind: command
+    difficulty: intermediate
+    version: vcf9
+    topics: [lcm-concepts]
+    objective: "4.2"
+    lesson: lifecycle-concepts
+    section: cli-api
+    context: |
+      Your download token is stored in /root/token. You want to list the INSTALL binaries of VCF 9.0.1 for the VCF SKU
+      using the VCF Download Tool (options as in the lesson).
+    stem: "Type the command."
+    answers:
+      - "vcf-download-tool binaries list --depot-download-token-file=/root/token --vcf-version=9.0.1 --type=INSTALL --sku=VCF"
+      - "vcf-download-tool binaries list --depot-download-token-file=/root/token --vcf-version=9.0.1 --sku=VCF --type=INSTALL"
+    placeholder: "vcf-download-tool ..."
+    explanation:
+      correct: "The binaries list subcommand with the token file, version, type and SKU lists what can be downloaded."
+      concept: "The VCF Download Tool builds offline depots."
+      trap: "Use 'binaries list' to plan; 'binaries download' needs a target directory (-d)."
+
+  - id: lcm-012
+    type: single
+    kind: concept
+    difficulty: intermediate
+    version: vcf9
+    topics: [lcm-concepts, lcm-workflow]
+    objective: "4.2"
+    lesson: lifecycle-concepts
+    section: the-bill-of-materials-bom
+    stem: "What does the flexible BOM option (Customize Upgrade) in the VCF 9.0 upgrade planner allow?"
+    options:
+      - { id: a, text: "Selecting any supported target version for each core component, validated by VCF, which then computes the update order", correct: true, why: "That is the documented flexible BOM capability." }
+      - { id: b, text: "Upgrading ESX before vCenter to reduce downtime", why: "The sequence is still generated by VCF; vCenter precedes ESX.", confusedWith: lcm-workflow }
+      - { id: c, text: "Installing any version, including unsupported combinations, at your own risk", why: "Selections are validated; unsupported combinations are rejected." }
+      - { id: d, text: "Skipping the precheck", why: "A completed precheck remains a prerequisite." }
+    explanation:
+      correct: "Customize Upgrade lets you pick a target per core component in the Target Version column, then Validate Selection and Confirm."
+      concept: "BOM vs flexible BOM."
+      trap: "Flexibility is bounded by VCF's compatibility validation."
+
+  # ---------------------------------------------------------------- upgrade workflow
+  - id: lcm-013
+    type: ordering
+    kind: concept
+    difficulty: intermediate
+    version: vcf9
+    topics: [lcm-workflow]
+    objective: "4.2"
+    lesson: lifecycle-upgrade-workflow
+    section: the-order-and-the-reason-for-it
+    stem: "Put the VCF 9.0 maintenance update in the documented order for a fleet with one instance (management domain only)."
+    items:
+      - { id: i1, text: "VCF Operations fleet management appliance" }
+      - { id: i2, text: "VCF Operations" }
+      - { id: i3, text: "Remaining management components (logs, Automation, Identity Broker, networks)" }
+      - { id: i4, text: "SDDC Manager" }
+      - { id: i5, text: "NSX" }
+      - { id: i6, text: "vCenter" }
+      - { id: i7, text: "ESX hosts" }
+      - { id: i8, text: "vSAN" }
+    explanation:
+      correct: "Management components first (fleet management, VCF Operations, the rest), then core components SDDC Manager, NSX, vCenter, ESX, vSAN."
+      concept: "Manager before managed; management before workload."
+      architecture: "Each engine is upgraded before the components it upgrades."
+      trap: "VCF Operations is not first; fleet management is. And NSX precedes vCenter."
+
+  - id: lcm-014
+    type: ordering
+    kind: concept
+    difficulty: foundation
+    version: vcf9
+    topics: [lcm-workflow]
+    objective: "4.2"
+    lesson: lifecycle-upgrade-workflow
+    section: the-order-and-the-reason-for-it
+    stem: "Order the core components of the management domain for a maintenance update."
+    items:
+      - { id: i1, text: "SDDC Manager" }
+      - { id: i2, text: "NSX" }
+      - { id: i3, text: "vCenter" }
+      - { id: i4, text: "ESX hosts" }
+      - { id: i5, text: "vSAN" }
+    explanation:
+      correct: "TechDocs: SDDC Manager, NSX, vCenter, ESX hosts, vSAN; workload domains follow in the same order."
+      concept: "Core component sequence."
+      trap: "vCenter before ESX is intuitive; NSX before vCenter is the part people miss."
+    diagnostic: vcf
+
+  - id: lcm-015
+    type: ordering
+    kind: scenario
+    difficulty: advanced
+    version: vcf9
+    topics: [lcm-workflow]
+    objective: "4.2"
+    lesson: lifecycle-upgrade-workflow
+    section: core-components-vcf-instances-tab-per-domain
+    stem: "Binaries are downloaded. Order the steps to upgrade a domain's core components in VCF Operations."
+    items:
+      - { id: i1, text: "Open Fleet Management > Lifecycle > VCF Instances > domain > Updates" }
+      - { id: i2, text: "Run Precheck and resolve the issues" }
+      - { id: i3, text: "Click Plan Upgrade and choose the target VCF version" }
+      - { id: i4, text: "Customize Upgrade, set target versions, Validate Selection and Confirm" }
+      - { id: i5, text: "Review the generated update sequence and click Done" }
+      - { id: i6, text: "Update Now or Schedule Update for each component" }
+    explanation:
+      correct: "This is the documented planner flow for core components."
+      concept: "Precheck, plan, (customize), review, execute."
+      trap: "The precheck comes before planning, not after scheduling."
+
+  - id: lcm-016
+    type: single
+    kind: concept
+    difficulty: foundation
+    version: vcf9
+    topics: [lcm-workflow, fleet-management]
+    objective: "4.2"
+    lesson: lifecycle-upgrade-workflow
+    section: management-components-vcf-management-tab
+    stem: "Which component must be upgraded or patched before any other VCF management component?"
+    options:
+      - { id: a, text: "VCF Operations", why: "VCF Operations is second.", confusedWith: vcf-ops-architecture }
+      - { id: b, text: "VCF Operations fleet management appliance", correct: true, why: "TechDocs: it must be upgraded or patched before the remaining management components." }
+      - { id: c, text: "SDDC Manager", why: "SDDC Manager is first among core components, after the management components.", confusedWith: sddc-manager }
+      - { id: d, text: "VCF Identity Broker", why: "It is one of the remaining management components, in any preferred order.", confusedWith: identity-sso }
+    explanation:
+      correct: "Fleet management is the engine that upgrades the other management components, so it goes first."
+      concept: "Engine before engine-managed components."
+      trap: "VCF Operations is the console you click in, but not the first thing upgraded."
+
+  - id: lcm-017
+    type: single
+    kind: scenario
+    difficulty: advanced
+    version: vcf9
+    topics: [lcm-workflow, lcm-concepts]
+    objective: "4.2"
+    lesson: lifecycle-upgrade-workflow
+    section: multiple-instances-and-shared-nsx
+    context: |
+      A fleet has two VCF instances, each with a management domain and one workload domain. Management components
+      are already on the target version.
+    stem: "Which statement about the core component upgrades is correct?"
+    options:
+      - { id: a, text: "Each instance's SDDC Manager upgrades its own core components; in each instance, the management domain goes before its workload domain", correct: true, why: "Core components are per instance with their own SDDC Manager, binaries and locks." }
+      - { id: b, text: "One SDDC Manager upgrades both instances in parallel", why: "There is one SDDC Manager per instance; each owns its instance." }
+      - { id: c, text: "Workload domains of both instances must be upgraded before any management domain", why: "Management domain first within each instance." }
+      - { id: d, text: "Fleet management upgrades vCenter and NSX in both instances", why: "Fleet management handles management components, not core components.", confusedWith: fleet-management }
+    explanation:
+      correct: "Core binaries are downloaded to and applied by each instance's SDDC Manager."
+      concept: "Fleet-level vs instance-level lifecycle."
+      trap: "Management components are once per fleet; core components are per instance."
+
+  - id: lcm-018
+    type: single
+    kind: troubleshooting
+    difficulty: advanced
+    version: vcf9
+    topics: [lcm-workflow]
+    objective: "4.2"
+    lesson: lifecycle-upgrade-workflow
+    section: resource-locks
+    context: |
+      While ESX hosts in cluster wld01-cl01 are being upgraded through VCF, a colleague tries to commission a new host
+      and add it to wld01-cl01. The task is rejected. Adding a host to a different domain at the same time succeeds.
+    stem: "What explains this behaviour?"
+    options:
+      - { id: a, text: "SDDC Manager holds a resource lock on the domain/cluster being upgraded, blocking conflicting host operations there", correct: true, why: "Host add/remove/commission is blocked for the same domain and cluster as the active upgrade, allowed elsewhere." }
+      - { id: b, text: "The new host is on a different ESX version and must be imaged first", why: "That could cause a different error, but does not explain why the same operation succeeds in another domain." }
+      - { id: c, text: "VCF Operations licensing is exceeded", why: "Licensing would not depend on which domain is targeted during an upgrade.", confusedWith: licensing }
+      - { id: d, text: "Host commissioning is always disabled during any lifecycle task anywhere in the fleet", why: "Locks are scoped (SYSTEM, DOMAIN, CLUSTER); operations elsewhere can continue." }
+    explanation:
+      correct: "Resource locks prevent concurrent day-N operations on the resources being upgraded."
+      concept: "SYSTEM, DOMAIN and CLUSTER locks."
+      trap: "The 'works elsewhere' detail rules out a global block and points to scoped locks."
+
+  - id: lcm-019
+    type: multi
+    select: 3
+    kind: concept
+    difficulty: advanced
+    version: vcf9
+    topics: [lcm-workflow]
+    objective: "4.2"
+    lesson: lifecycle-upgrade-workflow
+    section: resource-locks
+    stem: "Which three operations does TechDocs list as blocked in all core component upgrade scenarios? (Choose three.)"
+    options:
+      - { id: a, text: "SDDC Manager upgrades or patches", correct: true, why: "Listed as blocked in all scenarios." }
+      - { id: b, text: "Backup and restore", correct: true, why: "Listed as blocked in all scenarios." }
+      - { id: c, text: "Certificate rotation for management components", correct: true, why: "Listed as blocked in all scenarios.", confusedWith: certificates }
+      - { id: d, text: "Viewing dashboards in VCF Operations", why: "Monitoring is not a day-N lifecycle operation; it is not locked." }
+      - { id: e, text: "Commissioning a host into a different domain that does not share NSX", why: "Host operations in other domains/clusters can be permitted." }
+    explanation:
+      correct: "TechDocs lists SDDC Manager upgrades/patches, backup and restore, certificate rotation for management components and concurrent upgrades of the same component type."
+      concept: "Plan certificate, password and backup work outside upgrade windows."
+      trap: "Read-only operations are not locked."
+
+  - id: lcm-020
+    type: single
+    kind: scenario
+    difficulty: intermediate
+    version: vcf9
+    topics: [lcm-workflow]
+    objective: "4.2"
+    lesson: lifecycle-upgrade-workflow
+    section: prechecks
+    context: |
+      The precheck for a workload domain returns one error (a host is disconnected) and two warnings.
+    stem: "What should you do before clicking Plan Upgrade?"
+    options:
+      - { id: a, text: "Ignore the error; errors are informational", why: "Errors block the upgrade." }
+      - { id: b, text: "Fix the error, read and assess the warnings, then re-run the precheck", correct: true, why: "Resolve blocking issues, consciously accept or fix warnings, confirm with a new precheck." }
+      - { id: c, text: "Start the upgrade; it will reconnect the host automatically", why: "The upgrade does not repair host connectivity; it fails on it (see KB 390255).", confusedWith: lcm-recovery }
+      - { id: d, text: "Disable the precheck in SDDC Manager properties", why: "Disabling validation is a KB-specific workaround with support guidance, not normal practice." }
+    explanation:
+      correct: "A clean precheck is a documented prerequisite; re-running it is cheap and read-only."
+      concept: "Errors block, warnings inform."
+      trap: "Precheck findings are much cheaper to fix now than mid-upgrade."
+
+  - id: lcm-021
+    type: single
+    kind: design
+    difficulty: intermediate
+    version: vcf9
+    topics: [lcm-workflow]
+    objective: "4.2"
+    lesson: lifecycle-upgrade-workflow
+    section: the-order-and-the-reason-for-it
+    context: |
+      A team wants to upgrade a production workload domain first "to get experience" before touching the management domain.
+    stem: "What is the correct guidance?"
+    options:
+      - { id: a, text: "Upgrade the management domain core components first, then workload domains in the same component order", correct: true, why: "The documented order is management domain, then workload domains." }
+      - { id: b, text: "Workload domains first is fine because SDDC Manager is shared", why: "SDDC Manager is upgraded as part of the management domain stage, before any workload domain." }
+      - { id: c, text: "Upgrade all vCenters in all domains first, then all NSX", why: "The order is per domain: SDDC Manager, NSX, vCenter, ESX, vSAN." }
+      - { id: d, text: "It does not matter for maintenance releases", why: "Ordering matters for major/minor/maintenance; only patches are free order." }
+    explanation:
+      correct: "Management domain hosts the components that manage everything else; it goes first."
+      concept: "Management before workload."
+      trap: "Gaining experience belongs in a lab, not in production order changes."
+
+  - id: lcm-022
+    type: single
+    kind: troubleshooting
+    difficulty: expert
+    version: vcf9
+    topics: [lcm-workflow, lcm-recovery]
+    objective: "4.2"
+    lesson: lifecycle-upgrade-workflow
+    section: how-vcenter-is-upgraded
+    context: |
+      After an SDDC Manager driven vCenter upgrade, the new vCenter is running and working, but the inventory shows
+      the original vCenter VM powered off and the new VM still has a temporary name. The post-upgrade task failed.
+      The ESX host running both VMs was briefly Not Responding during the task.
+    stem: "What is the best course of action?"
+    options:
+      - { id: a, text: "Power the original vCenter back on to roll back", why: "The upgrade completed; running two vCenters with the same identity would cause conflicts." }
+      - { id: b, text: "Restore host connectivity, then complete the cleanup: verify the original VM is off, rename it, rename the new VM to the original name, delete the old VM", correct: true, why: "This matches KB 427385 for a failed post-upgrade cleanup." }
+      - { id: c, text: "Restore vCenter from file-based backup", why: "The new vCenter works; restore is unnecessary and risky." }
+      - { id: d, text: "Re-run the full vCenter upgrade from the start", why: "The data migration and switchover already completed; only cleanup is missing." }
+    explanation:
+      correct: "SDDC Manager's vCenter upgrade deploys a new VM, migrates, switches over, powers off and deletes the original, and renames the new VM. If the cleanup fails, finish it manually after fixing the host."
+      concept: "Reduced downtime vCenter upgrade mechanics."
+      architecture: "The original VM is retained until cleanup, which is why a window for recovery exists before switchover."
+      trap: "A powered-off original vCenter after switchover is not a rollback option."
+
+  - id: lcm-023
+    type: matching
+    kind: concept
+    difficulty: intermediate
+    version: vcf9
+    topics: [lcm-workflow]
+    objective: "4.2"
+    lesson: lifecycle-upgrade-workflow
+    section: resource-locks
+    stem: "Match each SDDC Manager resource lock type with its scope."
+    pairs:
+      - { id: p1, left: "SYSTEM", right: "Entire VCF instance; blocks all day-N operations" }
+      - { id: p2, left: "DOMAIN", right: "One management or workload domain" }
+      - { id: p3, left: "CLUSTER", right: "One cluster; other clusters in the domain remain available" }
+    explanation:
+      correct: "These are the three lock categories in the 9.0 documentation."
+      concept: "Lock scope decides what else can run during an upgrade."
+      trap: "Locks are per instance; another instance's SDDC Manager has its own locks."
+
+  # ---------------------------------------------------------------- vLCM
+  - id: lcm-024
+    type: single
+    kind: concept
+    difficulty: foundation
+    version: vcf9
+    topics: [vlcm]
+    objective: "4.2"
+    lesson: vlcm-images-host-remediation
+    section: image-building-blocks
+    stem: "Which element of a vSphere Lifecycle Manager image is mandatory?"
+    options:
+      - { id: a, text: "Vendor add-on", why: "Optional; used for OEM drivers and agents." }
+      - { id: b, text: "ESX base image", correct: true, why: "Every image starts with an ESX base image." }
+      - { id: c, text: "Firmware and drivers add-on", why: "Optional and needs a hardware support manager." }
+      - { id: d, text: "Components", why: "Optional additions or overrides." }
+    explanation:
+      correct: "The base image defines the ESX version; the other layers are optional."
+      concept: "Image building blocks."
+      trap: "Do not confuse 'commonly used' (vendor add-on) with 'required'."
+    diagnostic: vcf
+
+  - id: lcm-025
+    type: single
+    kind: architecture
+    difficulty: intermediate
+    version: vcf9
+    topics: [vlcm]
+    objective: "4.2"
+    lesson: vlcm-images-host-remediation
+    section: hardware-support-manager-and-firmware
+    stem: "An administrator wants vLCM to update BIOS and NIC firmware as part of cluster remediation. What is required?"
+    options:
+      - { id: a, text: "A hardware support manager (vendor plugin) registered with vCenter, and a firmware and drivers add-on in the image", correct: true, why: "Firmware becomes part of the image only through an HSM." }
+      - { id: b, text: "A baseline containing the firmware files", why: "Baselines are not supported in vSphere 9." }
+      - { id: c, text: "Uploading firmware ISOs to the vLCM depot", why: "ISO import was removed in vCenter 9.0 and firmware is not delivered that way." }
+      - { id: d, text: "Nothing; vLCM always manages firmware", why: "Without an HSM vLCM warns that firmware information is unavailable." }
+    explanation:
+      correct: "The firmware and drivers add-on is provided through the vendor's hardware support manager."
+      concept: "HSM role in desired-state images."
+      trap: "Firmware is optional in an image; it is not automatic."
+
+  - id: lcm-026
+    type: single
+    kind: scenario
+    difficulty: intermediate
+    version: vcf9
+    topics: [vlcm, lcm-workflow]
+    objective: "4.2"
+    lesson: vlcm-images-host-remediation
+    section: desired-state-instead-of-patch-lists
+    stem: "A cluster is managed with vLCM baselines (VUM-style). What does this mean for vSphere 9 / VCF 9.0?"
+    options:
+      - { id: a, text: "Baseline-managed clusters are not supported in vSphere 9; the cluster must be image-based", correct: true, why: "vSphere 9 supports only image-based lifecycle." }
+      - { id: b, text: "Baselines continue to work but cannot patch firmware", why: "Baselines are not supported at all in vSphere 9." }
+      - { id: c, text: "VCF converts baselines to images automatically during every upgrade", why: "Not stated by the documentation; conversion is a deliberate step you plan." }
+      - { id: d, text: "Baselines are required for workload domains, images for the management domain", why: "VCF 9.0 is image-based for all domains." }
+    explanation:
+      correct: "'Baseline-managed (VUM based) clusters and standalone hosts are not supported in vSphere 9.'"
+      concept: "Desired state (images) vs patch lists (baselines)."
+      trap: "Legacy VCF 5.x supported both; 9.0 does not."
+
+  - id: lcm-027
+    type: single
+    kind: troubleshooting
+    difficulty: advanced
+    version: vcf9
+    topics: [vlcm]
+    objective: "4.2"
+    lesson: vlcm-images-host-remediation
+    section: creating-and-importing-an-image-for-vcf
+    context: |
+      Importing an ESX image in VCF Operations (Fleet Management > Lifecycle > VCF Instance > SDDC Manager > Image
+      Management > Import Image) fails with "Unable to compute the checksum for image specification".
+    stem: "What is the fix?"
+    options:
+      - { id: a, text: "First upload the depot content and create/validate the image in vCenter's vSphere Lifecycle Manager, then import it in VCF Operations", correct: true, why: "KB 442222: the image must exist in vCenter Lifecycle Manager before the VCF import." }
+      - { id: b, text: "Convert the image to an ISO and import that", why: "ISO import was removed from vLCM in vCenter 9.0." }
+      - { id: c, text: "Regenerate the SDDC Manager certificate", why: "Not related to image checksum computation.", confusedWith: certificates }
+      - { id: d, text: "Run the import from the SDDC Manager shell", why: "There is no such supported workaround; the order of operations is the issue." }
+    explanation:
+      correct: "Images are authored in vLCM (vSphere Client) and then imported into VCF."
+      concept: "Image creation vs import."
+      trap: "VCF Operations does not author images."
+
+  - id: lcm-028
+    type: single
+    kind: scenario
+    difficulty: advanced
+    version: vcf9
+    topics: [vlcm, vsan-resilience]
+    objective: "4.2"
+    lesson: vlcm-images-host-remediation
+    section: parallel-versus-sequential-remediation
+    stem: "A 6-host vSAN cluster must be remediated. The team wants to remediate three hosts at once to save time. What applies?"
+    options:
+      - { id: a, text: "vSAN clusters are remediated sequentially, one host in maintenance mode at a time", correct: true, why: "KB 447058: parallel remediation is not supported for vSAN clusters." }
+      - { id: b, text: "Enable parallel remediation; vLCM will place three hosts in maintenance mode automatically", why: "Parallel remediation acts on hosts already in maintenance mode and is not supported on vSAN clusters." }
+      - { id: c, text: "Use FTT=0 so hosts can be removed together", why: "That sacrifices data availability; not a valid remediation approach.", confusedWith: vsan-policies }
+      - { id: d, text: "Remediate through VCF Operations, which bypasses vSAN limits", why: "VCF drives vLCM; vSAN constraints still apply." }
+    explanation:
+      correct: "Sequential remediation lets vSAN keep data accessible and resynchronise between hosts."
+      concept: "Parallel vs sequential remediation."
+      trap: "Batch remediation (a subset over several windows) is different from parallel remediation."
+
+  - id: lcm-029
+    type: truefalse
+    kind: concept
+    difficulty: intermediate
+    version: vcf9
+    topics: [vlcm]
+    objective: "4.2"
+    lesson: vlcm-images-host-remediation
+    section: multi-image-clusters
+    stem: "True or false: in vSphere 9, each of the additional image definitions in a cluster can use a different ESX base version."
+    options:
+      - { id: "true", text: "True", why: "The base ESX version is shared and not customisable across additional images." }
+      - { id: "false", text: "False", correct: true, why: "Additional image definitions customise vendor add-ons, firmware and components; the base stays the same." }
+    explanation:
+      correct: "Up to four additional image definitions per cluster handle mixed hardware, with the same ESX base."
+      concept: "Multi-image clusters."
+      trap: "Mixed hardware, not mixed ESX versions."
+
+  - id: lcm-030
+    type: ordering
+    kind: concept
+    difficulty: intermediate
+    version: vcf9
+    topics: [vlcm]
+    objective: "4.2"
+    lesson: vlcm-images-host-remediation
+    section: remediating-a-cluster
+    stem: "Order the steps vLCM performs to bring a non-compliant host in line with the cluster image."
+    items:
+      - { id: i1, text: "Check compliance of the cluster against the image" }
+      - { id: i2, text: "Run the remediation pre-check" }
+      - { id: i3, text: "Enter maintenance mode (DRS evacuates VMs)" }
+      - { id: i4, text: "Apply the image and reboot if required" }
+      - { id: i5, text: "Exit maintenance mode" }
+      - { id: i6, text: "Re-check compliance" }
+    explanation:
+      correct: "Compliance, pre-check, maintenance mode, apply, exit, re-check."
+      concept: "Host remediation cycle."
+      trap: "The pre-check comes before any host enters maintenance mode."
+
+  - id: lcm-031
+    type: single
+    kind: concept
+    difficulty: intermediate
+    version: vcf9
+    topics: [vlcm]
+    objective: "4.2"
+    lesson: vlcm-images-host-remediation
+    section: desired-state-instead-of-patch-lists
+    stem: "In vCenter 9.0 vSphere Lifecycle Manager, which import options are supported?"
+    options:
+      - { id: a, text: "ISO images only", why: "The Import ISO option was removed in vCenter 9.0." }
+      - { id: b, text: "Offline bundles into the vLCM depot, and JSON image files into the image library, a cluster or a standalone host", correct: true, why: "KB 419331 lists these two import types." }
+      - { id: c, text: "Baseline groups exported from vSphere 8", why: "Baselines are not supported in vSphere 9." }
+      - { id: d, text: "OVA files of ESX", why: "Not an import type for vLCM." }
+    explanation:
+      correct: "vCenter 9.0 supports offline bundles and JSON image specifications."
+      concept: "vLCM depot and image library."
+      trap: "Old habits (ISO upgrades) no longer apply."
+
+  - id: lcm-032
+    type: matching
+    kind: concept
+    difficulty: foundation
+    version: vcf9
+    topics: [vlcm]
+    objective: "4.2"
+    lesson: vlcm-images-host-remediation
+    section: compliance-states-in-practice
+    stem: "Match each vLCM compliance state with the typical action."
+    pairs:
+      - { id: p1, left: "Compliant", right: "No action" }
+      - { id: p2, left: "Non-compliant", right: "Remediate the host" }
+      - { id: p3, left: "Incompatible", right: "Fix the image or hardware first" }
+      - { id: p4, left: "Unknown", right: "Run a compliance check" }
+    explanation:
+      correct: "Compliance states tell you whether remediation can and should run."
+      concept: "Desired state comparison."
+      trap: "Incompatible hosts are not fixed by remediating harder."
+
+  # ---------------------------------------------------------------- failures and recovery
+  - id: lcm-033
+    type: single
+    kind: log
+    difficulty: advanced
+    version: vcf9
+    topics: [lcm-recovery, logs-locations]
+    objective: "4.2"
+    lesson: lifecycle-failures-recovery
+    section: real-examples-decoded
+    context: |
+      Task error: VCENTER upgrade bundle is not compatible with your existing version
+      ```log
+      ERROR ... Exception while fetching the current version for hosts belonging to vcenter with cluster MOID: domain-c12
+      java.lang.NullPointerException ...
+      ```
+    stem: "What is the most likely root cause, and what should you do?"
+    options:
+      - { id: a, text: "The downloaded vCenter bundle is corrupt; delete and download it again", why: "The message mentions compatibility, but the log shows a failure reading host versions." }
+      - { id: b, text: "A host in cluster domain-c12 is Not Responding or Disconnected; restore its connectivity (or remove it from the cluster) and retry", correct: true, why: "KB 390255: unresponsive hosts make the LCM service fail to read host versions." }
+      - { id: c, text: "vCenter must be upgraded manually with the CLI installer", why: "The workflow is fine once the host state is fixed." }
+      - { id: d, text: "Roll back NSX, which was upgraded earlier", why: "NSX is not involved in this error, and rollback is not the first step." }
+    explanation:
+      correct: "The top-level message is a symptom; the log points to unresponsive hosts in a specific cluster."
+      concept: "Error text vs root cause in logs."
+      architecture: "SDDC Manager queries vCenter for host versions during pre-validation."
+      trap: "'Not compatible' sounds like a binaries problem; read the log before re-downloading."
+
+  - id: lcm-034
+    type: single
+    kind: troubleshooting
+    difficulty: intermediate
+    version: vcf9
+    topics: [lcm-recovery, logs-locations]
+    objective: "4.2"
+    lesson: lifecycle-failures-recovery
+    section: two-engines-two-log-trails
+    stem: "An NSX upgrade task launched from VCF Operations failed. Which log do you read first for the orchestration error?"
+    options:
+      - { id: a, text: "/var/log/vmware/vcf/lcm/lcm-debug.log on SDDC Manager", correct: true, why: "NSX is a core component; SDDC Manager's LCM service orchestrates it." }
+      - { id: b, text: "/var/log/vrlcm/vmware_vrlcm.log on the fleet management appliance", why: "That log covers management components such as VCF Operations and Automation.", confusedWith: fleet-management }
+      - { id: c, text: "The vmkernel log on each ESX host", why: "Useful later if host components fail, not first for orchestration." }
+      - { id: d, text: "The browser console", why: "The UI only displays the task result." }
+    explanation:
+      correct: "Engine log first, then the target component's own logs."
+      concept: "Two engines, two log trails."
+      trap: "The task was started in VCF Operations, but VCF Operations is not the engine for core components."
+
+  - id: lcm-035
+    type: single
+    kind: troubleshooting
+    difficulty: intermediate
+    version: vcf9
+    topics: [lcm-recovery, logs-locations]
+    objective: "4.2"
+    lesson: lifecycle-failures-recovery
+    section: two-engines-two-log-trails
+    stem: "An upgrade of VCF Operations from 9.0.1 to 9.0.2 fails with error code LCMVROPSYSTEM25008 in Fleet Management. Which log is the primary lifecycle log for this task?"
+    options:
+      - { id: a, text: "/var/log/vrlcm/vmware_vrlcm.log on the fleet management appliance", correct: true, why: "KB 435597 names this log for the failure." }
+      - { id: b, text: "/var/log/vmware/vcf/lcm/lcm-debug.log on SDDC Manager", why: "SDDC Manager does not upgrade VCF Operations.", confusedWith: sddc-manager }
+      - { id: c, text: "vCenter vpxd.log", why: "vCenter is not involved in the VCF Operations upgrade." }
+      - { id: d, text: "NSX syslog", why: "Unrelated component." }
+    explanation:
+      correct: "Fleet management upgrades management components; its log holds the workflow error (casa.log on the VCF Operations nodes adds detail)."
+      concept: "Engine log per component family."
+      trap: "Pick the engine by component family, not by where you clicked."
+
+  - id: lcm-036
+    type: single
+    kind: scenario
+    difficulty: advanced
+    version: vcf9
+    topics: [lcm-recovery]
+    objective: "4.2"
+    lesson: lifecycle-failures-recovery
+    section: real-examples-decoded
+    context: |
+      A VCF Automation upgrade has failed three times at the same step after a 2-hour timeout. Each retry ends identically.
+    stem: "What is the best next action?"
+    options:
+      - { id: a, text: "Retry again during a quieter period", why: "Identical failures mean the cause is still present." }
+      - { id: b, text: "Stop retrying, inspect the appliance nodes and logs (for example disk and log file growth), fix the cause, then retry", correct: true, why: "KB 425321: /var/log/messages growth on VCFA nodes caused the timeout; truncating it allowed the retry to succeed." }
+      - { id: c, text: "Delete the VCF Automation appliance and redeploy an empty one", why: "Destroys tenant configuration; not an upgrade fix." }
+      - { id: d, text: "Upgrade SDDC Manager first", why: "SDDC Manager does not upgrade VCF Automation.", confusedWith: sddc-manager }
+    explanation:
+      correct: "Retry is only useful after the cause is fixed."
+      concept: "Fix, then retry."
+      trap: "Repeated retries waste the maintenance window."
+
+  - id: lcm-037
+    type: single
+    kind: scenario
+    difficulty: expert
+    version: vcf9
+    topics: [lcm-recovery, lcm-workflow]
+    objective: "4.2"
+    lesson: lifecycle-failures-recovery
+    section: retry-first-restore-last
+    context: |
+      In a workload domain upgrade, NSX completed. The vCenter upgrade then failed in pre-validation because of a
+      transient storage problem that has now been fixed. The change manager asks you to "roll back NSX and everything
+      else" to be safe.
+    stem: "What do you recommend?"
+    options:
+      - { id: a, text: "Retry the vCenter upgrade now that the cause is fixed, then continue the sequence; VCF upgrades are forward-only and there is no generic rollback", correct: true, why: "The state is consistent (NSX ahead is expected in the sequence) and the cause is resolved." }
+      - { id: b, text: "Restore NSX from backup, then restart the whole domain upgrade", why: "Creates risk and downtime without fixing anything; NSX on the new version is a valid intermediate state." }
+      - { id: c, text: "Skip vCenter and upgrade ESX now", why: "vCenter must precede ESX." }
+      - { id: d, text: "Use the planner to select an older NSX target", why: "Upgrades are forward-only." }
+    explanation:
+      correct: "Fix and retry from the failed stage; restore only if a component is left unusable."
+      concept: "Retry first, restore last; forward-only."
+      trap: "'Rollback to be safe' is usually the less safe option."
+
+  - id: lcm-038
+    type: multi
+    select: 3
+    kind: design
+    difficulty: intermediate
+    version: vcf9
+    topics: [lcm-recovery]
+    objective: "4.2"
+    lesson: lifecycle-failures-recovery
+    section: preparing-to-recover
+    stem: "Which three preparations make recovery from a failed core upgrade realistic? (Choose three.)"
+    options:
+      - { id: a, text: "Recent, verified file-based backups of SDDC Manager, vCenter and NSX", correct: true, why: "Backups are the real recovery point because there is no generic rollback." }
+      - { id: b, text: "A precheck with no errors run shortly before the window", correct: true, why: "Prevents most failures from happening at all." }
+      - { id: c, text: "Enough cluster capacity to evacuate one host at a time and free disk space on appliances", correct: true, why: "Capacity and space failures are common causes." }
+      - { id: d, text: "Enhanced Linked Mode enabled between all vCenters", why: "Unrelated to lifecycle recovery; and VCF SSO requires ELM to be deactivated.", confusedWith: identity-sso }
+      - { id: e, text: "DRS set to manual so VMs do not move during the upgrade", why: "Remediation needs DRS to evacuate hosts; manual DRS blocks it.", confusedWith: drs }
+    explanation:
+      correct: "Backups, clean prechecks and capacity are the preparation that turns failures into retries."
+      concept: "Preparation is the recovery plan."
+      trap: "DRS manual mode looks 'safe' but stalls remediation."
+
+  - id: lcm-039
+    type: single
+    kind: log
+    difficulty: expert
+    version: vcf9
+    topics: [lcm-recovery]
+    objective: "4.2"
+    lesson: lifecycle-failures-recovery
+    section: real-examples-decoded
+    context: |
+      VCF 9.x task: "vCenter upgrade failed at the VCENTER_UPGRADE_PRECHECK stage. Unable to get vCenter upgrade status."
+      ```log
+      ... HttpServerErrorException$BadGateway: 502 Bad Gateway ... (RDU status request)
+      ... java.lang.RuntimeException: Mapping does not exist
+      ```
+    stem: "Which KB-documented cause and fix fits best?"
+    options:
+      - { id: a, text: "Stale data in the SDDC Manager bundle repository (update_repo); follow the KB to restart and clean the repository, re-download if needed, then retry", correct: true, why: "KB 450414 describes exactly these symptoms." }
+      - { id: b, text: "The vCenter license has expired", why: "Licensing does not produce a 502 on the RDU status endpoint.", confusedWith: licensing }
+      - { id: c, text: "NSX must be rolled back", why: "Not related to the vCenter RDU status call." }
+      - { id: d, text: "The ESX hosts need a new vLCM image", why: "The failure is in the vCenter stage, before ESX.", confusedWith: vlcm }
+    explanation:
+      correct: "Match the stage name and error string to the KB, apply the documented fix, retry."
+      concept: "Known defects are found by exact error text."
+      trap: "Do not apply repository clean-up steps unless your symptoms and version match the KB."
+
+  - id: lcm-040
+    type: single
+    kind: troubleshooting
+    difficulty: advanced
+    version: vcf9
+    topics: [lcm-recovery, identity-sso]
+    objective: "4.2"
+    lesson: lifecycle-failures-recovery
+    section: real-examples-decoded
+    context: |
+      While configuring VCF SSO in VCF Operations (Fleet Management > Identity & Access), you get "Identity broker is
+      unhealthy". Lifecycle > Components shows the Identity Broker nodes on a different patch level from fleet management.
+    stem: "What resolves it?"
+    options:
+      - { id: a, text: "Patch the VCF Identity Broker to match the fleet management patch version", correct: true, why: "KB 441948: version mismatch between broker and fleet management causes this." }
+      - { id: b, text: "Switch from appliance to embedded mode", why: "Changing models requires an SSO reset and does not address the mismatch.", confusedWith: identity-sso }
+      - { id: c, text: "Enable Enhanced Linked Mode", why: "ELM must be deactivated for VCF SSO." }
+      - { id: d, text: "Replace the broker certificates", why: "The cause is a version mismatch, not trust.", confusedWith: certificates }
+    explanation:
+      correct: "Management components must be kept on aligned versions by fleet management."
+      concept: "Lifecycle alignment across management components."
+      trap: "An 'unhealthy' message invites redeploying; the fix is a patch."
+
+  # ---------------------------------------------------------------- identity, SSO, RBAC
+  - id: sec-001
+    type: single
+    kind: concept
+    difficulty: foundation
+    version: vcf9
+    topics: [identity-sso]
+    objective: "4.2"
+    lesson: vcf-identity-sso-rbac
+    section: who-participates
+    stem: "After VCF Single Sign-On is configured, which interface still requires a local account (for example an @vsphere.local user) to log in?"
+    options:
+      - { id: a, text: "vSphere Client", why: "vCenter participates in VCF SSO." }
+      - { id: b, text: "NSX Manager UI", why: "NSX participates in VCF SSO." }
+      - { id: c, text: "SDDC Manager UI", correct: true, why: "The SDDC Manager UI supports only local accounts; its API accepts VCF SSO users." }
+      - { id: d, text: "VCF Operations", why: "VCF Operations participates and is where SSO is configured." }
+    explanation:
+      correct: "TechDocs: SDDC Manager and ESX are excluded from VCF SSO; the SDDC Manager UI accepts only local admin accounts."
+      concept: "Participating vs non-participating components."
+      trap: "SDDC Manager's API does accept SSO users, which makes 'SDDC Manager' feel included."
+    diagnostic: vcf
+
+  - id: sec-002
+    type: single
+    kind: design
+    difficulty: intermediate
+    version: vcf9
+    topics: [identity-sso]
+    objective: "4.2"
+    lesson: vcf-identity-sso-rbac
+    section: broker-models
+    context: |
+      A small company has one VCF instance, wants SSO with Okta, and has a strict requirement to avoid additional
+      appliances. A short loss of SSO during a management vCenter outage is acceptable.
+    stem: "Which VCF Identity Broker model fits?"
+    options:
+      - { id: a, text: "Embedded in the management domain vCenter", correct: true, why: "No extra appliance, one instance, availability via vSphere HA; the SPOF is accepted." }
+      - { id: b, text: "Three-node appliance cluster", why: "Adds appliances, which the requirement forbids." }
+      - { id: c, text: "One appliance per workload domain", why: "Not a documented model and adds appliances." }
+      - { id: d, text: "No broker; configure Okta in each component separately", why: "VCF SSO uses the broker; per-component federation defeats the purpose." }
+    explanation:
+      correct: "Embedded is the documented choice for a single instance with minimal footprint."
+      concept: "Embedded vs appliance broker."
+      trap: "The constraint 'no additional appliances' decides it."
+
+  - id: sec-003
+    type: single
+    kind: design
+    difficulty: intermediate
+    version: vcf9
+    topics: [identity-sso]
+    objective: "4.2"
+    lesson: vcf-identity-sso-rbac
+    section: broker-models
+    context: |
+      A fleet has three VCF instances. Administrators must keep logging in with SSO even if a single host or the
+      management vCenter of instance 1 fails.
+    stem: "Which design meets the requirement?"
+    options:
+      - { id: a, text: "Embedded broker in instance 1's management vCenter", why: "Single point of failure if that vCenter goes down." }
+      - { id: b, text: "Appliance-mode broker (three nodes) deployed by fleet management, serving the three instances", correct: true, why: "Tolerates a node failure and supports up to five instances per broker." }
+      - { id: c, text: "Embedded brokers in all three management vCenters linked with ELM", why: "ELM must be deactivated for VCF SSO." }
+      - { id: d, text: "Appliance broker with one node", why: "The appliance model is a three-node cluster." }
+    explanation:
+      correct: "Appliance mode provides resilience and multi-instance scope (max five instances per broker)."
+      concept: "Broker availability and scope."
+      trap: "vSphere HA does not cover a vCenter that is down for reasons HA cannot fix."
+
+  - id: sec-004
+    type: single
+    kind: scenario
+    difficulty: advanced
+    version: vcf9
+    topics: [identity-sso]
+    objective: "4.2"
+    lesson: vcf-identity-sso-rbac
+    section: broker-models
+    stem: "An organisation started with an embedded Identity Broker and now wants to move to the appliance model. What does TechDocs say this requires?"
+    options:
+      - { id: a, text: "A reset of VCF Single Sign-On", correct: true, why: "Transitioning from embedded to external broker requires a reset of VCF SSO." }
+      - { id: b, text: "Nothing; it is an online migration button", why: "Not according to the design guide." }
+      - { id: c, text: "Redeploying the management domain vCenter", why: "Not required." }
+      - { id: d, text: "Re-licensing all vCenters", why: "Licensing is unrelated.", confusedWith: licensing }
+    explanation:
+      correct: "Choose the model deliberately up front; changing later means re-doing SSO configuration and role assignments."
+      concept: "Model choice is sticky."
+      trap: "Starting embedded 'for now' has a real cost later."
+
+  - id: sec-005
+    type: multi
+    select: 3
+    kind: concept
+    difficulty: intermediate
+    version: vcf9
+    topics: [identity-sso]
+    objective: "4.2"
+    lesson: vcf-identity-sso-rbac
+    section: configuration-workflow-vcf-operations
+    stem: "Which three are prerequisites or considerations before configuring VCF SSO? (Choose three.)"
+    options:
+      - { id: a, text: "Deactivate Enhanced Linked Mode on participating vCenter instances", correct: true, why: "VCF SSO requires ELM to be deactivated." }
+      - { id: b, text: "The configuring user has the All Objects scope in VCF Operations", correct: true, why: "Listed as an access control requirement." }
+      - { id: c, text: "The IdP endpoint is served over HTTPS with a certificate chain the components trust", correct: true, why: "Federation fails without a trusted HTTPS endpoint.", confusedWith: certificates }
+      - { id: d, text: "Join every ESX host to Active Directory", why: "ESX does not participate in VCF SSO." }
+      - { id: e, text: "Migrate existing vCenter identity sources first so users carry over", why: "Existing identity source configurations are overridden; users and groups are not migrated." }
+    explanation:
+      correct: "ELM off, proper VCF Operations scope and a trusted IdP endpoint."
+      concept: "SSO prerequisites."
+      trap: "Users and groups are re-provisioned, not migrated."
+
+  - id: sec-006
+    type: single
+    kind: troubleshooting
+    difficulty: intermediate
+    version: vcf9
+    topics: [rbac, identity-sso]
+    objective: "4.2"
+    lesson: vcf-identity-sso-rbac
+    section: rbac-authentication-is-central-authorisation-is-local
+    context: |
+      VCF SSO with Entra ID works: a network engineer in group vcf-net-admins logs into the vSphere Client and VCF
+      Operations successfully. In NSX Manager the login succeeds but the engineer sees no permissions.
+    stem: "What is missing?"
+    options:
+      - { id: a, text: "An NSX role assignment for the vcf-net-admins group inside NSX Manager", correct: true, why: "SSO authenticates; each component authorises with its own roles." }
+      - { id: b, text: "A second Identity Broker for NSX", why: "One broker serves all participating components." }
+      - { id: c, text: "Enhanced Linked Mode between vCenter and NSX", why: "ELM is a vCenter feature and must be off for VCF SSO." }
+      - { id: d, text: "An NSX license key", why: "NSX is licensed through vCenter in VCF 9.", confusedWith: licensing }
+    explanation:
+      correct: "Assign the group a role such as Enterprise Admin or a network role in NSX."
+      concept: "Authentication central, authorisation local."
+      trap: "A successful login proves identity, not permission."
+
+  - id: sec-007
+    type: matching
+    kind: concept
+    difficulty: foundation
+    version: vcf9
+    topics: [identity-sso]
+    objective: "4.2"
+    lesson: vcf-identity-sso-rbac
+    section: provisioning-methods
+    stem: "Match each user/group provisioning method with its behaviour in VCF SSO."
+    pairs:
+      - { id: p1, left: "SCIM 2.0", right: "The identity provider pushes users and groups to the broker" }
+      - { id: p2, left: "JIT", right: "Groups are created dynamically at first login from the SAML assertion" }
+      - { id: p3, left: "JIT pre-provisioning", right: "Groups are created in advance so roles can be assigned before first login" }
+      - { id: p4, left: "AD/LDAP", right: "Users and groups are synced at intervals; passwords are never synced" }
+    explanation:
+      correct: "These are the provisioning methods documented for VCF SSO."
+      concept: "Authentication protocol and provisioning are separate choices."
+      trap: "SAML/OIDC authenticate; SCIM/JIT/LDAP provision."
+
+  - id: sec-008
+    type: single
+    kind: concept
+    difficulty: intermediate
+    version: vcf9
+    topics: [identity-sso, fleet-management]
+    objective: "4.2"
+    lesson: vcf-identity-sso-rbac
+    section: configuration-workflow-vcf-operations
+    stem: "Where do you configure VCF Single Sign-On for a VCF instance in 9.0?"
+    options:
+      - { id: a, text: "vSphere Client > Administration > Single Sign On > Configuration", why: "Once VCF SSO is used, identity is managed only from VCF Operations.", confusedWith: vsphere-permissions }
+      - { id: b, text: "VCF Operations > Fleet Management > Identity & Access > VCF Instances", correct: true, why: "This is the documented configuration path." }
+      - { id: c, text: "SDDC Manager > Administration > Single Sign On", why: "SDDC Manager does not participate in VCF SSO.", confusedWith: sddc-manager }
+      - { id: d, text: "NSX Manager > System > User Management", why: "That is where NSX roles are assigned, not where SSO is configured." }
+    explanation:
+      correct: "VCF Operations is the single configuration point for VCF SSO."
+      concept: "Centralised identity configuration."
+      trap: "Role assignment happens in components; SSO configuration happens in VCF Operations."
+
+  - id: sec-009
+    type: truefalse
+    kind: concept
+    difficulty: intermediate
+    version: vcf9
+    topics: [identity-sso]
+    objective: "4.2"
+    lesson: vcf-identity-sso-rbac
+    section: what-changes-in-vcenter
+    stem: "True or false: when a vCenter joins VCF SSO, its existing identity sources, users and group permissions are migrated automatically."
+    options:
+      - { id: "true", text: "True", why: "TechDocs says existing configurations are overridden and users/groups are not migrated." }
+      - { id: "false", text: "False", correct: true, why: "Identity source configuration is overridden; users and groups must be re-provisioned and roles re-assigned." }
+    explanation:
+      correct: "Plan role re-assignment as part of the SSO project."
+      concept: "Impact of VCF SSO on vCenter."
+      trap: "Assuming continuity leaves admins without access on cut-over day."
+
+  # ---------------------------------------------------------------- certificates
+  - id: sec-010
+    type: single
+    kind: concept
+    difficulty: foundation
+    version: vcf9
+    topics: [certificates]
+    objective: "4.2"
+    lesson: certificate-management
+    section: who-issues-certificates-in-vcf
+    stem: "In VCF Operations certificate management, for which components can the OpenSSL certificate authority be configured?"
+    options:
+      - { id: a, text: "VCF instance components only (SDDC Manager, vCenter, NSX, ESX)", correct: true, why: "OpenSSL is supported only for VCF Instance components and runs on SDDC Manager." }
+      - { id: b, text: "VCF management components only", why: "Management components support Microsoft CA, not OpenSSL." }
+      - { id: c, text: "All components", why: "That is true of Microsoft CA, not OpenSSL." }
+      - { id: d, text: "Only ESX hosts", why: "OpenSSL covers instance components, not just hosts." }
+    explanation:
+      correct: "Microsoft CA: management and instance components. OpenSSL: instance components only."
+      concept: "CA options per component family."
+      trap: "Lab admins love OpenSSL; it cannot sign VCF Operations certificates in this workflow."
+    diagnostic: vcf
+
+  - id: sec-011
+    type: ordering
+    kind: scenario
+    difficulty: intermediate
+    version: vcf9
+    topics: [certificates]
+    objective: "4.2"
+    lesson: certificate-management
+    section: flow-2-external-ca-csr-sign-import
+    stem: "Order the steps to replace an NSX Manager certificate with one signed by an external CA in VCF Operations."
+    items:
+      - { id: i1, text: "Generate CSR for the component (CN, SANs, key size)" }
+      - { id: i2, text: "Download the CSR and submit it to the external CA" }
+      - { id: i3, text: "Import Certificate: paste or upload the PEM certificate and chain (intermediate, then root)" }
+      - { id: i4, text: "Validate, then Save" }
+      - { id: i5, text: "Replace With Imported Certificate and confirm" }
+    explanation:
+      correct: "This is the documented external CA flow in Fleet Management > Certificates."
+      concept: "CSR, sign, import, validate, replace."
+      trap: "Do not try to import before the CSR was generated by VCF: the private key lives on the component."
+
+  - id: sec-012
+    type: single
+    kind: log
+    difficulty: advanced
+    version: vcf9
+    topics: [certificates]
+    objective: "4.2"
+    lesson: certificate-management
+    section: reading-a-chain-problem
+    context: |
+      Run on the SDDC Manager appliance after vCenter's certificate was replaced:
+      ```log
+      $ openssl s_client -connect vcenter-mgmt.lab.local:443 -servername vcenter-mgmt.lab.local -showcerts
+      depth=0 CN = vcenter-mgmt.lab.local
+      verify error:num=20:unable to get local issuer certificate
+      verify error:num=21:unable to verify the first certificate
+       0 s:CN = vcenter-mgmt.lab.local
+         i:DC = local, DC = lab, CN = LAB-ISSUING-CA
+      Verify return code: 21 (unable to verify the first certificate)
+      ```
+    stem: "What does this output tell you?"
+    options:
+      - { id: a, text: "The certificate has expired", why: "Expiry would show 'certificate has expired' (error 10)." }
+      - { id: b, text: "The client cannot build a chain to a trusted root: the issuing CA (and its root) is not trusted on this appliance and/or the server does not send the intermediate", correct: true, why: "Errors 20/21 mean the issuer is unknown to the client and only the leaf was sent." }
+      - { id: c, text: "The SAN does not match the hostname", why: "s_client reports chain errors here; a name mismatch is reported by the application, and the CN shown matches." }
+      - { id: d, text: "DNS resolution failed", why: "The connection succeeded and a certificate was received.", confusedWith: dns }
+    explanation:
+      correct: "Fix trust: send the full chain from the server and make sure the client trusts the root; replace through VCF Operations so VCF components get the chain."
+      concept: "Chain building and trust stores."
+      trap: "Run the test from the failing client, not only from a laptop that already trusts the CA."
+
+  - id: sec-013
+    type: single
+    kind: concept
+    difficulty: intermediate
+    version: vcf9
+    topics: [certificates]
+    objective: "4.2"
+    lesson: certificate-management
+    section: flow-3-automatic-renewal
+    stem: "When auto-renewal is activated in VCF Operations, when are eligible certificates renewed?"
+    options:
+      - { id: a, text: "On the day of expiry", why: "Too late; services would break." }
+      - { id: b, text: "60 days before expiration", correct: true, why: "TechDocs: automatic renewal happens 60 days prior to expiration." }
+      - { id: c, text: "Every 30 days regardless of expiry", why: "That resembles service-account password rotation, not certificates.", confusedWith: passwords }
+      - { id: d, text: "Only when an administrator approves a renewal alert", why: "Auto-renewal does not need per-certificate approval." }
+    explanation:
+      correct: "Auto-renewal supports VMCA, Microsoft CA, OpenSSL and self-signed certificates on components with non-disruptive updates; MS CA/OpenSSL must be configured first."
+      concept: "Automatic renewal."
+      trap: "Configure VCF Management and each VCF instance separately."
+
+  - id: sec-014
+    type: single
+    kind: troubleshooting
+    difficulty: advanced
+    version: vcf9
+    topics: [certificates]
+    objective: "4.2"
+    lesson: certificate-management
+    section: csr-fields-that-matter
+    stem: "Security policy demands 4096-bit keys for all certificates. Generating CSRs in VCF Operations works for vCenter and NSX, but what about ESX hosts?"
+    options:
+      - { id: a, text: "ESX hosts support only 2048-bit keys in this workflow; document an exception", correct: true, why: "TechDocs: key size 2048 or 4096, ESX hosts support only 2048." }
+      - { id: b, text: "Generate the ESX CSR with OpenSSL on SDDC Manager at 4096 bits", why: "The ESX limitation is about the host, not about the tool." }
+      - { id: c, text: "Use VMCA, which issues 4096-bit host certificates automatically", why: "No such documented option." }
+      - { id: d, text: "Remove ESX hosts from certificate management", why: "Hosts still need valid certificates." }
+    explanation:
+      correct: "ESX: 2048-bit only via VCF Operations CSR generation."
+      concept: "CSR parameters."
+      trap: "Uniform policy statements often collide with component limits; the exam rewards knowing the limit."
+
+  - id: sec-015
+    type: single
+    kind: troubleshooting
+    difficulty: expert
+    version: vcf9
+    topics: [certificates, lcm-recovery]
+    objective: "4.2"
+    lesson: certificate-management
+    section: troubleshooting
+    context: |
+      Yesterday a team replaced the workload vCenter's machine SSL certificate directly with vCenter's certificate tooling,
+      using the new enterprise CA. Today the SDDC Manager precheck fails on that vCenter and VCF Operations shows
+      collection errors. Browsers on admin laptops show no warning.
+    stem: "What is the most effective next step?"
+    options:
+      - { id: a, text: "Ignore it; browsers trust the certificate so it is valid", why: "Laptops trust the enterprise CA via domain policy; that says nothing about SDDC Manager." }
+      - { id: b, text: "From SDDC Manager, run openssl s_client against the vCenter on 443 and check whether the new chain verifies", correct: true, why: "Tests trust from the failing client and proves or disproves the hypothesis quickly." }
+      - { id: c, text: "Restart all services on vCenter", why: "Does not change trust on the client side." }
+      - { id: d, text: "Rotate all passwords", why: "Credentials are not the issue here.", confusedWith: passwords }
+    explanation:
+      correct: "The failing component is the client; test from it, then fix by adding the CA chain to VCF's trust and performing future replacements through VCF Operations."
+      concept: "Service-to-service trust vs browser trust."
+      trap: "The browser is the red herring."
+
+  - id: sec-016
+    type: cli
+    kind: command
+    difficulty: intermediate
+    version: general
+    topics: [certificates]
+    objective: "4.2"
+    lesson: certificate-management
+    section: cli-api
+    stem: "Type the OpenSSL command that connects to nsx-mgmt.lab.local on port 443 and prints the full certificate chain the server sends (without SNI options)."
+    answers:
+      - "openssl s_client -connect nsx-mgmt.lab.local:443 -showcerts"
+      - "openssl s_client -showcerts -connect nsx-mgmt.lab.local:443"
+    placeholder: "openssl ..."
+    explanation:
+      correct: "s_client with -connect host:port and -showcerts prints every certificate in the presented chain plus the verify result."
+      concept: "Chain inspection from the client."
+      trap: "x509 decodes a file; s_client talks to a live server."
+
+  - id: sec-017
+    type: single
+    kind: architecture
+    difficulty: intermediate
+    version: general
+    topics: [certificates, vcenter]
+    objective: "4.2"
+    lesson: certificate-management
+    section: vecs-where-vcenter-keeps-certificates
+    stem: "Which VECS store on vCenter holds the certificate presented by the reverse proxy on port 443?"
+    options:
+      - { id: a, text: "TRUSTED_ROOTS", why: "Holds roots vCenter trusts, not the certificate it presents." }
+      - { id: b, text: "MACHINE_SSL_CERT", correct: true, why: "KB 376720: used by the reverse proxy on port 443." }
+      - { id: c, text: "vpxd-extension", why: "Solution user store for services such as EAM and SMS." }
+      - { id: d, text: "data-encipherment", why: "Used for guest customization password encryption." }
+    explanation:
+      correct: "MACHINE_SSL_CERT is what clients see; TRUSTED_ROOTS is what vCenter trusts."
+      concept: "VECS stores."
+      trap: "Presented vs trusted certificates are different stores."
+
+  - id: sec-018
+    type: single
+    kind: concept
+    difficulty: intermediate
+    version: vcf9
+    topics: [certificates]
+    objective: "4.2"
+    lesson: certificate-management
+    section: flow-2-external-ca-csr-sign-import
+    stem: "What format and order does VCF Operations expect when importing a CA-signed certificate chain?"
+    options:
+      - { id: a, text: "PEM-encoded; intermediate certificate(s) first, then the root", correct: true, why: "Only PEM is supported; chain order intermediate then root." }
+      - { id: b, text: "DER-encoded; root first", why: "Only PEM-encoded certificates are supported." }
+      - { id: c, text: "PFX including the private key", why: "The private key was generated with the CSR on the component." }
+      - { id: d, text: "Any format; VCF converts automatically", why: "Not documented." }
+    explanation:
+      correct: "Paste PEM text or upload .crt/.cer/.pem/.p7b/.p7c files containing PEM certificates."
+      concept: "Import requirements."
+      trap: "Uploading a PFX with a private key is a habit from other platforms."
+
+  # ---------------------------------------------------------------- passwords
+  - id: sec-019
+    type: single
+    kind: scenario
+    difficulty: foundation
+    version: vcf9
+    topics: [passwords]
+    objective: "4.2"
+    lesson: password-management
+    section: server-side-and-client-side
+    context: |
+      An engineer reset the NSX Manager admin password directly in NSX during an incident. VCF now reports the NSX
+      admin credential as failed, and NSX-related tasks fail.
+    stem: "Which action restores VCF's access?"
+    options:
+      - { id: a, text: "Update the password in VCF Operations", why: "Update would change the password on NSX again; it is for planned changes." }
+      - { id: b, text: "Rotate the password in SDDC Manager", why: "Rotation changes the password again and needs the current one to work." }
+      - { id: c, text: "Remediate the password in VCF Operations with the value now set on NSX", correct: true, why: "Remediate re-syncs VCF's stored credential after an out-of-band change." }
+      - { id: d, text: "Redeploy NSX Manager", why: "Far too disruptive for a credential mismatch." }
+    explanation:
+      correct: "Remediate = client side only, with the password already on the component."
+      concept: "Update vs Rotate vs Remediate."
+      trap: "Update is the most familiar word, but it is wrong here."
+    diagnostic: vcf
+
+  - id: sec-020
+    type: matching
+    kind: concept
+    difficulty: intermediate
+    version: vcf9
+    topics: [passwords]
+    objective: "4.2"
+    lesson: password-management
+    section: server-side-and-client-side
+    stem: "Match each password action to what it does."
+    pairs:
+      - { id: p1, left: "Update", right: "Sets a password you choose on the component and in VCF's store" }
+      - { id: p2, left: "Rotate", right: "Sets an auto-generated password on the component and in VCF's store; can be scheduled" }
+      - { id: p3, left: "Remediate", right: "Stores in VCF the password that was already changed on the component" }
+    explanation:
+      correct: "Server side vs client side is the key to all three."
+      concept: "Password actions."
+      trap: "Only Remediate leaves the component's password unchanged."
+
+  - id: sec-021
+    type: single
+    kind: concept
+    difficulty: intermediate
+    version: vcf9
+    topics: [passwords]
+    objective: "4.2"
+    lesson: password-management
+    section: rotate-a-password-sddc-manager
+    stem: "An auditor requires automatic scheduled rotation for all root accounts, including ESX hosts. What must you tell them about VCF 9.0?"
+    options:
+      - { id: a, text: "ESX accounts can be rotated, but scheduled rotation is not supported for ESX", correct: true, why: "Documented limitation; rotate ESX on demand or via automation." }
+      - { id: b, text: "ESX root passwords cannot be changed by VCF", why: "They can be rotated and updated." }
+      - { id: c, text: "Scheduled rotation is supported for every account", why: "Not for ESX." }
+      - { id: d, text: "Rotation is configured in vCenter for ESX", why: "VCF manages ESX credentials through SDDC Manager.", confusedWith: vcenter }
+    explanation:
+      correct: "Schedule rotation for vCenter, NSX, SDDC Manager accounts; handle ESX with on-demand rotation."
+      concept: "Rotation scope."
+      trap: "'All accounts' requirements meet a component limit."
+
+  - id: sec-022
+    type: single
+    kind: troubleshooting
+    difficulty: advanced
+    version: vcf9
+    topics: [passwords]
+    objective: "4.2"
+    lesson: password-management
+    section: freshness-of-status
+    stem: "You remediated a vCenter root password successfully, but VCF Operations still shows the old connection status an hour later. What is the best explanation and check?"
+    options:
+      - { id: a, text: "Status in VCF Operations is updated once a day; check real-time status with the SDDC Manager API", correct: true, why: "TechDocs: expiry and connection status in VCF Operations refresh daily; the SDDC Manager API is real time." }
+      - { id: b, text: "The remediation silently failed; repeat it every 10 minutes", why: "Repeating does not help if the display is just stale." }
+      - { id: c, text: "VCF Operations must be rebooted", why: "Not required for a status refresh." }
+      - { id: d, text: "The vCenter license expired", why: "Unrelated.", confusedWith: licensing }
+    explanation:
+      correct: "Know the data freshness of the console before drawing conclusions."
+      concept: "Status refresh interval."
+      trap: "A stale dashboard is not a failed operation."
+
+  - id: sec-023
+    type: single
+    kind: command
+    difficulty: intermediate
+    version: vcf9
+    topics: [passwords]
+    objective: "4.2"
+    lesson: password-management
+    section: looking-up-stored-credentials
+    stem: "Which statement about the lookup_passwords command on SDDC Manager is correct?"
+    options:
+      - { id: a, text: "Run as the vcf user; it asks for an entity type and an SDDC Manager account with the ADMIN role, and covers VCF instance components only", correct: true, why: "Matches TechDocs; GET /v1/credentials is the API equivalent." }
+      - { id: b, text: "It shows VCF Operations and VCF Automation passwords", why: "Management components are excluded." }
+      - { id: c, text: "It runs on vCenter", why: "It is an SDDC Manager command.", confusedWith: vcenter }
+      - { id: d, text: "It resets passwords that have expired", why: "It only looks up stored credentials." }
+    explanation:
+      correct: "lookup_passwords reads SDDC Manager's credential store for instance components."
+      concept: "Credential lookup."
+      trap: "Lookup is read-only; it does not fix anything by itself."
+
+  - id: sec-024
+    type: single
+    kind: concept
+    difficulty: advanced
+    version: vcf9
+    topics: [passwords]
+    objective: "4.2"
+    lesson: password-management
+    section: known-9-0-gaps
+    stem: "In VCF 9.0, in Fleet Management > Passwords you see only Update and Remediate for VCF Operations and VCF Automation accounts, but no Rotate. What is the correct interpretation?"
+    options:
+      - { id: a, text: "Expected in 9.0.x: rotation is not available for management components there; update them manually, while ESX/vCenter/NSX rotation is done through SDDC Manager", correct: true, why: "KB 430609 documents this." }
+      - { id: b, text: "Your role lacks Passwords: Manage", why: "Without Manage you would not see Update and Remediate either.", confusedWith: rbac }
+      - { id: c, text: "Rotation requires VCF SSO to be configured", why: "Unrelated to SSO.", confusedWith: identity-sso }
+      - { id: d, text: "The accounts are service accounts that rotate every 30 days automatically", why: "These are management component accounts, not system-managed svc-* accounts." }
+    explanation:
+      correct: "Know where each action lives in 9.0: Update/Remediate in VCF Operations, Rotate in SDDC Manager (Security > Password Management)."
+      concept: "Action placement in 9.0."
+      trap: "A missing button is not always a permissions problem."
+
+  # ---------------------------------------------------------------- licensing
+  - id: sec-025
+    type: single
+    kind: concept
+    difficulty: foundation
+    version: vcf9
+    topics: [licensing]
+    objective: "4.2"
+    lesson: license-management
+    section: from-keys-to-files
+    stem: "In VCF 9.0, to which objects do you assign licenses in VCF Operations?"
+    options:
+      - { id: a, text: "Each ESX host", why: "Hosts are licensed automatically through their vCenter.", confusedWith: esx-host }
+      - { id: b, text: "vCenter instances", correct: true, why: "Licenses are assigned only to vCenter instances." }
+      - { id: c, text: "NSX Manager clusters", why: "NSX is licensed through the vCenter it is attached to.", confusedWith: nsx-architecture }
+      - { id: d, text: "SDDC Manager", why: "SDDC Manager is not the license assignment target in 9.0.", confusedWith: sddc-manager }
+    explanation:
+      correct: "Assign primary (then add-on) licenses to vCenter; ESX, NSX and other components inherit."
+      concept: "VCF 9 licensing model."
+      trap: "8.x habits (keys per host/product) do not apply."
+    diagnostic: vcf
+
+  - id: sec-026
+    type: single
+    kind: concept
+    difficulty: intermediate
+    version: vcf9
+    topics: [licensing]
+    objective: "4.2"
+    lesson: license-management
+    section: reporting-obligation
+    stem: "How often must license usage be reported to maintain VCF 9 licenses?"
+    options:
+      - { id: a, text: "Every 30 days", why: "Not the documented interval." }
+      - { id: b, text: "At least once every 180 days", correct: true, why: "TechDocs: required at least once every 180 days, followed by a license update." }
+      - { id: c, text: "Only at renewal", why: "Reporting is periodic." }
+      - { id: d, text: "Never in disconnected mode", why: "Disconnected mode reports manually." }
+    explanation:
+      correct: "Connected mode automates it; disconnected mode needs a manual usage file upload and license import."
+      concept: "Usage reporting obligation."
+      trap: "Dark sites still have to report."
+
+  - id: sec-027
+    type: single
+    kind: scenario
+    difficulty: advanced
+    version: vcf9
+    topics: [licensing]
+    objective: "4.2"
+    lesson: license-management
+    section: expiry-timeline
+    stem: "A VCF 9 license expired and nobody updated it for more than 90 days afterwards. What impact does TechDocs describe?"
+    options:
+      - { id: a, text: "Only a banner warning in the vSphere Client", why: "The impact becomes operational after the 90-day window." }
+      - { id: b, text: "Management operations are prevented, ESX hosts disconnect and workload creation is blocked", correct: true, why: "Documented consequences after the 90 days." }
+      - { id: c, text: "Running VMs are powered off immediately", why: "Not what TechDocs describes." }
+      - { id: d, text: "NSX switches to an evaluation license", why: "Not documented." }
+    explanation:
+      correct: "Notifications before expiry, 90 days to update after expiry, then hard impact."
+      concept: "Expiry timeline."
+      trap: "Different 90-day windows exist (initial evaluation, post-expiry, over-capacity hosts); read which one the question means."
+
+  - id: sec-028
+    type: single
+    kind: scenario
+    difficulty: intermediate
+    version: vcf9
+    topics: [licensing]
+    objective: "4.2"
+    lesson: license-management
+    section: connected-vs-disconnected
+    context: |
+      A dark site has no internet access from VCF Operations. An operator has an internet-connected workstation outside the site.
+    stem: "How is VCF Operations registered?"
+    options:
+      - { id: a, text: "Disconnected mode: download the registration (JWS) file from VCF Operations, upload it to the VCF Business Services console, then import the license file", correct: true, why: "Documented disconnected workflow." }
+      - { id: b, text: "Connected mode with an activation code", why: "Requires VCF Operations to reach Broadcom." }
+      - { id: c, text: "Enter 25-character keys in vCenter", why: "VCF 9 uses license files." }
+      - { id: d, text: "Registration is optional in dark sites", why: "Registration is required within the evaluation period." }
+    explanation:
+      correct: "Disconnected mode uses manual file transfers for registration, usage reporting and license updates."
+      concept: "Connected vs disconnected."
+      trap: "Activation codes are the connected-mode mechanism."
+
+  - id: sec-029
+    type: multi
+    select: 2
+    kind: concept
+    difficulty: intermediate
+    version: vcf9
+    topics: [licensing]
+    objective: "4.2"
+    lesson: license-management
+    section: primary-and-add-on-licenses
+    stem: "Which two statements about VCF 9 licenses are correct? (Choose two.)"
+    options:
+      - { id: a, text: "The VMware Cloud Foundation primary license is measured in cores", correct: true, why: "Documented capacity unit." }
+      - { id: b, text: "vSAN add-on capacity is measured in TiB", correct: true, why: "Documented capacity unit." }
+      - { id: c, text: "Add-on licenses are assigned before the primary license", why: "Primary first, then add-on." }
+      - { id: d, text: "NSX requires its own license file", why: "NSX is licensed automatically through vCenter.", confusedWith: nsx-architecture }
+    explanation:
+      correct: "Primary licenses (VCF, VVF) in cores; add-ons such as vSAN capacity in TiB."
+      concept: "Primary vs add-on."
+      trap: "Order of assignment: primary, then add-on."
+
+  - id: sec-030
+    type: single
+    kind: troubleshooting
+    difficulty: intermediate
+    version: vcf9
+    topics: [licensing]
+    objective: "4.2"
+    lesson: license-management
+    section: how-it-works
+    stem: "You just integrated a new workload vCenter with VCF Operations, but it does not appear under License Management > Licenses. What is the likely explanation?"
+    options:
+      - { id: a, text: "It can take up to four collection cycles before the vCenter appears", correct: true, why: "TechDocs notes this delay after integration." }
+      - { id: b, text: "Workload vCenters cannot be licensed in VCF Operations", why: "All vCenter instances are licensed there." }
+      - { id: c, text: "The vCenter must first be added to Enhanced Linked Mode", why: "Unrelated, and ELM conflicts with VCF SSO.", confusedWith: identity-sso }
+      - { id: d, text: "The SDDC Manager license inventory must be updated", why: "9.0 licensing is in VCF Operations.", confusedWith: sddc-manager }
+    explanation:
+      correct: "Wait for collection, verify the adapter, then assign."
+      concept: "Integration before assignment."
+      trap: "Patience is a valid troubleshooting step when the docs specify a delay."

@@ -1,0 +1,48 @@
+id: d13-network-storage-layers
+title: "Data-path layers to test bottom-up: fabric, vmknics, TEPs, edges, vSAN"
+description: >
+  Two nested ESX transport nodes connect through a physical switch fabric that carries VLANs for management, vMotion,
+  vSAN, host TEP, edge TEP and edge uplinks with jumbo MTU. Each host has vmknics for management, vMotion, vSAN and a TEP
+  in the NSX overlay netstack. Overlay traffic between VMs on different hosts is Geneve-encapsulated between TEPs. An
+  NSX Edge node hosts the Tier-0 service router, which peers with the physical router over uplink VLANs for
+  north-south traffic. vSAN traffic flows between vSAN vmknics. The NSX Manager cluster is the management and control
+  plane; it is not in the data path. Test order: link and VLAN, then IP, then MTU with vmkping -d, then TEP tunnels,
+  then routing on edges, then vSAN membership and objects.
+width: 1000
+height: 600
+groups:
+  - { id: g-host1, x: 20, y: 300, w: 300, h: 280, label: "ESX host A (transport node)", kind: compute }
+  - { id: g-host2, x: 360, y: 300, w: 300, h: 280, label: "ESX host B (transport node)", kind: compute }
+  - { id: g-edge, x: 700, y: 300, w: 280, h: 280, label: "NSX Edge node", kind: nsx }
+nodes:
+  - { id: mgr, x: 40, y: 40, w: 200, h: 60, label: "NSX Manager", sublabel: "mgmt + control plane", kind: nsx, component: nsx-manager, info: "Desired state, topology, central control plane. If it fails, configuration stops but established forwarding on hosts and edges continues." }
+  - { id: rtr, x: 760, y: 40, w: 200, h: 60, label: "Physical router", sublabel: "BGP / static", kind: external, component: physical-network, info: "Upstream router; peers with the Tier-0 over uplink VLANs and routes between TEP subnets if they differ." }
+  - { id: fabric, x: 300, y: 160, w: 400, h: 60, label: "Switch fabric", sublabel: "VLAN trunks, MTU 9000+", kind: network, component: physical-network, info: "Every host port must trunk all required VLANs with consistent MTU. One port missing a VLAN isolates one host for that traffic type; one link at 1500 breaks large overlay/vSAN frames." }
+  - { id: a-vsan, x: 40, y: 350, w: 120, h: 50, label: "vmk vSAN", kind: storage, info: "vSAN vmknic. Test with vmkping -I vmkX -d -s 8972 to peers; esxcli vsan network list shows which vmknic carries vSAN." }
+  - { id: a-tep, x: 180, y: 350, w: 120, h: 50, label: "TEP", sublabel: "netstack vxlan", kind: nsx, info: "Host TEP in the overlay netstack. Test with vmkping ++netstack=vxlan -d -s 1572 (1600) or 8972 (9000)." }
+  - { id: a-vm, x: 110, y: 480, w: 140, h: 56, label: "VM A", sublabel: "overlay segment", kind: vm, info: "Workload on an overlay segment; its traffic to VM B is Geneve-encapsulated between TEPs." }
+  - { id: b-vsan, x: 380, y: 350, w: 120, h: 50, label: "vmk vSAN", kind: storage, info: "Peer vSAN vmknic. A host whose vSAN vmknic cannot reach the others forms its own network partition." }
+  - { id: b-tep, x: 520, y: 350, w: 120, h: 50, label: "TEP", sublabel: "netstack vxlan", kind: nsx, info: "Peer TEP. Tunnel status in NSX Manager shows up/down per pair." }
+  - { id: b-vm, x: 450, y: 480, w: 140, h: 56, label: "VM B", sublabel: "overlay segment", kind: vm, info: "Second workload. If small pings work but large transfers hang, suspect MTU on the path between TEPs." }
+  - { id: e-tep, x: 720, y: 350, w: 110, h: 50, label: "Edge TEP", kind: nsx, info: "Edge nodes are transport nodes too; their TEPs need the same MTU and reachability to host TEPs." }
+  - { id: t0, x: 850, y: 350, w: 110, h: 50, label: "Tier-0 SR", kind: nsx, component: nsx-edge-cluster, info: "Service router with uplinks to the physical router (BGP or static). North-south problems: uplink VLAN, BGP neighbour, route advertisement on Tier-1, redistribution on Tier-0." }
+  - { id: uplink, x: 760, y: 480, w: 200, h: 56, label: "Uplink VLANs", sublabel: "edge uplink 1/2", kind: network, info: "VLAN-backed uplink segments for the Tier-0; VLAN IDs must match the physical router interfaces." }
+edges:
+  - { from: a-vsan, to: fabric, kind: storage }
+  - { from: b-vsan, to: fabric, kind: storage }
+  - { from: a-tep, to: fabric, kind: overlay }
+  - { from: b-tep, to: fabric, kind: overlay }
+  - { from: e-tep, to: fabric, kind: overlay }
+  - { from: a-vsan, to: b-vsan, label: "vSAN", kind: storage, bidirectional: true }
+  - { from: a-tep, to: b-tep, label: "Geneve tunnel", kind: overlay, dashed: true, bidirectional: true }
+  - { from: a-vm, to: a-tep, kind: data }
+  - { from: b-vm, to: b-tep, kind: data }
+  - { from: t0, to: uplink, kind: north-south }
+  - { from: uplink, to: rtr, label: "BGP", kind: north-south, bidirectional: true }
+  - { from: mgr, to: fabric, label: "control (not data path)", kind: control, dashed: true }
+steps:
+  - { title: "Physical and VLAN", text: "Link up and every VLAN trunked to every host port; one missing VLAN isolates one host.", highlight: [fabric] }
+  - { title: "MTU", text: "vmkping -d at 1472, then 1572, then 8972 proves where the path MTU stops.", highlight: [a-vsan, b-vsan, a-tep, b-tep, fabric] }
+  - { title: "Overlay", text: "TEP-to-TEP tunnels carry VM-to-VM traffic between hosts.", highlight: [a-tep, b-tep, a-vm, b-vm] }
+  - { title: "North-south", text: "Edge TEP, Tier-0 SR, uplink VLANs and BGP to the physical router.", highlight: [e-tep, t0, uplink, rtr] }
+  - { title: "Planes", text: "NSX Manager is not in the data path; its failure stops changes, not established forwarding.", highlight: [mgr] }

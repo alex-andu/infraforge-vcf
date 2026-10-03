@@ -1,0 +1,47 @@
+id: d13-log-evidence-map
+title: "Where the evidence lives: VCF 9 logs and collection tools"
+description: >
+  A map of evidence sources by component. ESX hosts log vmkernel.log, hostd.log and vpxa.log locally and can forward
+  syslog. vCenter services log under /var/log/vmware/<service>/ (vpxd is the core service). SDDC Manager and the VCF
+  Installer log under /var/log/vmware/vcf/ (domainmanager, lcm, operationsmanager, commonsvcs) and collect bundles with
+  the sos utility into /var/log/vmware/vcf/sddc-support/. NSX Manager logs to /var/log/syslog plus service logs such as
+  nsxapi; the NSX CLI can tail them. VCF Operations surfaces VCF Health, Diagnostics Findings and Log Assist, which
+  collects bundles from vCenter, ESX, SDDC Manager, NSX, VCF Operations for logs and fleet management. All components can
+  send syslog to VCF Operations for logs for central search. Paths verified for VCF 9 are the ESX agent logs referenced in
+  KB 320280, domainmanager.log and the sos output directory; others come from 5.x/8.x documents and should be confirmed.
+width: 1000
+height: 600
+groups:
+  - { id: g-hosts, x: 20, y: 20, w: 300, h: 260, label: "ESX hosts", kind: compute }
+  - { id: g-mgmt, x: 340, y: 20, w: 640, h: 260, label: "Management appliances", kind: mgmt }
+  - { id: g-ops, x: 20, y: 320, w: 960, h: 260, label: "Collection and correlation", kind: ops }
+nodes:
+  - { id: vmk, x: 50, y: 70, w: 240, h: 56, label: "vmkernel.log", sublabel: "devices, storage, network", kind: compute, component: esx-host, info: "/var/log/vmkernel.log: core VMkernel events, device discovery, storage paths, vmknic and uplink events. Documented for ESXi 7/8 (KB 306962); confirm with ls /var/log on ESX 9." }
+  - { id: hostd, x: 50, y: 140, w: 240, h: 56, label: "hostd.log", sublabel: "host agent tasks", kind: compute, component: esx-host, info: "/var/log/hostd.log: host management agent; VM and host tasks and events. KB 320280 (applies to 9.x) points here when agents fail to restart." }
+  - { id: vpxa, x: 50, y: 210, w: 240, h: 56, label: "vpxa.log", sublabel: "vCenter agent, heartbeat", kind: compute, component: esx-host, info: "/var/log/vpxa.log: vCenter agent; communication with vpxd. Repeated 'Started heartbeating' lines indicate heartbeat loss (KB 323612)." }
+  - { id: vpxd, x: 370, y: 70, w: 180, h: 56, label: "vCenter", sublabel: "/var/log/vmware/<svc>/", kind: mgmt, component: vcenter, info: "Each vCenter service logs in its own directory under /var/log/vmware/; vpxd.log under /var/log/vmware/vpxd/. Documented for 6.7 to 8.x (KB 312194); confirm on 9.0." }
+  - { id: sddc, x: 570, y: 70, w: 190, h: 56, label: "SDDC Mgr / Installer", sublabel: "/var/log/vmware/vcf/", kind: mgmt, component: sddc-manager, info: "domainmanager/domainmanager.log is cited by VCF 9 KBs (439546, 418890). lcm/, operationsmanager/ and commonsvcs/ are documented for 5.2 and cited for 9 by Broadcom community answers. sos bundles go to /var/log/vmware/vcf/sddc-support/ (KB 402476)." }
+  - { id: nsx, x: 780, y: 70, w: 180, h: 56, label: "NSX Manager", sublabel: "/var/log/syslog, nsxapi", kind: nsx, component: nsx-manager, info: "NSX Manager: /var/log/syslog, /var/log/proton/nsxapi*, /var/log/policy/nsxapi*, clustering logs under /var/log/corfu and /var/log/cbm (KB 376813). NSX CLI: get log-file syslog follow." }
+  - { id: edge, x: 780, y: 180, w: 180, h: 56, label: "NSX Edge", sublabel: "/var/log/syslog", kind: nsx, component: nsx-edge-cluster, info: "Edge nodes log to /var/log/syslog; edge join and API server logs are listed in KB 376813." }
+  - { id: sos, x: 570, y: 180, w: 190, h: 56, label: "sos utility", sublabel: "--sddc-manager-logs --zip", kind: mgmt, component: sddc-manager, info: "Run as root on SDDC Manager or the VCF Installer. 9.0.x: --vcf-installer-logs, --sddc-manager-logs, --collect-all-logs, with --zip. 9.1 adds --vcf-mgmt-svcs-logs." }
+  - { id: health, x: 60, y: 380, w: 200, h: 64, label: "VCF Health", sublabel: "and Findings", kind: ops, component: vcf-operations, info: "Cards for certificates, NTP and DNS, vCenter, VM operations, vMotion and snapshots; Diagnostics Findings match property and log signatures to known issues." }
+  - { id: logassist, x: 300, y: 380, w: 200, h: 64, label: "Log Assist", sublabel: "bundles to support", kind: ops, component: vcf-operations, info: "Generates log bundles for VCF Operations, vCenter, ESX, SDDC Manager, NSX, VCF Operations for logs and fleet management, and attaches active findings; uploads to Broadcom support without FTP." }
+  - { id: central, x: 560, y: 380, w: 380, h: 64, label: "VCF Operations for logs", sublabel: "central syslog search", kind: ops, component: vcf-operations-logs, info: "Receives syslog from ESX, vCenter, NSX and other components so you can correlate by time across the stack, and keeps logs after host reboots." }
+  - { id: you, x: 360, y: 490, w: 280, h: 56, label: "Administrator", sublabel: "Validate step", kind: external, info: "You read the first relevant error at the failure timestamp, after proving DNS, NTP, certificates and identity healthy." }
+edges:
+  - { from: vmk, to: central, label: "syslog", kind: mgmt, dashed: true }
+  - { from: hostd, to: central, kind: mgmt, dashed: true }
+  - { from: vpxa, to: vpxd, label: "UDP 902 heartbeat", kind: control }
+  - { from: vpxd, to: central, label: "syslog", kind: mgmt, dashed: true }
+  - { from: nsx, to: central, label: "syslog", kind: mgmt, dashed: true }
+  - { from: sddc, to: sos, label: "collect", kind: mgmt }
+  - { from: logassist, to: sddc, label: "bundle", kind: mgmt, dashed: true }
+  - { from: logassist, to: vpxd, kind: mgmt, dashed: true }
+  - { from: health, to: you, kind: data }
+  - { from: central, to: you, kind: data }
+  - { from: sos, to: you, label: "bundle", kind: data }
+steps:
+  - { title: "Host evidence", text: "vmkernel for devices and network, hostd for host tasks, vpxa for the vCenter relationship.", highlight: [vmk, hostd, vpxa] }
+  - { title: "Management evidence", text: "vCenter service logs, SDDC Manager/Installer domain manager log, NSX syslog and API logs.", highlight: [vpxd, sddc, nsx, edge] }
+  - { title: "Collect before changing", text: "sos on SDDC Manager/Installer and Log Assist in VCF Operations preserve the evidence.", highlight: [sos, logassist] }
+  - { title: "Correlate", text: "Central syslog in VCF Operations for logs lines up events from all components by time.", highlight: [central, health, you] }

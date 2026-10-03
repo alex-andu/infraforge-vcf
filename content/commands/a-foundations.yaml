@@ -1,0 +1,181 @@
+commands:
+  - id: esxcli-system-version-get
+    technology: esxi
+    title: Show the ESX version and build
+    purpose: Confirm exactly which ESX release and build a host runs before upgrades, support calls or VCF host commissioning (all hosts must match the version the target VCF release expects).
+    syntax: esxcli system version get
+    example: esxcli system version get
+    output: |
+         Product: VMware ESX
+         Version: 9.0.0
+         Build: Releasebuild-<build number>
+         Update: 0
+         Patch: 0
+    mistake: Reading the version in the DCUI or Host Client banner and ignoring the build number; two hosts can both say 9.0.0 but run different patch builds.
+    lesson: hypervisors-and-esx
+    version: vcf9
+    source:
+      title: ESXCLI 9.0.0 Reference – esxcli system
+      url: https://developer.broadcom.com/xapis/esxcli-command-reference/9.0.0/namespace/esxcli_system.html
+
+  - id: esxcli-hardware-cpu-list
+    technology: esxi
+    title: List the physical CPUs the VMkernel sees
+    purpose: Check how many logical CPUs (cores/threads) the host exposes and which CPU model, which matters for vCPU sizing, EVC and nested-lab CPU flags.
+    syntax: esxcli hardware cpu list
+    example: esxcli hardware cpu list | grep -E "^CPU|Brand"
+    output: |
+      CPU:0
+         Brand: Intel(R) Xeon(R) <model>
+      CPU:1
+         Brand: Intel(R) Xeon(R) <model>
+      ...
+    mistake: Counting the CPU:n entries as physical cores. Each entry is a logical CPU; with hyper-threading two entries share one core. Use "esxcli hardware cpu global get" for package/core/thread counts.
+    lesson: cpu-memory-virtualization
+    version: general
+    source:
+      title: ESXCLI 9.0.0 Reference – esxcli hardware
+      url: https://developer.broadcom.com/xapis/esxcli-command-reference/9.0.0/namespace/esxcli_hardware.html
+
+  - id: esxcli-hardware-cpu-global-get
+    technology: esxi
+    title: Show CPU package, core and thread counts
+    purpose: Get the totals that matter for licensing and sizing (packages, cores, threads, hyper-threading state).
+    syntax: esxcli hardware cpu global get
+    example: esxcli hardware cpu global get
+    output: |
+         CPU Packages: 2
+         CPU Cores: 8
+         CPU Threads: 8
+         Hyperthreading Active: false
+         Hyperthreading Supported: false
+         Hyperthreading Enabled: false
+         ...
+    mistake: Expecting a nested ESX VM to report the physical server's sockets and cores. A nested host only sees the virtual sockets/cores you gave the VM in Proxmox.
+    lesson: cpu-memory-virtualization
+    version: general
+    source:
+      title: ESXCLI 9.0.0 Reference – esxcli hardware
+      url: https://developer.broadcom.com/xapis/esxcli-command-reference/9.0.0/namespace/esxcli_hardware.html
+
+  - id: esxcli-hardware-memory-get
+    technology: esxi
+    title: Show physical memory of the host
+    purpose: Confirm installed RAM and NUMA node count (ESX 9.0 needs at least 8 GB; 12 GB or more to run VMs in typical production).
+    syntax: esxcli hardware memory get
+    example: esxcli hardware memory get
+    output: |
+         Physical Memory: 34359738368 Bytes
+         Reliable Memory: 0 Bytes
+         NUMA Node Count: 1
+    mistake: Reading the value as GB. It is reported in bytes (34359738368 bytes = 32 GiB).
+    lesson: cpu-memory-virtualization
+    version: general
+    source:
+      title: ESXCLI 9.0.0 Reference – esxcli hardware
+      url: https://developer.broadcom.com/xapis/esxcli-command-reference/9.0.0/namespace/esxcli_hardware.html
+
+  - id: vim-cmd-vmsvc-getallvms
+    technology: esxi
+    title: List all registered VMs and their Vmid
+    purpose: Find the Vmid of a VM so you can power it on/off or query it from the ESX shell when vCenter or the Host Client is unavailable.
+    syntax: vim-cmd vmsvc/getallvms
+    example: vim-cmd vmsvc/getallvms
+    output: |
+      Vmid    Name                File                       Guest OS          Version   Annotation
+      1      lab-vm01   [datastore1] lab-vm01/lab-vm01.vmx   otherLinux64Guest   vmx-22
+    mistake: Using the Vmid on another host or after re-registering the VM. The Vmid is local to the host's inventory and changes if the VM is unregistered and registered again.
+    lesson: hypervisors-and-esx
+    version: general
+    source:
+      title: Broadcom KB 308360 – Performing common virtual machine-related tasks with command-line utilities
+      url: https://knowledge.broadcom.com/external/article/308360/performing-common-virtual-machinerelated.html
+
+  - id: vim-cmd-vmsvc-power-getstate
+    technology: esxi
+    title: Check (and change) a VM's power state from the shell
+    purpose: Query the power state of a VM by Vmid; the same family has power.on, power.shutdown (guest shutdown, needs VMware Tools) and power.off (hard power off).
+    syntax: vim-cmd vmsvc/power.getstate <vmid>
+    example: vim-cmd vmsvc/power.getstate 1
+    output: |
+      Retrieved runtime info
+      Powered on
+    mistake: Using power.off when you meant power.shutdown. power.off is like pulling the plug; power.shutdown asks the guest OS (through VMware Tools) to shut down cleanly.
+    lesson: hypervisors-and-esx
+    version: general
+    source:
+      title: Broadcom KB 308360 – Performing common virtual machine-related tasks with command-line utilities
+      url: https://knowledge.broadcom.com/external/article/308360/performing-common-virtual-machinerelated.html
+
+  - id: esxcli-vm-process-list
+    technology: esxi
+    title: List running VMs and their World IDs
+    purpose: See which VMs are actually running on the host and get the World ID needed for "esxcli vm process kill" when a VM is hung.
+    syntax: esxcli vm process list
+    example: esxcli vm process list
+    output: |
+      lab-vm01
+         World ID: 2101234
+         Process ID: 0
+         VMX Cartel ID: 2101233
+         UUID: 56 4d ...
+         Display Name: lab-vm01
+         Config File: /vmfs/volumes/<datastore-uuid>/lab-vm01/lab-vm01.vmx
+    mistake: Expecting powered-off VMs in the list. This command only lists running VMs; use vim-cmd vmsvc/getallvms for the full inventory.
+    lesson: hypervisors-and-esx
+    version: general
+    source:
+      title: ESXCLI 9.0.0 Reference – esxcli vm
+      url: https://developer.broadcom.com/xapis/esxcli-command-reference/9.0.0/namespace/esxcli_vm.html
+
+  - id: esxcli-network-ip-interface-ipv4-get
+    technology: esxi
+    title: Show VMkernel adapter IPv4 addresses
+    purpose: Verify the management IP of vmk0 (and any vMotion/vSAN VMkernel adapters), the first check when a host is unreachable.
+    syntax: esxcli network ip interface ipv4 get
+    example: esxcli network ip interface ipv4 get
+    output: |
+      Name  IPv4 Address  IPv4 Netmask   IPv4 Broadcast  Address Type  Gateway    DHCP DNS
+      ----  ------------  -------------  --------------  ------------  ---------  --------
+      vmk0  10.0.10.21    255.255.255.0  10.0.10.255     STATIC        10.0.10.1     false
+    mistake: Looking for VM IP addresses here. This lists only VMkernel (host) interfaces, never guest VM NICs.
+    lesson: storage-network-virtualization-basics
+    version: general
+    source:
+      title: ESXCLI 9.0.0 Reference – esxcli network
+      url: https://developer.broadcom.com/xapis/esxcli-command-reference/9.0.0/namespace/esxcli_network.html
+
+  - id: esxcli-network-nic-list
+    technology: esxi
+    title: List physical NICs (vmnics) and link state
+    purpose: Check that the uplinks exist, have link, and run at the expected speed and MTU before blaming the virtual network.
+    syntax: esxcli network nic list
+    example: esxcli network nic list
+    output: |
+      Name    PCI Device    Driver    Admin Status  Link Status  Speed  Duplex  MAC Address        MTU   Description
+      ------  ------------  --------  ------------  -----------  -----  ------  -----------------  ----  -----------
+      vmnic0  0000:0b:00.0  nvmxnet3  Up            Up           10000  Full    bc:24:11:aa:bb:01  1500  VMware Inc. vmxnet3 Virtual Ethernet Controller
+      vmnic1  0000:13:00.0  nvmxnet3  Up            Up           10000  Full    bc:24:11:aa:bb:02  1500  VMware Inc. vmxnet3 Virtual Ethernet Controller
+    mistake: Confusing vmnics (physical uplinks) with vmks (VMkernel adapters). vmnic = cable side; vmk = host IP side.
+    lesson: storage-network-virtualization-basics
+    version: general
+    source:
+      title: ESXCLI 9.0.0 Reference – esxcli network
+      url: https://developer.broadcom.com/xapis/esxcli-command-reference/9.0.0/namespace/esxcli_network.html
+
+  - id: esxcli-system-maintenancemode-set
+    technology: esxi
+    title: Enter or exit maintenance mode on a standalone host
+    purpose: Put a host in maintenance mode before patching or hardware work. In a cluster, prefer vCenter so DRS can evacuate VMs first.
+    syntax: esxcli system maintenanceMode set --enable <true|false>
+    example: |
+      esxcli system maintenanceMode set --enable true
+      esxcli system maintenanceMode get
+    output: |
+      Enabled
+    mistake: Running it on a host with powered-on VMs and no DRS. The host cannot finish entering maintenance mode until VMs are powered off or migrated; esxcli does not move them for you.
+    lesson: clusters-ha-drs-intro
+    version: general
+    source:
+      title: ESXCLI 9.0.0 Reference – esxcli system
+      url: https://developer.broadcom.com/xapis/esxcli-command-reference/9.0.0/namespace/esxcli_system.html

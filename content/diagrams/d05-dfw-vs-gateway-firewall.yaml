@@ -1,0 +1,38 @@
+id: d05-dfw-vs-gateway-firewall
+title: Distributed firewall vs gateway firewall – who sees which traffic
+description: >
+  An internet client reaches web-01 through the physical router, the Tier-0 SR on an Edge (gateway firewall and DNAT
+  applied on the uplink), the DRs, and finally the DFW filter on web-01's vNIC. Separately, web-01 on esx-01 talks to
+  app-01 on esx-02: the DFW on web-01's vNIC checks egress, the packet is routed by the local DR and tunnelled with
+  Geneve, and the DFW on app-01's vNIC checks ingress. The gateway firewall never sees this east-west flow.
+width: 1000
+height: 600
+groups:
+  - { id: g-edge, x: 520, y: 20, w: 460, h: 170, label: "Edge node – Tier-0 SR", kind: nsx }
+  - { id: g-h1, x: 20, y: 250, w: 440, h: 320, label: "esx-01", kind: compute }
+  - { id: g-h2, x: 540, y: 250, w: 440, h: 320, label: "esx-02", kind: compute }
+nodes:
+  - { id: client, x: 40, y: 40, w: 180, h: 56, label: "Internet client", kind: external, info: "North-south traffic source." }
+  - { id: gfw, x: 550, y: 60, w: 190, h: 56, label: "Gateway firewall", sublabel: "L3–L7, zone edge", kind: security, info: "Runs in the SR on the Edge. Sees only traffic passing this gateway. Stateful rules need A/S (or stateful A/A)." }
+  - { id: nat, x: 770, y: 60, w: 180, h: 56, label: "DNAT on uplink", sublabel: "203.0.113.10 → web-01", kind: security, info: "NAT runs on the SR uplink. SNAT/DNAT need A/S (or stateful A/A); reflexive NAT is stateless." }
+  - { id: web, x: 60, y: 450, w: 170, h: 56, label: "web-01", sublabel: "tier:web", kind: vm, info: "Member of grp-shop-web via tags." }
+  - { id: dfw1, x: 60, y: 350, w: 170, h: 56, label: "DFW at vNIC", sublabel: "web-01", kind: security, info: "DFW filter instantiated on web-01's vNIC: checks ingress from the internet and egress toward app-01." }
+  - { id: dr1, x: 270, y: 350, w: 160, h: 56, label: "DR (routing)", kind: nsx, info: "Routes web → app subnet locally on esx-01." }
+  - { id: app, x: 760, y: 450, w: 170, h: 56, label: "app-01", sublabel: "tier:app", kind: vm, info: "Member of grp-shop-app." }
+  - { id: dfw2, x: 760, y: 350, w: 170, h: 56, label: "DFW at vNIC", sublabel: "app-01", kind: security, info: "Checks ingress to app-01 (e.g. allow web → app TCP 8443 only)." }
+  - { id: tep, x: 560, y: 350, w: 160, h: 56, label: "Geneve", sublabel: "TEP to TEP", kind: nsx, info: "East-west overlay transport between hosts. No Edge involved." }
+edges:
+  - { from: client, to: gfw, label: "N-S", kind: north-south }
+  - { from: gfw, to: nat, kind: north-south }
+  - { from: nat, to: dfw1, label: "via DRs", kind: data, dashed: true }
+  - { from: dfw1, to: web, kind: data }
+  - { from: web, to: dfw1, kind: data }
+  - { from: dfw1, to: dr1, label: "E-W", kind: data }
+  - { from: dr1, to: tep, kind: overlay, dashed: true }
+  - { from: tep, to: dfw2, kind: overlay, dashed: true }
+  - { from: dfw2, to: app, kind: data }
+steps:
+  - { title: "North-south in", text: "The internet client hits the Tier-0 SR on the Edge: the gateway firewall and the DNAT rule on the uplink are applied here.", highlight: [client, gfw, nat] }
+  - { title: "DFW still applies", text: "After routing, the packet reaches web-01's vNIC, where the DFW evaluates it again. Defence in depth: both firewalls apply to north-south flows.", highlight: [nat, dfw1, web] }
+  - { title: "East-west egress", text: "web-01 calls app-01: the DFW on web-01's vNIC checks the egress rule, then the DR routes locally.", highlight: [web, dfw1, dr1] }
+  - { title: "East-west ingress", text: "The packet is tunnelled to esx-02 and checked by the DFW on app-01's vNIC. The gateway firewall never sees this flow – use the DFW for micro-segmentation.", highlight: [tep, dfw2, app] }

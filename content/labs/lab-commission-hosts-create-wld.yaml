@@ -1,0 +1,137 @@
+id: lab-commission-hosts-create-wld
+title: Commission hosts and create an NFS-backed VI workload domain
+level: advanced
+complexity: 4
+minutes: 360
+version: vcf9
+technologies: [VCF Operations, vSphere Client, SDDC Manager API, ESX 9 (nested), NSX, NFS v3, Proxmox VE]
+topics: [host-commissioning, workload-domains, wld-storage, cluster-expansion]
+lessons: [host-commissioning-wld-creation, workload-domain-storage, cluster-host-expansion, import-existing-vcenter]
+objectives:
+  - Create a network pool with vMotion and NFS networks for a workload domain.
+  - Prepare and commission three hosts with storage type NFS, including fixing one invalid host.
+  - Create a VI workload domain from VCF Operations with a single-node NSX Manager and NFS v3 principal storage.
+  - Remove a host from the cluster, decommission it, re-image and commission it again, and add it back.
+  - Verify where the workload domain's vCenter and NSX run and how pool IPs were consumed.
+prerequisites:
+  - "lab-deploy-vcf-management-domain completed and healthy."
+  - "DNS A/PTR records for esx-21..23, vcenter-wld01, nsx-wld01a and nsx-wld01 (from the planning lab)."
+  - "About 60 GB RAM free on Proxmox for the workload hosts, plus about 45 GB free inside the management domain for the workload domain vCenter and NSX."
+topology:
+  logical: d-lab-commission-hosts-create-wld-logical
+requirements:
+  network:
+    - "VLAN 10 management (hosts 10.10.10.121-123), VLAN 22 workload vMotion 10.10.22.0/24, VLAN 50 NFS 10.10.50.0/24 (MTU 9000)"
+    - "VLAN 40 host TEP (static pool or DHCP) for NSX host preparation"
+  vms:
+    - "esx-21, esx-22, esx-23: nested ESX 9, 8 vCPU, 20 GB RAM, 2 x vmxnet3 (trunk), 40 GB boot disk"
+    - "nfs-01 second NIC on VLAN 50 (10.10.50.6) exporting /export/wld01 to 10.10.50.0/24"
+  ip:
+    - "Pool wld01-np01: vMotion VLAN 22 range 10.10.22.11-20 (gw 10.10.22.1); NFS VLAN 50 range 10.10.50.11-20 (gw 10.10.50.1)"
+    - "vcenter-wld01 10.10.10.50, nsx-wld01a 10.10.10.51, nsx-wld01 VIP 10.10.10.55"
+startingState: |
+  A simple-model management domain (3 hosts, NFS) with VCF Operations is running. No workload domain exists yet.
+  Limitation: the workload domain uses a single-node NSX Manager and NFS to fit the 256 GB server; production would
+  use three NSX nodes and usually vSAN or FC.
+steps:
+  - id: build-wld-hosts
+    title: Build and prepare the workload hosts
+    why: Commissioning validates the same host prerequisites as deployment.
+    instructions: |
+      Create esx-21..23 in Proxmox (8 vCPU, 20 GB RAM, 2 x vmxnet3 trunk), install ESX 9 (BOM build), set management
+      IPs, DNS and NTP, then on each:
+      ```shell
+      esxcli system hostname set --fqdn=esx-21.lab.internal
+      /sbin/generate-certificates
+      /etc/init.d/hostd restart && /etc/init.d/vpxa restart
+      ```
+      **On esx-23 type the FQDN as `ESX-23.lab.internal`** (upper case) to reproduce a validation failure later.
+    validate: "`esxcli system hostname get` on each host; `nslookup esx-21.lab.internal` and `nslookup 10.10.10.121` from SDDC Manager."
+    expected: Three reachable hosts with regenerated certificates (one with a deliberate name-case mismatch).
+  - id: create-pool
+    title: Create the network pool
+    why: Commissioning requires a pool that contains the networks for the host's storage type (NFS plus vMotion).
+    instructions: |
+      vSphere Client (management vCenter) → **Global Inventory Lists → Hosts → Network Pools → Create Network Pool**:
+      name `wld01-np01`, network types **vMotion** and **NFS**, enter VLAN, MTU 9000, network, mask, gateway and the
+      included IP ranges from the requirements.
+    validate: "`GET https://sddc-manager.lab.internal/v1/network-pools` lists wld01-np01 with VMOTION and NFS networks."
+    expected: Pool created; note that you can no longer edit its subnets or ranges, only add ranges.
+  - id: commission
+    title: Commission the hosts and fix the invalid one
+    why: Seeing a real validation failure teaches you how strict FQDN matching is.
+    instructions: |
+      vSphere Client → **Global Inventory Lists → Hosts → Unassigned Hosts → Commission Hosts** → checklist *Select All*
+      → add esx-21, esx-22 and ESX-23 with storage type **NFS**, pool `wld01-np01`, root credentials (or download the
+      JSON template and bulk import) → **Confirm All Finger Prints** → **Validate All**.
+      esx-23 should be *Invalid*. Fix it: set the hostname to lower case with `esxcli system hostname set --fqdn=esx-23.lab.internal`,
+      regenerate the certificate, restart hostd/vpxa, remove and re-add the host entry with the correct FQDN, re-confirm
+      its fingerprint and validate again. Then **Commission**.
+    hint: "TechDocs: the FQDN must match the DNS-configured hostname exactly, including capitalisation."
+    validate: "`GET /v1/hosts?status=UNASSIGNED_USEABLE&storageType=NFS` returns the three hosts."
+    expected: Three unassigned NFS hosts.
+  - id: create-wld
+    title: Create the workload domain in VCF Operations
+    why: This is the exam's workload domain flow end to end.
+    instructions: |
+      VCF Operations → **Inventory → Detailed View → VCF Instances → lab-inst01 → Add Workload Domain → Create New**:
+      1. Prerequisites → Select All → Proceed.
+      2. General: name `wld01`, **untick Enable vSphere Supervisor** (the Supervisor lab uses the simplified flow), SSO domain, passwords.
+      3. vCenter `vcenter-wld01.lab.internal`; cluster `wld01-cl01`; select the cluster image.
+      4. NSX: **Standard** (single node) `nsx-wld01a` + VIP `nsx-wld01`; connectivity: **Distributed** (VLAN, gateway
+         CIDR, external IP block, private transit gateway block from your plan) — no Edge cluster needed in this lab.
+      5. Storage: **NFS** – datastore `wld01-nfs`, folder `/export/wld01`, server 10.10.50.6.
+      6. Hosts: esx-21..23. Switch profile: **Default**. Review → Finish.
+    validate: Fleet Management → Tasks shows the workload domain task succeeded.
+    expected: A new workload domain with its own vCenter and NSX Manager.
+  - id: verify-placement
+    title: Verify where everything runs and how IPs were consumed
+    why: The workload domain's management components live in the management domain — a frequent exam question.
+    instructions: |
+      1. In the **management** vCenter find the VMs `vcenter-wld01` and `nsx-wld01a`.
+      2. In `vcenter-wld01` check cluster `wld01-cl01`, datastore `wld01-nfs`, and the VDS.
+      3. On esx-21 run `esxcli network ip interface ipv4 get` and compare vMotion/NFS IPs with the pool ranges.
+    validate: Workload domain vCenter/NSX VMs appear in the management cluster; host VMkernel IPs come from 10.10.22.x and 10.10.50.x.
+    expected: Placement and pool consumption match the theory.
+  - id: shrink-and-grow
+    title: Remove, decommission, re-image, re-commission, add back
+    why: This is the only supported way to reuse a host, and it exercises the full host lifecycle.
+    instructions: |
+      1. Remove esx-23 from `wld01-cl01` (workload domain → Clusters → cluster → Hosts → **Remove Selected Hosts**). Accept the warning about going below the recommended host count only because this is a lab.
+      2. **Decommission** it (Unassigned Hosts → Decommission Selected Hosts).
+      3. Re-image it (reinstall ESX from ISO in Proxmox), re-run the FQDN/certificate/NTP preparation.
+      4. Commission it again (NFS, `wld01-np01`).
+      5. Add it back: vSphere Client → `wld01-cl01` → **Actions → Add Hosts → Add Unassigned Hosts**.
+    validate: "`GET /v1/hosts?clusterId=<wld01-cl01 id>` lists three hosts again."
+    expected: esx-23 back in the cluster with a new thumbprint and pool IPs.
+troubleshooting:
+  - symptom: "Host Invalid: hostname/FQDN mismatch"
+    fix: "Set the FQDN exactly as in DNS (lower case), regenerate the certificate, restart hostd and vpxa, re-add the host entry."
+  - symptom: "The pool is not selectable for NFS hosts"
+    fix: "The pool lacks an NFS network. Create a new pool with vMotion and NFS (you cannot add a network type by editing the subnet)."
+  - symptom: "NFS datastore mount fails during domain creation"
+    fix: "Export /export/wld01 must allow the NFS VMkernel IPs (10.10.50.11-20), and VLAN 50 must reach nfs-01's second NIC with matching MTU."
+  - symptom: "Workload domain task fails while deploying vCenter or NSX"
+    fix: "Usually memory in the management domain or DNS for vcenter-wld01/nsx-wld01. Free RAM, fix DNS, retry the task."
+  - symptom: "vMotion validation fails during commissioning"
+    fix: "Check VLAN 22 trunking and MTU; TechDocs notes MAC address filtering on the physical side can also break the vMotion test. On Proxmox, check the bridge and that the vNIC firewall is off."
+challenge: |
+  Optional (needs spare RAM): build a separate vCenter 9.0 with two nested hosts on a VDS, a vLCM image, fully
+  automated DRS and FQDN hosts, then import it from VCF Operations (Add Workload Domain → Import a vCenter). Record
+  every precheck that fails on your first attempt and how you fixed it. Then try to add a commissioned host to the
+  imported cluster and explain why VCF does not offer it.
+cleanup: |
+  Keep the workload domain if you continue with lab-enable-supervisor. To free memory afterwards, follow the TechDocs
+  procedure *Delete a Workload Domain* (read its warnings first — it is destructive), then decommission the hosts and
+  delete the nested VMs. Alternatively just power the workload domain down in a controlled order.
+sources:
+  - title: "VCF 9.0 – Commission ESX Hosts"
+    url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/building-your-private-cloud-infrastructure/host-management/commission-hosts.html
+  - title: "VCF 9.0 – Create a Network Pool"
+    url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/building-your-private-cloud-infrastructure/host-management/about-network-pools/create-a-network-pool.html
+  - title: "VCF 9.0 – Create a New Workload Domain Using VCF Operations"
+    url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/building-your-private-cloud-infrastructure/working-with-workload-domains/deploy-a-vi-workload-domain-using-the-sddc-manager-ui.html
+  - title: "VCF 9.0 – Remove a Host from a vSphere Cluster in a Workload Domain"
+    url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/building-your-private-cloud-infrastructure/working-with-workload-domains/reduce-a-workload-domain-1/remove-a-host-from-a-cluster-in-a-workload-domain.html
+  - title: "VCF 9.0 – Import an Existing vCenter to Create a Workload Domain"
+    url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/building-your-private-cloud-infrastructure/working-with-workload-domains/import-an-existing-vcenter-to-create-a-workload-domain.html

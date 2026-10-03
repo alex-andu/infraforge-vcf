@@ -1,0 +1,39 @@
+id: d09-lcm-failure-triage
+title: Triage path for a failed lifecycle task
+description: >
+  When a lifecycle task fails, read the task error in VCF Operations first, then decide which engine failed:
+  fleet management (management components) or SDDC Manager (core components). Read that engine's log, then the
+  log of the target component. Classify the failure as environmental (DNS, NTP, certificates, disk space, host
+  state, locks), binary or depot related, or a product defect with a known KB. Fix the cause, then retry the task.
+  Restore from backup only when the component is left broken and a retry cannot succeed.
+width: 1000
+height: 560
+nodes:
+  - { id: t1, x: 400, y: 20, w: 200, h: 60, label: "Task failed", sublabel: "VCF Operations tasks", kind: security, info: "Open the failed task, note the stage name (for example VCENTER_UPGRADE_PRECHECK) and the error text." }
+  - { id: f1, x: 120, y: 130, w: 240, h: 60, label: "Mgmt component?", sublabel: "fleet management engine", kind: ops, component: vcf-operations-fleet-management, info: "VCF Operations, Automation, logs, networks, Identity Broker. Fleet management appliance log: /var/log/vrlcm/vmware_vrlcm.log." }
+  - { id: f2, x: 640, y: 130, w: 240, h: 60, label: "Core component?", sublabel: "SDDC Manager engine", kind: mgmt, component: sddc-manager, info: "SDDC Manager, NSX, vCenter, ESX. SDDC Manager LCM log: /var/log/vmware/vcf/lcm/lcm-debug.log." }
+  - { id: e1, x: 40, y: 270, w: 200, h: 60, label: "Environment", sublabel: "DNS, NTP, certs, space", kind: network, info: "Most failures. Fix the dependency (name resolution, time, trust, disk, host connectivity) and retry." }
+  - { id: e2, x: 280, y: 270, w: 200, h: 60, label: "Binaries / depot", kind: storage, info: "Incomplete or corrupt bundle, depot unreachable, wrong version. Re-download, then retry." }
+  - { id: e3, x: 520, y: 270, w: 200, h: 60, label: "Host / cluster state", kind: compute, info: "Disconnected or not responding hosts, maintenance mode blocked by DRS/vSAN, image incompatibility." }
+  - { id: e4, x: 760, y: 270, w: 200, h: 60, label: "Known defect", sublabel: "search KB", kind: external, info: "Search Broadcom KB with the exact error string. Many failures have a documented workaround followed by retry." }
+  - { id: r1, x: 300, y: 410, w: 180, h: 60, label: "Fix and retry", kind: ops, info: "VCF lifecycle tasks are designed to be retried from the failed stage after the cause is fixed." }
+  - { id: r2, x: 540, y: 410, w: 180, h: 60, label: "Restore", sublabel: "last resort", kind: storage, info: "Only when a component is left unusable: restore from file-based backup or follow the documented recovery for that component, ideally with Broadcom support." }
+  - { id: v1, x: 420, y: 490, w: 160, h: 50, label: "Verify", kind: security, info: "Versions, health, compliance; then continue the sequence." }
+edges:
+  - { from: t1, to: f1, kind: control }
+  - { from: t1, to: f2, kind: control }
+  - { from: f1, to: e1, kind: dependency }
+  - { from: f1, to: e2, kind: dependency }
+  - { from: f2, to: e3, kind: dependency }
+  - { from: f2, to: e4, kind: dependency }
+  - { from: e1, to: r1, kind: mgmt }
+  - { from: e2, to: r1, kind: mgmt }
+  - { from: e3, to: r1, kind: mgmt }
+  - { from: e4, to: r2, label: "if broken", kind: mgmt, dashed: true }
+  - { from: r1, to: v1, kind: dependency }
+  - { from: r2, to: v1, kind: dependency }
+steps:
+  - { title: "Read the task", text: "Stage name plus error text tell you which engine and which component.", highlight: [t1] }
+  - { title: "Pick the engine", text: "Fleet management for management components, SDDC Manager for core components.", highlight: [f1, f2] }
+  - { title: "Classify", text: "Environment, binaries, host state, or known defect.", highlight: [e1, e2, e3, e4] }
+  - { title: "Retry before restore", text: "Fix the cause and retry; restore only a broken component.", highlight: [r1, r2, v1] }

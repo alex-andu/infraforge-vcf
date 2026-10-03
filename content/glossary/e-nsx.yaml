@@ -1,0 +1,293 @@
+terms:
+  - id: nsx
+    term: NSX
+    definition: >
+      VMware's network virtualization and security platform (formerly NSX-T Data Center). It builds segments, distributed
+      and centralized routers (Tier-0/Tier-1, VPC and transit gateways), NAT, DHCP, load balancing and firewalling in
+      software on top of any IP fabric. Broadcom also markets these capabilities as VCF Networking.
+    whyItMatters: Every VCF 9 workload domain is backed by an NSX Manager instance; NSX is the networking layer you deploy, operate and troubleshoot.
+    version: vcf9
+    related: [nsx-manager, segment, tier-0, dfw]
+    lessons: [nsx-architecture]
+  - id: nsx-manager
+    term: NSX Manager
+    definition: >
+      The NSX appliance that hosts the management plane (UI, Policy API, configuration store) and the central control
+      plane. Deployed as a single node or, for HA, a three-node cluster behind a virtual IP. In VCF 9.0 it works in Policy
+      mode only.
+    whyItMatters: Managers are not in the data path; losing them stops changes, not existing traffic. Two of three nodes are needed for changes.
+    version: vcf9
+    related: [ccp, nsx, lcp]
+    lessons: [nsx-architecture]
+  - id: ccp
+    term: CCP
+    expansion: Central Control Plane
+    definition: >
+      The NSX control-plane function running on the NSX Manager nodes. It computes runtime state (VNIs, MAC/IP-to-TEP
+      tables, routes, firewall rules) from configuration and topology and pushes it to the LCP on every transport node.
+    whyItMatters: Explains why existing traffic survives a manager outage but new VMs or vMotion targets can lack forwarding state.
+    version: general
+    related: [lcp, nsx-manager, transport-node]
+    lessons: [nsx-architecture]
+  - id: lcp
+    term: LCP
+    expansion: Local Control Plane
+    definition: >
+      The NSX control-plane agent on each transport node (ESX host or Edge). It receives state from the CCP, programs the
+      local data plane, and reports local topology (VM MACs/IPs) back.
+    whyItMatters: A host whose LCP lost its CCP connection keeps forwarding with stale state – a hidden cause of "new VM on one host is unreachable".
+    version: general
+    related: [ccp, transport-node]
+    lessons: [nsx-architecture]
+  - id: transport-zone
+    term: Transport zone
+    definition: >
+      A scope that defines which transport nodes can host which segments. Overlay transport zones carry overlay
+      segments (Geneve); VLAN transport zones carry VLAN-backed segments. A node can be in many zones; a segment is in
+      exactly one.
+    whyItMatters: If a host isn't in a segment's transport zone, VMs on that host cannot attach to the segment.
+    version: general
+    related: [transport-node, segment, overlay-segment, vlan-segment]
+    lessons: [nsx-transport-nodes-teps]
+  - id: transport-node
+    term: Transport node
+    definition: >
+      A node prepared to participate in NSX networking: an ESX host with NSX kernel modules (host transport node) or an
+      NSX Edge (edge transport node). It runs the LCP and data plane and has one or more TEPs for the overlay.
+    whyItMatters: The data plane lives on transport nodes; troubleshooting forwarding means checking them, not the managers.
+    version: general
+    related: [tep, transport-zone, transport-node-profile, edge-node]
+    lessons: [nsx-transport-nodes-teps, nsx-architecture]
+  - id: transport-node-profile
+    term: Transport node profile
+    expansion: TNP
+    definition: >
+      A template attached to a vSphere cluster that defines the VDS, transport zones, uplink profile (teaming and
+      transport VLAN) and TEP addressing, so every host in the cluster – including hosts added later – is prepared identically.
+    whyItMatters: Consistency of host networking; a prerequisite of the VCF 9 centralized connectivity workflow.
+    version: general
+    related: [transport-node, tep]
+    lessons: [nsx-transport-nodes-teps]
+  - id: tep
+    term: TEP
+    expansion: Tunnel Endpoint
+    definition: >
+      The IP interface a transport node uses as the source and destination of Geneve overlay tunnels. On ESX it is a
+      VMkernel adapter in the vxlan TCP/IP stack; addresses come from an IP pool, DHCP or a static list.
+    whyItMatters: TEP reachability and MTU (at least 1600, 1700 recommended) are the foundation of every overlay flow.
+    version: general
+    related: [geneve, transport-node, bfd]
+    lessons: [nsx-transport-nodes-teps, nsx-segments-overlay]
+  - id: geneve
+    term: Geneve
+    expansion: Generic Network Virtualization Encapsulation
+    definition: >
+      The overlay encapsulation NSX uses: the VM's Ethernet frame is wrapped in a Geneve header (carrying the segment's
+      VNI and metadata options) plus UDP, outer IP and outer Ethernet headers, and sent TEP to TEP.
+    whyItMatters: Its overhead is why the underlay MTU must be larger than the VM MTU; it routes over any IP fabric.
+    version: general
+    related: [tep, overlay-segment]
+    lessons: [nsx-transport-nodes-teps, nsx-segments-overlay]
+  - id: segment
+    term: Segment
+    definition: >
+      An NSX virtual Layer-2 domain (formerly logical switch) that VM vNICs and gateway interfaces attach to. It is either
+      overlay-backed or VLAN-backed and can connect to a Tier-0, a Tier-1 or nothing.
+    whyItMatters: The object VMs actually plug into; appears in vCenter as a port group on the NSX-enabled VDS.
+    version: general
+    related: [overlay-segment, vlan-segment, transport-zone, tier-1]
+    lessons: [nsx-segments-overlay]
+  - id: overlay-segment
+    term: Overlay segment
+    definition: >
+      A segment in an overlay transport zone; traffic between hosts is carried in Geneve tunnels identified by a VNI, so
+      no physical VLAN is needed per network.
+    whyItMatters: Lets you create networks on demand without touching the physical switches.
+    version: general
+    related: [segment, geneve, vlan-segment]
+    lessons: [nsx-segments-overlay]
+  - id: vlan-segment
+    term: VLAN-backed segment
+    definition: >
+      A segment in a VLAN transport zone that maps to a VLAN ID on the physical network. Used for Edge uplinks and
+      workloads that must live in a physical VLAN.
+    whyItMatters: The VLAN must exist on every trunk; Tier-0 uplinks to the ToRs are VLAN segments.
+    version: general
+    related: [segment, overlay-segment, tier-0]
+    lessons: [nsx-segments-overlay]
+  - id: tier-0
+    term: Tier-0 gateway
+    definition: >
+      The NSX provider gateway that connects the virtual network to the physical network through external (uplink)
+      interfaces on Edges, using BGP, OSPF or static routing. Runs active/active (ECMP) or active/standby. In VCF 9
+      centralized connectivity, the transit gateway connects to a Tier-0.
+    whyItMatters: All north-south traffic in centralized designs passes through Tier-0 SRs; Supervisor needs an active/standby Tier-0.
+    version: general
+    related: [tier-1, sr, dr, bgp, edge-cluster]
+    lessons: [nsx-tier0-tier1-routing, nsx-edge-nodes-clusters]
+  - id: tier-1
+    term: Tier-1 gateway
+    definition: >
+      The NSX tenant gateway: downlinks to segments, one uplink to a Tier-0. It advertises its routes to the Tier-0 (no
+      BGP to the physical network). It has an SR only when an edge cluster is selected; "Distributed Only" mode has no SR.
+    whyItMatters: Its route advertisement settings decide whether its segments are reachable from outside.
+    version: general
+    related: [tier-0, dr, sr, route-advertisement]
+    lessons: [nsx-tier0-tier1-routing]
+  - id: sr
+    term: SR
+    expansion: Service Router
+    definition: >
+      The centralized component of a Tier-0 or Tier-1 gateway, instantiated on Edge nodes. It hosts uplinks and BGP
+      (Tier-0), NAT, gateway firewall, load balancer, VPN, DHCP server and other stateful services.
+    whyItMatters: Anything centralized lives on Edges; attaching an edge cluster to a Tier-1 always creates an SR and changes the traffic path.
+    version: general
+    related: [dr, edge-node, tier-0, tier-1]
+    lessons: [nsx-tier0-tier1-routing]
+  - id: dr
+    term: DR
+    expansion: Distributed Router
+    definition: >
+      The distributed component of a Tier-0 or Tier-1 gateway, present in the kernel of every transport node (hosts and
+      Edges). It routes between connected segments locally on the source host.
+    whyItMatters: East-west routing never needs an Edge; the DR answers the VMs' default gateway on every host.
+    version: general
+    related: [sr, tier-1, tier-0]
+    lessons: [nsx-tier0-tier1-routing, nsx-segments-overlay]
+  - id: edge-node
+    term: NSX Edge node
+    definition: >
+      A service appliance (VM or bare metal) that is an NSX transport node dedicated to services that cannot be
+      distributed: Tier-0/Tier-1 SRs, uplinks to physical routers, NAT, gateway firewall, load balancing, VPN. Edge VM sizes:
+      Small (PoC), Medium, Large, Extra Large.
+    whyItMatters: North-south capacity and availability depend on Edge sizing, placement and HA.
+    version: general
+    related: [edge-cluster, sr, tier-0]
+    lessons: [nsx-edge-nodes-clusters]
+  - id: edge-cluster
+    term: NSX Edge cluster
+    definition: >
+      A group of Edge nodes (all VM or all bare metal) that backs gateway SRs and provides their high availability. An
+      Edge belongs to one cluster; a cluster can back many gateways. The VCF 9 vCenter workflow deploys 2–10 Edges per cluster.
+    whyItMatters: Required for centralized connectivity, Tier-0 gateways and Supervisor; place members on different hosts.
+    version: vcf9
+    related: [edge-node, tier-0, sr]
+    lessons: [nsx-edge-nodes-clusters, nsx-vpcs-and-vcf-networking]
+  - id: bgp
+    term: BGP
+    expansion: Border Gateway Protocol
+    definition: >
+      The dynamic routing protocol a Tier-0 SR typically uses to exchange routes with physical routers. Sessions run over
+      TCP 179 and progress Idle → Connect → Active → OpenSent → OpenConfirm → Established; only Established exchanges routes.
+    whyItMatters: A BGP session that isn't Established is the most common cause of "east-west works, north-south fails".
+    version: general
+    related: [tier-0, ecmp, bfd, route-advertisement]
+    lessons: [nsx-tier0-tier1-routing]
+  - id: ecmp
+    term: ECMP
+    expansion: Equal-Cost Multi-Path
+    definition: >
+      Load-sharing of flows across several equal-cost next hops. In NSX, an active/active Tier-0 lets the DR spread
+      north-south flows across all active SRs, and SRs can use multiple equal paths to the physical routers.
+    whyItMatters: Scales north-south bandwidth with Edges, at the cost of classic stateful services.
+    version: general
+    related: [tier-0, edge-cluster, bgp]
+    lessons: [nsx-edge-nodes-clusters, nsx-tier0-tier1-routing]
+  - id: bfd
+    term: BFD
+    expansion: Bidirectional Forwarding Detection
+    definition: >
+      A lightweight protocol for fast failure detection. NSX runs BFD inside Geneve tunnels between transport nodes,
+      between Edges for HA, and optionally with BGP peers.
+    whyItMatters: Tunnel status in NSX and fast Edge failover depend on BFD; "tunnel down" usually means an underlay problem.
+    version: general
+    related: [tep, bgp, edge-cluster]
+    lessons: [nsx-transport-nodes-teps, nsx-edge-nodes-clusters]
+  - id: route-advertisement
+    term: Route advertisement
+    definition: >
+      Tier-1 setting that selects which of its routes are sent to the linked Tier-0: connected segments and service ports,
+      static routes, NAT IPs, LB VIPs, LB SNAT IPs, DNS forwarder and IPsec endpoints. The Tier-0 then needs route
+      redistribution into BGP/OSPF.
+    whyItMatters: Forgetting it leaves new segments unreachable from outside even though BGP is up.
+    version: general
+    related: [tier-1, tier-0, bgp]
+    lessons: [nsx-tier0-tier1-routing]
+  - id: dfw
+    term: Distributed firewall
+    expansion: DFW
+    definition: >
+      NSX's stateful L2–L7 firewall instantiated on every VM vNIC in the ESX kernel. Rules are organised in categories
+      (Ethernet, Emergency, Infrastructure, Environment, Application), evaluated top-down first match, scoped with Applied-To.
+    whyItMatters: The only NSX firewall that sees traffic between VMs on the same segment – the tool for micro-segmentation.
+    version: vcf9
+    related: [gateway-firewall, vdefend]
+    lessons: [nsx-security-dfw-gateway-firewall]
+  - id: gateway-firewall
+    term: Gateway firewall
+    definition: >
+      NSX's L3–L7 firewall running in the SR of a Tier-0, Tier-0 VRF or Tier-1 gateway on Edge nodes, protecting traffic
+      that crosses that gateway (north-south / zone boundaries).
+    whyItMatters: Needs Edges and sees only traffic through its gateway; not a substitute for the DFW.
+    version: vcf9
+    related: [dfw, sr, vdefend]
+    lessons: [nsx-security-dfw-gateway-firewall]
+  - id: nat
+    term: NAT
+    expansion: Network Address Translation
+    definition: >
+      Address translation on a Tier-0/Tier-1 SR uplink: SNAT, DNAT, reflexive (stateless 1:1), No SNAT/No DNAT, NAT64. SNAT
+      and DNAT need active/standby (or stateful active-active). VPCs offer External IP (1:1) and default outbound NAT.
+    whyItMatters: NAT always implies an SR on Edges; distributed VPC connectivity only offers 1:1 External IPs.
+    version: general
+    related: [sr, tier-0, nsx-vpc]
+    lessons: [nsx-security-dfw-gateway-firewall, nsx-vpcs-and-vcf-networking]
+  - id: nsx-vpc
+    term: NSX VPC
+    expansion: Virtual Private Cloud
+    definition: >
+      A set of logically isolated subnets routed together by a VPC gateway, created on demand inside an NSX project and
+      connected to the project's transit gateway. Subnets are public, private or private transit-gateway.
+    whyItMatters: The primary VCF 9 network consumption model, available directly in vCenter for the Default project.
+    version: vcf9
+    related: [transit-gateway, external-connection, nsx-project]
+    lessons: [nsx-vpcs-and-vcf-networking]
+  - id: transit-gateway
+    term: Transit gateway
+    expansion: TGW
+    definition: >
+      The gateway that interconnects the VPCs of an NSX project and connects them to external connections. One per
+      project, created automatically. Centralized (via a Tier-0 on Edges) or distributed (via a VLAN on hosts).
+    whyItMatters: Determines which services VPCs get and whether Edges are required.
+    version: vcf9
+    related: [nsx-vpc, external-connection, tier-0]
+    lessons: [nsx-vpcs-and-vcf-networking]
+  - id: external-connection
+    term: External connection
+    definition: >
+      NSX VPC object defining how a transit gateway reaches networks outside NSX and which services are available:
+      centralized (Tier-0/VRF on Edges, stateful services, BGP) or distributed (VLANs on ESX hosts, stateless services).
+      A TGW uses one centralized or one-or-more distributed connections.
+    whyItMatters: The provider-side design decision behind the vCenter "Centralized vs Distributed Connectivity" choice.
+    version: vcf9
+    related: [transit-gateway, nsx-vpc, tier-0]
+    lessons: [nsx-vpcs-and-vcf-networking]
+  - id: nsx-project
+    term: NSX project
+    definition: >
+      NSX's tenancy container holding a transit gateway, VPCs, profiles and shared resources. Every NSX has a Default
+      project, which is what vCenter consumes; user-defined projects add explicit sharing and Edge assignment.
+    whyItMatters: Maps to tenants (e.g. VCF Automation organizations) and scopes private transit-gateway address space.
+    version: vcf9
+    related: [nsx-vpc, transit-gateway]
+    lessons: [nsx-vpcs-and-vcf-networking]
+  - id: vdefend
+    term: VMware vDefend
+    definition: >
+      Broadcom's brand for NSX security capabilities: vDefend Firewall (distributed and gateway firewall) and vDefend
+      Advanced Threat Prevention. Licensed as an add-on to VCF; KB 430651 shows firewall rules cannot be added or edited
+      until the vDefend key is applied in NSX Manager.
+    whyItMatters: Explains licensing-related "can't edit firewall rules" issues and why stateful VPC firewalling needs an add-on.
+    version: vcf9
+    related: [dfw, gateway-firewall]
+    lessons: [nsx-security-dfw-gateway-firewall]

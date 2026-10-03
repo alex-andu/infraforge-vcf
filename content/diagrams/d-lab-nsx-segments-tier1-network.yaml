@@ -1,0 +1,33 @@
+id: d-lab-nsx-segments-tier1-network
+title: Lab – segments on a Tier-1 (network / physical view)
+description: >
+  Network view of lab-nsx-segments-tier1 on the Proxmox home lab. Two nested ESX hosts run on Proxmox; each has a TEP
+  on the host TEP VLAN 13 (192.168.13.0/24). The Proxmox VLAN-aware bridge and the physical switch carry VLAN 13 with
+  MTU 9000. Overlay traffic between web-01 on host 1 and web-02/app-01 on host 2 travels as Geneve between
+  192.168.13.11 and 192.168.13.12. NSX Manager and vCenter sit on the management VLAN.
+width: 1000
+height: 560
+groups:
+  - { id: g-px, x: 20, y: 120, w: 960, h: 300, label: "Proxmox VE server (VLAN-aware bridge, MTU 9000)", kind: compute }
+nodes:
+  - { id: mgr, x: 60, y: 30, w: 180, h: 56, label: "NSX Manager", sublabel: "mgmt VLAN", kind: mgmt, component: nsx-manager, info: "Management/control plane; not in the data path." }
+  - { id: vc, x: 280, y: 30, w: 180, h: 56, label: "vCenter", sublabel: "mgmt VLAN", kind: mgmt, component: vcenter, info: "Compute manager; shows segments as port groups." }
+  - { id: h1, x: 60, y: 170, w: 280, h: 70, label: "esx-lab-01 (nested)", sublabel: "web-01, web-02", kind: compute, component: esx-host, info: "Nested ESX VM: CPU type host, 2 vmxnet3 NICs trunked." }
+  - { id: tep1, x: 60, y: 300, w: 280, h: 56, label: "TEP 192.168.13.11", sublabel: "vmk10, VLAN 13", kind: nsx, info: "Host TEP. Test with vmkping ++netstack=vxlan -d -s 1572." }
+  - { id: h2, x: 640, y: 170, w: 280, h: 70, label: "esx-lab-02 (nested)", sublabel: "app-01 (+ web-02 after vMotion)", kind: compute, component: esx-host, info: "Second nested host." }
+  - { id: tep2, x: 640, y: 300, w: 280, h: 56, label: "TEP 192.168.13.12", sublabel: "vmk10, VLAN 13", kind: nsx, info: "Second host TEP." }
+  - { id: br, x: 400, y: 300, w: 200, h: 56, label: "vmbr0 (VLAN-aware)", sublabel: "MTU 9000", kind: network, info: "Proxmox bridge: must allow VLAN 13 and carry jumbo frames between the nested hosts." }
+  - { id: sw, x: 400, y: 470, w: 200, h: 56, label: "Physical switch", sublabel: "VLANs 10, 13 – MTU 9000", kind: network, component: physical-network, info: "Needed if TEP traffic leaves the Proxmox server (gateway for VLAN 13 or other hosts)." }
+edges:
+  - { from: mgr, to: h1, label: "control", kind: control, dashed: true }
+  - { from: mgr, to: h2, kind: control, dashed: true }
+  - { from: vc, to: h1, kind: mgmt, dashed: true }
+  - { from: h1, to: tep1, kind: data }
+  - { from: h2, to: tep2, kind: data }
+  - { from: tep1, to: br, label: "Geneve", kind: overlay }
+  - { from: br, to: tep2, label: "Geneve", kind: overlay }
+  - { from: br, to: sw, label: "trunk", kind: data }
+steps:
+  - { title: "Management", text: "NSX Manager and vCenter on the management VLAN control the hosts but carry no VM traffic.", highlight: [mgr, vc] }
+  - { title: "TEPs", text: "Each nested host has a TEP on VLAN 13; overlay traffic between hosts is Geneve between these addresses.", highlight: [tep1, tep2] }
+  - { title: "MTU path", text: "The bridge (and switch, if traffic leaves the box) must carry > 1600-byte frames – 9000 recommended.", highlight: [tep1, br, tep2, sw] }

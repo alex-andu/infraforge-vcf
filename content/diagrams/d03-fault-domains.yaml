@@ -1,0 +1,38 @@
+id: d03-fault-domains
+title: Rack-aware vSAN with four fault domains
+description: >
+  Twelve ESX hosts in four racks, each rack configured as a vSAN fault domain (rack-a to rack-d). An object with
+  FTT=1 RAID-5 2+1 places its three components in three different racks, never two in the same rack. If rack-b loses
+  power, the object keeps two of three components and stays accessible, and because a fourth rack exists vSAN can
+  rebuild the missing component there. Without fault domains, vSAN could place two components in hosts that share a
+  rack, and one rack failure could make the object inaccessible.
+width: 1000
+height: 520
+groups:
+  - { id: fd-a, x: 20, y: 40, w: 220, h: 380, label: "Fault domain rack-a", kind: compute }
+  - { id: fd-b, x: 260, y: 40, w: 220, h: 380, label: "Fault domain rack-b", kind: compute }
+  - { id: fd-c, x: 500, y: 40, w: 220, h: 380, label: "Fault domain rack-c", kind: compute }
+  - { id: fd-d, x: 740, y: 40, w: 220, h: 380, label: "Fault domain rack-d (spare)", kind: compute }
+nodes:
+  - { id: a1, x: 50, y: 90, w: 160, h: 56, label: "esx-01", sublabel: "component 1", kind: storage, info: "Holds one RAID-5 component of the object." }
+  - { id: a2, x: 50, y: 190, w: 160, h: 56, label: "esx-02", kind: compute, info: "Same rack as esx-01: vSAN will not place another component of the same object here." }
+  - { id: a3, x: 50, y: 290, w: 160, h: 56, label: "esx-03", kind: compute, info: "Host in rack-a." }
+  - { id: b1, x: 290, y: 90, w: 160, h: 56, label: "esx-04", sublabel: "component 2", kind: storage, info: "Second component, in a different fault domain." }
+  - { id: b2, x: 290, y: 190, w: 160, h: 56, label: "esx-05", kind: compute, info: "Host in rack-b." }
+  - { id: b3, x: 290, y: 290, w: 160, h: 56, label: "esx-06", kind: compute, info: "Host in rack-b." }
+  - { id: c1, x: 530, y: 90, w: 160, h: 56, label: "esx-07", sublabel: "component 3", kind: storage, info: "Third component (parity rotates)." }
+  - { id: c2, x: 530, y: 190, w: 160, h: 56, label: "esx-08", kind: compute, info: "Host in rack-c." }
+  - { id: c3, x: 530, y: 290, w: 160, h: 56, label: "esx-09", kind: compute, info: "Host in rack-c." }
+  - { id: d1, x: 770, y: 90, w: 160, h: 56, label: "esx-10", sublabel: "rebuild target", kind: compute, info: "The +1 fault domain: after a whole rack fails, vSAN rebuilds the missing component here and returns to compliance." }
+  - { id: d2, x: 770, y: 190, w: 160, h: 56, label: "esx-11", kind: compute, info: "Host in rack-d." }
+  - { id: d3, x: 770, y: 290, w: 160, h: 56, label: "esx-12", kind: compute, info: "Host in rack-d." }
+  - { id: obj, x: 380, y: 440, w: 240, h: 56, label: "VMDK object", sublabel: "FTT=1, RAID-5 2+1", kind: vm, info: "The object needs 3 fault domains; the 4th allows self-healing after a rack failure." }
+edges:
+  - { from: obj, to: a1, kind: storage, dashed: true }
+  - { from: obj, to: b1, kind: storage, dashed: true }
+  - { from: obj, to: c1, kind: storage, dashed: true }
+  - { from: b1, to: d1, label: "rebuild after rack-b fails", kind: storage }
+steps:
+  - { title: "One component per rack", text: "With fault domains, the three RAID-5 components land in three different racks.", highlight: [obj, a1, b1, c1] }
+  - { title: "Rack-b fails", text: "Power loss in rack-b removes one component: 2 of 3 remain, object still accessible.", highlight: [fd-b, b1] }
+  - { title: "+1 fault domain heals", text: "Because rack-d exists, vSAN rebuilds the missing component there.", highlight: [d1, fd-d] }

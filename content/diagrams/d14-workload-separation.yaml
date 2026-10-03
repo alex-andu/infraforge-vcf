@@ -1,0 +1,40 @@
+id: d14-workload-separation
+title: Workload separation options in one VCF instance
+description: >
+  A VCF instance contains a management domain and two workload domains. The general-purpose workload domain shares
+  the NSX instance and edge cluster with other domains and separates applications with VPCs and distributed firewall
+  rules. The regulated workload domain has its own vCenter and SSO domain, a dedicated NSX Manager cluster and a
+  dedicated edge cluster, giving administrative, lifecycle and network-control-plane isolation at the cost of extra
+  appliances in the management domain. A separate VCF instance would be the next, most expensive, level of isolation.
+width: 1000
+height: 600
+groups:
+  - { id: g-md, x: 20, y: 20, w: 960, h: 140, label: "Management domain (hosts all vCenters and NSX Managers)", kind: mgmt }
+  - { id: g-gp, x: 20, y: 190, w: 470, h: 390, label: "Workload domain: general purpose", kind: compute }
+  - { id: g-reg, x: 510, y: 190, w: 470, h: 390, label: "Workload domain: regulated", kind: security }
+nodes:
+  - { id: vcgp, x: 40, y: 60, w: 200, h: 56, label: "vCenter wld-gp", kind: mgmt, component: vcenter, info: "Workload domain vCenter runs in the management domain." }
+  - { id: nsxs, x: 260, y: 60, w: 200, h: 56, label: "Shared NSX Manager", kind: nsx, component: nsx-manager, info: "Shared NSX instance: resource-efficient, full VPC support; a management-plane outage affects all sharing domains." }
+  - { id: vcreg, x: 520, y: 60, w: 200, h: 56, label: "vCenter wld-reg", kind: mgmt, info: "Separate vCenter and SSO domain: separate admins and lifecycle." }
+  - { id: nsxd, x: 740, y: 60, w: 220, h: 56, label: "Dedicated NSX Manager", kind: nsx, info: "Dedicated network management/control plane: smaller blast radius, more appliances to size, patch and certify." }
+  - { id: vpca, x: 40, y: 240, w: 200, h: 56, label: "VPC team A", kind: vm, info: "Self-service networking with embedded IPAM." }
+  - { id: vpcb, x: 260, y: 240, w: 200, h: 56, label: "VPC team B", kind: vm, info: "Separate VPC; DFW rules control east-west traffic." }
+  - { id: dfw, x: 140, y: 340, w: 220, h: 56, label: "Distributed firewall", sublabel: "microsegmentation", kind: security, info: "Enforced at every vNIC in the hypervisor: traffic isolation with no extra hardware." }
+  - { id: edges, x: 140, y: 460, w: 220, h: 56, label: "Shared edge cluster", kind: nsx, component: nsx-edge-cluster, info: "Efficient, but tenants share north-south capacity and failure." }
+  - { id: pci, x: 540, y: 240, w: 200, h: 56, label: "PCI workloads", kind: vm, info: "Compliance scope limited to this domain." }
+  - { id: sto, x: 760, y: 240, w: 200, h: 56, label: "Storage separation VDS", sublabel: "4–6 NICs", kind: storage, info: "Physical path separation only if mandated; costs NICs and switch ports." }
+  - { id: edged, x: 640, y: 460, w: 220, h: 56, label: "Dedicated edge cluster", kind: nsx, info: "Isolated north-south capacity and failure domain." }
+edges:
+  - { from: vcgp, to: g-gp, kind: mgmt, dashed: true }
+  - { from: nsxs, to: g-gp, kind: control, dashed: true }
+  - { from: vcreg, to: g-reg, kind: mgmt, dashed: true }
+  - { from: nsxd, to: g-reg, kind: control, dashed: true }
+  - { from: vpca, to: dfw, kind: data }
+  - { from: vpcb, to: dfw, kind: data }
+  - { from: dfw, to: edges, kind: north-south }
+  - { from: pci, to: edged, kind: north-south }
+steps:
+  - { title: "Software segmentation", text: "VPCs and the DFW separate teams and app tiers in a shared domain at no hardware cost.", highlight: [vpca, vpcb, dfw] }
+  - { title: "Shared NSX and edges", text: "Efficient, but a larger blast radius.", highlight: [nsxs, edges] }
+  - { title: "Dedicated domain", text: "Separate vCenter/SSO, dedicated NSX Manager and edges for regulated workloads.", highlight: [vcreg, nsxd, pci, edged] }
+  - { title: "Physical separation", text: "Only when the requirement is about the physical path or guaranteed bandwidth.", highlight: [sto] }

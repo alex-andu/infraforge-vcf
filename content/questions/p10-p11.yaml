@@ -1,0 +1,2666 @@
+# Phase 10 (VCF Operations) and Phase 11 (VCF Automation, APIs) questions - author I
+questions:
+- id: ops-arch-001
+  type: single
+  kind: concept
+  difficulty: foundation
+  version: vcf9
+  topics:
+  - vcf-ops-architecture
+  objective: '4.3'
+  lesson: vcf-operations-architecture
+  section: components
+  stem: Which three node roles make up the analytics cluster in the VCF Operations High Availability model?
+  options:
+  - id: a
+    text: Primary, replica and data node
+    why: Exactly the three nodes listed for the High Availability model.
+    correct: true
+  - id: b
+    text: Primary, collector and witness node
+    why: Collectors are separate appliances; the HA model table lists no witness.
+    confusedWith: vcf-ops-architecture
+  - id: c
+    text: Primary, fleet management and collector
+    why: Fleet management and collector are additional appliances, not analytics nodes.
+  - id: d
+    text: Three identical primary nodes
+    why: There is only one primary; the others are replica and data.
+  explanation:
+    correct: The HA model is a three-node cluster of a primary node, a replica node and a data node.
+    concept: VCF Operations analytics cluster node roles
+    architecture: Collectors and the fleet management appliance are separate appliances deployed beside the cluster in every
+      model.
+    trap: Collector (cloud proxy) is not a cluster node.
+  diagnostic: vcf
+- id: ops-arch-002
+  type: single
+  kind: scenario
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - vcf-ops-architecture
+  objective: '4.3'
+  lesson: vcf-operations-architecture
+  section: deep-dive
+  stem: An administrator must increase the number of objects a VCF Operations HA cluster can analyse without changing node
+    sizes. What should they add?
+  options:
+  - id: a
+    text: Another replica node
+    why: There is one replica per cluster and it provides availability, not capacity.
+    confusedWith: vcf-ops-architecture
+  - id: b
+    text: A data node of the same size
+    why: Data nodes add analytics and storage capacity; sizes must match.
+    correct: true
+  - id: c
+    text: A second collector
+    why: Collectors add collection capacity/failover, not analytics capacity.
+  - id: d
+    text: A data node of a larger size
+    why: Mixing node sizes is not supported (KB 397782).
+  explanation:
+    correct: Scale-out is done by adding data nodes; all nodes must stay the same size.
+    concept: Scale-up vs scale-out
+    architecture: The replica protects the primary; it does not add capacity. Collectors gather data but do not analyse or
+      store it.
+    trap: Replica = availability, data node = capacity.
+- id: ops-arch-003
+  type: single
+  kind: design
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - vcf-ops-architecture
+  objective: '4.3'
+  lesson: vcf-operations-architecture
+  section: components
+  stem: A customer runs two VCF instances in two availability zones about 5 ms apart and requires that monitoring has no service
+    interruption if an entire zone fails. Which VCF Operations model fits?
+  options:
+  - id: a
+    text: Simple
+    why: Single node; relies on vSphere HA restart.
+  - id: b
+    text: High Availability
+    why: Protects against one node failure, but all nodes would be in one zone.
+    confusedWith: vcf-ops-architecture
+  - id: c
+    text: Continuous Availability
+    why: Node pairs across two AZs within 10 ms; no interruption from a single AZ failure.
+    correct: true
+  - id: d
+    text: High Availability with an external load balancer
+    why: A load balancer gives a single VIP, not zone resilience.
+  explanation:
+    correct: Continuous Availability pairs nodes across two availability zones (max 10 ms) and survives a single AZ failure.
+    concept: VCF Operations deployment models
+    architecture: CA needs a separate VCF instance in the other AZ and manual operations after installation.
+    trap: HA protects against a node failure, not a zone failure.
+- id: ops-arch-004
+  type: multi
+  kind: concept
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - vcf-ops-architecture
+  - fleet-management
+  objective: '4.3'
+  lesson: vcf-operations-architecture
+  section: components
+  stem: Which two appliances are deployed alongside VCF Operations in every VCF Operations model (Simple, High Availability,
+    Continuous Availability)? (Choose two.)
+  options:
+  - id: a
+    text: VCF Operations fleet management appliance
+    why: Listed in every model.
+    correct: true
+  - id: b
+    text: VCF Operations collector
+    why: Listed in every model.
+    correct: true
+  - id: c
+    text: VCF Operations for logs
+    why: Optional Day-2 component.
+    confusedWith: vcf-ops-logs
+  - id: d
+    text: VCF Operations for networks platform node
+    why: Optional Day-2 component.
+    confusedWith: network-ops
+  select: 2
+  explanation:
+    correct: Every model table lists VCF Operations fleet management and VCF Operations collector as additional appliances
+      (plus SDDC Manager).
+    concept: Additional appliances of VCF Operations
+    architecture: Fleet management executes lifecycle, certificate and password tasks; collectors run adapters.
+    trap: VCF Operations for logs and for networks are optional Day-2 additions.
+- id: ops-arch-005
+  type: single
+  kind: design
+  difficulty: advanced
+  version: vcf9
+  topics:
+  - vcf-ops-architecture
+  - certificates
+  objective: '4.3'
+  lesson: vcf-operations-architecture
+  section: components
+  stem: You deploy VCF Operations in the HA model behind an external load balancer. Which certificate requirement applies?
+  options:
+  - id: a
+    text: Only the load balancer FQDN in the certificate subject
+    why: Node FQDNs must also be in the SAN.
+  - id: b
+    text: All node FQDNs and the load balancer FQDN in the SAN
+    why: Matches the model implications in TechDocs.
+    correct: true
+  - id: c
+    text: A separate self-signed certificate per node
+    why: Not what the design requires; trust and SAN coverage matter.
+  - id: d
+    text: No change; the load balancer terminates TLS
+    why: TechDocs explicitly lists the SAN requirement.
+  explanation:
+    correct: With an external load balancer, the FQDNs of all cluster nodes and the load balancer must be in the certificate's
+      SAN.
+    concept: Load balancer implications
+    architecture: The LB needs its own IP and FQDN; users connect to the LB VIP, but nodes are also reached directly.
+    trap: Only the LB FQDN is not enough.
+- id: ops-arch-006
+  type: truefalse
+  kind: concept
+  difficulty: foundation
+  version: vcf9
+  topics:
+  - vcf-ops-architecture
+  objective: '4.3'
+  lesson: vcf-operations-architecture
+  section: deep-dive
+  stem: In a multi-node VCF Operations cluster you may mix Medium and Large nodes as long as the primary is the largest.
+  options:
+  - id: 'true'
+    text: 'True'
+    why: Mixed sizes are not supported.
+  - id: 'false'
+    text: 'False'
+    why: All nodes must be the same size.
+    correct: true
+  explanation:
+    correct: 'False: KB 397782 states that with more than one node all nodes must be scaled equally - no mixing of sizes.'
+    concept: Node sizing rule
+    trap: Scale up all nodes together.
+- id: ops-arch-007
+  type: single
+  kind: troubleshooting
+  difficulty: advanced
+  version: vcf9
+  topics:
+  - vcf-ops-architecture
+  objective: '4.3'
+  lesson: vcf-operations-architecture
+  section: failure-scenarios
+  stem: In a Simple VCF Operations deployment the only collector VM crashes. What do operators observe?
+  options:
+  - id: a
+    text: The VCF Operations UI becomes unreachable
+    why: The UI is served by the analytics node, which is still running.
+  - id: b
+    text: Data from the adapters on that collector stops; objects show stale metrics
+    why: Collectors run adapters; no collector group means no failover.
+    correct: true
+  - id: c
+    text: Nothing - analytics nodes automatically poll vCenter directly
+    why: Adapters stay assigned to the failed collector unless moved or in a group.
+  - id: d
+    text: vCenter alarms stop working
+    why: vCenter alarms are independent of VCF Operations.
+  explanation:
+    correct: All adapters on that collector stop, so objects go stale while the UI still works.
+    concept: Role of collectors
+    architecture: Analytics node still serves UI; without a collector group there is no adapter failover.
+    trap: UI being up does not mean data is current.
+- id: ops-data-001
+  type: single
+  kind: concept
+  difficulty: foundation
+  version: vcf9
+  topics:
+  - metrics-properties
+  objective: '4.3'
+  lesson: metrics-properties-views-reports
+  section: concept
+  stem: Which item is a property, not a metric, of a VM in VCF Operations?
+  options:
+  - id: a
+    text: Number of vCPUs
+    why: Configuration attribute that rarely changes.
+    correct: true
+  - id: b
+    text: CPU usage (%)
+    why: Measured each cycle - a metric.
+    confusedWith: metrics-properties
+  - id: c
+    text: Disk latency (ms)
+    why: Metric.
+  - id: d
+    text: Network packets dropped
+    why: Metric.
+  explanation:
+    correct: The number of vCPUs is a configuration attribute (property); CPU usage, latency and IOPS are measurements (metrics).
+    concept: Metrics vs properties
+    trap: A number can still be a property.
+  diagnostic: vcf
+- id: ops-data-002
+  type: single
+  kind: scenario
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - metrics-properties
+  objective: '4.3'
+  lesson: metrics-properties-views-reports
+  section: concept
+  stem: An auditor wants a monthly list of every ESX host and its exact build number. Which data and view type should you
+    use?
+  options:
+  - id: a
+    text: A Trend view of a metric
+    why: Build number is not a time series metric.
+    confusedWith: metrics-properties
+  - id: b
+    text: A List view with the ESX version/build property
+    why: List view, subject Host System, property column.
+    correct: true
+  - id: c
+    text: A Distribution view of CPU usage
+    why: Wrong data entirely.
+  - id: d
+    text: A super metric
+    why: Super metrics are formulas over metrics.
+  explanation:
+    correct: ESX build is a property; a List view gives one row per host.
+    concept: Choosing data and view type
+    architecture: Properties are collected by the vCenter adapter and are usable in views and reports.
+    trap: Trend views are for time series metrics.
+- id: ops-data-003
+  type: matching
+  kind: concept
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - metrics-properties
+  objective: '4.3'
+  lesson: metrics-properties-views-reports
+  section: components
+  stem: Match each requirement to the VCF Operations view type that fits best.
+  pairs:
+  - id: p1
+    left: Table of all VMs with vCPU, OS and average CPU
+    right: List view
+  - id: p2
+    left: Total and average memory used per cluster
+    right: Summary view
+  - id: p3
+    left: Datastore usage growth with a 30-day forecast
+    right: Trend view
+  - id: p4
+    left: Number of VMs per guest OS
+    right: Distribution view
+  explanation:
+    correct: List = per-object table, Summary = aggregated table, Trend = history and forecast, Distribution = spread across
+      buckets.
+    concept: View types
+    trap: Summary aggregates; Distribution buckets.
+- id: ops-data-004
+  type: multi
+  kind: concept
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - metrics-properties
+  objective: '4.3'
+  lesson: metrics-properties-views-reports
+  section: how-it-works
+  stem: Which two statements about reports in VCF Operations are correct? (Choose two.)
+  options:
+  - id: a
+    text: A report template is built from views and dashboards
+    why: 'TechDocs: a scheduled snapshot of views and dashboards.'
+    correct: true
+  - id: b
+    text: Generated reports can be PDF or CSV
+    why: Both formats are supported.
+    correct: true
+  - id: c
+    text: Reports can only be run manually
+    why: They can be scheduled.
+  - id: d
+    text: Reports are only available to the admin user
+    why: They can be delivered to others, e.g. via email outbound settings.
+  select: 2
+  explanation:
+    correct: Reports are scheduled snapshots of views and dashboards and are generated as PDF or CSV.
+    concept: Report templates
+    architecture: Templates can add a cover page, table of contents and footer.
+    trap: Reports do not contain raw data that is not first expressed as a view or dashboard.
+- id: ops-data-005
+  type: ordering
+  kind: scenario
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - metrics-properties
+  objective: '4.3'
+  lesson: metrics-properties-views-reports
+  section: how-it-works
+  stem: Put the steps to deliver a new weekly capacity table to managers in order.
+  items:
+  - id: i1
+    text: Create a List view with the required metrics and properties (Infrastructure Operations > Views > Create)
+  - id: i2
+    text: Create a report template that includes the view and choose PDF/CSV
+  - id: i3
+    text: Run the template once against the target object and check the output
+  - id: i4
+    text: Schedule the report weekly with email delivery via outbound settings
+  explanation:
+    correct: A report needs a view first; then the template, a test run, and finally the schedule and delivery.
+    concept: View then report workflow
+    trap: You cannot add data to a report that has no view.
+- id: ops-data-006
+  type: single
+  kind: troubleshooting
+  difficulty: advanced
+  version: vcf9
+  topics:
+  - metrics-properties
+  - dashboards-alerts
+  objective: '4.3'
+  lesson: metrics-properties-views-reports
+  section: failure-scenarios
+  stem: A super metric you created shows "no data" on a cluster, although the metrics in its formula exist on the cluster
+    VMs. What is the most likely cause?
+  options:
+  - id: a
+    text: The super metric is not activated in the policy applied to the cluster
+    why: Activation in the effective policy is required.
+    correct: true
+  - id: b
+    text: Super metrics only work on VMs
+    why: They can be assigned to object types such as clusters.
+  - id: c
+    text: The collector must be restarted after creating a super metric
+    why: No such requirement.
+  - id: d
+    text: Super metrics require VCF Operations for logs
+    why: Unrelated component.
+    confusedWith: vcf-ops-logs
+  explanation:
+    correct: Super metrics are calculated only for objects whose effective policy activates them.
+    concept: Super metrics and policies
+    architecture: Policies control which metrics, properties and super metrics are collected or calculated.
+    trap: Formula correct but not activated.
+- id: ops-data-007
+  type: single
+  kind: concept
+  difficulty: foundation
+  version: vcf9
+  topics:
+  - metrics-properties
+  objective: '4.3'
+  lesson: metrics-properties-views-reports
+  section: concept
+  stem: According to TechDocs, where are properties typically used in VCF Operations besides views and reports?
+  options:
+  - id: a
+    text: In symptom definitions
+    why: Property conditions can trigger symptoms (for example a configuration value).
+    correct: true
+  - id: b
+    text: Only in capacity forecasts
+    why: Forecasts use metric history.
+  - id: c
+    text: Only in log queries
+    why: Log queries search log text.
+    confusedWith: vcf-ops-logs
+  - id: d
+    text: Nowhere - properties are display-only
+    why: They are used in symptoms, views, reports and compliance.
+  explanation:
+    correct: 'TechDocs: ''Properties are attributes of objects... You use properties in symptom definitions.'''
+    concept: Properties in symptoms
+- id: ops-data-008
+  type: single
+  kind: scenario
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - metrics-properties
+  objective: '4.3'
+  lesson: metrics-properties-views-reports
+  section: components
+  stem: You want a dashboard panel that shows the same table as your custom List view. Which widget do you use?
+  options:
+  - id: a
+    text: View widget
+    why: Designed to show a view inside a dashboard.
+    correct: true
+  - id: b
+    text: Text widget
+    why: Static/dynamic text, not a view.
+  - id: c
+    text: Scoreboard widget
+    why: Shows selected metric values as tiles, not a view.
+  - id: d
+    text: A report widget
+    why: Reports are generated separately, not embedded as a widget.
+  explanation:
+    correct: The View widget displays a view on a dashboard.
+    concept: Views in dashboards
+- id: ops-alrt-001
+  type: single
+  kind: concept
+  difficulty: foundation
+  version: vcf9
+  topics:
+  - dashboards-alerts
+  objective: '4.3'
+  lesson: dashboards-alerts-policies
+  section: concept
+  stem: What does an alert definition in VCF Operations combine?
+  options:
+  - id: a
+    text: Symptom definitions and recommendations
+    why: Exactly the TechDocs definition.
+    correct: true
+  - id: b
+    text: Dashboards and views
+    why: Presentation objects.
+  - id: c
+    text: Policies and custom groups
+    why: Policies activate alert definitions; they are not part of them.
+    confusedWith: dashboards-alerts
+  - id: d
+    text: Log queries only
+    why: Log symptoms are one symptom type among several.
+  explanation:
+    correct: Alert definitions are combinations of symptoms and recommendations for a base object type.
+    concept: Alert definition anatomy
+    trap: Actions are optional and linked via recommendations.
+  diagnostic: vcf
+- id: ops-alrt-002
+  type: multi
+  kind: concept
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - dashboards-alerts
+  objective: '4.3'
+  lesson: dashboards-alerts-policies
+  section: components
+  stem: Which three are symptom definition types in VCF Operations 9.0? (Choose three.)
+  options:
+  - id: a
+    text: Metric/Property
+    why: Listed.
+    correct: true
+  - id: b
+    text: Message event
+    why: Listed.
+    correct: true
+  - id: c
+    text: Log
+    why: Listed, new in 9.0.
+    correct: true
+  - id: d
+    text: Dashboard
+    why: Not a symptom type.
+  - id: e
+    text: Report
+    why: Not a symptom type.
+  select: 3
+  explanation:
+    correct: Metric/property, message event, fault and log symptoms are listed; log symptoms are new in 9.0.
+    concept: Symptom types
+- id: ops-alrt-003
+  type: single
+  kind: scenario
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - dashboards-alerts
+  objective: '4.3'
+  lesson: dashboards-alerts-policies
+  section: components
+  stem: A NOC team must see a dashboard you built, but must not change it. How do you share it?
+  options:
+  - id: a
+    text: Share it with the NOC user group without Allow Editing
+    why: Group sharing with view-only access.
+    correct: true
+  - id: b
+    text: Change ownership to the NOC group
+    why: Ownership transfer removes it from your dashboards and gives full control.
+  - id: c
+    text: Export it as JSON and email the file
+    why: They would need to import it; not sharing.
+  - id: d
+    text: Add the NOC users to the administrator role
+    why: Excessive privilege.
+  explanation:
+    correct: Share with the NOC user group from Dashboards > Manage without 'Allow Editing'; users see it locked.
+    concept: Dashboard sharing
+    trap: Sharing gives the dashboard, not object permissions.
+- id: ops-alrt-004
+  type: single
+  kind: concept
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - dashboards-alerts
+  objective: '4.3'
+  lesson: dashboards-alerts-policies
+  section: components
+  stem: Which file formats can you import as a dashboard in VCF Operations 9.0?
+  options:
+  - id: a
+    text: ZIP, PAK or JSON
+    why: As listed on the Manage Dashboards page.
+    correct: true
+  - id: b
+    text: PDF or CSV
+    why: Those are report formats.
+    confusedWith: metrics-properties
+  - id: c
+    text: Only XML
+    why: Not supported.
+  - id: d
+    text: OVA
+    why: Appliance format.
+  explanation:
+    correct: Import accepts a dashboard ZIP, PAK or JSON file; export creates JSON.
+    concept: Dashboard export/import
+- id: ops-alrt-005
+  type: single
+  kind: scenario
+  difficulty: advanced
+  version: vcf9
+  topics:
+  - dashboards-alerts
+  objective: '4.3'
+  lesson: dashboards-alerts-policies
+  section: how-it-works
+  stem: VM web01 belongs to custom group "Prod" (policy Prod, priority 1 - highest) and to custom group "Web" (policy Web,
+    priority 3). An engineer also assigned policy Legacy (priority 5) directly to web01. Which policy is enforced on web01?
+  options:
+  - id: a
+    text: Prod
+    why: Would win among group assignments, but a direct assignment overrides.
+    confusedWith: dashboards-alerts
+  - id: b
+    text: Web
+    why: Lower priority than Prod and not direct.
+  - id: c
+    text: Legacy
+    why: Directly assigned to the object, so it is enforced despite lower priority.
+    correct: true
+  - id: d
+    text: Default policy
+    why: Only applies when nothing else does.
+  explanation:
+    correct: Highest priority wins, except that a lower-priority policy assigned directly to the object is enforced.
+    concept: Policy precedence
+    trap: Direct assignment beats group priority.
+- id: ops-alrt-006
+  type: ordering
+  kind: concept
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - dashboards-alerts
+  objective: '4.3'
+  lesson: dashboards-alerts-policies
+  section: how-it-works
+  stem: Order the alert pipeline from data to notification.
+  items:
+  - id: i1
+    text: Collected metrics/properties/events are evaluated against symptom definitions
+  - id: i2
+    text: Alert definition symptom set (all/any) is satisfied for the wait cycle
+  - id: i3
+    text: Alert is raised on the base object with recommendations
+  - id: i4
+    text: Notification rule matches and an outbound plugin sends the message
+  explanation:
+    correct: Data is evaluated by symptoms; alert definitions fire on their symptom sets; the alert shows recommendations;
+      notifications send it out.
+    concept: Alert pipeline
+- id: ops-alrt-007
+  type: single
+  kind: troubleshooting
+  difficulty: advanced
+  version: vcf9
+  topics:
+  - dashboards-alerts
+  objective: '4.3'
+  lesson: dashboards-alerts-policies
+  section: troubleshooting
+  stem: You created a correct alert definition for datastores, but no datastore ever raises it, even while low on space. What
+    should you check first?
+  options:
+  - id: a
+    text: Whether the definition is active in the effective policy of those datastores
+    why: Most common cause.
+    correct: true
+  - id: b
+    text: Whether VCF Operations for logs is deployed
+    why: Not needed for metric symptoms.
+    confusedWith: vcf-ops-logs
+  - id: c
+    text: Whether the dashboard is shared
+    why: Unrelated.
+  - id: d
+    text: Whether the report schedule is active
+    why: Unrelated.
+  explanation:
+    correct: Alert definitions only fire where the effective policy activates them.
+    concept: Policies activate alerts
+    trap: Correct definition is not enough.
+- id: ops-alrt-008
+  type: single
+  kind: concept
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - dashboards-alerts
+  objective: '4.3'
+  lesson: dashboards-alerts-policies
+  section: architecture
+  stem: An alert indicates that a cluster will run out of memory in about two weeks if growth continues. Which alert impact
+    badge does it most likely affect?
+  options:
+  - id: a
+    text: Health
+    why: Health alerts indicate current problems.
+  - id: b
+    text: Risk
+    why: Future problems to address before they affect health.
+    correct: true
+  - id: c
+    text: Efficiency
+    why: For reclaimable or wasted resources.
+  - id: d
+    text: Compliance
+    why: Not an alert impact badge.
+    confusedWith: compliance-drift
+  explanation:
+    correct: Health = problem now, Risk = potential future problem, Efficiency = wasted resources.
+    concept: Alert impact
+- id: ops-alrt-009
+  type: multi
+  kind: design
+  difficulty: advanced
+  version: vcf9
+  topics:
+  - dashboards-alerts
+  objective: '4.3'
+  lesson: dashboards-alerts-policies
+  section: deep-dive
+  stem: A dev cluster is intentionally overcommitted and floods the team with CPU contention alerts, while production must
+    keep them. Which two actions follow best practice? (Choose two.)
+  options:
+  - id: a
+    text: Create a custom policy inheriting from the default with those alerts deactivated
+    why: Only overrides what differs.
+    correct: true
+  - id: b
+    text: Assign it to a custom group containing the dev cluster objects with higher priority than default
+    why: Applies it only to dev.
+    correct: true
+  - id: c
+    text: Deactivate the alert definitions in the default policy
+    why: Would also silence production.
+    confusedWith: dashboards-alerts
+  - id: d
+    text: Delete the alert definitions
+    why: Removes them for everyone.
+  select: 2
+  explanation:
+    correct: Create a custom policy inheriting from default with the alerts deactivated, and assign it to a custom group for
+      dev with higher priority.
+    concept: Policy design
+    trap: Editing the default policy affects every object.
+- id: ops-alrt-010
+  type: single
+  kind: concept
+  difficulty: foundation
+  version: vcf9
+  topics:
+  - dashboards-alerts
+  objective: '4.3'
+  lesson: dashboards-alerts-policies
+  section: components
+  stem: Where do you create a new dashboard in VCF Operations 9.0?
+  options:
+  - id: a
+    text: Infrastructure Operations > Dashboards & Reports > Dashboards > Create
+    why: Path from TechDocs.
+    correct: true
+  - id: b
+    text: Fleet Management > Lifecycle > Dashboards
+    why: Fleet management is for lifecycle, certificates, passwords.
+    confusedWith: fleet-management
+  - id: c
+    text: Administration > Integrations
+    why: Adapters/integrations.
+  - id: d
+    text: Security > Compliance
+    why: Compliance benchmarks.
+  explanation:
+    correct: Infrastructure Operations > Dashboards & Reports > Dashboards > Create.
+    concept: Dashboard menu path
+- id: ops-alrt-011
+  type: single
+  kind: scenario
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - dashboards-alerts
+  objective: '4.3'
+  lesson: dashboards-alerts-policies
+  section: how-it-works
+  stem: An alert should fire only when BOTH high datastore latency AND high VM CPU ready are present on a host. How should
+    the alert definition be built?
+  options:
+  - id: a
+    text: Symptom sets combined with 'all'
+    why: Requires every symptom set to be true.
+    correct: true
+  - id: b
+    text: Symptom sets combined with 'any'
+    why: Would fire on either condition.
+  - id: c
+    text: Two separate alert definitions
+    why: Each would fire independently.
+  - id: d
+    text: A notification rule with two filters
+    why: Notifications route alerts; they do not define conditions.
+  explanation:
+    correct: Put the symptoms in symptom sets evaluated with 'all' logic so every set must be true.
+    concept: Symptom set logic
+    trap: '''Any'' would fire on either.'
+- id: ops-alrt-012
+  type: single
+  kind: concept
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - dashboards-alerts
+  objective: '4.3'
+  lesson: dashboards-alerts-policies
+  section: concept
+  stem: An alert must email the on-call team. Which two objects provide this in VCF Operations?
+  options:
+  - id: a
+    text: A notification rule and an outbound plugin (e.g. email)
+    why: Notification + outbound settings.
+    correct: true
+  - id: b
+    text: A recommendation and an action
+    why: They help fix the problem, not notify.
+  - id: c
+    text: A report template and a view
+    why: For scheduled reporting, not alert routing.
+    confusedWith: metrics-properties
+  - id: d
+    text: A custom group and a super metric
+    why: Unrelated to delivery.
+  explanation:
+    correct: Notifications filter alerts and send them through outbound plugins (configured in outbound settings).
+    concept: Notifications
+    trap: Recommendations are guidance, not delivery.
+- id: ops-logs-001
+  type: single
+  kind: scenario
+  difficulty: foundation
+  version: vcf9
+  topics:
+  - vcf-ops-logs
+  - network-ops
+  objective: '4.3'
+  lesson: vcf-operations-logs-network-ops
+  section: concept
+  stem: An application owner asks which VMs communicate with the database on TCP 3306 and which firewall rules allow it. Which
+    tool answers this?
+  options:
+  - id: a
+    text: VCF Operations for networks
+    why: Flow-based analytics and micro-segmentation planning.
+    correct: true
+  - id: b
+    text: VCF Operations for logs
+    why: Centralized log search, not flow analysis.
+    confusedWith: vcf-ops-logs
+  - id: c
+    text: VCF Health
+    why: Platform health checks.
+    confusedWith: health-diagnostics
+  - id: d
+    text: Storage Operations
+    why: Storage monitoring.
+  explanation:
+    correct: Flow analytics, application discovery and firewall rule recommendations are VCF Operations for networks (VCF
+      Network Operations) use cases.
+    concept: 'Use case: networks vs logs'
+    trap: Logs show events, not flow relationships.
+  diagnostic: vcf
+- id: ops-logs-002
+  type: single
+  kind: scenario
+  difficulty: foundation
+  version: vcf9
+  topics:
+  - vcf-ops-logs
+  objective: '4.3'
+  lesson: vcf-operations-logs-network-ops
+  section: concept
+  stem: After a host disconnect at 02:13, you need the vmkernel messages of all hosts in that window in one place. Which component
+    provides this?
+  options:
+  - id: a
+    text: VCF Operations for logs
+    why: Central log management.
+    correct: true
+  - id: b
+    text: VCF Operations for networks
+    why: Network flows and topology.
+    confusedWith: network-ops
+  - id: c
+    text: Configuration drift
+    why: Compares vCenter configurations.
+    confusedWith: compliance-drift
+  - id: d
+    text: A Trend view
+    why: Metrics over time, not log text.
+    confusedWith: metrics-properties
+  explanation:
+    correct: VCF Operations for logs centralizes collection, search and analysis of logs from VCF components.
+    concept: 'Use case: logs'
+- id: ops-logs-003
+  type: single
+  kind: design
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - network-ops
+  objective: '4.3'
+  lesson: vcf-operations-logs-network-ops
+  section: deep-dive
+  stem: A customer wants VCF Operations for networks to survive the loss of one platform node, and proposes a three-node platform
+    cluster. What is your response?
+  options:
+  - id: a
+    text: Agree; three platform nodes provide HA
+    why: The cluster is for performance only.
+    confusedWith: network-ops
+  - id: b
+    text: The three-node platform cluster adds scale and performance, not HA; rely on vSphere HA and backups
+    why: Matches TechDocs.
+    correct: true
+  - id: c
+    text: Add a second collector to get HA
+    why: Collectors do not make the platform highly available.
+  - id: d
+    text: Use VCF Operations for logs instead
+    why: Different product and use case.
+    confusedWith: vcf-ops-logs
+  explanation:
+    correct: 'TechDocs: the three-node cluster does not provide high availability; it is for performance and scale.'
+    concept: Networks models
+    trap: The 'High Availability' model name is misleading for networks.
+- id: ops-logs-004
+  type: multi
+  kind: concept
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - network-ops
+  objective: '4.3'
+  lesson: vcf-operations-logs-network-ops
+  section: components
+  stem: Which two statements about the Simple VCF Operations for networks model are true? (Choose two.)
+  options:
+  - id: a
+    text: The platform node must be Extra Large
+    why: Listed implication.
+    correct: true
+  - id: b
+    text: It requires 100% CPU and RAM reservation
+    why: Listed implication.
+    correct: true
+  - id: c
+    text: It needs no collector node
+    why: It has a single collector node.
+  - id: d
+    text: It is deployed by the VCF Installer during bring-up
+    why: Deployed as a Day-2 operation via VCF Operations.
+    confusedWith: vcf-ops-architecture
+  select: 2
+  explanation:
+    correct: 'Simple model: single platform + single collector; platform must be Extra Large; 100% CPU and RAM reservation;
+      10,000 VMs/objects.'
+    concept: Networks Simple model
+- id: ops-logs-005
+  type: single
+  kind: concept
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - vcf-ops-logs
+  objective: '4.3'
+  lesson: vcf-operations-logs-network-ops
+  section: components
+  stem: What makes up the High Availability VCF Operations for logs model?
+  options:
+  - id: a
+    text: Primary, replica and data nodes
+    why: That is the VCF Operations analytics cluster.
+    confusedWith: vcf-ops-architecture
+  - id: b
+    text: Primary node and two worker nodes behind an integrated load balancer VIP
+    why: Matches the logs HA model.
+    correct: true
+  - id: c
+    text: Platform node and collector node
+    why: That is VCF Operations for networks.
+    confusedWith: network-ops
+  - id: d
+    text: Two primary nodes in two AZs
+    why: Not a logs model.
+  explanation:
+    correct: Primary node plus worker node 1 and worker node 2, with an integrated load balancer providing the cluster VIP.
+    concept: Logs models
+    trap: Logs HA uses worker nodes, not replica/data nodes.
+- id: ops-logs-006
+  type: truefalse
+  kind: concept
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - vcf-ops-logs
+  objective: '4.3'
+  lesson: vcf-operations-logs-network-ops
+  section: components
+  stem: When deploying the Simple (single-node) VCF Operations for logs model, no VIP IP or FQDN is needed.
+  options:
+  - id: 'true'
+    text: 'True'
+    why: The VIP is required.
+  - id: 'false'
+    text: 'False'
+    why: A VIP IP and FQDN are required at deployment.
+    correct: true
+  explanation:
+    correct: 'False: TechDocs lists ''VIP IP/FQDN required during deployment'' even for the Simple model.'
+    concept: Logs Simple model
+- id: ops-logs-007
+  type: single
+  kind: scenario
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - vcf-ops-logs
+  - dashboards-alerts
+  objective: '4.3'
+  lesson: vcf-operations-logs-network-ops
+  section: how-it-works
+  stem: Security wants an alert whenever an ESX host logs repeated failed root logins. What is the VCF 9.0 way to do this?
+  options:
+  - id: a
+    text: Create a log-based alert from the saved log query
+    why: Log symptoms are new in 9.0.
+    correct: true
+  - id: b
+    text: Create a metric symptom on CPU usage
+    why: Not related to authentication events.
+    confusedWith: metrics-properties
+  - id: c
+    text: Configure a configuration drift template
+    why: Drift compares configuration, not events.
+    confusedWith: compliance-drift
+  - id: d
+    text: Enable a compliance benchmark
+    why: Benchmarks evaluate settings, not log events.
+    confusedWith: compliance-drift
+  explanation:
+    correct: 'VCF Operations 9.0 supports log-based symptoms/alerts: save the log query and create a log-based alert.'
+    concept: Log-based alerts
+    trap: A metric symptom cannot see log text.
+- id: ops-logs-008
+  type: single
+  kind: concept
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - health-diagnostics
+  objective: '4.3'
+  lesson: vcf-operations-logs-network-ops
+  section: components
+  stem: Which health areas does VCF Health in VCF Operations cover?
+  options:
+  - id: a
+    text: Certificates, NTP and DNS, vCenter, VM operations, vMotion and VM snapshots
+    why: The six areas listed in TechDocs.
+    correct: true
+  - id: b
+    text: Only vSAN disk health
+    why: That is vSAN/Storage Operations.
+    confusedWith: health-diagnostics
+  - id: c
+    text: Only NSX firewall rules
+    why: Network Operations / networks product.
+    confusedWith: network-ops
+  - id: d
+    text: License usage only
+    why: Licensing is elsewhere.
+  explanation:
+    correct: VCF Health covers Certificates, NTP and DNS, vCenter, VM Operations, vSphere vMotion and VM Snapshots health.
+    concept: VCF Health
+- id: ops-logs-009
+  type: single
+  kind: scenario
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - health-diagnostics
+  objective: '4.3'
+  lesson: vcf-operations-logs-network-ops
+  section: components
+  stem: Before opening a support case, you want VCF Operations to check whether your environment matches known issues and
+    to bundle logs with those findings. Which features do you use?
+  options:
+  - id: a
+    text: Diagnostics Findings and Log Assist
+    why: Exactly their purpose.
+    correct: true
+  - id: b
+    text: Configuration drift and compliance
+    why: Different purpose.
+    confusedWith: compliance-drift
+  - id: c
+    text: Super metrics and views
+    why: Data modelling.
+    confusedWith: metrics-properties
+  - id: d
+    text: Network Operations and flows
+    why: Network visibility.
+    confusedWith: network-ops
+  explanation:
+    correct: Diagnostics Findings matches known issues using properties and logs; Log Assist generates bundles with findings
+      attached.
+    concept: Diagnostics
+- id: ops-logs-010
+  type: single
+  kind: scenario
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - health-diagnostics
+  objective: '4.3'
+  lesson: vcf-operations-logs-network-ops
+  section: how-it-works
+  stem: A new vSAN cluster must be checked for performance before production workloads move in. Which Storage Operations diagnostics
+    mode do you select?
+  options:
+  - id: a
+    text: Troubleshooting
+    why: For production clusters with active workloads.
+  - id: b
+    text: Benchmarking and Optimizing
+    why: For new clusters before go-live.
+    correct: true
+  - id: c
+    text: Compliance
+    why: Not a diagnostics mode.
+    confusedWith: compliance-drift
+  - id: d
+    text: Log Assist
+    why: Support bundles.
+  explanation:
+    correct: Benchmarking and Optimizing is for pre-deployment diagnostics of new clusters; Troubleshooting is for production
+      clusters with workloads.
+    concept: vSAN performance diagnostics
+- id: ops-logs-011
+  type: single
+  kind: concept
+  difficulty: foundation
+  version: vcf9
+  topics:
+  - health-diagnostics
+  objective: '4.3'
+  lesson: vcf-operations-logs-network-ops
+  section: concept
+  stem: Which statement about Storage Operations in VCF Operations 9.0 is correct?
+  options:
+  - id: a
+    text: It is a centralized page for vSAN and non-vSAN storage, including a vSAN cluster health score
+    why: Matches TechDocs.
+    correct: true
+  - id: b
+    text: It only supports vSAN OSA clusters
+    why: Not stated; it covers vSAN and non-vSAN.
+  - id: c
+    text: It requires VCF Operations for networks
+    why: Unrelated product.
+    confusedWith: network-ops
+  - id: d
+    text: It replaces vSAN Skyline Health in vCenter
+    why: Not stated; it complements vCenter.
+  explanation:
+    correct: 'TechDocs: ''a centralized storage dashboard for vSAN and non-vSAN storage types'', with vSAN Cluster Health
+      Score and performance diagnostics.'
+    concept: Storage Operations scope
+    trap: Not vSAN-only.
+- id: ops-logs-012
+  type: single
+  kind: scenario
+  difficulty: advanced
+  version: vcf9
+  topics:
+  - network-ops
+  objective: '4.3'
+  lesson: vcf-operations-logs-network-ops
+  section: how-it-works
+  stem: On the Network Operations page, the "Business Applications with Flows" and "Traffic Summary" widgets are empty, while
+    NSX transport node health is shown. What is the most likely reason?
+  options:
+  - id: a
+    text: VCF Operations for networks is not deployed or not collecting flows
+    why: Flow data comes from it.
+    correct: true
+  - id: b
+    text: The NSX adapter credentials expired
+    why: Then NSX health would be stale too.
+    confusedWith: vcf-ops-architecture
+  - id: c
+    text: VCF Operations for logs is down
+    why: Logs do not feed flow widgets.
+    confusedWith: vcf-ops-logs
+  - id: d
+    text: The dashboard is not shared
+    why: Network Operations is a built-in page.
+  explanation:
+    correct: Flow-based widgets use VCF Operations for networks data; NSX inventory/health comes from the native NSX integration.
+    concept: Network Operations data sources
+- id: ops-comp-001
+  type: single
+  kind: scenario
+  difficulty: foundation
+  version: vcf9
+  topics:
+  - compliance-drift
+  objective: '4.3'
+  lesson: compliance-drift-app-monitoring
+  section: concept
+  stem: Security must prove that ESX hosts follow VMware security configuration (hardening) guidance. Where do you configure
+    this in VCF Operations?
+  options:
+  - id: a
+    text: Security > Compliance, VMware SDDC/VCF benchmark
+    why: Hardening benchmark.
+    correct: true
+  - id: b
+    text: Fleet Management > Configuration Drifts
+    why: Compares vCenters to a template.
+    confusedWith: compliance-drift
+  - id: c
+    text: Network Operations
+    why: Network visibility.
+    confusedWith: network-ops
+  - id: d
+    text: Administration > Integrations
+    why: Adapter configuration.
+  explanation:
+    correct: Security > Compliance with a VMware SDDC/VCF benchmark.
+    concept: Compliance benchmarks
+    trap: Drift compares to your own template, not a standard.
+- id: ops-comp-002
+  type: single
+  kind: troubleshooting
+  difficulty: advanced
+  version: vcf9
+  topics:
+  - compliance-drift
+  objective: '4.3'
+  lesson: compliance-drift-app-monitoring
+  section: failure-scenarios
+  context: 'Administration > Integrations shows: vCenter vc-mgmt - Collector/Group: Default Collector Group.'
+  stem: When creating a configuration drift template, the Configuration Source list contains no vCenter instances and the
+    drift tile shows "Not Collecting". What fixes this?
+  options:
+  - id: a
+    text: Move the vCenter adapters to a cloud proxy / cloud proxy group, validate and save
+    why: Documented resolution.
+    correct: true
+  - id: b
+    text: Deploy VCF Operations for logs
+    why: Not required for drift.
+    confusedWith: vcf-ops-logs
+  - id: c
+    text: Activate a compliance benchmark in the default policy
+    why: Compliance is separate from drift.
+    confusedWith: compliance-drift
+  - id: d
+    text: Add a replica node to the cluster
+    why: Availability, not collection.
+    confusedWith: vcf-ops-architecture
+  explanation:
+    correct: 'KB 438361: assign the vCenter adapters to a Cloud Proxy (collector) or Cloud Proxy group instead of the Default
+      Collector Group.'
+    concept: Drift prerequisite
+    architecture: The configuration management adapter discovers vCenters through collectors.
+- id: ops-comp-003
+  type: ordering
+  kind: scenario
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - compliance-drift
+  objective: '4.3'
+  lesson: compliance-drift-app-monitoring
+  section: how-it-works
+  stem: Order the steps to start tracking configuration drift for three vCenter instances against a reference vCenter.
+  items:
+  - id: i1
+    text: Ensure the vCenter adapters run on a cloud proxy (Administration > Integrations)
+  - id: i2
+    text: In Fleet Management > Configuration Drifts create a template from the reference vCenter (configuration source)
+  - id: i3
+    text: Assign the three target vCenter instances to the template
+  - id: i4
+    text: Review the drift results and decide whether to fix targets or update the template
+  explanation:
+    correct: Collector prerequisite, template from source, assign targets, review.
+    concept: Drift workflow
+- id: ops-comp-004
+  type: single
+  kind: concept
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - compliance-drift
+  objective: '4.3'
+  lesson: compliance-drift-app-monitoring
+  section: components
+  stem: An EC2 instance in a public cloud must send OS metrics to VCF Operations. Which option fits?
+  options:
+  - id: a
+    text: Open-source Telegraf configured to post metrics to the cloud proxy
+    why: Documented for EC2/Azure endpoints.
+    correct: true
+  - id: b
+    text: VCF Operations for logs agent
+    why: Logs, not OS metrics.
+    confusedWith: vcf-ops-logs
+  - id: c
+    text: A configuration drift template
+    why: vCenter configuration only.
+    confusedWith: compliance-drift
+  - id: d
+    text: A super metric
+    why: Derived from existing metrics only.
+    confusedWith: metrics-properties
+  explanation:
+    correct: Open-source Telegraf can run on vCenter VMs, EC2 or Azure VMs and post metrics to the cloud proxy.
+    concept: Application monitoring options
+- id: ops-comp-005
+  type: single
+  kind: troubleshooting
+  difficulty: advanced
+  version: vcf9
+  topics:
+  - compliance-drift
+  - dashboards-alerts
+  objective: '4.3'
+  lesson: compliance-drift-app-monitoring
+  section: deep-dive
+  stem: A compliance benchmark shows scores for cluster A hosts but nothing for cluster B hosts. Cluster B hosts belong to
+    custom group "B-hosts" with policy "B-policy" (higher priority than default). What is the likely cause?
+  options:
+  - id: a
+    text: The benchmark is not configured for B-policy, the effective policy of cluster B hosts
+    why: Compliance alert definitions must be active in that policy.
+    correct: true
+  - id: b
+    text: Cluster B hosts need Telegraf
+    why: Not needed for host compliance.
+    confusedWith: compliance-drift
+  - id: c
+    text: Compliance only works for the management domain
+    why: No such limitation.
+  - id: d
+    text: Cluster B needs VCF Operations for networks
+    why: Unrelated.
+    confusedWith: network-ops
+  explanation:
+    correct: Benchmarks are activated per policy; B-policy does not have the benchmark configured.
+    concept: Compliance is policy-driven
+- id: ops-comp-006
+  type: multi
+  kind: concept
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - compliance-drift
+  objective: '4.3'
+  lesson: compliance-drift-app-monitoring
+  section: components
+  stem: Which three are compliance benchmark categories in VCF Operations? (Choose three.)
+  options:
+  - id: a
+    text: VMware SDDC / VCF configuration (hardening) benchmarks
+    why: Listed.
+    correct: true
+  - id: b
+    text: Regulatory benchmarks
+    why: Listed.
+    correct: true
+  - id: c
+    text: Custom benchmarks built from alert definitions
+    why: Listed.
+    correct: true
+  - id: d
+    text: Drift templates
+    why: Separate feature.
+    confusedWith: compliance-drift
+  - id: e
+    text: Log queries
+    why: Separate feature.
+    confusedWith: vcf-ops-logs
+  select: 3
+  explanation:
+    correct: VMware SDDC/VCF configuration standards, regulatory benchmarks and custom benchmarks (from alert definitions).
+    concept: Benchmark types
+- id: ops-comp-007
+  type: single
+  kind: scenario
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - compliance-drift
+  objective: '4.3'
+  lesson: compliance-drift-app-monitoring
+  section: components
+  stem: The DBA team wants their SQL Server service (not just the VM) monitored, with the agent installed and lifecycled from
+    VCF Operations. What do you configure?
+  options:
+  - id: a
+    text: Product-managed Telegraf on the SQL VMs, then a business application
+    why: Managed by VCF Operations; service-level metrics.
+    correct: true
+  - id: b
+    text: A Trend view of VM CPU
+    why: VM-level metric only.
+    confusedWith: metrics-properties
+  - id: c
+    text: Configuration drift on the vCenter
+    why: Not application monitoring.
+    confusedWith: compliance-drift
+  - id: d
+    text: VCF Health
+    why: Platform health, not application services.
+    confusedWith: health-diagnostics
+  explanation:
+    correct: Product-managed Telegraf monitors application services and is deployed and managed by VCF Operations; group tiers
+      into a business application.
+    concept: Application monitoring
+- id: ops-comp-008
+  type: single
+  kind: concept
+  difficulty: foundation
+  version: vcf9
+  topics:
+  - compliance-drift
+  objective: '4.3'
+  lesson: compliance-drift-app-monitoring
+  section: deep-dive
+  stem: What is the reference that configuration drift compares a vCenter against?
+  options:
+  - id: a
+    text: A configuration template captured from a source vCenter
+    why: Correct.
+    correct: true
+  - id: b
+    text: A regulatory benchmark
+    why: That is compliance.
+    confusedWith: compliance-drift
+  - id: c
+    text: The vSAN HCL
+    why: Not related.
+  - id: d
+    text: The VCF Bill of Materials
+    why: Lifecycle concept.
+  explanation:
+    correct: A configuration template captured from a source vCenter (your own known-good configuration).
+    concept: Drift vs compliance
+- id: vcfa-arch-001
+  type: single
+  kind: scenario
+  difficulty: foundation
+  version: vcf9
+  topics:
+  - vcf-automation
+  objective: '4.4'
+  lesson: vcf-automation-architecture
+  section: concept
+  stem: Several lines of business need self-service VMs and Kubernetes clusters with quotas, isolation and approvals. Which
+    VCF component addresses this?
+  options:
+  - id: a
+    text: VCF Automation
+    why: Self-service, tenancy, quotas and policies.
+    correct: true
+  - id: b
+    text: VCF Operations
+    why: Monitoring and fleet management console.
+    confusedWith: vcf-ops-architecture
+  - id: c
+    text: SDDC Manager
+    why: Instance management and lifecycle.
+  - id: d
+    text: VCF Operations for networks
+    why: Network visibility.
+    confusedWith: network-ops
+  explanation:
+    correct: VCF Automation is the central provisioning platform for multi-tenant self-service consumption with governance.
+    concept: VCF Automation use case
+  diagnostic: vcf
+- id: vcfa-arch-002
+  type: single
+  kind: concept
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - vcf-automation
+  objective: '4.4'
+  lesson: vcf-automation-architecture
+  section: components
+  stem: How many IP addresses does the VcfAutomationSpec ipPool require for the High Availability VCF Automation deployment?
+  options:
+  - id: a
+    text: '2'
+    why: That is the standard (simple) model.
+  - id: b
+    text: '3'
+    why: Matches node count, not the IP requirement.
+    confusedWith: vcf-automation
+  - id: c
+    text: '4'
+    why: As documented in VcfAutomationSpec.
+    correct: true
+  - id: d
+    text: '6'
+    why: Not documented.
+  explanation:
+    correct: The spec states two IPs for the standard model and four for High Availability.
+    concept: VCF Automation deployment inputs
+- id: vcfa-arch-003
+  type: single
+  kind: design
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - vcf-automation
+  objective: '4.4'
+  lesson: vcf-automation-architecture
+  section: components
+  stem: A production self-service portal must remain available if one VCF Automation node fails. Which deployment do you choose?
+  options:
+  - id: a
+    text: Simple model, small node, rely on vSphere HA
+    why: No application-level HA.
+  - id: b
+    text: High Availability model, three medium or large nodes
+    why: Production / mission-critical choice.
+    correct: true
+  - id: c
+    text: Two Simple instances behind a load balancer
+    why: Not a supported model.
+  - id: d
+    text: Simple model with a collector group
+    why: Collector groups belong to VCF Operations.
+    confusedWith: vcf-ops-architecture
+  explanation:
+    correct: The High Availability model uses three medium or large nodes and provides application-level availability.
+    concept: VCF Automation models
+- id: vcfa-arch-004
+  type: single
+  kind: concept
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - vcf-automation
+  objective: '4.4'
+  lesson: vcf-automation-architecture
+  section: architecture
+  stem: How is VCF Automation itself built and where does it run?
+  options:
+  - id: a
+    text: Containerized services on a Kubernetes cluster deployed on dedicated appliance VMs
+    why: Per TechDocs.
+    correct: true
+  - id: b
+    text: A Windows service on SDDC Manager
+    why: No.
+  - id: c
+    text: A plug-in inside vCenter
+    why: No.
+  - id: d
+    text: Pods inside every tenant Supervisor namespace
+    why: Tenant workloads run there, not VCF Automation.
+    confusedWith: supervisor
+  explanation:
+    correct: Containerized services in a Kubernetes cluster on dedicated appliance VMs, visible in vCenter as individual nodes
+      in the management domain.
+    concept: VCF Automation runtime
+    trap: It is not a Supervisor workload of tenants.
+- id: vcfa-arch-005
+  type: truefalse
+  kind: concept
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - vcf-automation
+  objective: '4.4'
+  lesson: vcf-automation-architecture
+  section: deep-dive
+  stem: If the single VCF Automation node of a Simple deployment fails, VMs and VKS clusters already deployed through it stop
+    running.
+  options:
+  - id: 'true'
+    text: 'True'
+    why: Workloads run on vSphere and the Supervisor.
+  - id: 'false'
+    text: 'False'
+    why: Only the portal, catalog and day-2 operations stop.
+    correct: true
+  explanation:
+    correct: 'False: VCF Automation is not in the workload data path; existing workloads keep running on vSphere/Supervisor;
+      only self-service and day-2 operations stop.'
+    concept: Failure impact
+- id: vcfa-arch-006
+  type: single
+  kind: scenario
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - vcf-automation
+  - vcfa-tenancy
+  objective: '4.4'
+  lesson: vcf-automation-architecture
+  section: concept
+  stem: A team only needs VM self-service on vSphere clusters that do not have Supervisor enabled. Which organization type
+    fits?
+  options:
+  - id: a
+    text: Organization for VM Apps
+    why: No Supervisor required.
+    correct: true
+  - id: b
+    text: Organization for All Apps
+    why: Built on Supervisor.
+    confusedWith: vcfa-tenancy
+  - id: c
+    text: Provider Consumption Organization
+    why: For the provider's own consumption.
+  - id: d
+    text: The system organization
+    why: Provider administration.
+  explanation:
+    correct: VM Apps organizations use vSphere cluster capabilities without requiring a Supervisor.
+    concept: Organization types
+    trap: All Apps organizations need a Supervisor.
+- id: vcfa-arch-007
+  type: single
+  kind: concept
+  difficulty: advanced
+  version: vcf9
+  topics:
+  - vcf-automation
+  objective: '4.4'
+  lesson: vcf-automation-architecture
+  section: components
+  stem: Which value is valid for internalClusterCidr when deploying VCF Automation?
+  options:
+  - id: a
+    text: 198.18.0.0/15
+    why: One of the three allowed values.
+    correct: true
+  - id: b
+    text: 10.0.0.0/8
+    why: Not allowed and likely overlaps real networks.
+  - id: c
+    text: 172.16.0.0/12
+    why: Not allowed.
+  - id: d
+    text: 192.168.0.0/16
+    why: Not allowed.
+  explanation:
+    correct: 'Allowed values: 198.18.0.0/15, 240.0.0.0/15, 250.0.0.0/15.'
+    concept: Internal cluster CIDR
+- id: vcfa-arch-008
+  type: single
+  kind: concept
+  difficulty: foundation
+  version: vcf9
+  topics:
+  - vcf-automation
+  - fleet-management
+  objective: '4.4'
+  lesson: vcf-automation-architecture
+  section: how-it-works
+  stem: VCF Automation was not deployed during the initial VCF deployment. How is it added and later upgraded?
+  options:
+  - id: a
+    text: From VCF Operations fleet management
+    why: Deploy and lifecycle.
+    correct: true
+  - id: b
+    text: With Aria Suite Lifecycle
+    why: Legacy tool from VCF 5.x.
+    confusedWith: fleet-management
+  - id: c
+    text: From the vSphere Client Workload Management page
+    why: That is Supervisor.
+    confusedWith: supervisor
+  - id: d
+    text: It cannot be added later
+    why: It can.
+  explanation:
+    correct: As a Day-2 deployment from VCF Operations fleet management, which also handles its lifecycle.
+    concept: Deployment and lifecycle
+- id: vcfa-ten-001
+  type: single
+  kind: concept
+  difficulty: foundation
+  version: vcf9
+  topics:
+  - vcfa-tenancy
+  objective: '4.4'
+  lesson: vcf-automation-tenancy-regions
+  section: concept
+  stem: What is a region in VCF Automation?
+  options:
+  - id: a
+    text: A grouping of one or more Supervisors (from one or more vCenters) that share the same NSX instance
+    why: Correct.
+    correct: true
+  - id: b
+    text: A vCenter datacenter object
+    why: Not the same concept.
+  - id: c
+    text: An NSX transport zone
+    why: Networking construct.
+    confusedWith: nsx-transport
+  - id: d
+    text: A VCF Operations custom group
+    why: Monitoring construct.
+    confusedWith: dashboards-alerts
+  explanation:
+    correct: A region combines compute, memory and networking resources from one or more Supervisors sharing one NSX instance.
+    concept: Region
+  diagnostic: vcf
+- id: vcfa-ten-002
+  type: multi
+  kind: troubleshooting
+  difficulty: advanced
+  version: vcf9
+  topics:
+  - vcfa-tenancy
+  - supervisor
+  objective: '4.4'
+  lesson: vcf-automation-tenancy-regions
+  section: components
+  stem: A provider cannot combine two Supervisors into one region. Which two conditions would prevent it? (Choose two.)
+  options:
+  - id: a
+    text: The Supervisors are attached to different NSX instances
+    why: Not allowed in one region.
+    correct: true
+  - id: b
+    text: Their storage class names differ
+    why: Must be identical.
+    correct: true
+  - id: c
+    text: They are in different vCenter instances
+    why: Allowed - regions can span vCenters sharing one NSX.
+    confusedWith: vcfa-tenancy
+  - id: d
+    text: They have different numbers of ESX hosts
+    why: Not a stated requirement.
+  select: 2
+  explanation:
+    correct: All Supervisors in a region must use the same NSX instance and identical storage class names/configurations (plus
+      matching Kubernetes versions).
+    concept: Region homogeneity
+- id: vcfa-ten-003
+  type: single
+  kind: concept
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - vcfa-tenancy
+  objective: '4.4'
+  lesson: vcf-automation-tenancy-regions
+  section: components
+  stem: Which object does a VCF Automation provider gateway use?
+  options:
+  - id: a
+    text: An NSX Tier-0 or Tier-0 VRF gateway plus IP spaces
+    why: Correct.
+    correct: true
+  - id: b
+    text: A Tier-1 gateway per organization
+    why: Not the provider gateway.
+    confusedWith: nsx-routing
+  - id: c
+    text: A vSphere Distributed Switch
+    why: Not used directly.
+    confusedWith: vds
+  - id: d
+    text: A physical router managed by VCF Automation
+    why: VCF Automation does not manage physical routers.
+  explanation:
+    correct: A provider gateway leverages an NSX Tier-0 or Tier-0 VRF gateway and associates IP addresses from IP spaces.
+    concept: Provider networking
+- id: vcfa-ten-004
+  type: single
+  kind: troubleshooting
+  difficulty: advanced
+  version: vcf9
+  topics:
+  - vcfa-tenancy
+  objective: '4.4'
+  lesson: vcf-automation-tenancy-regions
+  section: failure-scenarios
+  stem: Tenant VMs on a VPC public subnet receive IPs from the provider IP space 172.31.0.0/24 but cannot be reached from
+    the corporate network. BGP is not used. What is missing?
+  options:
+  - id: a
+    text: A static route for 172.31.0.0/24 on the physical router towards the Tier-0 uplink
+    why: As noted in the VCF Automation lab guidance.
+    correct: true
+  - id: b
+    text: A larger region quota
+    why: Quota does not affect routing.
+  - id: c
+    text: A lease policy
+    why: Governance, not routing.
+    confusedWith: vcfa-org-admin
+  - id: d
+    text: A provider content library
+    why: Content, not routing.
+  explanation:
+    correct: Without BGP, a static route for the IP space block towards the Tier-0 must exist on the physical router.
+    concept: IP space routing
+- id: vcfa-ten-005
+  type: single
+  kind: concept
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - vcfa-tenancy
+  objective: '4.4'
+  lesson: vcf-automation-tenancy-regions
+  section: concept
+  stem: A provider publishes golden images in a provider content library shared with all organizations. What can organization
+    users do with it?
+  options:
+  - id: a
+    text: Consume the items, but not modify or delete them
+    why: Read-only.
+    correct: true
+  - id: b
+    text: Edit and delete items
+    why: Not permitted.
+  - id: c
+    text: Nothing until they copy it to vCenter
+    why: Not required.
+  - id: d
+    text: Change its sharing to other organizations
+    why: Provider-controlled.
+  explanation:
+    correct: Provider content libraries are read-only to organization users.
+    concept: Provider content library
+- id: vcfa-ten-006
+  type: single
+  kind: scenario
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - vcfa-tenancy
+  objective: '4.4'
+  lesson: vcf-automation-tenancy-regions
+  section: components
+  stem: A business unit is being sold. The provider must immediately stop all its users from using VCF Automation without
+    deleting any resources. What should the provider do?
+  options:
+  - id: a
+    text: Deactivate the organization
+    why: Blocks logins and ends sessions; resources stay.
+    correct: true
+  - id: b
+    text: Delete the organization
+    why: Destroys data.
+  - id: c
+    text: Set the region quota to zero
+    why: Users could still log in and see resources.
+  - id: d
+    text: Remove the provider gateway
+    why: Breaks networking, not access.
+  explanation:
+    correct: Deactivating an organization prevents logins and terminates current sessions.
+    concept: Organization lifecycle
+- id: vcfa-ten-007
+  type: single
+  kind: concept
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - vcfa-tenancy
+  objective: '4.4'
+  lesson: vcf-automation-tenancy-regions
+  section: concept
+  stem: Region quotas in VCF Automation apply to which organizations?
+  options:
+  - id: a
+    text: Only organizations for All Apps
+    why: Correct.
+    correct: true
+  - id: b
+    text: Only VM Apps organizations
+    why: Opposite.
+    confusedWith: vcfa-tenancy
+  - id: c
+    text: All organization types including system
+    why: No.
+  - id: d
+    text: Only the Provider Consumption Organization
+    why: No.
+  explanation:
+    correct: Region quotas are applicable only to organizations for all applications.
+    concept: Region quota
+- id: vcfa-ten-008
+  type: ordering
+  kind: scenario
+  difficulty: advanced
+  version: vcf9
+  topics:
+  - vcfa-tenancy
+  objective: '4.4'
+  lesson: vcf-automation-tenancy-regions
+  section: how-it-works
+  stem: Order the provider tasks to give a new All Apps organization working north-south networking.
+  items:
+  - id: i1
+    text: Create an IP space with the external IP block
+  - id: i2
+    text: Create a provider gateway on the Tier-0 associated with the IP space
+  - id: i3
+    text: Sync the NSX edge cluster in the provider portal
+  - id: i4
+    text: Create the All Apps organization with its region quota
+  - id: i5
+    text: Configure the organization's regional networking (region + provider gateway + edge cluster)
+  explanation:
+    correct: IP space, provider gateway on Tier-0, edge cluster sync, organization, then regional networking binding them.
+    concept: Provider workflow
+- id: vcfa-ten-009
+  type: single
+  kind: concept
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - vcfa-tenancy
+  - supervisor
+  objective: '4.4'
+  lesson: vcf-automation-tenancy-regions
+  section: deep-dive
+  stem: Inside an All Apps organization namespace, which Supervisor-based services do users consume to deploy VMs and Kubernetes
+    clusters?
+  options:
+  - id: a
+    text: VM Service and vSphere Kubernetes Service (VKS)
+    why: Correct.
+    correct: true
+  - id: b
+    text: VCF Operations for logs and networks
+    why: Monitoring products.
+    confusedWith: vcf-ops-logs
+  - id: c
+    text: SDDC Manager and fleet management
+    why: Management components.
+  - id: d
+    text: Host profiles and vLCM
+    why: Host lifecycle.
+    confusedWith: vlcm
+  explanation:
+    correct: VM Service for VMs and vSphere Kubernetes Service (VKS) for Kubernetes clusters, with storage classes and VPC
+      networking.
+    concept: Supervisor-based services
+- id: vcfa-ten-010
+  type: single
+  kind: concept
+  difficulty: foundation
+  version: vcf9
+  topics:
+  - vcfa-tenancy
+  objective: '4.4'
+  lesson: vcf-automation-tenancy-regions
+  section: how-it-works
+  stem: Which organization does the provider administrator log in to for provider tasks?
+  options:
+  - id: a
+    text: system
+    why: Provider organization.
+    correct: true
+  - id: b
+    text: default
+    why: Not the provider org.
+  - id: c
+    text: vsphere.local
+    why: SSO domain, not a VCF Automation organization.
+    confusedWith: identity-sso
+  - id: d
+    text: provider-consumption
+    why: That org type is for consuming, not administering.
+  explanation:
+    correct: The provider administrator uses organization 'system' (Provider Management portal).
+    concept: Provider login
+- id: vcfa-org-001
+  type: single
+  kind: concept
+  difficulty: foundation
+  version: vcf9
+  topics:
+  - vcfa-org-admin
+  objective: '4.4'
+  lesson: vcf-automation-org-admin
+  section: components
+  stem: In VCF Automation, what is a namespace?
+  options:
+  - id: a
+    text: An envelope of resources where applications are deployed
+    why: TechDocs definition.
+    correct: true
+  - id: b
+    text: A group of users
+    why: That is closer to a project.
+    confusedWith: vcfa-org-admin
+  - id: c
+    text: A provider network
+    why: Provider networking.
+    confusedWith: vcfa-tenancy
+  - id: d
+    text: A content library
+    why: Content.
+  explanation:
+    correct: An envelope of resources (CPU, memory, storage limits) in a project where VMs, VKS clusters and volumes are deployed.
+    concept: Namespace
+- id: vcfa-org-002
+  type: matching
+  kind: concept
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - vcfa-org-admin
+  objective: '4.4'
+  lesson: vcf-automation-org-admin
+  section: components
+  stem: Match each requirement to the governance policy type.
+  pairs:
+  - id: p1
+    left: Large requests must be approved by a team lead
+    right: Approval policy
+  - id: p2
+    left: Test deployments are destroyed after 14 days
+    right: Lease policy
+  - id: p3
+    left: Project users must not delete deployments
+    right: Day 2 action policy
+  - id: p4
+    left: Only best-effort VM classes in dev namespaces, written as code
+    right: IaaS resource policy (CEL)
+  explanation:
+    correct: Approval gates requests; lease limits lifetime; day 2 action limits actions; IaaS resource policies use CEL constraints.
+    concept: Policy types
+- id: vcfa-org-003
+  type: single
+  kind: scenario
+  difficulty: advanced
+  version: vcf9
+  topics:
+  - vcfa-org-admin
+  objective: '4.4'
+  lesson: vcf-automation-org-admin
+  section: deep-dive
+  stem: After provisioning, an IPAM workflow must return the IP address before the next workflow uses it. How should the event
+    subscriptions be configured?
+  options:
+  - id: a
+    text: Blocking subscriptions, IPAM with the higher priority (lower number)
+    why: Synchronous, ordered, payload passed on.
+    correct: true
+  - id: b
+    text: Non-blocking subscriptions with the same priority
+    why: Asynchronous; order not guaranteed.
+    confusedWith: vcfa-org-admin
+  - id: c
+    text: An approval policy
+    why: Governance, not extensibility.
+  - id: d
+    text: A lease policy
+    why: Lifetime, not extensibility.
+  explanation:
+    correct: Blocking subscriptions run synchronously in priority order, and later subscriptions receive the updated payload.
+    concept: Event subscriptions
+    trap: Non-blocking order is not guaranteed.
+- id: vcfa-org-004
+  type: truefalse
+  kind: concept
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - vcfa-org-admin
+  objective: '4.4'
+  lesson: vcf-automation-org-admin
+  section: components
+  stem: For blocking event subscriptions in VCF Automation, priority 0 is the highest priority.
+  options:
+  - id: 'true'
+    text: 'True'
+    why: Documented.
+    correct: true
+  - id: 'false'
+    text: 'False'
+    why: 0 is highest.
+  explanation:
+    correct: 'True: blocking subscriptions run in priority order with 0 the highest.'
+    concept: Subscription priority
+- id: vcfa-org-005
+  type: single
+  kind: scenario
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - vcfa-org-admin
+  objective: '4.4'
+  lesson: vcf-automation-org-admin
+  section: components
+  stem: Two development teams in the same organization must never see each other's deployments. What should the org admin
+    create?
+  options:
+  - id: a
+    text: A separate project for each team
+    why: Project membership isolates deployments.
+    correct: true
+  - id: b
+    text: Two namespaces in one project
+    why: Resource boundary, not team isolation.
+    confusedWith: vcfa-org-admin
+  - id: c
+    text: Two organizations
+    why: Possible but requires the provider; overkill for teams in one org.
+    confusedWith: vcfa-tenancy
+  - id: d
+    text: Two lease policies
+    why: Governance, not isolation.
+  explanation:
+    correct: Only project members can access a project's deployments; separate projects give strict isolation.
+    concept: Projects
+- id: vcfa-org-006
+  type: single
+  kind: troubleshooting
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - vcfa-org-admin
+  objective: '4.4'
+  lesson: vcf-automation-org-admin
+  section: failure-scenarios
+  stem: An org admin cannot create a namespace with 64 GB of memory, although the Supervisor cluster has plenty of free memory.
+    What is the most likely cause?
+  options:
+  - id: a
+    text: The request exceeds the organization's region quota
+    why: Total namespace limits cannot exceed the org quota.
+    correct: true
+  - id: b
+    text: The provider content library is read-only
+    why: Unrelated.
+    confusedWith: vcfa-tenancy
+  - id: c
+    text: A day 2 action policy blocks it
+    why: Day 2 policies act on existing deployments.
+  - id: d
+    text: The VCF Operations policy is wrong
+    why: Different product.
+    confusedWith: dashboards-alerts
+  explanation:
+    correct: Namespace limits cannot exceed the organization's region quota.
+    concept: Quota hierarchy
+- id: vcfa-org-007
+  type: single
+  kind: concept
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - vcfa-org-admin
+  objective: '4.4'
+  lesson: vcf-automation-org-admin
+  section: components
+  stem: What does a namespace class provide?
+  options:
+  - id: a
+    text: A reusable template for namespaces (limits, VM classes, storage classes, content libraries)
+    why: Correct.
+    correct: true
+  - id: b
+    text: A Kubernetes version
+    why: Not the definition.
+  - id: c
+    text: A VM hardware version
+    why: Not related.
+  - id: d
+    text: A provider gateway
+    why: Provider networking.
+    confusedWith: vcfa-tenancy
+  explanation:
+    correct: A template defining resource limits, VM classes, storage classes and content libraries for namespaces.
+    concept: Namespace class
+- id: vcfa-org-008
+  type: single
+  kind: scenario
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - vcfa-org-admin
+  objective: '4.4'
+  lesson: vcf-automation-org-admin
+  section: components
+  stem: Users must be able to request "Open a firewall change" from the self-service catalog, which runs an existing automated
+    process. What does the org admin do?
+  options:
+  - id: a
+    text: Publish the Orchestrator workflow to the catalog
+    why: Exposes a business process as self-service.
+    correct: true
+  - id: b
+    text: Create a lease policy
+    why: Lifetime.
+    confusedWith: vcfa-org-admin
+  - id: c
+    text: Create a namespace class
+    why: Resources template.
+  - id: d
+    text: Create a VCF Operations dashboard
+    why: Monitoring.
+    confusedWith: dashboards-alerts
+  explanation:
+    correct: Publish a VCF Operations Orchestrator workflow to the catalog.
+    concept: Extensibility via catalog
+- id: vcfa-org-009
+  type: multi
+  kind: concept
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - vcfa-org-admin
+  objective: '4.4'
+  lesson: vcf-automation-org-admin
+  section: components
+  stem: Which two statements about governance policies for All Apps organizations are correct? (Choose two.)
+  options:
+  - id: a
+    text: Policies can be scoped to the organization or to specific projects
+    why: Documented.
+    correct: true
+  - id: b
+    text: IaaS resource policies support Common Expression Language (CEL)
+    why: Documented.
+    correct: true
+  - id: c
+    text: Only the provider can create policies inside an organization
+    why: Org admins create them.
+    confusedWith: vcfa-tenancy
+  - id: d
+    text: Lease policies power off resources but never delete them
+    why: Expired resources are destroyed and reclaimed.
+  select: 2
+  explanation:
+    correct: Policies can target the whole organization or specific projects; IaaS resource policies support CEL policy-as-code.
+    concept: Policy scope
+- id: vcfa-org-010
+  type: single
+  kind: troubleshooting
+  difficulty: advanced
+  version: vcf9
+  topics:
+  - vcfa-org-admin
+  objective: '4.4'
+  lesson: vcf-automation-org-admin
+  section: troubleshooting
+  stem: Several requests completed but behaved unexpectedly (some needed approval, some did not). Where does the org admin
+    see which policies actually applied to each request?
+  options:
+  - id: a
+    text: Policy Enforcement (and Policy Assignments)
+    why: Audit and effective policy views.
+    correct: true
+  - id: b
+    text: VCF Operations alerts
+    why: Different product.
+    confusedWith: dashboards-alerts
+  - id: c
+    text: The vCenter task list
+    why: Shows vSphere tasks, not policy evaluation.
+  - id: d
+    text: NSX DFW logs
+    why: Network security.
+    confusedWith: nsx-security
+  explanation:
+    correct: Policy Assignments shows effective application; Policy Enforcement provides the audit history.
+    concept: Policy views
+- id: vcfa-org-011
+  type: single
+  kind: concept
+  difficulty: foundation
+  version: vcf9
+  topics:
+  - vcfa-org-admin
+  objective: '4.4'
+  lesson: vcf-automation-org-admin
+  section: components
+  stem: Where does an org admin give teams their own hardened VM images to deploy, in addition to the provider images?
+  options:
+  - id: a
+    text: In an organization content library
+    why: Org-managed content.
+    correct: true
+  - id: b
+    text: By editing the provider content library
+    why: Read-only for orgs.
+    confusedWith: vcfa-tenancy
+  - id: c
+    text: In a VCF Operations report
+    why: Monitoring.
+    confusedWith: metrics-properties
+  - id: d
+    text: In SDDC Manager depot settings
+    why: Lifecycle bundles.
+    confusedWith: lcm-concepts
+  explanation:
+    correct: Organization content libraries are managed by the org admin; provider libraries are read-only.
+    concept: Content management
+- id: api-001
+  type: single
+  kind: concept
+  difficulty: foundation
+  version: vcf9
+  topics:
+  - apis-powercli
+  objective: '4.4'
+  lesson: vcf-apis-powercli
+  section: concept
+  stem: Which header carries the session after POST /api/session on the vCenter REST API?
+  options:
+  - id: a
+    text: vmware-api-session-id
+    why: Correct.
+    correct: true
+  - id: b
+    text: 'Authorization: Bearer'
+    why: SDDC Manager pattern.
+    confusedWith: apis-powercli
+  - id: c
+    text: X-XSRF-TOKEN
+    why: Not used here.
+  - id: d
+    text: 'Cookie: JSESSIONID only'
+    why: Not the documented pattern.
+  explanation:
+    correct: vCenter's REST API expects vmware-api-session-id.
+    concept: vCenter API auth
+    trap: Not Bearer.
+  diagnostic: vcf
+- id: api-002
+  type: single
+  kind: troubleshooting
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - apis-powercli
+  objective: '4.4'
+  lesson: vcf-apis-powercli
+  section: failure-scenarios
+  stem: A script calling the SDDC Manager API worked for an hour and now returns HTTP 401 on every call. The refresh token
+    was obtained 2 hours ago. What should it do?
+  options:
+  - id: a
+    text: Call PATCH /v1/tokens/access-token/refresh with the refresh token
+    why: Refresh token still valid.
+    correct: true
+  - id: b
+    text: Reset the account password
+    why: Credentials are not the problem.
+  - id: c
+    text: Switch to the vmware-api-session-id header
+    why: Wrong component pattern.
+    confusedWith: apis-powercli
+  - id: d
+    text: Wait 24 hours
+    why: Unnecessary.
+  explanation:
+    correct: Access tokens last 1 hour; refresh tokens 24 hours - call PATCH /v1/tokens/access-token/refresh.
+    concept: SDDC Manager token lifecycle
+- id: api-003
+  type: cli
+  kind: command
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - apis-powercli
+  objective: '4.4'
+  lesson: vcf-apis-powercli
+  section: how-it-works
+  stem: Type the PowerShell command to install the VCF 9 PowerCLI module from the PowerShell Gallery (module name only, no
+    extra parameters).
+  answers:
+  - Install-Module -Name VCF.PowerCLI
+  - Install-Module VCF.PowerCLI
+  placeholder: Install-Module ...
+  explanation:
+    correct: 'The module is VCF.PowerCLI: Install-Module -Name VCF.PowerCLI.'
+    concept: VCF.PowerCLI module
+    trap: VMware.PowerCLI is the old name.
+- id: api-004
+  type: single
+  kind: concept
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - apis-powercli
+  objective: '4.4'
+  lesson: vcf-apis-powercli
+  section: components
+  stem: Which cmdlet, new in VCF.PowerCLI 9.0, connects to SDDC Manager?
+  options:
+  - id: a
+    text: Connect-VcfSddcManagerServer
+    why: Correct.
+    correct: true
+  - id: b
+    text: Connect-VIServer
+    why: vCenter/ESX.
+    confusedWith: apis-powercli
+  - id: c
+    text: Connect-NsxServer
+    why: NSX connection.
+  - id: d
+    text: Connect-SddcManager
+    why: Not the cmdlet name.
+  explanation:
+    correct: Connect-VcfSddcManagerServer; then Get-SddcDomain, Get-SddcCluster, Get-SddcHost, Get-SddcVcenter.
+    concept: SDDC Manager module
+- id: api-005
+  type: matching
+  kind: concept
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - apis-powercli
+  objective: '4.4'
+  lesson: vcf-apis-powercli
+  section: concept
+  stem: Match each component with its API authentication pattern.
+  pairs:
+  - id: p1
+    left: SDDC Manager
+    right: 'POST /v1/tokens, then Authorization: Bearer'
+  - id: p2
+    left: vCenter
+    right: POST /api/session, then vmware-api-session-id
+  - id: p3
+    left: VCF Operations
+    right: POST /suite-api/api/auth/token/acquire, token in Authorization header
+  - id: p4
+    left: NSX Manager
+    right: HTTP basic auth to /policy/api/v1 or /api/v1
+  explanation:
+    correct: Each VCF component has its own API and auth pattern.
+    concept: API landscape
+- id: api-006
+  type: single
+  kind: concept
+  difficulty: advanced
+  version: vcf9
+  topics:
+  - apis-powercli
+  objective: '4.4'
+  lesson: vcf-apis-powercli
+  section: failure-scenarios
+  stem: An SDDC Manager API call returns HTTP 403 with a valid access token. What does it indicate?
+  options:
+  - id: a
+    text: The account lacks the privilege for the operation
+    why: Correct.
+    correct: true
+  - id: b
+    text: The access token expired
+    why: That is 401.
+    confusedWith: apis-powercli
+  - id: c
+    text: The refresh token expired
+    why: That is 404 on refresh.
+  - id: d
+    text: The endpoint does not exist
+    why: Not what 403 means here.
+  explanation:
+    correct: 403 = insufficient privileges for that operation; 401 = missing/expired token; 404 on refresh = expired refresh
+      token.
+    concept: API response codes
+- id: api-007
+  type: single
+  kind: scenario
+  difficulty: advanced
+  version: vcf9
+  topics:
+  - apis-powercli
+  objective: '4.4'
+  lesson: vcf-apis-powercli
+  section: deep-dive
+  stem: You need a PowerCLI cmdlet for an NSX API path that has no hand-written cmdlet. How do you find it?
+  options:
+  - id: a
+    text: Use Get-NsxOperation to find the generated Invoke- cmdlet for that path
+    why: Discovery cmdlet.
+    correct: true
+  - id: b
+    text: Use Get-Command -Module VMware.PowerCLI
+    why: Old module and no path mapping.
+  - id: c
+    text: Write a raw curl call; PowerCLI cannot call NSX
+    why: PowerCLI includes NSX bindings.
+  - id: d
+    text: Use Connect-VIServer against NSX
+    why: Wrong cmdlet.
+    confusedWith: apis-powercli
+  explanation:
+    correct: Get-NsxOperation (and Get-vSphereOperation, Get-VcfSddcManagerOperation) map API paths to generated SDK cmdlets
+      (Initialize-/Invoke-).
+    concept: SDK discovery cmdlets
+- id: api-008
+  type: single
+  kind: scenario
+  difficulty: expert
+  version: vcf9
+  topics:
+  - apis-powercli
+  - certificates
+  objective: '4.4'
+  lesson: vcf-apis-powercli
+  section: real-world-scenario
+  stem: After the vCenter certificates were replaced with CA-signed ones, a scheduled PowerCLI report fails with TLS errors,
+    while browsers on admin workstations show no warning. What is the correct fix?
+  options:
+  - id: a
+    text: Import the issuing CA chain into the automation host's trust store
+    why: Restores trust properly.
+    correct: true
+  - id: b
+    text: Set InvalidCertificateAction to Ignore permanently
+    why: Hides future problems; not for production.
+    confusedWith: apis-powercli
+  - id: c
+    text: Revert the vCenter certificate
+    why: Undoes an intentional security change.
+    confusedWith: certificates
+  - id: d
+    text: Upgrade PowerCLI
+    why: The module is not the problem.
+  explanation:
+    correct: The automation host does not trust the new CA; import the CA into its trust store rather than ignoring certificate
+      validation.
+    concept: Certificate trust for automation clients
+    architecture: Same failure mode as VCF Operations adapters after certificate replacement.
+- id: ops-arch-008
+  type: single
+  kind: troubleshooting
+  difficulty: expert
+  version: vcf9
+  topics:
+  - vcf-ops-architecture
+  - certificates
+  objective: '4.3'
+  lesson: vcf-operations-architecture
+  section: troubleshooting
+  stem: Metrics stopped only for objects of the wld01 vCenter at 02:10. Integrations shows "Collection failed - certificate
+    is not trusted" for that adapter; NSX for wld01 on the same collector is fine; the service account logs in successfully.
+    What is the best next step?
+  options:
+  - id: a
+    text: Edit the adapter, Validate Connection, verify and accept the new certificate
+    why: Targets the proven cause.
+    correct: true
+  - id: b
+    text: Reboot the collector
+    why: Collector is healthy (other adapters work).
+    confusedWith: vcf-ops-architecture
+  - id: c
+    text: Reset the service account password
+    why: Credentials work.
+  - id: d
+    text: Move the adapter to the Default Collector Group
+    why: Not the cause; breaks drift.
+    confusedWith: compliance-drift
+  explanation:
+    correct: Scope is one adapter and the error is certificate trust - validate the connection, compare the fingerprint, accept
+      the new certificate.
+    concept: Adapter certificate trust
+    architecture: Adapters store trust for their endpoint; certificate replacement breaks it.
+    trap: Do not chase the collector or credentials.
+- id: ops-logs-013
+  type: single
+  kind: design
+  difficulty: expert
+  version: vcf9
+  topics:
+  - vcf-ops-logs
+  - vcf-ops-architecture
+  objective: '4.3'
+  lesson: vcf-operations-logs-network-ops
+  section: components
+  stem: A remote site has VCF components behind a firewall that blocks direct connections to the central VCF Operations for
+    logs cluster. Which component carries log collection across that boundary?
+  options:
+  - id: a
+    text: A cloud proxy at the remote site acting as log forwarder
+    why: Per the centralized log collection architecture.
+    correct: true
+  - id: b
+    text: A second VCF Operations for logs primary node in the same cluster
+    why: Clusters are not stretched for this.
+  - id: c
+    text: VCF Operations for networks collector
+    why: Network flows, not logs.
+    confusedWith: network-ops
+  - id: d
+    text: The VCF Automation appliance
+    why: Unrelated.
+    confusedWith: vcf-automation
+  explanation:
+    correct: The unified cloud proxy handles multi-data-center log collection across network boundaries; the log forwarder
+      connects to VCF Operations for logs.
+    concept: Centralized log collection architecture
+- id: vcfa-ten-011
+  type: single
+  kind: design
+  difficulty: expert
+  version: vcf9
+  topics:
+  - vcfa-tenancy
+  - supervisor
+  objective: '4.4'
+  lesson: vcf-automation-tenancy-regions
+  section: real-world-scenario
+  stem: A provider has two Supervisors on one NSX instance; Supervisor A offers storage class "gold" and B offers "Gold-vSAN"
+    for the same tier. They want one region. What must they do first?
+  options:
+  - id: a
+    text: Align the storage class names and configurations on both Supervisors
+    why: Required for a homogeneous region.
+    correct: true
+  - id: b
+    text: Create two organizations
+    why: Tenancy does not fix region homogeneity.
+    confusedWith: vcfa-tenancy
+  - id: c
+    text: Move B to a different NSX instance
+    why: Would make it worse.
+  - id: d
+    text: Nothing; VCF Automation maps names automatically
+    why: Non-homogeneous regions are not supported.
+  explanation:
+    correct: Regions require identical storage class names and configurations across all Supervisors.
+    concept: Region homogeneity
+- id: vcfa-org-012
+  type: single
+  kind: design
+  difficulty: expert
+  version: vcf9
+  topics:
+  - vcfa-org-admin
+  objective: '4.4'
+  lesson: vcf-automation-org-admin
+  section: deep-dive
+  stem: A blocking subscription calls an external CMDB that sometimes times out, failing provisioning. Business wants provisioning
+    to continue but ops to be notified on failure. What is the best design?
+  options:
+  - id: a
+    text: Keep it blocking and add a recovery runnable that notifies ops
+    why: Designed for this case.
+    correct: true
+  - id: b
+    text: Make every subscription non-blocking
+    why: Loses ordering where needed.
+  - id: c
+    text: Add an approval policy
+    why: Unrelated.
+    confusedWith: vcfa-org-admin
+  - id: d
+    text: Increase the lease
+    why: Unrelated.
+  explanation:
+    correct: Blocking subscriptions can include a recovery runnable that executes if the primary workflow fails.
+    concept: Recovery runnable

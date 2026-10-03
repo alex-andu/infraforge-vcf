@@ -1,0 +1,512 @@
+# Core VCF 9 components for the Architecture Explorer (owner: author F).
+# Other authors reference these ids; keep them stable.
+components:
+  - id: vcf-fleet
+    name: VCF Fleet
+    category: fleet
+    summary: Everything managed by one set of fleet-level components (VCF Operations and VCF Automation); contains one or more VCF instances.
+    function: |
+      The top operational container introduced in VCF 9.0. A fleet groups one or more VCF instances (and optionally
+      standalone vCenter instances) under a single VCF Operations, VCF Operations fleet management appliance and
+      VCF Automation. Fleet-wide services: monitoring, licensing, fleet management (lifecycle of management components,
+      certificates, passwords, identity/SSO, configuration drift, tags, backup).
+    runsOn: Logical construct; its fleet-level components run in the management domain of the first VCF instance.
+    managedBy: VCF Operations (Fleet Management)
+    dependsOn: [vcf-operations, vcf-operations-fleet-management, vcf-instance]
+    communicatesWith: []
+    failureImpact: |
+      Not a component that "fails" by itself. If the fleet-level components are lost, every instance keeps running
+      workloads but loses central monitoring, fleet management and self-service.
+    verify: |
+      VCF Operations inventory shows all instances of the fleet; Fleet Management → Lifecycle lists the management
+      components and VCF instances.
+    lessons: [vcf9-architecture-overview, vcf-deployment-models]
+    labs: [lab-explore-vcf-fleet]
+
+  - id: vcf-instance
+    name: VCF Instance
+    category: fleet
+    parent: vcf-fleet
+    summary: One VCF deployment (typically one site) - a management domain plus optional workload domains, with its own SDDC Manager.
+    function: |
+      "Compute, storage, networking virtual infrastructure that runs business workloads". Consists of exactly one
+      management domain and optional VI workload domains. Each instance has one SDDC Manager, one VCF Operations
+      collector (at least) and its own core-component binaries and host inventory.
+    runsOn: Its management domain and workload domain clusters.
+    managedBy: SDDC Manager (orchestration), driven from VCF Operations
+    dependsOn: [management-domain, sddc-manager, dns-service, ntp-service, physical-network]
+    communicatesWith:
+      - { id: vcf-operations, purpose: "Registered in VCF Operations through the VMware Cloud Foundation integration account" }
+    failureImpact: |
+      Losing an instance's management domain removes management of all its domains; its workload VMs keep running
+      on ESX. Other instances in the fleet are not affected (unless it is the first instance hosting fleet services).
+    verify: |
+      SDDC Manager API `GET /v1/domains`; VCF Operations inventory shows the instance with its domains.
+    lessons: [vcf9-architecture-overview, management-domain]
+    labs: [lab-explore-vcf-fleet]
+
+  - id: management-domain
+    name: Management Domain
+    category: management
+    parent: vcf-instance
+    summary: The first domain of every VCF instance; hosts instance management, workload-domain management appliances and (first instance) fleet services.
+    function: |
+      Created during deployment or convergence. Hosts vCenter, a dedicated NSX Manager and SDDC Manager of the
+      instance, the vCenter/NSX Manager appliances of all workload domains of the instance, VCF Operations collectors
+      and, in the first instance, VCF Operations, the fleet management appliance and VCF Automation. May also run NSX
+      Edge nodes and business workloads (use resource pools).
+    runsOn: Default management cluster - minimum 3 ESX hosts (simple) or 4 (highly available); principal storage vSAN ESA/OSA, FC or NFS v3.
+    managedBy: Management vCenter; SDDC Manager; VCF Operations
+    dependsOn: [esx-host, vsan, vds, vcenter, nsx-manager, dns-service, ntp-service, physical-network]
+    communicatesWith:
+      - { id: workload-domain, purpose: "Its appliances (WLD vCenter, NSX Manager) manage the workload domain hosts" }
+    failureImpact: |
+      Management plane loss for every domain of the instance (and the fleet services if this is the first instance).
+      Workload VMs in workload domains continue to run but cannot be managed.
+    verify: |
+      `GET /v1/domains` shows type MANAGEMENT; management vCenter shows all appliances healthy; vSAN health green.
+    lessons: [management-domain, vcf9-architecture-overview]
+    labs: [lab-explore-vcf-fleet, lab-deploy-vcf-management-domain]
+
+  - id: workload-domain
+    name: VI Workload Domain
+    category: compute
+    parent: vcf-instance
+    summary: An isolated unit of application-ready infrastructure with its own vCenter and SSO domain and a dedicated or shared NSX instance.
+    function: |
+      Created from VCF Operations (executed by SDDC Manager) on commissioned hosts. Gets a dedicated vCenter and
+      dedicated vCenter SSO domain; NSX is dedicated or shared with other workload domains. Runs business workloads,
+      NSX Edge nodes and optionally vSphere Supervisor. Up to 24 per instance per the workload domain models page.
+    runsOn: Its own vSphere clusters (minimum 3 hosts each); its vCenter and NSX Manager appliances run in the management domain.
+    managedBy: Its vCenter and NSX Manager; SDDC Manager for lifecycle; VCF Operations as console
+    dependsOn: [management-domain, vcenter, nsx-manager, esx-host, sddc-manager]
+    communicatesWith:
+      - { id: nsx-edge-cluster, purpose: "North-south connectivity for its workloads" }
+    failureImpact: |
+      Isolated: a failure of one workload domain's vCenter or clusters does not affect other domains, unless they
+      share its NSX Manager or edge cluster.
+    verify: |
+      VCF Operations inventory; `GET /v1/domains` shows type VI; vCenter of the domain healthy.
+    lessons: [workload-domains-architecture]
+    labs: [lab-commission-hosts-create-wld, lab-explore-vcf-fleet]
+
+  - id: vcf-installer
+    name: VCF Installer
+    category: management
+    version: vcf9
+    summary: Appliance that deploys a new fleet, a new instance in an existing fleet, or converges existing vSphere into VCF (replaces Cloud Builder).
+    function: |
+      Downloads and manages binaries, validates hosts and network, and deploys the management domain components
+      (vCenter, NSX, SDDC Manager, VCF Operations + fleet management + collector, VCF Automation) in a simple or
+      high-availability model, from a wizard or a JSON specification. Ships in the SDDC Manager appliance OVA; if
+      deployed on a host that will become part of the management domain it switches into SDDC Manager mode.
+    runsOn: A VM outside the target management domain (installer mode) or on a management host (becomes SDDC Manager).
+    managedBy: The deploying administrator
+    dependsOn: [dns-service, ntp-service, physical-network, esx-host]
+    communicatesWith:
+      - { id: esx-host, purpose: "Validate and configure the hosts of the new management domain" }
+      - { id: vcenter, purpose: "Deploy and configure the management vCenter" }
+      - { id: sddc-manager, purpose: "Hand over to SDDC Manager after bring-up" }
+    failureImpact: |
+      Only matters during deployment: a failed run stops bring-up (fix and retry). Running environments do not depend on it.
+    verify: |
+      Validation results in the installer UI; successful deployment shows the new instance in VCF Operations.
+    lessons: [vcf-deployment-models, vcf-installer-workflow]
+    labs: [lab-deploy-vcf-management-domain]
+
+  - id: sddc-manager
+    name: SDDC Manager
+    category: management
+    parent: management-domain
+    summary: Per-instance orchestrator for core components - domains, host commissioning, core lifecycle, certificates and passwords - driven from VCF Operations.
+    function: |
+      One per VCF instance (VCF-SDDCM-REQD-CFG-001). Provides, in VCF Operations: lifecycle management for ESX,
+      vCenter and NSX; deployment of workload domains; import of vCenter instances as workload domains; vSAN stretched
+      cluster configuration; automated certificate replacement and password management. Stores core-component
+      binaries, holds resource locks during upgrades. Its UI is deprecated in 9.0 (to be removed in a future major
+      release); its API remains.
+    runsOn: Appliance VM in the management domain, first availability zone, VM management network.
+    managedBy: VCF Operations (fleet management); updated first in the core-component upgrade order
+    dependsOn: [vcenter, nsx-manager, dns-service, ntp-service, vcf-operations]
+    communicatesWith:
+      - { id: vcenter, purpose: "Deploy/upgrade vCenter, create clusters, manage hosts", protocol: "HTTPS API" }
+      - { id: nsx-manager, purpose: "Deploy/upgrade NSX, prepare transport nodes", protocol: "HTTPS API" }
+      - { id: esx-host, purpose: "Commission hosts, rotate passwords, replace certificates" }
+      - { id: vcf-operations, purpose: "Receives fleet management requests; registered as VMware Cloud Foundation integration", protocol: "HTTPS" }
+    failureImpact: |
+      No new domains, host commissioning, core lifecycle, password rotation or certificate replacement for that
+      instance. Running workloads, vCenter and NSX keep working.
+    verify: |
+      `POST /v1/tokens` then `GET /v1/domains`; domain workflows logged in
+      `/var/log/vmware/vcf/domainmanager/domainmanager.log`.
+    lessons: [vcf-operations-fleet-management, vcf9-architecture-overview, component-communication]
+    labs: [lab-explore-vcf-fleet]
+
+  - id: vcf-operations
+    name: VCF Operations
+    category: operations
+    parent: vcf-fleet
+    summary: Mandatory central console of the fleet - monitoring, licensing and fleet management (formerly Aria Operations).
+    function: |
+      Fleet console: inventory, dashboards, alerts, capacity, cost, compliance, licensing (connected/disconnected
+      with the VCF Business Services console) and the Fleet Management menu (lifecycle, passwords, certificates,
+      identity, drift, tags, backup). Models: simple (1 node), high availability (3 nodes: primary, replica, data),
+      continuous availability (node pairs across two zones, max 10 ms).
+    runsOn: Management domain of the first VCF instance, VM management network by default.
+    managedBy: VCF Operations fleet management appliance (lifecycle)
+    dependsOn: [vcf-operations-collector, vcf-operations-fleet-management, dns-service, ntp-service]
+    communicatesWith:
+      - { id: vcf-operations-collector, purpose: "Receives collected data from each instance" }
+      - { id: sddc-manager, purpose: "Drives core-component fleet management per instance", protocol: "HTTPS" }
+      - { id: vcf-operations-fleet-management, purpose: "Lifecycle and deployment of management components", protocol: "HTTPS" }
+      - { id: vcf-identity-broker, purpose: "VCF SSO login" }
+    failureImpact: |
+      No monitoring, fleet management UI or license reporting. All instances keep running workloads; component
+      consoles (vCenter, NSX) still work.
+    verify: |
+      UI login; cluster status in the admin console; inventory shows all instances; collectors report as online.
+    lessons: [vcf-operations-fleet-management, vcf9-architecture-overview, vcf-deployment-models]
+    labs: [lab-explore-vcf-fleet, lab-vcf-ops-dashboards-alerts]
+
+  - id: vcf-operations-fleet-management
+    name: VCF Operations fleet management appliance
+    category: operations
+    parent: vcf-fleet
+    summary: Deploys, lifecycles and configures fleet-level management components (formerly Aria Suite Lifecycle).
+    function: |
+      "Provides support for deployment, lifecycle management, and configuration for the VCF Operations, VCF
+      Automation, and VCF Identity Broker" - and also VCF Operations for logs and for networks. Stores binaries for
+      management components (Fleet Management → Lifecycle → Binary Management). Single node in both simple and HA
+      models. Upgraded first in a maintenance release.
+    runsOn: Management domain of the first VCF instance.
+    managedBy: VCF Operations
+    dependsOn: [vcf-operations, dns-service, ntp-service]
+    communicatesWith:
+      - { id: vcf-operations, purpose: "Upgrade/configure", protocol: "HTTPS" }
+      - { id: vcf-automation, purpose: "Deploy/upgrade/configure", protocol: "HTTPS" }
+      - { id: vcf-identity-broker, purpose: "Deploy/upgrade the appliance", protocol: "HTTPS" }
+      - { id: vcf-operations-logs, purpose: "Deploy/upgrade", protocol: "HTTPS" }
+      - { id: vcf-operations-networks, purpose: "Deploy/upgrade", protocol: "HTTPS" }
+    failureImpact: |
+      No deployment or lifecycle of management components; monitoring and core-component tasks via SDDC Manager are
+      not affected.
+    verify: |
+      Fleet Management → Lifecycle → VCF Management shows components and versions; binaries listed under Binary Management.
+    lessons: [vcf-operations-fleet-management]
+    labs: [lab-explore-vcf-fleet]
+
+  - id: vcf-operations-collector
+    name: VCF Operations collector (cloud proxy)
+    category: operations
+    parent: vcf-instance
+    summary: Instance-level appliance that collects and monitors data locally in a VCF instance for VCF Operations.
+    function: |
+      "Collects and monitors data locally in the VCF Instance". Deployed with every VCF instance (mandatory during
+      installation). In the HA model it can be expanded into a collector group. Recommended on the VM management
+      network of the instance's management domain.
+    runsOn: Management domain of each VCF instance.
+    managedBy: VCF Operations
+    dependsOn: [vcf-operations, dns-service, ntp-service]
+    communicatesWith:
+      - { id: vcenter, purpose: "Collect inventory, metrics, events" }
+      - { id: nsx-manager, purpose: "Collect NSX data" }
+      - { id: sddc-manager, purpose: "Collect VCF instance data" }
+      - { id: vcf-operations, purpose: "Forward collected data" }
+    failureImpact: |
+      Stale or missing data for that instance in VCF Operations; no impact on workloads or element management.
+    verify: |
+      Collector status online in VCF Operations; data for the instance's objects is current.
+    lessons: [vcf9-architecture-overview, component-communication]
+    labs: [lab-explore-vcf-fleet]
+
+  - id: vcf-automation
+    name: VCF Automation
+    category: automation
+    parent: vcf-fleet
+    summary: Self-service, multi-tenant consumption layer of the fleet (formerly Aria Automation).
+    function: |
+      Provides organizations, regions, projects and self-service of VMs, networks and Kubernetes on top of VCF
+      instances. Runs as containerized services in a Kubernetes cluster on dedicated appliances provisioned and
+      managed by fleet management. Simple model 1 node (POC/dev), HA model 3 nodes (production).
+    runsOn: Management domain of the first VCF instance.
+    managedBy: VCF Operations fleet management appliance
+    dependsOn: [vcf-operations-fleet-management, vcf-identity-broker, vcenter, nsx-manager, dns-service, ntp-service]
+    communicatesWith:
+      - { id: vcenter, purpose: "Provision workloads in its regions" }
+      - { id: nsx-manager, purpose: "Networking for organizations" }
+      - { id: supervisor, purpose: "Namespaces and Kubernetes services" }
+    failureImpact: |
+      Self-service provisioning unavailable; existing workloads keep running. In DR designs VCF Automation is
+      recovered by backup and restore.
+    verify: |
+      UI login (provider and tenant portals); node status in fleet management.
+    lessons: [vcf9-architecture-overview, vcf-deployment-models, vcf-automation-architecture]
+    labs: [lab-vcfa-organization-setup]
+
+  - id: vcf-identity-broker
+    name: VCF Identity Broker
+    category: security
+    parent: vcf-fleet
+    summary: Connects an external identity provider to VCF components for VCF single sign-on (replaces Workspace ONE Access in this role).
+    function: |
+      Brokers authentication for VCF SSO to vCenter, NSX, VCF Operations, VCF Automation, VCF Operations for logs,
+      for networks, orchestrator and HCX (not SDDC Manager or ESX). Deployment: embedded in the management domain
+      vCenter, or a 3-node appliance cluster. Scope: fleet-wide, cross-instance or per-instance SSO models.
+    runsOn: Embedded in the management vCenter, or appliance nodes in the management domain.
+    managedBy: VCF Operations (Fleet Management → identity); lifecycle by fleet management appliance
+    dependsOn: [vcenter, dns-service, ntp-service]
+    communicatesWith:
+      - { id: vcenter, purpose: "SSO for vCenter" }
+      - { id: vcf-operations, purpose: "SSO for VCF Operations" }
+      - { id: vcf-automation, purpose: "SSO for VCF Automation" }
+      - { id: nsx-manager, purpose: "SSO for NSX" }
+    failureImpact: |
+      SSO logins fail for every component in its scope (single point of failure per scope); local accounts still work.
+      Embedded mode is protected only by vSphere HA.
+    verify: |
+      SSO login works through the IdP; identity configuration status in VCF Operations.
+    lessons: [vcf9-architecture-overview, vcf-deployment-models, vcf-identity-sso-rbac]
+    labs: [lab-explore-vcf-fleet]
+
+  - id: vcenter
+    name: vCenter
+    category: management
+    parent: management-domain
+    summary: Virtualization management for one VCF domain; every domain has exactly one, and all run in the management domain.
+    function: |
+      Manages ESX hosts, clusters (HA/DRS), vSphere Lifecycle Manager images, VDS and storage of one domain. Each
+      workload domain gets a dedicated vCenter and SSO domain. Registered in NSX Manager as a compute manager.
+    runsOn: Appliance VM in the management domain of its instance (also for workload domains).
+    managedBy: SDDC Manager (lifecycle, passwords, certificates), VCF Operations (console)
+    dependsOn: [esx-host, dns-service, ntp-service, physical-network]
+    communicatesWith:
+      - { id: esx-host, purpose: "Host management via vpxa/hostd; host heartbeat to vCenter on UDP 902", protocol: "TCP 443/902; UDP 902 (heartbeat)" }
+      - { id: nsx-manager, purpose: "NSX compute manager registration" }
+      - { id: vcf-identity-broker, purpose: "VCF SSO" }
+    failureImpact: |
+      The domain cannot be managed (no vMotion, DRS, provisioning); VMs keep running and vSphere HA still restarts
+      VMs after host failures. SDDC Manager workflows for that domain fail.
+    verify: |
+      vSphere Client login, appliance health (VAMI), hosts connected.
+    lessons: [vcf9-architecture-overview, workload-domains-architecture, component-communication]
+    labs: [lab-vcenter-cluster-ha-drs, lab-explore-vcf-fleet]
+
+  - id: esx-host
+    name: ESX host
+    category: compute
+    summary: The hypervisor (called ESX, not ESXi, in VCF 9); commissioned into an instance and assigned to domain clusters.
+    function: |
+      Runs VMs, vSAN, NSX data plane (TEPs, distributed routing/firewall). Hosts are prepared, commissioned into SDDC
+      Manager inventory with a network pool, then used to create or expand clusters.
+    runsOn: Physical servers (or nested VMs in a lab).
+    managedBy: vCenter of its domain; SDDC Manager for commissioning and lifecycle
+    dependsOn: [physical-network, dns-service, ntp-service]
+    communicatesWith:
+      - { id: vcenter, purpose: "Heartbeat every 10 s, 60 s without heartbeat = disconnected", protocol: "UDP 902" }
+      - { id: nsx-manager, purpose: "Management channel (1234) and control channel (1235)", protocol: "TCP 1234, TCP 1235" }
+      - { id: esx-host, purpose: "Overlay traffic between TEPs", protocol: "Geneve UDP 6081" }
+    failureImpact: |
+      VMs on the host restart elsewhere (vSphere HA); vSAN components on the host become absent and rebuild if
+      capacity and host count allow.
+    verify: |
+      Host connected in vCenter; `esxcli system time get`; NSX `get managers` / `get controllers`.
+    lessons: [vcf9-architecture-overview, component-communication]
+    labs: [lab-esx-host-first-vm, lab-explore-vcf-fleet]
+
+  - id: vsan
+    name: vSAN
+    category: storage
+    summary: Default principal storage of VCF clusters (ESA or OSA); also as vSAN storage cluster or vSAN compute cluster.
+    function: |
+      Hyperconverged storage built from the hosts' local devices. Principal storage option for the management
+      default cluster (ESA or OSA) and for workload domains (also storage cluster / compute cluster models there).
+    runsOn: ESX hosts of a cluster.
+    managedBy: vCenter of the domain; SDDC Manager (stretched cluster configuration)
+    dependsOn: [esx-host, vds, physical-network]
+    communicatesWith:
+      - { id: esx-host, purpose: "vSAN traffic between hosts on the vSAN network" }
+    failureImpact: |
+      Host loss: objects degraded; with 3 hosts no rebuild to compliance, with 4+ automatic rebuild. Network
+      partition can make objects inaccessible.
+    verify: |
+      vSAN Skyline health in vCenter; object health.
+    lessons: [management-domain, workload-domains-architecture]
+    labs: [lab-vsan-esa-cluster]
+
+  - id: nsx-manager
+    name: NSX Manager
+    category: network
+    parent: management-domain
+    summary: NSX management and control plane for one domain, or shared by several workload domains.
+    function: |
+      Network virtualization and security management. The management domain has a dedicated NSX Manager; workload
+      domains get a dedicated instance or share one. Models: simple (1 node + VIP), HA (3 nodes + VIP), HA with
+      external load balancer.
+    runsOn: Appliance VMs in the management domain (also for workload domains).
+    managedBy: SDDC Manager (deploy, lifecycle, passwords, certificates) driven from VCF Operations
+    dependsOn: [vcenter, dns-service, ntp-service]
+    communicatesWith:
+      - { id: vcenter, purpose: "Compute manager - discover clusters, deploy edges" }
+      - { id: esx-host, purpose: "Management and control channels with transport nodes", protocol: "TCP 1234 / 1235" }
+      - { id: nsx-edge-cluster, purpose: "Configure edge nodes", protocol: "TCP 1234 / 1235" }
+    failureImpact: |
+      No NSX configuration changes for the domains it serves; existing data plane keeps forwarding. A shared NSX
+      Manager failure affects all domains that share it.
+    verify: |
+      NSX UI cluster status; on hosts `get managers` / `get controllers`; `GET /v1/nsx-t-clusters` on SDDC Manager.
+    lessons: [workload-domains-architecture, component-communication, nsx-architecture]
+    labs: [lab-nsx-segments-tier1]
+
+  - id: nsx-edge-cluster
+    name: NSX Edge cluster
+    category: network
+    parent: workload-domain
+    summary: Edge nodes providing north-south routing and centralized services; shareable between domains that share an NSX Manager.
+    function: |
+      Hosts Tier-0/Tier-1 service routers, NAT, gateway firewall, load balancing. Virtual appliances (vCenter/NSX
+      deployed, VCF Operations lifecycle) or bare metal. Models: host, rack or availability-zone fault tolerant.
+    runsOn: Workload domain clusters (also allowed in the management domain).
+    managedBy: NSX Manager
+    dependsOn: [nsx-manager, esx-host, physical-network]
+    communicatesWith:
+      - { id: physical-network, purpose: "North-south uplinks, BGP or static routing" }
+      - { id: esx-host, purpose: "Geneve overlay with host TEPs", protocol: "Geneve UDP 6081" }
+    failureImpact: |
+      Loss of north-south connectivity and centralized services for segments using it (for all domains sharing it).
+    verify: |
+      Edge node status in NSX; BGP neighbors established; north-south ping.
+    lessons: [workload-domains-architecture, nsx-edge-nodes-clusters]
+    labs: [lab-nsx-tier0-bgp-edge]
+
+  - id: vds
+    name: vSphere Distributed Switch
+    category: network
+    summary: Per-cluster virtual switch carrying management, vMotion, storage and NSX host traffic.
+    function: |
+      Configured by VCF during domain/cluster creation; port groups for management, vMotion, vSAN and NSX TEP traffic.
+    runsOn: ESX hosts, managed by vCenter.
+    managedBy: vCenter
+    dependsOn: [vcenter, physical-network]
+    communicatesWith: []
+    failureImpact: |
+      Misconfiguration (VLAN, MTU, teaming) breaks vMotion, vSAN or overlay traffic for the cluster.
+    verify: |
+      VDS health check; vmkping with jumbo frames between hosts.
+    lessons: [management-domain, vsphere-distributed-switch]
+    labs: [lab-network-readiness]
+
+  - id: vcf-operations-logs
+    name: VCF Operations for logs
+    category: operations
+    parent: vcf-fleet
+    summary: Fleet log collection and analysis (successor of Aria Operations for Logs).
+    function: |
+      Receives logs via CFAPI (9000 / 9543 SSL) or syslog (514 UDP/TCP, 1514 UDP, 6514 TLS). Simple model 1 node,
+      HA model 3 nodes with integrated load balancer. Deployed on Day 2 from fleet management.
+    runsOn: Management domain of the first VCF instance (by default).
+    managedBy: VCF Operations fleet management appliance
+    dependsOn: [vcf-operations-fleet-management, dns-service, ntp-service]
+    communicatesWith:
+      - { id: vcf-operations, purpose: "Log integration and launch-in-context" }
+    failureImpact: |
+      Log ingestion and search unavailable; no impact on workloads.
+    verify: |
+      UI login; recent events from vCenter/ESX/NSX visible.
+    lessons: [vcf9-architecture-overview, component-communication, vcf-operations-logs-network-ops]
+    labs: [lab-vcf-ops-logs-network]
+
+  - id: vcf-operations-networks
+    name: VCF Operations for networks
+    category: operations
+    parent: vcf-fleet
+    summary: Network visibility and flow analytics for the fleet; its collector is an instance-level component.
+    function: |
+      Platform nodes plus collectors. Simple: one platform node and one collector. "HA": three-node platform cluster
+      for performance and scale, not redundancy.
+    runsOn: Management domain (platform); collectors on each instance's VM management network.
+    managedBy: VCF Operations fleet management appliance
+    dependsOn: [vcf-operations-fleet-management, vcenter, nsx-manager]
+    communicatesWith:
+      - { id: vcenter, purpose: "Inventory and flow data" }
+      - { id: nsx-manager, purpose: "NSX configuration and flows" }
+    failureImpact: |
+      No network analytics; no impact on traffic.
+    verify: |
+      Data sources healthy in the product UI.
+    lessons: [vcf-deployment-models, vcf-operations-logs-network-ops]
+    labs: [lab-vcf-ops-logs-network]
+
+  - id: supervisor
+    name: vSphere Supervisor
+    category: compute
+    parent: workload-domain
+    summary: Workload domain capability that provides a declarative API for VMs, Kubernetes clusters and services.
+    function: |
+      Activated on workload domain clusters (vSphere zones). Control plane simple (1 VM) or HA (3 VMs); networking
+      via NSX VPC/segments, Avi or Foundation Load Balancer. Consumed by VCF Automation and kubectl users.
+    runsOn: Workload domain clusters.
+    managedBy: vCenter of the domain
+    dependsOn: [vcenter, nsx-manager, esx-host]
+    communicatesWith:
+      - { id: vcf-automation, purpose: "Consumed as region capacity" }
+    failureImpact: |
+      Control plane loss stops Kubernetes API/self-service for that Supervisor; running workloads continue.
+    verify: |
+      Supervisor status in vCenter Workload Management.
+    lessons: [workload-domains-architecture, supervisor-in-workload-domain]
+    labs: [lab-enable-supervisor]
+
+  - id: dns-service
+    name: DNS service
+    category: external
+    summary: External forward and reverse name resolution for every host and appliance - a hard VCF dependency.
+    function: |
+      Every component addresses others by FQDN and certificates carry FQDNs. Forward and reverse records must exist
+      before deployment, domain creation or host commissioning.
+    runsOn: Customer infrastructure (outside VCF).
+    managedBy: Customer network/AD team
+    dependsOn: []
+    communicatesWith: []
+    failureImpact: |
+      Validations fail, API calls between components fail, certificate trust breaks, logins fail.
+    verify: |
+      `nslookup <fqdn>` and `nslookup <ip>` from appliances and hosts return matching results.
+    lessons: [component-communication, dns-ntp-dependencies]
+    labs: [lab-network-readiness]
+
+  - id: ntp-service
+    name: NTP service
+    category: external
+    summary: Common time source for all hosts and appliances.
+    function: |
+      Time synchronization; tokens, SSO and certificates are time-sensitive and logs need consistent timestamps.
+    runsOn: Customer infrastructure (outside VCF).
+    managedBy: Customer network team
+    dependsOn: []
+    communicatesWith: []
+    failureImpact: |
+      Clock skew causes authentication/token failures between components, certificate validity issues and
+      unreadable log timelines.
+    verify: |
+      `esxcli system time get` on hosts; NTP status on appliances; offsets within seconds.
+    lessons: [component-communication, dns-ntp-dependencies]
+    labs: [lab-network-readiness]
+
+  - id: physical-network
+    name: Physical network
+    category: external
+    summary: Top-of-rack switches and routers providing VLANs, MTU, routing and uplinks for VCF.
+    function: |
+      Carries management, vMotion, vSAN, host/edge TEP and edge uplink VLANs; provides gateways and BGP/static
+      routing for NSX Edges. Jumbo frames recommended; overlay needs MTU of at least 1600.
+    runsOn: Physical switches/routers.
+    managedBy: Network team
+    dependsOn: []
+    communicatesWith:
+      - { id: nsx-edge-cluster, purpose: "North-south routing" }
+    failureImpact: |
+      Data plane outages: VM traffic, vSAN, vMotion and overlay can fail; MTU mismatches cause partial failures.
+    verify: |
+      vmkping with large packets and don't-fragment between hosts; BGP neighbor status.
+    lessons: [component-communication, network-fundamentals-for-vcf]
+    labs: [lab-network-readiness]

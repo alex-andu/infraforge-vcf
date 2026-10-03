@@ -1,0 +1,134 @@
+commands:
+  - id: esxcli-hostname-set-fqdn
+    technology: esxi
+    title: Set the ESX hostname as an FQDN
+    purpose: Give a freshly installed ESX host its fully qualified name before VCF deployment or commissioning (VCF requires hostname = FQDN).
+    syntax: "esxcli system hostname set --fqdn=<host.domain>"
+    example: |
+      esxcli system hostname set --fqdn=esx01.lab.local
+      esxcli system hostname get
+    output: |
+      Domain Name: lab.local
+      Fully Qualified Domain Name: esx01.lab.local
+      Host Name: esx01
+    mistake: Changing the name after the self-signed certificate was generated and not regenerating the certificate, so the certificate no longer matches the FQDN.
+    lesson: deployment-planning-prereqs
+    version: general
+    source:
+      title: "Broadcom KB 307780 – Change the hostname of an ESXi host via DCUI or CLI"
+      url: https://knowledge.broadcom.com/external/article/307780/
+  - id: esx-generate-certificates
+    technology: esxi
+    title: Regenerate the ESX self-signed certificate
+    purpose: Create a new self-signed host certificate that matches the current FQDN, then restart the management agents so they use it.
+    syntax: "/sbin/generate-certificates && /etc/init.d/hostd restart && /etc/init.d/vpxa restart"
+    example: |
+      /sbin/generate-certificates
+      /etc/init.d/hostd restart && /etc/init.d/vpxa restart
+    output: |
+      (no output on success; hostd and vpxa report stop/start messages)
+    mistake: Running it before setting the FQDN, or forgetting to restart hostd/vpxa, so the old certificate is still presented and validation still fails.
+    lesson: deployment-validation-failures
+    version: general
+    source:
+      title: "Broadcom KB 411694 – Regenerating self-signed certificates on standalone ESXi hosts"
+      url: https://knowledge.broadcom.com/external/article/411694/
+  - id: vcf-installer-validate-spec
+    technology: api
+    title: Validate a deployment spec on the VCF Installer
+    purpose: Run the same validation as the wizard against a JSON SddcSpec before deploying.
+    syntax: "POST https://<installer>/v1/sddcs/validations  (Authorization: Bearer <token>, body: SddcSpec)"
+    example: |
+      curl -sk -X POST https://installer.lab.local/v1/sddcs/validations \
+        -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+        -d @lab-m01-spec.json
+    output: |
+      { "id": "a1b2...", "executionStatus": "IN_PROGRESS", "resultStatus": "UNKNOWN", "validationChecks": [ ... ] }
+    mistake: Treating executionStatus COMPLETED as success — check resultStatus (SUCCEEDED, WARNING or FAILED) and each validationCheck.
+    lesson: vcf-installer-workflow
+    version: vcf9
+    source:
+      title: "VCF Installer API 9.0 – Validate Sddc Spec"
+      url: https://developer.broadcom.com/xapis/vcf-installer-api/9.0/v1/sddcs/validations/post
+  - id: vcf-installer-deploy-sddc
+    technology: api
+    title: Start a deployment from the VCF Installer API
+    purpose: Deploy a validated SddcSpec and track the returned task.
+    syntax: "POST https://<installer>/v1/sddcs ; GET https://<installer>/v1/sddcs/{id}"
+    example: |
+      curl -sk -X POST https://installer.lab.local/v1/sddcs \
+        -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -d @lab-m01-spec.json
+      curl -sk https://installer.lab.local/v1/sddcs/<task-id> -H "Authorization: Bearer $TOKEN"
+    output: |
+      HTTP/1.1 202 Accepted
+      { "id": "<task-id>", "status": "IN_PROGRESS", ... }
+    mistake: Deploying without a prior successful validation, or committing a spec file with passwords to source control.
+    lesson: vcf-installer-workflow
+    version: vcf9
+    source:
+      title: "VCF Installer API 9.0 – Deploy Sddc"
+      url: https://developer.broadcom.com/xapis/vcf-installer-api/9.0/v1/sddcs/post
+  - id: vcf-download-tool-binaries-download
+    technology: vcf
+    title: Populate an offline depot with the VCF Download Tool
+    purpose: Download VCF install binaries on an internet-connected machine into a directory served as an offline depot for the VCF Installer.
+    syntax: "vcf-download-tool binaries download --vcf-version <ver> --automated-install --depot-download-token-file=<file> --depot-store=<dir>"
+    example: |
+      ./vcf-download-tool binaries download --vcf-version 9.0.0 --automated-install \
+        --depot-download-token-file=/root/downloadtoken.txt --depot-store=/var/www/depot
+    output: |
+      (progress per bundle; the tool is idempotent and resumes interrupted downloads)
+    mistake: Passing an activation code with --depot-download-token-file; use --depot-download-activation-code-file for activation codes (KB 443322).
+    lesson: vcf-installer-workflow
+    version: vcf9
+    source:
+      title: "Broadcom KB 443322 – VCF Download Tool fails with 'Download Token is not entitled to download the contents'"
+      url: https://knowledge.broadcom.com/external/article/443322/vcf-download-tool-fails-with-download-to.html
+  - id: sddc-hosts-unassigned
+    technology: api
+    title: List usable unassigned hosts (SDDC Manager API)
+    purpose: Find commissioned hosts that can be used for a new workload domain or cluster, filtered by storage type.
+    syntax: "GET https://<sddc-manager>/v1/hosts?status=UNASSIGNED_USEABLE[&storageType=<type>]"
+    example: |
+      curl -sk "https://sddcm01.lab.local/v1/hosts?status=UNASSIGNED_USEABLE&storageType=NFS" \
+        -H "Authorization: Bearer $TOKEN"
+    output: |
+      { "elements": [ { "id": "...", "fqdn": "esx11.lab.local", "status": "UNASSIGNED_USEABLE", ... } ] }
+    mistake: Expecting a host commissioned as VSAN (OSA) to be listed for storageType=VSAN_ESA.
+    lesson: host-commissioning-wld-creation
+    version: vcf9
+    source:
+      title: "SDDC Manager API 9.0 – Get Hosts"
+      url: https://developer.broadcom.com/xapis/sddc-manager-api/9.0/v1/hosts/get/
+  - id: sddc-hosts-validate-commission
+    technology: api
+    title: Validate and commission hosts (SDDC Manager API)
+    purpose: Validate a list of HostCommissionSpec objects, then commission them.
+    syntax: "POST https://<sddc-manager>/v1/hosts/validations ; POST https://<sddc-manager>/v1/hosts"
+    example: |
+      curl -sk -X POST https://sddcm01.lab.local/v1/hosts/validations \
+        -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+        -d '[{"fqdn":"esx11.lab.local","username":"root","password":"***","storageType":"NFS","networkPoolName":"wld01-np01"}]'
+    output: |
+      { "id": "...", "executionStatus": "IN_PROGRESS", ... }
+    mistake: Using an FQDN whose case differs from DNS, or a network pool that lacks the network type for the chosen storage.
+    lesson: host-commissioning-wld-creation
+    version: vcf9
+    source:
+      title: "SDDC Manager API 9.0 – Hosts"
+      url: https://developer.broadcom.com/xapis/sddc-manager-api/9.0/hosts/
+  - id: sddc-network-pools-list
+    technology: api
+    title: List network pools and their networks (SDDC Manager API)
+    purpose: Check which network types and IP ranges a pool provides before commissioning or expansion.
+    syntax: "GET https://<sddc-manager>/v1/network-pools ; GET https://<sddc-manager>/v1/network-pools/{id}/networks"
+    example: |
+      curl -sk https://sddcm01.lab.local/v1/network-pools -H "Authorization: Bearer $TOKEN"
+    output: |
+      { "elements": [ { "id": "...", "name": "lab-m01-np01", "networks": [ { "type": "VMOTION", "vlanId": 11, ... } ] } ] }
+    mistake: Trying to edit a pool's subnet or existing range — not possible; add a new IP range instead (POST .../ip-pools).
+    lesson: host-commissioning-wld-creation
+    version: vcf9
+    source:
+      title: "SDDC Manager API 9.0 – Network Pools"
+      url: https://developer.broadcom.com/xapis/sddc-manager-api/9.0/network-pools/

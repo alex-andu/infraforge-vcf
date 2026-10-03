@@ -1,0 +1,214 @@
+id: inc-esx-host-disconnected
+title: A workload domain host keeps dropping to Not Responding
+difficulty: intermediate
+version: vcf9
+topics: [esx-host, troubleshooting-method, logs-locations, l2-l3]
+lessons: [troubleshooting-vcf-services, troubleshooting-methodology, esx-architecture-host-management]
+summary: After a rack move, ESX host esx-wld-03 reconnects to its vCenter and drops back to Not Responding about a minute later, over and over. VMs on it keep running, the lifecycle team cannot remediate the cluster, and someone suggests running services.sh restart.
+symptoms:
+  - "In vc-wld01, host esx-wld-03.lab.local cycles between Connected and Not Responding; each reconnect lasts roughly 60-90 seconds."
+  - VMs on esx-wld-03 keep running and answer on the network; users report nothing.
+  - "A vSphere Lifecycle Manager remediation for cluster wld01-cl01 fails: host esx-wld-03 is not connected."
+  - The host was re-addressed into the new rack B management subnet 10.20.12.0/24 two days ago; the other three hosts stayed in rack A (10.20.11.0/24).
+environment: |
+  VCF 9.0 instance. Workload domain wld01: vCenter vc-wld01.lab.local (10.20.0.20, in the management network 10.20.0.0/24),
+  four ESX hosts in cluster wld01-cl01 with vSAN ESA and NSX. Host management subnets are routed to the vCenter network
+  through a firewall cluster owned by the network team. DNS 10.20.0.10, NTP 10.20.0.11. Rack B was added last week with its
+  own management subnet 10.20.12.0/24; esx-wld-03 (now 10.20.12.13) is the first host moved there.
+evidence:
+  - id: ev-vc-events
+    category: hosts
+    action: Read the Events of esx-wld-03 in vc-wld01 for the last 30 minutes
+    output: |
+      ```log
+      09:41:02  Host esx-wld-03.lab.local in wld01-dc is not responding
+      09:40:01  Reconnected esx-wld-03.lab.local in wld01-dc
+      09:39:00  Host esx-wld-03.lab.local in wld01-dc is not responding
+      09:37:58  Reconnected esx-wld-03.lab.local in wld01-dc
+      ```
+    relevance: useful
+    note: A regular cycle, about one minute after each reconnect, matches the 60-second heartbeat window. Management connections (reconnect) work; something that arrives continuously after connection does not.
+  - id: ev-host-client
+    category: hosts
+    action: Open the Host Client at https://esx-wld-03.lab.local/ui and check VMs and recent tasks
+    output: |
+      ```log
+      Login successful (root)
+      Virtual machines: 14 (14 powered on)
+      Recent tasks: none failed
+      ```
+    relevance: useful
+    note: hostd answers and VMs run. That points away from hostd and from a host outage, towards the vCenter relationship (vpxa and its path to vCenter).
+  - id: ev-vpxa-log
+    category: logs
+    action: On esx-wld-03, grep -i "Started heartbeating" /var/log/vpxa.log | tail -4
+    output: |
+      ```log
+      2026-10-02T09:37:59.812Z In(166) Vpxa[2101873]: [Originator@6876 sub=Heartbeat opID=HostSync-host-2043-6a1f03c2-7d] Started heartbeating..
+      2026-10-02T09:38:59.931Z In(166) Vpxa[2101873]: [Originator@6876 sub=Heartbeat opID=HostSync-host-2043-1c88e0a4-52] Started heartbeating..
+      2026-10-02T09:40:01.044Z In(166) Vpxa[2101873]: [Originator@6876 sub=Heartbeat opID=HostSync-host-2043-90b3fd11-0e] Started heartbeating..
+      2026-10-02T09:41:02.160Z In(166) Vpxa[2101873]: [Originator@6876 sub=Heartbeat opID=HostSync-host-2043-4f2a6b98-3c] Started heartbeating..
+      ```
+    relevance: key
+    note: Heartbeating restarts every minute — the signature Broadcom KB 323612 describes for heartbeats (UDP 902) that vCenter is not receiving.
+  - id: ev-pktcap-host
+    category: network
+    action: On esx-wld-03, capture UDP 902 leaving the management uplink with pktcap-uw | tcpdump-uw
+    output: |
+      ```shell
+      $ pktcap-uw --uplink vmnic0 --capture UplinkSndKernel -o - | tcpdump-uw -r - -nn port 902
+      09:42:10.118201 IP 10.20.12.13.17621 > 10.20.0.20.902: UDP, length 276
+      09:42:20.118644 IP 10.20.12.13.17621 > 10.20.0.20.902: UDP, length 276
+      09:42:30.119087 IP 10.20.12.13.17621 > 10.20.0.20.902: UDP, length 276
+      ```
+    relevance: key
+    note: The host sends a heartbeat every 10 seconds to the correct vCenter IP. The agent works; the packets leave the host.
+  - id: ev-tcpdump-vc
+    category: network
+    action: On vc-wld01 (appliance shell), run tcpdump for UDP 902 from esx-wld-03 and from esx-wld-01
+    output: |
+      ```shell
+      $ tcpdump -nn src 10.20.12.13 and port 902 -c 3
+      tcpdump: listening on eth0 ...
+      ^C 0 packets captured
+      $ tcpdump -nn src 10.20.11.11 and port 902 -c 3
+      09:43:01.552210 IP 10.20.11.11.24410 > 10.20.0.20.902: UDP, length 276
+      09:43:11.552634 IP 10.20.11.11.24410 > 10.20.0.20.902: UDP, length 276
+      09:43:21.553002 IP 10.20.11.11.24410 > 10.20.0.20.902: UDP, length 276
+      3 packets captured
+      ```
+    relevance: key
+    note: Heartbeats from the rack A host arrive; heartbeats from esx-wld-03 never do. The loss is between the host uplink and vCenter — the routed/firewalled path.
+  - id: ev-fw-change
+    category: services
+    action: Read the network team's change record for the rack B firewall policy
+    output: |
+      ```log
+      Change NET-2291: Rack B host management (10.20.12.0/24) -> vCenter network (10.20.0.0/24)
+        permit tcp 443   (vSphere API / Host Client)
+        permit tcp 902   (VM console / NFC)
+        permit udp 123   (NTP), udp/tcp 53 (DNS)
+      Copied from: template "esx-mgmt-basic"
+      ```
+    relevance: key
+    note: UDP 902 is missing for the new subnet. The rack A policy (older) includes it; the new template does not. TCP 443 explains why reconnects succeed; missing UDP 902 explains why they do not last.
+  - id: ev-vpxa-cfg
+    category: hosts
+    action: On esx-wld-03, check the vCenter address and port vpxa uses
+    output: |
+      ```shell
+      $ grep -E "serverIp|serverPort" /etc/vmware/vpxa/vpxa.cfg
+          <serverIp>10.20.0.20</serverIp>
+          <serverPort>902</serverPort>
+      ```
+    relevance: useful
+    note: Correct vCenter IP and port, so this is not the "wrong managed IP / wrong port" variant from KB 323612.
+  - id: ev-dns
+    category: dns
+    action: Resolve esx-wld-03 forward and reverse from vc-wld01
+    output: |
+      ```shell
+      $ nslookup esx-wld-03.lab.local  -> 10.20.12.13
+      $ nslookup 10.20.12.13           -> esx-wld-03.lab.local
+      ```
+    relevance: noise
+    note: DNS was updated correctly for the new address. A DNS problem would not produce a clean one-minute cycle after successful reconnects.
+  - id: ev-ntp
+    category: ntp
+    action: Compare time on esx-wld-03 and vc-wld01 (date -u)
+    output: |
+      ```shell
+      esx-wld-03: Fri Oct  2 09:44:05 UTC 2026
+      vc-wld01:   Fri Oct  2 09:44:05 UTC 2026
+      ```
+    relevance: noise
+    note: Time agrees. Rules out skew-related TLS or token issues.
+  - id: ev-vmkernel
+    category: logs
+    action: Search /var/log/vmkernel.log on esx-wld-03 for link events
+    output: |
+      ```log
+      2026-09-30T14:02:11.004Z In(182) vmkernel: cpu6:2097544)<vmnic3 link down event>
+      ```
+    relevance: noise
+    note: vmnic3 is an unused standby port that was unplugged during the rack move, two days before the first disconnect. It does not carry management or heartbeat traffic.
+idealSequence: [ev-vc-events, ev-host-client, ev-vpxa-log, ev-pktcap-host, ev-tcpdump-vc, ev-fw-change]
+rootCause:
+  - id: rc1
+    text: The new rack B firewall policy permits TCP 443/902 but not UDP 902 from 10.20.12.0/24 to vCenter, so vpxa heartbeats from esx-wld-03 are dropped and vCenter marks the host Not Responding after 60 seconds without heartbeats.
+    correct: true
+    why: Heartbeats leave the host every 10 s (pktcap) but never reach vCenter (tcpdump), while rack A heartbeats arrive; the change record shows UDP 902 missing.
+  - id: rc2
+    text: hostd on esx-wld-03 is hung.
+    why: The Host Client works, tasks run and VMs are managed locally; a hung hostd would make the Host Client fail too.
+  - id: rc3
+    text: The vpxa agent is corrupted and must be reinstalled.
+    why: vpxa sends heartbeats correctly to the right IP and port; the packets are lost in the network.
+  - id: rc4
+    text: Reverse DNS for the new IP is missing.
+    why: Forward and reverse lookups are correct, and DNS problems do not produce a regular reconnect-then-drop cycle.
+nextStep:
+  - id: n1
+    text: Capture UDP 902 at both ends (host uplink and vCenter) to see where heartbeats disappear, before changing anything on the host.
+    correct: true
+    why: One discriminating test splits "agent problem" from "network path problem" in minutes and gives the network team proof.
+  - id: n2
+    text: Run services.sh restart on esx-wld-03.
+    why: Broadcom KB 320280 warns against services.sh restart on hosts with vSAN, NSX or LACP — this host has vSAN and NSX — and nothing indicates an agent problem.
+  - id: n3
+    text: Remove the host from vCenter and add it again.
+    why: Disruptive in a VCF workload domain (the host is part of vSAN/NSX and VCF inventory) and would not fix a network path problem.
+remediation:
+  - id: r1
+    text: Ask the network team to add "permit udp 902 from 10.20.12.0/24 to vc-wld01" (and fix the template), then reconnect the host if it does not recover by itself.
+    correct: true
+    why: Fixes the cause with the smallest change, and fixing the template prevents the next rack B host from failing the same way.
+  - id: r2
+    text: Restart vpxa and hostd on esx-wld-03.
+    why: Safe but pointless; the agents work. The host will drop again within a minute.
+  - id: r3
+    text: Raise the vCenter heartbeat timeout so the host stays connected.
+    why: Hides the symptom while vCenter still receives no heartbeats; an unsupported tuning instead of a fix.
+  - id: r4
+    text: Move esx-wld-03 back to the rack A subnet.
+    why: Works around the problem by undoing a planned change and leaves rack B broken for every future host.
+validation:
+  - id: v1
+    text: tcpdump on vc-wld01 shows a heartbeat from 10.20.12.13 every 10 seconds, the host stays Connected for more than 5 minutes, vpxa.log stops logging "Started heartbeating" every minute, and the vLCM remediation of wld01-cl01 runs.
+    correct: true
+    why: Verifies the mechanism (packets arrive), the symptom (connection stable) and the blocked business task (remediation) together.
+  - id: v2
+    text: The host shows Connected right after clicking Reconnect.
+    why: It did that during the outage too; the drop came 60 seconds later.
+  - id: v3
+    text: pktcap-uw on the host shows heartbeats leaving vmnic0.
+    why: That was already true during the outage; it proves only the host side.
+hints:
+  - The VMs and the Host Client are fine. Which component connects the host to vCenter?
+  - The cycle length is suspiciously close to one minute. What does vCenter expect from each host every 10 seconds?
+  - Capture the heartbeats at both ends and compare with a host in rack A.
+  - What changed for this host only? Read the firewall change for the new subnet.
+debrief: |
+  The host was never really "down": `hostd` served the Host Client and all VMs kept running. What failed was the
+  relationship with vCenter. vCenter talks to `vpxa` over TCP (which is why every reconnect succeeded), and `vpxa` proves
+  it is alive by sending **UDP heartbeats to port 902 every 10 seconds**; after **60 seconds** without one, vCenter
+  marks the host Not Responding (Broadcom KB 323612). That timing produced the tell-tale one-minute cycle in the events
+  and the repeated `Started heartbeating..` lines in `vpxa.log`.
+
+  The efficient path was: scope (one host, only the vCenter relationship, VMs fine) → the agent's own log (heartbeat
+  restarts) → a two-ended capture (packets leave the host, never arrive at vCenter, while a rack A host's do) → the only
+  change on that path (the new firewall policy, which allowed TCP 443/902 but not UDP 902). DNS, NTP and an old
+  vmkernel link message were noise: real facts, but unable to explain a reconnect-then-drop cycle.
+
+  The tempting wrong moves — `services.sh restart`, re-adding the host, tuning the timeout — either risk vSAN/NSX
+  disruption (KB 320280) or hide the symptom. The fix was one firewall rule plus fixing the template so the next host in
+  rack B works on day one.
+sources:
+  - title: "Broadcom KB 323612 – ESXi host disconnects from vCenter Server after adding or connecting it"
+    url: https://knowledge.broadcom.com/external/article/323612
+  - title: "Broadcom KB 307364 – Verify ESXi host heartbeat to vCenter using packet capture utilities"
+    url: https://knowledge.broadcom.com/external/article/307364
+  - title: "Broadcom KB 320280 – Restarting Management Agents in ESXi"
+    url: https://knowledge.broadcom.com/external/article/320280
+  - title: "Broadcom KB 306962 – Location and contents of ESXi log files"
+    url: https://knowledge.broadcom.com/external/article/306962/location-of-esxi-log-files.html

@@ -1,0 +1,42 @@
+id: d05-vpc-centralized-vs-distributed
+title: VPC external connectivity – centralized vs distributed
+description: >
+  Left: centralized connectivity. The transit gateway's north-south traffic goes over Geneve to a Tier-0 gateway whose
+  service routers run on two NSX Edge VMs (edge cluster); the Tier-0 peers with the ToR using BGP over uplink VLANs and
+  advertises the VPC External IP blocks. Stateful services (SNAT/DNAT, default outbound NAT, north-south firewall, load
+  balancer) are available, and this is the mode (active/standby) required by vSphere Supervisor and VCF Automation All
+  Apps. Right: distributed connectivity. No Edges: every ESX host connects the transit gateway directly to one dedicated
+  external VLAN that must exist on all hosts; the physical router on that VLAN is the gateway; external IP blocks fall
+  inside the VLAN subnet; only stateless services (External IP 1:1 NAT, distributed DHCP) are available.
+width: 1000
+height: 600
+groups:
+  - { id: g-cen, x: 20, y: 20, w: 470, h: 560, label: "Centralized connectivity", kind: nsx }
+  - { id: g-dis, x: 510, y: 20, w: 470, h: 560, label: "Distributed connectivity", kind: compute }
+nodes:
+  - { id: ctor, x: 160, y: 50, w: 200, h: 56, label: "ToR routers", sublabel: "BGP peers", kind: network, component: physical-network, info: "Learn the VPC External IP blocks from the Tier-0 via BGP (or static routes)." }
+  - { id: ct0, x: 160, y: 160, w: 200, h: 60, label: "Tier-0 SRs", sublabel: "on edge-01 / edge-02", kind: nsx, component: nsx-edge-cluster, info: "Deployed by vCenter Network Connectivity → Centralized Connectivity: edge cluster (2–10 Edges), Tier-0 HA mode, BGP or static." }
+  - { id: csvc, x: 40, y: 270, w: 200, h: 70, label: "Stateful services", sublabel: "SNAT/DNAT, N/S FW, LB", kind: security, info: "External IP, NAT, default outbound NAT, DHCP, E/W and N/S firewall, NSX L4 LB, Avi plugin." }
+  - { id: ctgw, x: 260, y: 280, w: 200, h: 56, label: "Transit gateway", kind: nsx, info: "Exactly one centralized connection per transit gateway." }
+  - { id: chost, x: 160, y: 420, w: 200, h: 60, label: "ESX hosts", sublabel: "VPC workloads", kind: compute, component: esx-host, info: "North-south traffic tunnels from host TEPs to Edge TEPs." }
+  - { id: creq, x: 60, y: 510, w: 400, h: 50, label: "Required for Supervisor + VCF Automation All Apps (A/S)", kind: mgmt, info: "Supervisor and VCF Automation All Apps require Centralized Active/Standby." }
+  - { id: drtr, x: 650, y: 50, w: 200, h: 56, label: "Physical router", sublabel: "gateway on VLAN", kind: network, component: physical-network, info: "Owns the Gateway CIDR on the dedicated external VLAN. No dynamic routing with NSX." }
+  - { id: dvlan, x: 620, y: 160, w: 260, h: 56, label: "Dedicated external VLAN", sublabel: "on ALL hosts", kind: network, info: "Hard requirement: every ESX host with VPC workloads must attach to the same VLAN. External IP blocks must be inside this subnet." }
+  - { id: dtgw, x: 650, y: 280, w: 200, h: 56, label: "Distributed TGW", sublabel: "in every host", kind: nsx, info: "The transit gateway is realized on the hosts and bridges VPC public addresses onto the VLAN." }
+  - { id: dsvc, x: 530, y: 390, w: 200, h: 70, label: "Stateless only", sublabel: "External IP 1:1, dist. DHCP", kind: security, info: "No SNAT/DNAT (beyond 1:1), no north-south firewall, no DHCP relay, no stateful services." }
+  - { id: dhost, x: 760, y: 400, w: 200, h: 60, label: "ESX hosts", sublabel: "no Edges", kind: compute, component: esx-host, info: "No Edge VMs to deploy, size or patch." }
+edges:
+  - { from: ctor, to: ct0, label: "BGP", kind: north-south, bidirectional: true }
+  - { from: ct0, to: ctgw, kind: data, bidirectional: true }
+  - { from: ctgw, to: csvc, kind: dependency, dashed: true }
+  - { from: chost, to: ct0, label: "Geneve", kind: overlay, dashed: true }
+  - { from: drtr, to: dvlan, kind: north-south, bidirectional: true }
+  - { from: dvlan, to: dtgw, kind: north-south, bidirectional: true }
+  - { from: dtgw, to: dhost, kind: data }
+  - { from: dtgw, to: dsvc, kind: dependency, dashed: true }
+steps:
+  - { title: "Centralized: Edges + Tier-0", text: "The transit gateway connects to a Tier-0 whose SRs run on NSX Edges; the Tier-0 peers with the ToRs (BGP or static).", highlight: [ctor, ct0, ctgw] }
+  - { title: "Centralized: services", text: "All north-south traffic passes the Edges, so stateful services exist: SNAT/DNAT, default outbound NAT, north-south firewall, load balancing.", highlight: [ct0, csvc, chost] }
+  - { title: "Centralized: who needs it", text: "vSphere Supervisor and VCF Automation All Apps require centralized connectivity with an active/standby Tier-0.", highlight: [creq, ct0] }
+  - { title: "Distributed: VLAN on every host", text: "No Edges. The transit gateway is realized on the hosts and connects to one dedicated VLAN that every host must carry; the physical router is the gateway.", highlight: [drtr, dvlan, dtgw, dhost] }
+  - { title: "Distributed: limits", text: "Only stateless services: External IP (1:1 NAT), distributed DHCP, distributed routing. No SNAT to the internet, no north-south firewall.", highlight: [dtgw, dsvc] }

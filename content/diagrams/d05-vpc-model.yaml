@@ -1,0 +1,44 @@
+id: d05-vpc-model
+title: VCF 9 VPC model – external connection, transit gateway, VPCs and subnets
+description: >
+  From top to bottom: the physical network; an external connection (centralized through a Tier-0 on Edges, or
+  distributed through a VLAN on hosts); the Default project's transit gateway (one per project) which interconnects
+  VPCs and connects them to the external connection; two VPCs, each with its own VPC gateway; and subnets of three
+  types: public subnets (addresses from VPC External IP blocks, advertised outside), private subnets (VPC private CIDR,
+  reachable only inside the VPC) and private transit-gateway subnets (Private TGW IP blocks, reachable between VPCs of
+  the project). Profiles (connectivity, service, security) shape each VPC. vCenter consumes the Default project.
+width: 1000
+height: 640
+groups:
+  - { id: g-proj, x: 20, y: 190, w: 960, h: 430, label: "Default project (visible in vCenter)", kind: nsx }
+  - { id: g-vpc1, x: 50, y: 360, w: 440, h: 240, label: "VPC vpc-dev", kind: zone }
+  - { id: g-vpc2, x: 520, y: 360, w: 440, h: 240, label: "VPC vpc-prod", kind: zone }
+nodes:
+  - { id: phys, x: 400, y: 20, w: 200, h: 50, label: "Physical network", kind: external, component: physical-network, info: "Corporate network / internet. Sees only advertised (public) prefixes and External IPs." }
+  - { id: ext, x: 380, y: 100, w: 240, h: 56, label: "External connection", sublabel: "centralized (Tier-0) or distributed (VLAN)", kind: network, info: "Defines how the transit gateway reaches networks outside NSX and which services exist. A TGW has one centralized OR one-or-more distributed connections." }
+  - { id: tgw, x: 380, y: 230, w: 240, h: 56, label: "Transit gateway", sublabel: "one per project", kind: nsx, info: "Created automatically with the project. Routes between VPCs and to the external connection. Private TGW IP blocks are scoped here." }
+  - { id: prof, x: 700, y: 230, w: 250, h: 56, label: "VPC profiles", sublabel: "connectivity, service, security", kind: mgmt, info: "Connectivity profile: TGW, IP blocks, default outbound NAT. Service profile: DHCP/relay, subnet profiles. Security profile: VPC gateway firewall (stateful needs vDefend)." }
+  - { id: gw1, x: 160, y: 390, w: 220, h: 50, label: "VPC gateway", kind: nsx, info: "Routes between the VPC's subnets and to the transit gateway." }
+  - { id: pub1, x: 70, y: 480, w: 130, h: 56, label: "Public subnet", sublabel: "External IP block", kind: vm, info: "Addresses from VPC External IP blocks – advertised and reachable enterprise-wide." }
+  - { id: prv1, x: 210, y: 480, w: 130, h: 56, label: "Private subnet", sublabel: "VPC CIDR", kind: vm, info: "Reachable only inside this VPC. Addresses may overlap with other VPCs. Publish a VM with Assign External IP (1:1 NAT)." }
+  - { id: tgs1, x: 350, y: 480, w: 130, h: 56, label: "Private-TGW", sublabel: "TGW block", kind: vm, info: "Private Transit Gateway subnet: reachable from other VPCs on the same transit gateway, not advertised outside." }
+  - { id: gw2, x: 630, y: 390, w: 220, h: 50, label: "VPC gateway", kind: nsx, info: "Second VPC with its own gateway." }
+  - { id: pub2, x: 560, y: 480, w: 180, h: 56, label: "Public subnet", kind: vm, info: "Public subnet of vpc-prod." }
+  - { id: prv2, x: 760, y: 480, w: 180, h: 56, label: "Private subnet", kind: vm, info: "Private subnet of vpc-prod." }
+edges:
+  - { from: phys, to: ext, kind: north-south, bidirectional: true }
+  - { from: ext, to: tgw, kind: north-south, bidirectional: true }
+  - { from: tgw, to: gw1, kind: data, bidirectional: true }
+  - { from: tgw, to: gw2, kind: data, bidirectional: true }
+  - { from: prof, to: tgw, kind: dependency, dashed: true }
+  - { from: gw1, to: pub1, kind: data }
+  - { from: gw1, to: prv1, kind: data }
+  - { from: gw1, to: tgs1, kind: data }
+  - { from: gw2, to: pub2, kind: data }
+  - { from: gw2, to: prv2, kind: data }
+steps:
+  - { title: "External connection", text: "The provider defines how traffic leaves NSX: centralized (Tier-0 on Edges, stateful services, BGP) or distributed (host VLAN, no Edges).", highlight: [phys, ext] }
+  - { title: "Transit gateway", text: "Each project has exactly one transit gateway, created automatically. It connects the project's VPCs to each other and to the external connection.", highlight: [ext, tgw] }
+  - { title: "VPCs and profiles", text: "VPCs are on-demand isolated networks with their own gateway; profiles set the TGW, IP blocks, outbound NAT, DHCP and VPC firewall.", highlight: [tgw, prof, gw1, gw2] }
+  - { title: "Public subnets", text: "Public subnets draw from VPC External IP blocks and are advertised outside – reachable enterprise-wide.", highlight: [pub1, pub2, phys] }
+  - { title: "Private and private-TGW subnets", text: "Private subnets stay inside the VPC; private-TGW subnets are reachable from other VPCs on the same transit gateway but are not advertised.", highlight: [prv1, prv2, tgs1, tgw] }

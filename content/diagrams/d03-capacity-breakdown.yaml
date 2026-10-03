@@ -1,0 +1,39 @@
+id: d03-capacity-breakdown
+title: From raw vSAN capacity to usable VM capacity
+description: >
+  A top-down capacity funnel for a vSAN ESA cluster. Raw capacity is the sum of all claimed devices. Reserves are
+  set aside first: the operations reserve for resync and rebalancing, and the optional host rebuild reserve (about
+  25 percent on a 4-node cluster, about 3 percent on 32 nodes) to rebuild one failed host. The remaining space is
+  consumed by objects according to their policy overhead: 2x for RAID-1 FTT=1, 1.5x for RAID-5 2+1 or RAID-6, 1.25x
+  for RAID-5 4+1. Compression (on by default in ESA) and, where enabled, global deduplication reduce what is written.
+  Thin provisioning and TRIM/UNMAP make sure only data the guest actually uses is consumed.
+width: 1000
+height: 600
+groups:
+  - { id: g-funnel, x: 20, y: 20, w: 600, h: 560, label: "Capacity funnel", kind: storage }
+  - { id: g-tech, x: 660, y: 20, w: 320, h: 560, label: "Space-efficiency techniques", kind: zone }
+nodes:
+  - { id: raw, x: 50, y: 60, w: 540, h: 60, label: "Raw capacity", sublabel: "all claimed NVMe devices", kind: storage, info: "In OSA, only capacity-tier devices count; cache devices are not part of the datastore." }
+  - { id: reserve, x: 90, y: 160, w: 460, h: 60, label: "Reserves", sublabel: "operations reserve + host rebuild reserve", kind: mgmt, info: "Enabled under Monitor > vSAN > Capacity > Reservations and Alerts. Keeps room for resync, rebalance and N+1 rebuild." }
+  - { id: policy, x: 130, y: 260, w: 380, h: 60, label: "Policy overhead", sublabel: "2x / 1.5x / 1.25x", kind: storage, info: "RAID-1 FTT=1 = 2x, FTT=2 = 3x; RAID-5 2+1 = 1.5x, 4+1 = 1.25x, OSA 3+1 = ~1.33x; RAID-6 = 1.5x." }
+  - { id: reduce, x: 170, y: 360, w: 300, h: 60, label: "Data reduction", sublabel: "compression, dedup", kind: storage, info: "ESA compresses new writes by default; global dedup is limited availability in 9.0; OSA dedup is per disk group." }
+  - { id: vmdata, x: 210, y: 460, w: 220, h: 60, label: "VM data written", kind: vm, info: "Thin provisioning: only written blocks are consumed. TRIM/UNMAP returns blocks freed inside the guest." }
+  - { id: t-ec, x: 690, y: 260, w: 260, h: 60, label: "Erasure coding", sublabel: "RAID-5/6", kind: storage, info: "Biggest lever on ESA: 1.25-1.5x instead of 2-3x." }
+  - { id: t-comp, x: 690, y: 360, w: 260, h: 60, label: "Compression / dedup", kind: storage, info: "ESA: compression default-on per policy; dedup global (LA). OSA: dedup + compression or compression-only, all-flash." }
+  - { id: t-thin, x: 690, y: 460, w: 260, h: 60, label: "Thin + TRIM/UNMAP", kind: storage, info: "Object space reservation thin by default; management VMs are recommended thick (100 %) in VCF 9." }
+  - { id: t-res, x: 690, y: 160, w: 260, h: 60, label: "Capacity health check", sublabel: "yellow / red thresholds", kind: ops, info: "Thresholds use MIN of 70 %/90 % of total and the reserve thresholds (KB 326889)." }
+edges:
+  - { from: raw, to: reserve, kind: storage }
+  - { from: reserve, to: policy, kind: storage }
+  - { from: policy, to: reduce, kind: storage }
+  - { from: reduce, to: vmdata, kind: storage }
+  - { from: t-ec, to: policy, kind: dependency, dashed: true }
+  - { from: t-comp, to: reduce, kind: dependency, dashed: true }
+  - { from: t-thin, to: vmdata, kind: dependency, dashed: true }
+  - { from: t-res, to: reserve, kind: dependency, dashed: true }
+steps:
+  - { title: "Raw", text: "Start from the devices vSAN has claimed.", highlight: [raw] }
+  - { title: "Keep room to heal", text: "Reserve capacity for operations and for rebuilding a failed host.", highlight: [reserve, t-res] }
+  - { title: "Pay for protection", text: "Each policy multiplies the data written.", highlight: [policy, t-ec] }
+  - { title: "Reduce", text: "Compression and dedup shrink what is stored.", highlight: [reduce, t-comp] }
+  - { title: "Only what is used", text: "Thin provisioning and UNMAP keep consumption honest.", highlight: [vmdata, t-thin] }

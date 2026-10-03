@@ -1,0 +1,109 @@
+id: scn-nsx-tenant-networking
+title: Design tenant networking for a VCF 9 workload domain
+topics: [nsx-vpc, nsx-edge, nsx-routing, nsx-security, design-tradeoffs]
+lessons: [nsx-vpcs-and-vcf-networking, nsx-edge-nodes-clusters, nsx-tier0-tier1-routing, nsx-security-dfw-gateway-firewall]
+brief: |
+  A university IT department is building VCF 9 workload domain `wld-campus` for three consumers: (1) the central IT team
+  running internet-facing web services, (2) research groups who want self-service networks from vCenter for short-lived
+  VMs, and (3) a platform team that will enable vSphere Supervisor next semester and later VCF Automation for
+  departments. You must decide how the workload domain connects to the campus network, how tenants consume networks and
+  how traffic is secured.
+requirements:
+  - "Internet-facing web services need inbound publishing (DNAT or public addresses) and a north-south firewall policy."
+  - "Research VMs need outbound internet access without consuming public addresses per VM."
+  - "Research groups must be isolated from each other and from central IT, but may share a common data-transfer service."
+  - "vSphere Supervisor must be enabled next semester without redesign."
+  - "Lateral movement between web servers must be blockable."
+  - "A single Edge or ToR failure must not cause a lasting north-south outage."
+constraints:
+  - "Campus core supports BGP and has two ToR switches per rack; it cannot stretch new VLANs to every rack quickly."
+  - "Hosts have two 25 GbE NICs; MTU 9000 is available on the fabric."
+  - "The operations team is small and wants vCenter-based self-service where possible."
+  - "VCF licences include the vDefend Firewall add-on."
+existing: |
+  The management domain is deployed; `wld-campus` has been created from VCF Operations with a new three-node NSX Manager
+  instance and six hosts with host TEPs on a routed TEP VLAN. No Edges exist yet. Campus routing team allocated AS 65010
+  for NSX, uplink VLANs 3101/3102 in the edge rack, and two public /26 ranges.
+decisions:
+  - id: d-connectivity
+    question: Which external connectivity model do you configure in vCenter Network Connectivity?
+    options:
+      - id: a
+        text: Distributed connectivity on a new VLAN stretched to all hosts.
+        why: No SNAT/DNAT (only 1:1 External IPs), no north-south firewall, the VLAN must exist on every host (the campus can't stretch it quickly), and Supervisor requires centralized connectivity.
+      - id: b
+        text: Centralized connectivity with an edge cluster and a Tier-0 in Active/Standby, BGP to both ToRs.
+        correct: true
+        why: Provides SNAT/DNAT, default outbound NAT, north-south gateway firewall and BGP over the existing uplink VLANs, and is the mode Supervisor and VCF Automation All Apps require.
+      - id: c
+        text: Centralized connectivity with an Active/Active Tier-0 for maximum throughput.
+        why: Good ECMP bandwidth, but Supervisor/VCF Automation All Apps require Active/Standby, and classic A/A limits stateful NAT and firewall.
+      - id: d
+        text: No Edges; route everything through a VLAN-backed segment per tenant.
+        why: Puts every tenant network on the physical fabric (VLAN sprawl), no self-service, no NAT or north-south policy.
+  - id: d-edge-size
+    question: How do you size and place the Edges?
+    options:
+      - id: a
+        text: Two Small Edges on any hosts.
+        why: Small is documented for proof-of-concept only and isn't suitable for Supervisor or production services.
+      - id: b
+        text: Two Medium (or Large if L7 load balancing/TLS inspection is planned) Edges, pinned with host-group affinity to the edge-rack hosts, DRS anti-affinity between them, failure domains if possible.
+        correct: true
+        why: Medium is the practical minimum for Supervisor; Large adds L7 LB/TLS. Affinity keeps them on hosts with the uplink VLANs; anti-affinity ensures one host failure only triggers an A/S failover.
+      - id: c
+        text: Eight Extra Large Edges in the edge cluster.
+        why: Over-sized for the requirements; with Active/Standby only two Edges carry the Tier-0 uplinks in the VCF workflow, so the rest add cost without north-south capacity.
+  - id: d-tenancy
+    question: How do research groups consume networks?
+    options:
+      - id: a
+        text: The network team creates a Tier-1 and segments per request in NSX Manager.
+        why: Works technically but defeats the self-service requirement and loads the small ops team.
+      - id: b
+        text: VPCs in the Default project from vCenter – one VPC per research group with private subnets plus default outbound NAT; shared data-transfer service on a private transit-gateway subnet.
+        correct: true
+        why: VPCs isolate groups by design, private subnets don't consume public space, default outbound NAT gives internet access, and private-TGW subnets are reachable across VPCs of the project without being advertised.
+      - id: c
+        text: One big shared segment for all research VMs.
+        why: No isolation between groups; one broadcast domain for everyone.
+  - id: d-security
+    question: How do you secure web services and research VPCs?
+    options:
+      - id: a
+        text: Gateway firewall only, on the Tier-0.
+        why: Sees north-south only; it cannot stop lateral movement between web servers on the same segment.
+      - id: b
+        text: DFW only.
+        why: Handles east-west, but you also want a perimeter policy at the north-south boundary and NAT publishing.
+      - id: c
+        text: Gateway firewall on the Tier-0/VPC for north-south (with DNAT/External IPs for publishing) plus DFW micro-segmentation with tag-based groups and Applied-To for web servers and per-VPC policies.
+        correct: true
+        why: Defence in depth – zone boundary on the SR, per-vNIC control for lateral movement; vDefend is licensed, so stateful VPC firewalling is available.
+  - id: d-routing
+    question: How do you make tenant prefixes reachable from the campus?
+    options:
+      - id: a
+        text: Static routes on the campus core pointing at edge-01's uplink IP.
+        why: Breaks on failover to edge-02; with static routing you'd need the Tier-0 HA VIP, and BGP is available anyway.
+      - id: b
+        text: BGP from the Tier-0 to both ToRs, advertising the VPC External IP blocks (public subnets) and any Tier-1 prefixes via advertisement plus Tier-0 redistribution; private VPC ranges stay unadvertised.
+        correct: true
+        why: Dynamic, survives Edge failover, and only exposes what should be reachable from the campus.
+recommended: |
+  **Centralized connectivity** from vCenter → Networks > Network Connectivity: edge cluster `ec-campus` with two **Medium**
+  Edges (Large if L7 LB/TLS inspection is planned), host-group affinity to the edge-rack hosts and DRS anti-affinity, Edge
+  TEPs on the host TEP VLAN (MTU 9000). Tier-0 `t0-campus` in **Active/Standby**, BGP AS 65010 to both ToRs on VLANs
+  3101/3102, BFD enabled. VPC External IP blocks from the public /26s; Private TGW block from RFC 1918 space.
+
+  **Consumption:** research groups get one VPC each in the Default project (private subnets, default outbound NAT, External
+  IP only where needed); a shared data-transfer VM sits on a private transit-gateway subnet. Central IT publishes web
+  services through public subnets or DNAT on the centralized transit gateway.
+
+  **Security:** VPC/Tier-0 gateway firewall for north-south (allow 443 to web publishing, deny inbound by default), DFW with
+  tag-based groups: Infrastructure policy for DNS/NTP/AD, Environment policy separating research from central IT, Application
+  policy for web tiers with Applied-To and a scoped drop to block lateral movement.
+
+  **Why not the alternatives:** distributed connectivity lacks SNAT/DNAT, north-south firewall and Supervisor support, and
+  needs a VLAN on every host; Active/Active blocks Supervisor and stateful services; Small Edges are PoC-only. Supervisor
+  next semester will find the Active/Standby Tier-0 and edge cluster it requires – no redesign.

@@ -1,0 +1,51 @@
+id: d10-ops-cluster-architecture
+title: VCF Operations cluster, collectors and data sources
+description: >
+  VCF Operations runs as an analytics cluster in the management domain: a primary node, an optional replica node
+  (high availability) and optional data nodes that add capacity. The analytics cluster stores and analyses data but
+  should not talk to the data sources directly. VCF Operations collectors (deployed as cloud proxy appliances, grouped
+  into collector groups) run the adapter instances that poll vCenter, NSX, vSAN and other integrations and forward
+  the results to the analytics cluster. The VCF Operations fleet management appliance sits beside the cluster and
+  handles lifecycle, certificates and passwords for the fleet's management components. Users reach the cluster through
+  the primary node FQDN or through an optional external load balancer.
+width: 1000
+height: 600
+groups:
+  - { id: g-analytics, x: 300, y: 150, w: 400, h: 230, label: "VCF Operations analytics cluster", kind: ops }
+  - { id: g-collectors, x: 300, y: 430, w: 400, h: 140, label: "Collector group (cloud proxies)", kind: ops }
+  - { id: g-sources, x: 760, y: 150, w: 220, h: 420, label: "Data sources", kind: zone }
+nodes:
+  - { id: users, x: 40, y: 40, w: 160, h: 56, label: "Admins / browsers", sublabel: "HTTPS UI + API", kind: external, info: "Operators log in to the VCF Operations UI or call the suite API. They connect to the primary node FQDN, or to an external load balancer VIP when one is used with an HA cluster." }
+  - { id: lb, x: 420, y: 40, w: 160, h: 56, label: "External LB (optional)", sublabel: "VIP + FQDN", kind: network, info: "Optional in the High Availability and Continuous Availability models. Needs its own IP and FQDN, and every node FQDN plus the LB FQDN must be in the certificate SAN." }
+  - { id: primary, x: 320, y: 190, w: 170, h: 56, label: "Primary node", sublabel: "coordinates cluster", kind: ops, component: vcf-operations, info: "First node of the analytics cluster. Holds the global database and coordinates the cluster. In the Simple model it is the only analytics node, so its failure means monitoring is down until vSphere HA restarts it." }
+  - { id: replica, x: 510, y: 190, w: 170, h: 56, label: "Replica node", sublabel: "HA standby", kind: ops, info: "Present in the High Availability model. Keeps a copy of the primary's data and takes over if the primary fails, giving rapid recovery from a single node failure." }
+  - { id: data1, x: 320, y: 290, w: 170, h: 56, label: "Data node", sublabel: "scale-out", kind: ops, info: "Adds analytics and storage capacity. The HA model scales out by adding data nodes. All nodes in a multi-node cluster must be the same size." }
+  - { id: data2, x: 510, y: 290, w: 170, h: 56, label: "Data node", sublabel: "scale-out", kind: ops, info: "Another data node. Data is distributed across nodes; with HA enabled it is also redundant." }
+  - { id: col1, x: 320, y: 480, w: 170, h: 56, label: "Collector 1", sublabel: "cloud proxy appliance", kind: ops, info: "Runs adapter instances (vCenter, NSX, vSAN, logs agents). Polls the data sources and forwards data to the analytics cluster. Several collectors can be grouped in a collector group so adapters fail over." }
+  - { id: col2, x: 510, y: 480, w: 170, h: 56, label: "Collector 2", sublabel: "cloud proxy appliance", kind: ops, info: "Second collector in the same group. In the HA model the collector is expanded into a collector group manually after installation." }
+  - { id: fm, x: 40, y: 250, w: 200, h: 56, label: "Fleet management appliance", sublabel: "lifecycle, certs, passwords", kind: mgmt, component: vcf-operations-fleet-management, info: "VCF Operations fleet management appliance. Deployed with VCF Operations in every model. Performs lifecycle, certificate and password tasks for VCF Operations, VCF Automation, logs and networks components." }
+  - { id: sddcm, x: 40, y: 400, w: 200, h: 56, label: "SDDC Manager", sublabel: "per VCF instance", kind: mgmt, component: sddc-manager, info: "Manages its VCF instance's domains, hosts and lifecycle. VCF Operations integrates with it to show and drive instance-level operations." }
+  - { id: vc, x: 790, y: 190, w: 160, h: 56, label: "vCenter", kind: mgmt, component: vcenter, info: "Source of inventory, performance metrics, properties, events and alarms for clusters, hosts, VMs and datastores." }
+  - { id: nsx, x: 790, y: 290, w: 160, h: 56, label: "NSX Manager", kind: nsx, component: nsx-manager, info: "Source of NSX objects, health and alarms (managers, transport nodes, edges, segments)." }
+  - { id: vsan, x: 790, y: 390, w: 160, h: 56, label: "vSAN (via vCenter)", kind: storage, component: vsan, info: "vSAN health, capacity and performance, used by Storage Operations." }
+  - { id: other, x: 790, y: 490, w: 160, h: 56, label: "Other integrations", sublabel: "Telegraf, mgmt packs", kind: external, info: "Management packs and agents (for example Telegraf for application monitoring) also deliver data through the collectors." }
+edges:
+  - { from: users, to: lb, label: "1. HTTPS", kind: mgmt }
+  - { from: lb, to: primary, label: "2. UI/API", kind: mgmt }
+  - { from: primary, to: replica, label: "replication", kind: control, bidirectional: true }
+  - { from: primary, to: data1, kind: control }
+  - { from: replica, to: data2, kind: control }
+  - { from: col1, to: data1, label: "4. forward data", kind: data }
+  - { from: col2, to: data2, kind: data }
+  - { from: vc, to: col2, label: "3. poll (adapter)", kind: data, dashed: true }
+  - { from: nsx, to: col2, kind: data, dashed: true }
+  - { from: vsan, to: col2, kind: data, dashed: true }
+  - { from: other, to: col2, kind: data, dashed: true }
+  - { from: fm, to: primary, label: "lifecycle", kind: mgmt }
+  - { from: primary, to: sddcm, label: "integration", kind: dependency, dashed: true }
+steps:
+  - { title: "Users reach the cluster", text: "Operators use the primary node FQDN, or an external load balancer VIP in front of an HA cluster.", highlight: [users, lb, primary] }
+  - { title: "Collectors poll data sources", text: "Adapter instances run on collectors (cloud proxies), not on the analytics nodes. Each adapter polls its source on a schedule with stored credentials and must trust the source's certificate.", highlight: [col1, col2, vc, nsx, vsan, other] }
+  - { title: "Data reaches the analytics cluster", text: "Collectors forward metrics, properties and events to the analytics nodes, which store them and run analytics (thresholds, symptoms, alerts, capacity).", highlight: [col1, col2, data1, data2, primary] }
+  - { title: "HA inside the cluster", text: "The replica node mirrors the primary so a single node failure is recovered quickly. Data nodes add capacity. All nodes must be the same size.", highlight: [primary, replica, data1, data2] }
+  - { title: "Fleet management beside the cluster", text: "The fleet management appliance handles lifecycle, certificates and passwords for the management components. It is a separate appliance, not a cluster node.", highlight: [fm, primary, sddcm] }

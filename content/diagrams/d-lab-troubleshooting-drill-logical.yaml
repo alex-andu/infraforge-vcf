@@ -1,0 +1,37 @@
+id: d-lab-troubleshooting-drill-logical
+title: "Troubleshooting drill: where each injected fault lives"
+description: >
+  The drill environment is the nested lab: DNS/NTP VM, router VM, three nested ESX hosts on a VLAN-aware Proxmox bridge,
+  and a vCenter (or the full management domain if deployed). Faults are injected at five points: a stale PTR record on
+  the DNS server, a stopped NTP service, an MTU reduction on one host's Proxmox tap devices, the vCenter heartbeat firewall ruleset disabled on one
+  host (simulating a network firewall blocking UDP 902), and a stopped hostd on one host. The learner finds each one with the six-step method and restores it.
+width: 1000
+height: 560
+groups:
+  - { id: g-infra, x: 20, y: 20, w: 300, h: 240, label: "Infrastructure services", kind: external }
+  - { id: g-hosts, x: 340, y: 20, w: 640, h: 240, label: "Nested ESX hosts", kind: compute }
+  - { id: g-mgmt, x: 20, y: 300, w: 960, h: 240, label: "Management", kind: mgmt }
+nodes:
+  - { id: dns, x: 50, y: 70, w: 240, h: 56, label: "infra01 DNS", sublabel: "fault 1: stale PTR", kind: external, component: dns-service, info: "Fault 1 changes the PTR record of esx03 to another name. Symptom: validation or certificate/name mismatch errors for one host." }
+  - { id: ntp, x: 50, y: 170, w: 240, h: 56, label: "infra01 NTP", sublabel: "fault 2: service stopped", kind: external, component: ntp-service, info: "Fault 2 stops the NTP service (and optionally offsets the VM clock). Symptom: hosts report NTP not synchronized; later TLS/SSO oddities." }
+  - { id: esx1, x: 370, y: 70, w: 180, h: 56, label: "esx01", kind: compute, component: esx-host, info: "Healthy reference host; use it to compare outputs." }
+  - { id: esx2, x: 580, y: 70, w: 180, h: 56, label: "esx02", sublabel: "fault 5: hostd stopped", kind: compute, component: esx-host, info: "Fault 5 stops hostd. Symptom: Host Client unreachable, vCenter operations on the host fail, VMs keep running." }
+  - { id: esx3, x: 790, y: 70, w: 170, h: 56, label: "esx03", sublabel: "fault 4: UDP 902 blocked", kind: compute, component: esx-host, info: "Fault 4 disables the vpxHeartbeats firewall ruleset on esx03, simulating a firewall that drops UDP 902. Symptom: host goes Not Responding about 60 s after reconnect." }
+  - { id: rtr, x: 470, y: 170, w: 380, h: 56, label: "vmbr0 taps of esx02", sublabel: "fault 3: MTU 1500 on tap202i0/i1", kind: network, component: physical-network, info: "Fault 3 sets esx02 tap devices on the Proxmox bridge to MTU 1500. Symptom: vSAN health network warnings involving esx02; vmkping -d -s 8972 fails while 1472 works." }
+  - { id: vc, x: 120, y: 360, w: 240, h: 64, label: "vCenter", sublabel: "receives heartbeats", kind: mgmt, component: vcenter, info: "vCenter (vpxd) expects UDP 902 heartbeats from each host every 10 s and marks the host not responding after 60 s without them." }
+  - { id: ops, x: 400, y: 360, w: 240, h: 64, label: "VCF Operations", sublabel: "if deployed", kind: ops, component: vcf-operations, info: "If the management domain is deployed, VCF Health cards and alerts give the observe/scope view." }
+  - { id: you, x: 680, y: 360, w: 260, h: 64, label: "Learner", sublabel: "six-step method", kind: external, info: "For each fault: symptom, scope, hypotheses, evidence, fix, verification." }
+edges:
+  - { from: esx3, to: vc, label: "UDP 902 heartbeat", kind: control, dashed: true }
+  - { from: esx1, to: rtr, kind: data }
+  - { from: esx2, to: rtr, kind: data }
+  - { from: esx3, to: rtr, kind: data }
+  - { from: dns, to: esx3, label: "PTR", kind: dependency, dashed: true }
+  - { from: ntp, to: esx1, label: "time", kind: dependency, dashed: true }
+  - { from: ops, to: you, kind: data }
+  - { from: vc, to: you, kind: data }
+steps:
+  - { title: "Fault 1 and 2", text: "Dependencies: DNS and NTP.", highlight: [dns, ntp] }
+  - { title: "Fault 3", text: "Data path: MTU of esx02 tap devices on the Proxmox bridge.", highlight: [rtr, esx2] }
+  - { title: "Fault 4", text: "Heartbeat path from esx03 to vCenter.", highlight: [esx3, vc] }
+  - { title: "Fault 5", text: "Host agent: hostd on esx02.", highlight: [esx2] }

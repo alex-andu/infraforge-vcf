@@ -1,0 +1,39 @@
+id: d01-vm-storage-network-path
+title: Where a VM's disk and network traffic actually go
+description: >
+  A VM sees a virtual SCSI or NVMe controller with a virtual disk and a virtual NIC (vmxnet3). The virtual disk is a
+  .vmdk file on a datastore (VMFS on local or SAN disks, NFS, or vSAN). The virtual NIC connects to a port group on a
+  virtual switch (standard or distributed); the switch forwards to other VMs on the same host in memory or out through
+  physical uplinks (vmnics) to the physical switch. The host itself uses VMkernel adapters (vmk0 for management, other
+  vmks for vMotion and vSAN) on the same virtual switches.
+width: 1000
+height: 600
+groups:
+  - { id: g-host, x: 20, y: 20, w: 960, h: 440, label: "ESX host", kind: compute }
+nodes:
+  - { id: vm, x: 400, y: 50, w: 200, h: 56, label: "VM", sublabel: "guest OS", kind: vm, info: "Sees only virtual hardware: controllers, disks, NICs." }
+  - { id: vdisk, x: 60, y: 150, w: 220, h: 56, label: "Virtual disk + controller", sublabel: "PVSCSI / NVMe / SATA", kind: storage, info: "The guest sees a disk on a virtual controller. Behind it is a .vmdk file." }
+  - { id: vmdk, x: 60, y: 260, w: 220, h: 56, label: ".vmdk on a datastore", sublabel: "thin or thick", kind: storage, info: "Descriptor plus data (-flat.vmdk) files. Thin disks grow on demand; thick disks allocate all space up front." }
+  - { id: ds, x: 60, y: 370, w: 220, h: 56, label: "Datastore", sublabel: "VMFS / NFS / vSAN", kind: storage, info: "VMFS: VMware cluster file system on block devices. NFS: file share from a NAS. vSAN: hosts' local disks pooled. vVols is deprecated starting with VCF 9.0." }
+  - { id: vnic, x: 720, y: 150, w: 220, h: 56, label: "Virtual NIC", sublabel: "vmxnet3", kind: network, info: "Paravirtual NIC; needs VMware Tools / open-vm-tools drivers in the guest for best performance." }
+  - { id: pg, x: 720, y: 260, w: 220, h: 56, label: "Port group", sublabel: "VLAN, policies", kind: network, info: "A named set of ports with the same VLAN and policies. VMs and VMkernel adapters attach to port groups." }
+  - { id: vsw, x: 400, y: 260, w: 200, h: 56, label: "Virtual switch", sublabel: "vSS or VDS", kind: network, info: "Standard switch: per host. Distributed switch: one config in vCenter applied to many hosts (VCF uses VDS)." }
+  - { id: vmk, x: 400, y: 150, w: 200, h: 56, label: "VMkernel adapters", sublabel: "vmk0 mgmt, vMotion, vSAN", kind: mgmt, info: "Host's own IP interfaces. vmk0 normally carries management." }
+  - { id: uplink, x: 400, y: 370, w: 200, h: 56, label: "Uplinks (vmnic0/1)", kind: network, info: "Physical NICs that connect the virtual switch to the physical network." }
+  - { id: pswitch, x: 400, y: 510, w: 200, h: 56, label: "Physical switch", sublabel: "VLAN trunk", kind: external, component: physical-network, info: "Must trunk the VLANs used by the port groups and support the MTU you configure." }
+  - { id: array, x: 60, y: 510, w: 220, h: 56, label: "Disks / NAS / other hosts", kind: external, info: "Local disks, SAN LUNs, NFS server, or other vSAN hosts across the network." }
+edges:
+  - { from: vm, to: vdisk, kind: storage }
+  - { from: vdisk, to: vmdk, kind: storage }
+  - { from: vmdk, to: ds, kind: storage }
+  - { from: ds, to: array, kind: storage }
+  - { from: vm, to: vnic, kind: data }
+  - { from: vnic, to: pg, kind: data }
+  - { from: pg, to: vsw, kind: data }
+  - { from: vmk, to: vsw, kind: mgmt }
+  - { from: vsw, to: uplink, kind: data }
+  - { from: uplink, to: pswitch, label: "802.1Q trunk", kind: data }
+steps:
+  - { title: "Storage path", text: "Virtual disk, .vmdk file, datastore, physical storage.", highlight: [vdisk, vmdk, ds, array] }
+  - { title: "Network path", text: "vNIC, port group, virtual switch, uplinks, physical switch.", highlight: [vnic, pg, vsw, uplink, pswitch] }
+  - { title: "Host traffic", text: "VMkernel adapters carry the host's own management, vMotion and vSAN traffic.", highlight: [vmk, vsw] }

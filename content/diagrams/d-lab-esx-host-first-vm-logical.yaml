@@ -1,0 +1,33 @@
+id: d-lab-esx-host-first-vm-logical
+title: Lab topology - nested ESX host on Proxmox with a first VM
+description: >
+  The physical Proxmox VE server runs a VM called esx-lab-01 with CPU type "host" and nested virtualization enabled,
+  two vmxnet3 NICs on a Proxmox Linux bridge (VLAN-aware), a SATA boot disk and a SATA data disk. Inside it, ESX 9
+  boots from the first disk, creates vmk0 on vSwitch0 with the Management Network port group, and a VMFS datastore on
+  the second disk. The learner's workstation reaches the Host Client at https://esx-lab-01/ui. A small Linux VM
+  (lab-vm01) runs inside ESX on the VM Network port group with its disk on datastore1.
+width: 1000
+height: 600
+groups:
+  - { id: g-pve, x: 20, y: 20, w: 960, h: 450, label: "Proxmox VE server (physical)", kind: zone }
+  - { id: g-esx, x: 260, y: 70, w: 700, h: 380, label: "VM: esx-lab-01 (nested ESX 9)", kind: compute }
+nodes:
+  - { id: bridge, x: 40, y: 230, w: 190, h: 56, label: "Linux bridge vmbr", sublabel: "VLAN-aware", kind: network, info: "Proxmox bridge that connects the nested ESX vmxnet3 NICs to the physical network." }
+  - { id: pvestore, x: 40, y: 380, w: 190, h: 56, label: "Proxmox storage", sublabel: "NVMe / SSD", kind: storage, info: "Backs the nested ESX VM's virtual SATA disks." }
+  - { id: vmk0, x: 290, y: 110, w: 200, h: 56, label: "vmk0", sublabel: "Management Network", kind: mgmt, info: "The host's management IP (static, with DNS records)." }
+  - { id: vsw0, x: 290, y: 230, w: 200, h: 56, label: "vSwitch0", sublabel: "uplinks vmnic0/1", kind: network, info: "Default standard switch created at install with Management Network and VM Network port groups." }
+  - { id: ds1, x: 290, y: 370, w: 200, h: 56, label: "datastore1", sublabel: "VMFS-6", kind: storage, info: "Created on the second virtual disk in the Host Client." }
+  - { id: labvm, x: 560, y: 230, w: 200, h: 56, label: "lab-vm01", sublabel: "small Linux guest", kind: vm, info: "Your first VM: 1 vCPU, 1-2 GB RAM, thin disk, vmxnet3 NIC, open-vm-tools." }
+  - { id: hostd, x: 560, y: 110, w: 200, h: 56, label: "Host Client (hostd)", sublabel: "https://<host>/ui", kind: mgmt, info: "Web UI served by the host itself." }
+  - { id: ws, x: 400, y: 510, w: 220, h: 56, label: "Your workstation", sublabel: "browser + SSH", kind: external, info: "Reaches the Host Client and SSH over the management network." }
+edges:
+  - { from: bridge, to: vsw0, label: "vmxnet3 NICs", kind: data, bidirectional: true }
+  - { from: pvestore, to: ds1, label: "virtual SATA disk", kind: storage }
+  - { from: vmk0, to: vsw0, kind: mgmt }
+  - { from: labvm, to: vsw0, label: "VM Network", kind: data }
+  - { from: labvm, to: ds1, label: ".vmx/.vmdk", kind: storage }
+  - { from: ws, to: hostd, label: "HTTPS", kind: mgmt }
+steps:
+  - { title: "Outer layer", text: "Proxmox provides CPU (type host, nested on), bridge and disks.", highlight: [bridge, pvestore] }
+  - { title: "ESX host", text: "ESX creates vmk0 on vSwitch0 and you add a VMFS datastore.", highlight: [vmk0, vsw0, ds1, hostd] }
+  - { title: "First VM", text: "lab-vm01 runs on datastore1 and the VM Network port group.", highlight: [labvm, ds1, vsw0] }

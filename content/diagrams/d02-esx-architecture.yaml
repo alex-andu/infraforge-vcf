@@ -1,0 +1,48 @@
+id: d02-esx-architecture
+title: Inside an ESX 9 host and how it is managed
+description: >
+  Layers of an ESX host from bottom to top. Physical hardware (CPU, memory, NICs, storage controllers) is owned by the
+  VMkernel, which schedules resources and runs one virtual machine monitor per VM. VMkernel adapters (vmk0 management,
+  vmk1 vMotion, vmk2 vSAN) give the host its own IP interfaces. User-world agents sit on top of the VMkernel: hostd (host
+  agent, serves the Host Client and the host API), vpxa (vCenter agent, installed when the host joins vCenter) and FDM
+  (vSphere HA agent, pushed when HA is enabled). The DCUI, ESX Shell and SSH are local and remote access paths that lockdown
+  mode restricts. vCenter talks to vpxa, which relays to hostd; an administrator talks to vCenter with the vSphere Client,
+  or directly to hostd with the Host Client. VMs run on the VMkernel, so agent failures do not stop VMs.
+width: 1000
+height: 640
+groups:
+  - { id: g-host, x: 20, y: 130, w: 700, h: 490, label: "ESX host", kind: compute }
+  - { id: g-userworld, x: 40, y: 160, w: 660, h: 110, label: "User-world management agents", kind: mgmt }
+  - { id: g-access, x: 740, y: 330, w: 240, h: 290, label: "Direct access (restricted by lockdown)", kind: security }
+nodes:
+  - { id: vc, x: 120, y: 30, w: 170, h: 56, label: "vCenter", sublabel: "management domain", kind: mgmt, component: vcenter, info: "Manages the host through vpxa using the vpxuser account it creates when the host is added. Configures HA (pushes FDM) and DRS." }
+  - { id: admin, x: 560, y: 30, w: 170, h: 56, label: "Administrator", sublabel: "vSphere / Host Client", kind: external, info: "Normally uses the vSphere Client against vCenter. The VMware Host Client talks to hostd directly and is mainly for standalone hosts or emergencies." }
+  - { id: vpxa, x: 60, y: 195, w: 180, h: 56, label: "vpxa", sublabel: "vCenter agent", kind: mgmt, info: "Installed by vCenter when the host is added. Receives vCenter actions and relays them to hostd. Log: /var/log/vpxa.log. Restart: /etc/init.d/vpxa restart." }
+  - { id: hostd, x: 270, y: 195, w: 180, h: 56, label: "hostd", sublabel: "host agent / API", kind: mgmt, info: "The host's own management service and API endpoint. Serves the Host Client. Log: /var/log/hostd.log. If it hangs the host shows Not responding but VMs keep running." }
+  - { id: fdm, x: 480, y: 195, w: 180, h: 56, label: "FDM", sublabel: "vSphere HA agent", kind: mgmt, info: "Fault Domain Manager agent, installed when HA is enabled. Elects a primary, exchanges heartbeats every second, restarts VMs. Works without vCenter. Log: /var/log/fdm.log." }
+  - { id: vm1, x: 60, y: 300, w: 140, h: 56, label: "VM", sublabel: "VMM", kind: vm, info: "Each running VM has its own virtual machine monitor (VMM) in the VMkernel. VMs do not depend on hostd/vpxa to keep running." }
+  - { id: vm2, x: 220, y: 300, w: 140, h: 56, label: "VM", sublabel: "VMM", kind: vm, info: "Another VM. CPU and memory are scheduled by the VMkernel according to shares, reservations and limits." }
+  - { id: vmk, x: 400, y: 300, w: 300, h: 56, label: "VMkernel adapters", sublabel: "vmk0 mgmt · vmk1 vMotion · vmk2 vSAN", kind: network, info: "The host's own IP interfaces, each tagged with services. vmk0 (management) is created at install; in VCF the vMotion and vSAN adapters are created by VCF workflows from the network pool." }
+  - { id: vmkernel, x: 60, y: 400, w: 640, h: 70, label: "VMkernel", sublabel: "CPU/memory scheduler · storage stack · network stack · vSAN · NSX data plane", kind: compute, component: esx-host, info: "The ESX kernel. Owns the hardware, schedules vCPUs, manages memory, runs storage (VMFS, NFS, vSAN) and networking (VDS, NSX) data paths. Logs to /var/log/vmkernel.log." }
+  - { id: hw, x: 60, y: 520, w: 640, h: 70, label: "Physical server", sublabel: "CPU · RAM · NICs · disks/controllers", kind: external, info: "Hardware must be on the compatibility guide for production. In the home lab this is a nested VM on Proxmox." }
+  - { id: dcui, x: 770, y: 370, w: 180, h: 56, label: "DCUI", sublabel: "console", kind: security, info: "Direct Console User Interface. In strict lockdown mode the DCUI service is stopped. In normal lockdown only DCUI.Access users and exception users with admin privileges can log in." }
+  - { id: shell, x: 770, y: 450, w: 180, h: 56, label: "ESX Shell / SSH", sublabel: "off by default", kind: security, info: "Deactivated by default. Enable only for troubleshooting. Under lockdown, only DCUI.Access users and exception users with admin privileges can use them." }
+  - { id: hostclient, x: 770, y: 530, w: 180, h: 56, label: "Host Client", sublabel: "https://host/ui", kind: security, info: "Web UI served by hostd. In lockdown mode the host API is limited to vpxuser (vCenter) and exception users." }
+edges:
+  - { from: admin, to: vc, label: "vSphere Client", kind: mgmt }
+  - { from: vc, to: vpxa, label: "manage (vpxuser)", kind: mgmt }
+  - { from: vpxa, to: hostd, label: "relay", kind: mgmt }
+  - { from: vc, to: fdm, label: "configure HA", kind: control, dashed: true }
+  - { from: hostd, to: vmkernel, kind: control }
+  - { from: vm1, to: vmkernel, kind: data }
+  - { from: vm2, to: vmkernel, kind: data }
+  - { from: vmk, to: vmkernel, kind: data }
+  - { from: vmkernel, to: hw, kind: data }
+  - { from: hostclient, to: hostd, label: "direct", kind: mgmt, dashed: true }
+steps:
+  - { title: "Hardware and VMkernel", text: "ESX is a type 1 hypervisor: the VMkernel owns the server's CPU, memory, NICs and storage.", highlight: [hw, vmkernel] }
+  - { title: "VMs run on the VMkernel", text: "Every VM gets a VMM inside the VMkernel. This is why VMs keep running when management agents fail.", highlight: [vm1, vm2, vmkernel] }
+  - { title: "Host networking", text: "VMkernel adapters carry host services: management, vMotion, vSAN. VCF creates vMotion/vSAN adapters for you.", highlight: [vmk] }
+  - { title: "Management agents", text: "hostd is the host API; vpxa is vCenter's agent; FDM is the HA agent pushed when HA is enabled.", highlight: [hostd, vpxa, fdm] }
+  - { title: "Management path", text: "Admin → vSphere Client → vCenter → vpxa → hostd. The Host Client bypasses vCenter and talks to hostd directly.", highlight: [admin, vc, vpxa, hostd, hostclient] }
+  - { title: "Direct access and lockdown", text: "DCUI, ESX Shell and SSH are restricted by lockdown mode; strict lockdown stops the DCUI.", highlight: [dcui, shell, hostclient] }

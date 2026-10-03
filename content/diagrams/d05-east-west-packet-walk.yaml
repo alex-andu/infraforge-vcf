@@ -1,0 +1,43 @@
+id: d05-east-west-packet-walk
+title: East-west packet walk – same host, different hosts, different segments
+description: >
+  Two ESX hosts. Host esx-01 runs VM-A and VM-B on segment seg-web (172.16.10.0/24). Host esx-02 runs VM-C on seg-web
+  and VM-D on seg-app (172.16.20.0/24). Both segments connect to a Tier-1 gateway whose distributed router (DR)
+  exists in each host's kernel. Case 1: VM-A to VM-B is switched locally inside esx-01. Case 2: VM-A to VM-C is
+  encapsulated in Geneve by esx-01's TEP with the seg-web VNI and decapsulated by esx-02's TEP. Case 3: VM-A to VM-D
+  is routed by the Tier-1 DR on esx-01, then tunnelled with the seg-app VNI to esx-02. No Edge node is involved.
+width: 1000
+height: 600
+groups:
+  - { id: g-h1, x: 20, y: 20, w: 440, h: 440, label: "esx-01 (host transport node)", kind: compute }
+  - { id: g-h2, x: 540, y: 20, w: 440, h: 440, label: "esx-02 (host transport node)", kind: compute }
+nodes:
+  - { id: vma, x: 50, y: 60, w: 160, h: 56, label: "VM-A", sublabel: "172.16.10.11 web", kind: vm, info: "Source VM on seg-web. Its default gateway 172.16.10.1 is the Tier-1 downlink, answered by the local DR." }
+  - { id: vmb, x: 270, y: 60, w: 160, h: 56, label: "VM-B", sublabel: "172.16.10.12 web", kind: vm, info: "Same segment, same host as VM-A." }
+  - { id: sw1, x: 50, y: 170, w: 380, h: 50, label: "seg-web / seg-app switching", sublabel: "VDS with NSX", kind: nsx, info: "Host switching for NSX segments. Local destinations are delivered without leaving the host." }
+  - { id: dr1, x: 50, y: 260, w: 380, h: 50, label: "Tier-1 DR (in kernel)", sublabel: "gateways .10.1 and .20.1", kind: nsx, info: "Distributed router instance of the Tier-1 on this host. Routes between segments locally." }
+  - { id: tep1, x: 140, y: 360, w: 200, h: 56, label: "TEP 192.168.13.11", kind: nsx, info: "Encapsulates frames for remote MACs in Geneve with the segment VNI." }
+  - { id: vmc, x: 570, y: 60, w: 160, h: 56, label: "VM-C", sublabel: "172.16.10.13 web", kind: vm, info: "Same segment as VM-A but on another host." }
+  - { id: vmd, x: 790, y: 60, w: 160, h: 56, label: "VM-D", sublabel: "172.16.20.21 app", kind: vm, info: "On seg-app, a different subnet: reaching it requires routing." }
+  - { id: sw2, x: 570, y: 170, w: 380, h: 50, label: "seg-web / seg-app switching", sublabel: "VDS with NSX", kind: nsx, info: "Switching on esx-02." }
+  - { id: dr2, x: 570, y: 260, w: 380, h: 50, label: "Tier-1 DR (in kernel)", kind: nsx, info: "Same Tier-1 DR exists here; return traffic from VM-D is routed locally on esx-02." }
+  - { id: tep2, x: 660, y: 360, w: 200, h: 56, label: "TEP 192.168.13.12", kind: nsx, info: "Decapsulates Geneve and delivers the inner frame to the segment identified by the VNI." }
+  - { id: underlay, x: 380, y: 510, w: 240, h: 56, label: "Physical underlay", sublabel: "TEP VLAN", kind: network, component: physical-network, info: "Carries UDP/Geneve between TEPs. MTU must allow the encapsulation overhead." }
+edges:
+  - { from: vma, to: sw1, kind: data }
+  - { from: sw1, to: vmb, label: "case 1: local", kind: data }
+  - { from: sw1, to: dr1, label: "to gateway", kind: data }
+  - { from: sw1, to: tep1, kind: data }
+  - { from: tep1, to: underlay, label: "Geneve VNI", kind: overlay, dashed: true }
+  - { from: underlay, to: tep2, kind: overlay, dashed: true }
+  - { from: tep2, to: sw2, kind: data }
+  - { from: sw2, to: vmc, label: "case 2", kind: data }
+  - { from: sw2, to: vmd, label: "case 3", kind: data }
+  - { from: dr2, to: sw2, kind: data }
+steps:
+  - { title: "Case 1 – same segment, same host", text: "VM-A to VM-B: the host switch finds VM-B's MAC on a local port and delivers it. The frame never leaves esx-01.", highlight: [vma, sw1, vmb] }
+  - { title: "Case 2 – lookup", text: "VM-A to VM-C: esx-01 finds VM-C's MAC behind TEP 192.168.13.12 (learned via the CCP).", highlight: [vma, sw1, tep1] }
+  - { title: "Case 2 – Geneve", text: "esx-01 wraps the frame in Geneve with seg-web's VNI and sends it TEP to TEP across the underlay.", highlight: [tep1, underlay, tep2] }
+  - { title: "Case 2 – delivery", text: "esx-02 decapsulates, sees the VNI, and delivers to VM-C on seg-web.", highlight: [tep2, sw2, vmc] }
+  - { title: "Case 3 – routed at the source", text: "VM-A to VM-D (another subnet): VM-A sends to its gateway; the Tier-1 DR on esx-01 routes the packet into seg-app locally.", highlight: [vma, sw1, dr1] }
+  - { title: "Case 3 – tunnel on the destination segment", text: "esx-01 now forwards on seg-app: VM-D is behind esx-02's TEP, so it encapsulates with the seg-app VNI. esx-02 delivers to VM-D. No Edge involved.", highlight: [dr1, tep1, underlay, tep2, sw2, vmd] }

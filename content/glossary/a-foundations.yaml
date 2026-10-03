@@ -1,0 +1,303 @@
+terms:
+  - id: vcf
+    term: VCF
+    expansion: VMware Cloud Foundation
+    definition: >
+      Broadcom's private cloud platform. In 9.x it is delivered as one product made of vSphere (ESX + vCenter), vSAN,
+      NSX, VCF Operations and VCF Automation, deployed by the VCF Installer and organised into fleets, instances and
+      domains.
+    whyItMatters: >
+      Everything on the 2V0-17.25 exam assumes you know which component does what inside VCF and why the platform
+      is managed as a whole instead of as separate products.
+    version: vcf9
+    related: [sddc, private-cloud, vvf, fleet, vcf-instance]
+    lessons: [what-is-vcf, vcf-vs-vsphere, vcf9-terminology]
+
+  - id: vvf
+    term: vSphere Foundation
+    expansion: VMware vSphere Foundation (VVF)
+    definition: >
+      The smaller 9.x offering: vSphere plus vSAN plus VCF Operations. It does not include the cloud management and
+      integrated automation (VCF Automation) or NSX networking that VCF includes. The same VCF Installer can deploy it.
+    whyItMatters: >
+      Exam questions contrast VCF and VVF. If a scenario needs self-service IaaS, NSX networking or multi-tenancy, VVF
+      is the wrong answer.
+    version: vcf9
+    related: [vcf, sddc]
+    lessons: [vcf-vs-vsphere]
+
+  - id: sddc
+    term: SDDC
+    expansion: Software-Defined Data Center
+    definition: >
+      A data center in which compute, storage and networking are all virtualized and delivered as software, so the
+      whole stack can be provisioned, configured and lifecycle-managed through automation instead of by hand.
+    whyItMatters: >
+      VCF is VMware's packaged SDDC. SDDC Manager is named after it, and the exam's private cloud objective assumes
+      you understand the idea.
+    version: general
+    related: [private-cloud, vcf, hypervisor]
+    lessons: [private-cloud-and-sddc, what-is-vcf]
+
+  - id: private-cloud
+    term: Private cloud
+    definition: >
+      Cloud-style infrastructure (self-service, automated, pooled, metered, governed by policy) run for one
+      organisation on infrastructure it controls, usually on-premises or at the edge.
+    whyItMatters: >
+      Exam objective 2.1 asks for the principles, use cases and value proposition of private cloud; VCF 9 is
+      positioned as a private cloud platform.
+    version: general
+    related: [sddc, vcf]
+    lessons: [private-cloud-and-sddc]
+
+  - id: hypervisor
+    term: Hypervisor
+    definition: >
+      Software that creates and runs virtual machines by sharing one physical computer's CPU, memory, storage and
+      network between them while keeping them isolated. Type 1 (bare-metal) hypervisors such as ESX run directly on
+      the hardware; type 2 (hosted) hypervisors run as an application on a normal operating system.
+    whyItMatters: >
+      Every later topic (vCenter, vSAN, NSX, VCF) sits on top of the hypervisor. Knowing what it does explains why a
+      host failure, CPU feature mismatch or memory pressure affects VMs the way it does.
+    version: general
+    related: [esx, vmkernel, vm]
+    lessons: [hypervisors-and-esx]
+
+  - id: esx
+    term: ESX
+    definition: >
+      VMware's type 1 hypervisor. In VCF 9 / vSphere 9 the product is called ESX again (it was named ESXi from 5.0
+      through 8.x). It installs directly on the server, runs the VMkernel and hosts the virtual machines.
+    whyItMatters: >
+      Every VCF domain is built from ESX hosts. Exam items and the 9.x documentation say "ESX"; older material and
+      many commands, file names and KB articles still say "ESXi".
+    version: vcf9
+    related: [hypervisor, vmkernel, host-client, cluster]
+    lessons: [hypervisors-and-esx, vcf9-terminology]
+    labs: [lab-esx-host-first-vm]
+
+  - id: vmkernel
+    term: VMkernel
+    definition: >
+      The ESX operating-system kernel. It schedules CPU, manages memory, runs the storage and network stacks and
+      device drivers, and hosts the VMM for each VM. "VMkernel adapter" (vmk0, vmk1 ...) is the network interface ESX
+      itself uses for management, vMotion, vSAN and other host services.
+    whyItMatters: >
+      Troubleshooting host networking in VCF is mostly about VMkernel adapters: management on vmk0, plus vMotion,
+      vSAN and TEP interfaces.
+    version: general
+    related: [esx, hypervisor]
+    lessons: [hypervisors-and-esx, storage-network-virtualization-basics]
+
+  - id: vm
+    term: Virtual machine
+    expansion: VM
+    definition: >
+      A software computer: a set of files (configuration .vmx, virtual disks .vmdk, NVRAM, logs) plus virtual
+      hardware (vCPU, memory, virtual disks, virtual NICs) that a hypervisor runs in isolation from other VMs.
+    whyItMatters: >
+      VMs are what the private cloud ultimately delivers. Objective 2.2 asks you to deploy, configure and manage them.
+    version: general
+    related: [vcpu, vmware-tools, vm-hardware-version]
+    lessons: [hypervisors-and-esx, storage-network-virtualization-basics]
+    labs: [lab-esx-host-first-vm]
+
+  - id: vcpu
+    term: vCPU
+    expansion: Virtual CPU
+    definition: >
+      A virtual processor presented to a VM. The VMkernel CPU scheduler time-slices vCPUs onto physical CPU cores
+      or hardware threads; a vCPU is not pinned to a physical core.
+    whyItMatters: >
+      Oversizing VMs with too many vCPUs is a classic performance problem (higher scheduling wait, "CPU ready").
+    version: general
+    related: [vm, cpu-overcommitment]
+    lessons: [cpu-memory-virtualization]
+
+  - id: cpu-overcommitment
+    term: Overcommitment
+    definition: >
+      Configuring more virtual resources than physically exist, for example 80 vCPUs on a 32-core host, or VMs whose
+      configured memory adds up to more than the host's RAM. ESX handles CPU overcommit by time-slicing and memory
+      overcommit with sharing, ballooning, compression and swapping.
+    whyItMatters: >
+      Overcommitment is the economic reason virtualization works, and the reason reservations, shares and limits
+      exist.
+    version: general
+    related: [vcpu, balloon-driver]
+    lessons: [cpu-memory-virtualization]
+
+  - id: balloon-driver
+    term: Balloon driver
+    expansion: vmmemctl
+    definition: >
+      A driver installed with VMware Tools inside the guest OS. When the host is short of memory it "inflates",
+      asking the guest to give up the pages the guest considers least valuable so ESX can reclaim them.
+    whyItMatters: >
+      Ballooning is the cheapest reclamation technique, and it only works if VMware Tools is installed and running.
+    version: general
+    related: [vmware-tools, cpu-overcommitment]
+    lessons: [cpu-memory-virtualization]
+
+  - id: vmware-tools
+    term: VMware Tools
+    definition: >
+      A set of drivers and services installed in the guest OS (or open-vm-tools on Linux) that provides optimized
+      drivers, the memory balloon driver, guest heartbeats, clean shutdown, time and guest information to ESX and
+      vCenter.
+    whyItMatters: >
+      Without it you lose graceful shutdown, guest IP reporting, ballooning and vSphere HA VM Monitoring heartbeats.
+    version: general
+    related: [vm, balloon-driver, ha]
+    lessons: [hypervisors-and-esx, cpu-memory-virtualization, clusters-ha-drs-intro]
+    labs: [lab-esx-host-first-vm]
+
+  - id: vm-hardware-version
+    term: Virtual hardware version
+    expansion: VM compatibility
+    definition: >
+      The version of the virtual hardware a VM presents (for example version 22 for ESX 9.0, 21 for ESXi 8.0 U2/U3).
+      It decides which features and maximums a VM can use and which hosts can run it.
+    whyItMatters: >
+      A VM created with a newer hardware version cannot run on an older host; upgrades are one-way.
+    version: general
+    related: [vm, esx]
+    lessons: [storage-network-virtualization-basics, hypervisors-and-esx]
+
+  - id: host-client
+    term: VMware Host Client
+    definition: >
+      The HTML5 web UI built into every ESX host (https://<host>/ui) for managing that single host and its VMs when no
+      vCenter exists or vCenter is unavailable.
+    whyItMatters: >
+      You use it to build the first hosts before VCF Installer runs and as a break-glass tool when vCenter is down.
+    version: general
+    related: [esx]
+    lessons: [hypervisors-and-esx]
+    labs: [lab-esx-host-first-vm]
+
+  - id: cluster
+    term: vSphere cluster
+    definition: >
+      A group of ESX hosts managed by one vCenter as a single pool of CPU and memory, on which features such as
+      vSphere HA, DRS and vSAN are enabled. In VCF every domain contains one or more clusters.
+    whyItMatters: >
+      The cluster is the unit you size, expand, patch and protect in VCF; HA and DRS only exist at cluster level.
+    version: general
+    related: [ha, drs, resource-pool, vcf-domain]
+    lessons: [clusters-ha-drs-intro, vcf9-terminology]
+
+  - id: ha
+    term: vSphere HA
+    expansion: vSphere High Availability
+    definition: >
+      A cluster feature that restarts VMs on surviving hosts when a host fails (or becomes isolated, depending on the
+      isolation response). An HA agent on every host elects a primary host that monitors the others with network
+      heartbeats every second and datastore heartbeats.
+    whyItMatters: >
+      HA is enabled on every VCF cluster. It restarts VMs; it does not provide zero-downtime (that is Fault
+      Tolerance).
+    version: general
+    related: [cluster, drs, vmware-tools]
+    lessons: [clusters-ha-drs-intro]
+
+  - id: drs
+    term: DRS
+    expansion: vSphere Distributed Resource Scheduler
+    definition: >
+      A cluster feature in vCenter that places VMs on hosts at power-on and uses vMotion to rebalance them according
+      to demand, rules and the chosen automation level (Manual, Partially Automated, Fully Automated).
+    whyItMatters: >
+      DRS is enabled on VCF clusters and is needed for resource pools and for automated maintenance-mode
+      evacuation during lifecycle operations.
+    version: general
+    related: [cluster, ha, resource-pool, vmotion]
+    lessons: [clusters-ha-drs-intro]
+
+  - id: resource-pool
+    term: Resource pool
+    definition: >
+      A logical container in a DRS cluster (or standalone host) that groups VMs and carries shares, reservations and
+      limits for CPU and memory, so you can divide capacity between teams or tiers.
+    whyItMatters: >
+      Resource pools are not folders: they change resource entitlement. Misusing them for organisation is a classic
+      mistake and exam trap.
+    version: general
+    related: [drs, cluster]
+    lessons: [clusters-ha-drs-intro, cpu-memory-virtualization]
+
+  - id: vmotion
+    term: vMotion
+    definition: >
+      Live migration of a running VM from one ESX host to another with no downtime. It copies memory over a VMkernel
+      network enabled for vMotion; the VM keeps its identity and network connections.
+    whyItMatters: >
+      DRS load balancing and maintenance mode both depend on vMotion. CPU feature differences between hosts can
+      block it (EVC solves that).
+    version: general
+    related: [drs, cluster]
+    lessons: [clusters-ha-drs-intro, cpu-memory-virtualization]
+
+  - id: fleet
+    term: VCF fleet
+    definition: >
+      In VCF 9, an environment managed by a single set of fleet-level management components: VCF Operations and VCF
+      Automation. A fleet contains one or more VCF instances and may also include standalone vCenter instances
+      managed by the fleet's VCF Operations.
+    whyItMatters: >
+      Fleet is the top of the VCF 9 hierarchy. Questions about "where VCF Operations runs" or "how many VCF Operations
+      instances" depend on it: one per fleet, in the first instance's management domain.
+    version: vcf9
+    related: [vcf-instance, vcf-domain, vcf]
+    lessons: [vcf9-terminology, what-is-vcf]
+
+  - id: vcf-instance
+    term: VCF instance
+    definition: >
+      The compute, storage and networking infrastructure that runs business workloads, built from a management
+      domain and optional workload domains. Each instance has its own SDDC Manager, vCenter(s), NSX and ESX hosts.
+    whyItMatters: >
+      Instance-level components (SDDC Manager, the management vCenter and NSX) are per instance, while VCF
+      Operations and VCF Automation are per fleet. Mixing these levels up is a common error.
+    version: vcf9
+    related: [fleet, vcf-domain, management-domain, workload-domain]
+    lessons: [vcf9-terminology, what-is-vcf]
+
+  - id: vcf-domain
+    term: VCF domain
+    definition: >
+      A unit inside a VCF instance with its own vCenter, one or more vSphere clusters (HA and DRS enabled), vSphere
+      distributed switches, a dedicated or shared NSX Manager, optional NSX Edge clusters and storage. There are two
+      types: the management domain and workload domains.
+    whyItMatters: >
+      Domains are the unit of isolation and lifecycle in VCF: you upgrade, size and secure them independently.
+    version: vcf9
+    related: [management-domain, workload-domain, vcf-instance, cluster]
+    lessons: [vcf9-terminology]
+
+  - id: management-domain
+    term: Management domain
+    definition: >
+      The first domain of every VCF instance, created during deployment or convergence. It runs the instance's
+      management components (SDDC Manager, management vCenter, NSX Manager) and, in the first instance, the
+      fleet-level VCF Operations, fleet management and VCF Automation appliances. It can also run workloads.
+    whyItMatters: >
+      Its availability determines whether you can manage the rest of the instance. vCenter and NSX Manager
+      appliances for workload domains are also deployed here.
+    version: vcf9
+    related: [vcf-domain, workload-domain, vcf-instance]
+    lessons: [vcf9-terminology, what-is-vcf]
+
+  - id: workload-domain
+    term: Workload domain
+    expansion: VI workload domain
+    definition: >
+      An additional domain with dedicated ESX hosts and its own vCenter for running consumer workloads. In VCF 9 it
+      is created from VCF Operations; its vCenter (and NSX Manager, unless shared) is deployed into the management
+      domain.
+    whyItMatters: >
+      Workload domains separate tenants, environments or compliance zones and can be upgraded independently.
+    version: vcf9
+    related: [vcf-domain, management-domain]
+    lessons: [vcf9-terminology, vcf-vs-vsphere]

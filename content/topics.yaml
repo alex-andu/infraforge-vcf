@@ -1,0 +1,102 @@
+# Topics are the unit of mastery tracking. Lessons, questions, labs and incidents tag one or more topics.
+topics:
+  # foundations
+  - { id: private-cloud, title: Private Cloud Principles, domain: foundations, description: "Private cloud vision, use cases and value proposition." }
+  - { id: sddc, title: Software-Defined Data Center, domain: foundations, description: "Compute, storage and network virtualized and managed as one system." }
+  - { id: vcf-overview, title: VCF Overview, domain: foundations, description: "What VCF is, its components and how it differs from standalone vSphere." }
+  - { id: vcf-terminology, title: VCF 9 Terminology, domain: foundations, description: "Fleet, instance, domain, cluster and renamed products in VCF 9." }
+  - { id: hypervisors, title: Hypervisors, domain: foundations, description: "Type 1 vs type 2 hypervisors and the role of ESX." }
+  - { id: cpu-memory-virt, title: CPU and Memory Virtualization, domain: foundations, description: "vCPU scheduling, memory overcommit and reclamation." }
+  - { id: virtual-hardware, title: Virtual Machine Hardware, domain: foundations, description: "Virtual disks, NICs, VM hardware versions and VMware Tools." }
+
+  # vsphere
+  - { id: esx-host, title: ESX Host Architecture, domain: vsphere, description: "VMkernel, host services, management agents and host configuration." }
+  - { id: vcenter, title: vCenter, domain: vsphere, description: "vCenter appliance, services, inventory and its role in VCF." }
+  - { id: vsphere-cluster, title: vSphere Clusters, domain: vsphere, description: "Cluster creation, EVC and cluster-level configuration." }
+  - { id: vsphere-ha, title: vSphere HA, domain: vsphere, description: "Host failure detection, admission control and VM restart." }
+  - { id: drs, title: DRS and Resource Management, domain: vsphere, description: "DRS, resource pools, shares, reservations and limits." }
+  - { id: vm-management, title: VM Lifecycle, domain: vsphere, description: "Deploying, configuring, cloning, templating and migrating VMs." }
+  - { id: vsphere-permissions, title: vSphere Permissions, domain: vsphere, description: "Roles, privileges, permissions and inheritance in vCenter." }
+  - { id: vlcm, title: vSphere Lifecycle Manager, domain: vsphere, description: "Image-based cluster lifecycle, desired state and remediation." }
+
+  # storage
+  - { id: datastores, title: Datastores, domain: storage, description: "VMFS, NFS, vVols and datastore concepts." }
+  - { id: vsan-architecture, title: vSAN Architecture, domain: storage, description: "vSAN ESA vs OSA, objects, components and storage pools." }
+  - { id: vsan-policies, title: vSAN Storage Policies, domain: storage, description: "SPBM, failures to tolerate, RAID and policy compliance." }
+  - { id: vsan-resilience, title: vSAN Resilience, domain: storage, description: "Fault domains, stretched clusters and data availability." }
+  - { id: vsan-capacity, title: vSAN Capacity and Space Efficiency, domain: storage, description: "Compression, deduplication, slack space and capacity planning." }
+  - { id: vsan-health, title: vSAN Health and Troubleshooting, domain: storage, description: "Skyline/health checks, object health, resync and diagnostics." }
+
+  # networking
+  - { id: l2-l3, title: L2/L3 and VLANs, domain: networking, description: "Switching, routing, VLAN tagging and gateways." }
+  - { id: mtu, title: MTU and Jumbo Frames, domain: networking, description: "MTU requirements for overlay and storage traffic." }
+  - { id: dns, title: DNS, domain: networking, description: "Forward and reverse resolution as a hard VCF dependency." }
+  - { id: ntp, title: NTP, domain: networking, description: "Time synchronization and its impact on auth and certificates." }
+  - { id: vds, title: vSphere Distributed Switch, domain: networking, description: "VDS, port groups, uplinks, teaming and failover." }
+  - { id: vcf-network-design, title: VCF Network Design, domain: networking, description: "Management, vMotion, vSAN and TEP networks and switch models." }
+
+  # nsx
+  - { id: nsx-architecture, title: NSX Architecture, domain: nsx, description: "NSX Manager cluster, management, control and data planes." }
+  - { id: nsx-transport, title: Transport Zones and Nodes, domain: nsx, description: "Transport zones, transport nodes, host preparation and TEPs." }
+  - { id: nsx-segments, title: Segments and Overlay, domain: nsx, description: "Overlay and VLAN-backed segments, Geneve encapsulation." }
+  - { id: nsx-edge, title: NSX Edges, domain: nsx, description: "Edge nodes, edge clusters, sizing and HA." }
+  - { id: nsx-routing, title: Tier-0 and Tier-1 Routing, domain: nsx, description: "Gateway tiers, SR/DR, BGP/static routing and route advertisement." }
+  - { id: nsx-vpc, title: VPCs and VCF Networking, domain: nsx, description: "NSX VPCs, transit gateways and centralized/distributed connectivity in VCF 9." }
+  - { id: nsx-security, title: NSX Security, domain: nsx, description: "Distributed firewall, gateway firewall and NAT." }
+
+  # vcf architecture
+  - { id: vcf-fleet, title: Fleet and Instances, domain: vcf-architecture, description: "Fleet, VCF instance and domain hierarchy." }
+  - { id: management-domain, title: Management Domain, domain: vcf-architecture, description: "What runs in the management domain and why." }
+  - { id: workload-domains, title: Workload Domains, domain: workload-domains, description: "VI workload domains, their purpose and isolation." }
+  - { id: sddc-manager, title: SDDC Manager, domain: vcf-architecture, description: "SDDC Manager role in VCF 9 and its legacy role in VCF 5.x." }
+  - { id: fleet-management, title: Fleet Management, domain: vcf-architecture, description: "Fleet management capabilities in VCF Operations." }
+  - { id: component-communication, title: Component Communication, domain: vcf-architecture, description: "Which components talk to which, on what, and why." }
+  - { id: deployment-models, title: Deployment Models, domain: vcf-architecture, description: "Fleet and component deployment models, simple vs HA." }
+
+  # deployment
+  - { id: deployment-planning, title: Deployment Planning, domain: deployment, description: "Hardware, network, IP/VLAN, DNS, NTP and planning workbook." }
+  - { id: vcf-installer, title: VCF Installer, domain: deployment, description: "The VCF Installer appliance and the deployment workflow." }
+  - { id: deployment-validation, title: Deployment Validation, domain: deployment, description: "Pre-validation, validation and common deployment failures." }
+  - { id: vcenter-import, title: Importing Existing vCenter, domain: deployment, description: "Converging or importing existing vSphere into VCF." }
+
+  # workload domains
+  - { id: host-commissioning, title: Host Commissioning, domain: workload-domains, description: "Preparing and commissioning hosts into the VCF inventory." }
+  - { id: wld-storage, title: Workload Domain Storage, domain: workload-domains, description: "Principal and supplemental storage for domains." }
+  - { id: cluster-expansion, title: Cluster and Host Expansion, domain: workload-domains, description: "Adding and removing hosts and clusters." }
+  - { id: supervisor, title: vSphere Supervisor, domain: workload-domains, description: "Supervisor, namespaces and Supervisor services." }
+
+  # lifecycle
+  - { id: lcm-concepts, title: Lifecycle Concepts, domain: lifecycle, description: "Bundles, depots, binary management, BOM and compatibility." }
+  - { id: lcm-workflow, title: Upgrade Workflow, domain: lifecycle, description: "Sequencing, prechecks, upgrade order and remediation." }
+  - { id: lcm-recovery, title: Lifecycle Failure Recovery, domain: lifecycle, description: "Failed upgrades, retries, rollback considerations and recovery." }
+
+  # operations
+  - { id: vcf-ops-architecture, title: VCF Operations Architecture, domain: operations, description: "Nodes, cluster components, collectors and deployment options." }
+  - { id: metrics-properties, title: Metrics, Properties, Views and Reports, domain: operations, description: "Data model, views and reports in VCF Operations." }
+  - { id: dashboards-alerts, title: Dashboards, Alerts and Policies, domain: operations, description: "Dashboards, alert definitions, symptoms and policies." }
+  - { id: vcf-ops-logs, title: VCF Operations for Logs, domain: operations, description: "Log collection, search, queries and log alerts." }
+  - { id: network-ops, title: VCF Network Operations, domain: operations, description: "Network visibility, flows and network monitoring." }
+  - { id: health-diagnostics, title: Health and Diagnostics, domain: operations, description: "VCF Health and Diagnostics and storage operations." }
+  - { id: compliance-drift, title: Compliance and Drift, domain: operations, description: "Security hardening compliance, configuration drift and app monitoring." }
+
+  # automation
+  - { id: vcf-automation, title: VCF Automation, domain: automation, description: "Use cases, components and deployment options of VCF Automation." }
+  - { id: vcfa-tenancy, title: Regions and Tenancy, domain: automation, description: "Regions, organizations, provider networking and content libraries." }
+  - { id: vcfa-org-admin, title: Organization Administration, domain: automation, description: "Org networks, content, governance policies and extensibility." }
+  - { id: apis-powercli, title: APIs and PowerCLI, domain: automation, description: "REST APIs, PowerCLI and infrastructure automation." }
+
+  # security
+  - { id: identity-sso, title: Identity and SSO, domain: security, description: "VCF single sign-on, identity providers and the identity broker." }
+  - { id: rbac, title: Role-Based Access Control, domain: security, description: "Roles and permissions across VCF components." }
+  - { id: certificates, title: Certificates, domain: security, description: "Certificate chains, CAs, replacement and renewal." }
+  - { id: passwords, title: Password Management, domain: security, description: "Rotation, update and remediation of component credentials." }
+  - { id: licensing, title: License Management, domain: security, description: "VCF 9 licensing model and license management." }
+
+  # troubleshooting
+  - { id: troubleshooting-method, title: Troubleshooting Method, domain: troubleshooting, description: "Observe, Scope, Hypothesize, Validate, Remediate, Verify." }
+  - { id: logs-locations, title: Logs and Evidence, domain: troubleshooting, description: "Where VCF components log and how to read them." }
+
+  # design
+  - { id: design-availability, title: Availability and Failure Domains, domain: design, description: "Availability targets, failure domains, stretched and multi-site design." }
+  - { id: design-sizing, title: Sizing and Scalability, domain: design, description: "Capacity, sizing and scale-out decisions." }
+  - { id: design-tradeoffs, title: Network and Security Design, domain: design, description: "Network design, workload separation and security trade-offs." }

@@ -1,0 +1,246 @@
+commands:
+  - id: openssl-s-client-showcerts
+    technology: linux
+    title: Show the certificate chain a TLS server presents
+    purpose: See exactly which leaf and intermediate certificates a VCF component (vCenter, NSX, SDDC Manager, an offline depot, an IdP) sends, and whether the local trust store can verify them. Run it from the client that is failing, not only from your laptop.
+    syntax: openssl s_client -connect <host>:<port> -servername <host> -showcerts </dev/null
+    example: openssl s_client -connect vcenter-mgmt.lab.local:443 -servername vcenter-mgmt.lab.local -showcerts </dev/null
+    output: |
+      CONNECTED(00000003)
+      depth=1 DC = local, DC = lab, CN = LAB-ISSUING-CA
+      verify error:num=20:unable to get local issuer certificate
+      ---
+      Certificate chain
+       0 s:CN = vcenter-mgmt.lab.local
+         i:DC = local, DC = lab, CN = LAB-ISSUING-CA
+      -----BEGIN CERTIFICATE-----
+      ...
+      ---
+      Verify return code: 20 (unable to get local issuer certificate)
+    mistake: Forgetting -servername (SNI) on hosts that serve several names, or concluding that trust is fine because a browser on a domain-joined laptop shows no warning. The verify result depends on the trust store of the machine running the command.
+    lesson: certificate-management
+    version: general
+    source:
+      title: OpenSSL documentation - s_client
+      url: https://docs.openssl.org/master/man1/openssl-s_client/
+
+  - id: openssl-x509-text
+    technology: linux
+    title: Decode a certificate (issuer, subject, SAN, validity, key usage)
+    purpose: Check a certificate before importing it into VCF Operations, or a certificate saved from s_client, for the right SAN entries, dates, issuer and key usage.
+    syntax: openssl x509 -in <file.pem> -noout -text
+    example: openssl x509 -in nsx-vip.pem -noout -text | grep -A1 -E "Issuer:|Not After|Subject Alternative Name"
+    output: |
+              Issuer: DC = local, DC = lab, CN = LAB-ISSUING-CA
+                  Not After : Mar 14 09:12:44 2027 GMT
+              X509v3 Subject Alternative Name:
+                  DNS:nsx-mgmt.lab.local
+    mistake: Checking only the CN. Clients validate the hostname against the Subject Alternative Name list; a certificate whose SAN lacks the FQDN fails even if the CN is right.
+    lesson: certificate-management
+    version: general
+    source:
+      title: OpenSSL documentation - x509
+      url: https://docs.openssl.org/master/man1/openssl-x509/
+
+  - id: openssl-x509-dates
+    technology: linux
+    title: Show only the validity dates of a certificate
+    purpose: Quickly confirm whether a certificate is expired or about to expire (VCF auto-renewal acts 60 days before expiry).
+    syntax: openssl x509 -in <file.pem> -noout -dates
+    example: openssl x509 -in sddc-manager.pem -noout -dates
+    output: |
+      notBefore=Mar 14 09:12:44 2025 GMT
+      notAfter=Mar 14 09:12:44 2027 GMT
+    mistake: Comparing dates against a server whose clock is wrong. Check NTP first; a skewed clock makes valid certificates look expired or not yet valid.
+    lesson: certificate-management
+    version: general
+    source:
+      title: OpenSSL documentation - x509
+      url: https://docs.openssl.org/master/man1/openssl-x509/
+
+  - id: openssl-verify-chain
+    technology: linux
+    title: Verify a certificate against a CA chain file
+    purpose: Prove, before importing into VCF Operations, that a signed certificate chains to the root and intermediate you will upload.
+    syntax: openssl verify -CAfile <chain.pem> <cert.pem>
+    example: openssl verify -CAfile lab-chain.pem vcenter-mgmt.pem
+    output: |
+      vcenter-mgmt.pem: OK
+    mistake: Building chain.pem with only the root. If an intermediate signed the certificate, it must be in the file as well (VCF import expects intermediate then root, PEM-encoded).
+    lesson: certificate-management
+    version: general
+    source:
+      title: OpenSSL documentation - verify
+      url: https://docs.openssl.org/master/man1/openssl-verify/
+
+  - id: openssl-req-text
+    technology: linux
+    title: Inspect a CSR before sending it to the CA
+    purpose: Check the subject fields, SANs and key size of a CSR downloaded from VCF Operations before you submit it to an external CA.
+    syntax: openssl req -in <file.csr> -noout -text
+    example: openssl req -in esx-01.csr -noout -text | grep -E "Subject:|Public-Key|DNS:"
+    output: |
+              Subject: C = RO, ST = Bucuresti, L = Bucuresti, O = Lab, OU = Infra, CN = esx-01.lab.local
+                      Public-Key: (2048 bit)
+                      DNS:esx-01.lab.local
+    mistake: Submitting a CSR with a missing SAN or wrong key size (ESX supports 2048-bit only through VCF Operations) and discovering it only after the certificate is issued.
+    lesson: certificate-management
+    version: general
+    source:
+      title: OpenSSL documentation - req
+      url: https://docs.openssl.org/master/man1/openssl-req/
+
+  - id: vecs-cli-store-list
+    technology: vsphere
+    title: List the certificate stores in vCenter VECS
+    purpose: See which VECS stores exist on a vCenter appliance before inspecting certificates or trusted roots.
+    syntax: /usr/lib/vmware-vmafd/bin/vecs-cli store list
+    example: /usr/lib/vmware-vmafd/bin/vecs-cli store list
+    output: |
+      MACHINE_SSL_CERT
+      TRUSTED_ROOTS
+      TRUSTED_ROOT_CRLS
+      machine
+      vsphere-webclient
+      vpxd
+      vpxd-extension
+      ...
+    mistake: Deleting or changing entries in these stores by hand. Inspect only; replace certificates through VCF Operations so VCF components learn about the change.
+    lesson: certificate-management
+    version: general
+    source:
+      title: Broadcom KB 376720 - vCenter Server certificate store guide
+      url: https://knowledge.broadcom.com/external/article/376720/
+
+  - id: vecs-cli-entry-list-machine-ssl
+    technology: vsphere
+    title: Show the vCenter machine SSL certificate in VECS
+    purpose: Read the certificate vCenter presents on port 443 (issuer, validity, SAN, key usage) directly on the appliance.
+    syntax: /usr/lib/vmware-vmafd/bin/vecs-cli entry list --store <STORE> --text
+    example: /usr/lib/vmware-vmafd/bin/vecs-cli entry list --store MACHINE_SSL_CERT --text | less
+    output: |
+      Alias : __MACHINE_CERT
+      Entry type : Private Key
+      Certificate :     Certificate:
+          Data:
+              Issuer: ... CN=CA ...
+              Validity
+                  Not Before: ...
+                  Not After : ...
+              X509v3 Subject Alternative Name:
+                  DNS:vcenter-mgmt.lab.local
+    mistake: Looking at TRUSTED_ROOTS when you meant the presented certificate (MACHINE_SSL_CERT), or vice versa. MACHINE_SSL_CERT is what clients see; TRUSTED_ROOTS is what vCenter trusts.
+    lesson: certificate-management
+    version: general
+    source:
+      title: Broadcom KB 321380 - Manually reviewing certificates in VECS
+      url: https://knowledge.broadcom.com/external/article/321380/manually-reviewing-certificates-in-vmwar.html
+
+  - id: sddc-lookup-passwords
+    technology: vcf
+    title: Look up stored credentials on SDDC Manager
+    purpose: Retrieve the credentials SDDC Manager stores for VCF instance components (vCenter, NSX, ESX ...), for example to test whether VCF's stored password still works before deciding to remediate.
+    syntax: lookup_passwords
+    example: lookup_passwords
+    output: |
+      Enter the entity type (...): VCENTER
+      Enter username: admin@local
+      Enter password: ********
+      ...
+      username: root
+      password: ********
+      ...
+    mistake: Expecting it to show management component credentials (VCF Operations, Automation); it covers VCF instance components only. Also leaving its output in terminal history or tickets; store it only in a vault.
+    lesson: password-management
+    version: vcf9
+    source:
+      title: VCF 9.0 TechDocs - Use the SDDC Manager appliance to look up account credentials
+      url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/fleet-management/manage-passwords/look-up-account-credentials-using-the-lookup-password-command.html
+
+  - id: sddc-api-get-credentials
+    technology: api
+    title: List managed credentials with the SDDC Manager API
+    purpose: Get the same information as lookup_passwords through the API, and real-time credential status (VCF Operations refreshes expiry and connection status once a day).
+    syntax: GET https://<sddc-manager-fqdn>/v1/credentials
+    example: 'curl -s -H "Authorization: Bearer $TOKEN" https://sddc-manager.lab.local/v1/credentials' 
+    output: |
+      {
+        "elements": [
+          { "username": "root", "credentialType": "SSH",
+            "resource": { "resourceName": "vcenter-mgmt.lab.local", "resourceType": "VCENTER" }, ... }
+        ]
+      }
+    mistake: Calling it without first obtaining an access token from SDDC Manager, or pasting the response (which includes secrets) into a ticket.
+    lesson: password-management
+    version: vcf9
+    source:
+      title: VCF 9.0 TechDocs - Use the SDDC Manager appliance to look up account credentials
+      url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/fleet-management/manage-passwords/look-up-account-credentials-using-the-lookup-password-command.html
+
+  - id: vcf-download-tool-upgrade-binaries
+    technology: vcf
+    title: Download VCF upgrade binaries into an offline depot
+    purpose: Populate an offline depot directory with upgrade binaries for a component and VCF version, using a Broadcom download token, for air-gapped fleets.
+    syntax: vcf-download-tool binaries download --depot-download-token-file=<token-file> -d <depot-dir> --vcf-version=<version> --type UPGRADE --component <COMPONENT>
+    example: vcf-download-tool binaries download --depot-download-token-file=/root/token -d /depot --vcf-version=9.0.1 --type UPGRADE --component VCENTER
+    output: |
+      Downloading binaries for VCENTER (UPGRADE) 9.0.1 ...
+      Download completed. Binaries stored under /depot/PROD/...
+    mistake: Downloading binaries but not the ESX content (fetched with the tool's UMDS commands into umds-patch-store), or protecting umds-patch-store with basic authentication on the web server, which hides ESX components from SDDC Manager.
+    lesson: lifecycle-concepts
+    version: vcf9
+    source:
+      title: William Lam - VCF Software Depot structure deep dive for install and upgrade
+      url: https://williamlam.com/2025/10/vcf-software-depot-structure-deep-dive-for-install-upgrade.html
+
+  - id: vcf-download-tool-binaries-list
+    technology: vcf
+    title: List available VCF binaries for a version
+    purpose: See which binaries exist for a VCF version and type before downloading, to plan depot space and the upgrade.
+    syntax: vcf-download-tool binaries list --depot-download-token-file=<token-file> --vcf-version=<version> --type=<INSTALL|UPGRADE|PATCH> [--sku=VCF]
+    example: vcf-download-tool binaries list --depot-download-token-file=/root/token --vcf-version=9.0.1 --type=INSTALL --sku=VCF
+    output: |
+      Component              Version          Type
+      SDDC_MANAGER_VCF       9.0.1.0-...      INSTALL
+      VCENTER                9.0.1.0-...      INSTALL
+      NSX_T_MANAGER          9.0.1.0-...      INSTALL
+      ...
+    mistake: Using an expired token file; regenerate the download token in the Broadcom Support Portal (VCF 9.1 moves to activation codes).
+    lesson: lifecycle-concepts
+    version: vcf9
+    source:
+      title: William Lam - VCF Software Depot structure deep dive for install and upgrade
+      url: https://williamlam.com/2025/10/vcf-software-depot-structure-deep-dive-for-install-upgrade.html
+
+  - id: sddc-lcm-debug-log
+    technology: vcf
+    title: Follow the SDDC Manager lifecycle log during an upgrade
+    purpose: Find the first real error behind a failed precheck or core component upgrade (SDDC Manager, NSX, vCenter, ESX).
+    syntax: tail -f /var/log/vmware/vcf/lcm/lcm-debug.log
+    example: grep -n "ERROR" /var/log/vmware/vcf/lcm/lcm-debug.log | tail -50
+    output: |
+      1532:2025-11-04T22:14:09.311+0000 ERROR [...] Exception while fetching the current version for hosts belonging to vcenter with cluster MOID: domain-c8
+    mistake: Reading only the last error. One root failure produces many follow-on errors; search backwards from the failure time for the first exception.
+    lesson: lifecycle-failures-recovery
+    version: vcf9
+    source:
+      title: Broadcom KB 450414 - vCenter upgrade fails at VCENTER_UPGRADE_PRECHECK in VCF 9.x
+      url: https://knowledge.broadcom.com/external/article/450414/vcenter-upgrade-fails-at-vcenter_upgrade.html
+
+  - id: esxcli-software-baseimage-get
+    technology: esxi
+    title: Show the ESX base image installed on a host
+    purpose: Compare a host's base image version with the cluster's vLCM image when a host shows as non-compliant or incompatible.
+    syntax: esxcli software baseimage get
+    example: esxcli software baseimage get
+    output: |
+         Release ID: 9.0.x-...
+         Version: 9.0.x-...
+         Vendor: VMware, Inc.
+         ...
+    mistake: Assuming a host is compliant because the base image matches; vendor add-on and extra components also count. Check the cluster's compliance view in vCenter for the full picture.
+    lesson: vlcm-images-host-remediation
+    version: general
+    source:
+      title: ESXCLI 9.0.0 Reference - esxcli software
+      url: https://developer.broadcom.com/xapis/esxcli-command-reference/9.0.0/namespace/esxcli_software.html

@@ -1,0 +1,231 @@
+id: lab-network-readiness
+title: Network readiness for VCF – VLANs, gateways, DNS, NTP and MTU
+level: beginner
+complexity: 2
+minutes: 150
+version: vcf9
+technologies: [Proxmox VE, ESX 9 (nested), BIND9, chrony, VLAN switch/router]
+topics: [l2-l3, mtu, dns, ntp, vcf-network-design]
+lessons: [network-fundamentals-for-vcf, dns-ntp-dependencies, vsphere-distributed-switch, vcf-network-design]
+objectives:
+  - Build a VLAN plan for management, vMotion, vSAN and host TEP networks with a gateway per VLAN.
+  - Configure a VLAN-aware, jumbo-frame Proxmox bridge that passes 802.1Q trunks to nested ESX hosts.
+  - Run DNS with forward and reverse zones and an internal NTP server for the lab.
+  - Configure ESX DNS and NTP and verify them with nslookup, dig, esxcli and ntpq.
+  - Prove MTU per network with vmkping -d -s 1472, 1672 and 8972 and record a readiness checklist.
+prerequisites:
+  - "Lab lab-homelab-proxmox-prep completed (Proxmox ready for nested ESX: CPU flags, storage, NICs)."
+  - "Two nested ESX 9 hosts installed (see lab-esx-host-first-vm), management network on VLAN 10."
+  - "A router/L3 switch that can host VLAN interfaces and a switch port to Proxmox that can trunk VLANs with jumbo frames."
+  - "Read the Home Lab section; adapt the example addresses below to your own IP plan."
+topology:
+  logical: d-lab-network-readiness-logical
+requirements:
+  network:
+    - "VLAN 10 Management 10.10.10.0/24, gateway 10.10.10.1, MTU 1500 on vmk (9000 allowed on the wire)"
+    - "VLAN 20 vMotion 10.10.20.0/24, gateway 10.10.20.1, MTU 9000"
+    - "VLAN 30 vSAN 10.10.30.0/24, gateway 10.10.30.1, MTU 9000"
+    - "VLAN 40 Host TEP 10.10.40.0/24, gateway 10.10.40.1, MTU 9000 (VCF minimum 1600, design minimum 1700)"
+    - "Proxmox uplink port on the switch: 802.1Q trunk for VLANs 10,20,30,40, jumbo frames enabled"
+  vms:
+    - "infra-01: Debian 12 VM, 1 vCPU, 1 GB RAM, 10 GB disk, vNIC on vmbr1 with VLAN tag 10 (BIND9 + chrony)"
+    - "esx-01 and esx-02: nested ESX 9 VMs, vmxnet3 vNICs on vmbr1 without VLAN tag, firewall disabled on the vNIC"
+  ip:
+    - "infra-01 10.10.10.2 (DNS + NTP)"
+    - "esx-01 10.10.10.11 / vMotion 10.10.20.11 / vSAN 10.10.30.11 / TEP-test 10.10.40.11"
+    - "esx-02 10.10.10.12 / vMotion 10.10.20.12 / vSAN 10.10.30.12 / TEP-test 10.10.40.12"
+    - "Reserved for later VCF components: vcf-installer 10.10.10.4, vcenter-01 10.10.10.20, nsx-01 10.10.10.21, nsx-vip 10.10.10.25, sddc-manager 10.10.10.30, vcf-ops-01 10.10.10.40"
+startingState: |
+  Proxmox VE is installed and prepared for nested virtualization. Two nested ESX 9 hosts boot and are reachable on
+  their management IP (VLAN 10). There is no DNS or NTP server in the lab yet, and no vMotion, vSAN or TEP networks.
+
+  **What nested-on-Proxmox can and cannot prove.** Host-to-host traffic between nested ESX VMs stays inside the
+  Proxmox bridge, so it validates VLAN tagging and MTU of the virtual path (nested vmk → emulated NIC → Linux bridge).
+  Only traffic that leaves Proxmox (to the router, DNS outside the server, the internet) exercises your physical switch.
+  QEMU's emulated vmxnet3 NIC may not carry full 9000-byte frames on every QEMU/kernel combination — if 8972 fails while
+  everything is configured for 9000, record the largest working size. VCF needs at least 1600 on the host overlay
+  network (1700 recommended as the design minimum).
+steps:
+  - id: plan
+    title: Write the VLAN and IP plan
+    why: Every later step and every VCF input (workbook, VCF Installer spec) depends on one consistent plan. Subnet masks for infrastructure networks cannot be changed after VCF deployment.
+    instructions: |
+      Create a table (spreadsheet or markdown) with one row per network: VLAN ID, name, subnet, gateway, MTU,
+      purpose. Use the requirements above or your own Home Lab plan. Add one row per host and per future VCF
+      component with FQDN and IP. Use a real domain you control or a private suffix such as `lab.internal`
+      (avoid `.local`, which is reserved for multicast DNS).
+    hint: Size every subnet as /24 even in a lab — it costs nothing and mirrors production practice.
+    validate: Check that no two networks overlap, every VLAN has a gateway, and every planned component has an FQDN and IP.
+    expected: A complete plan table with four VLANs, gateways, MTUs and at least ten FQDN/IP rows.
+  - id: router-vlans
+    title: Create the VLAN gateways on the router
+    why: VCF requires a first hop gateway for every infrastructure VLAN, with an MTU matching the traffic that crosses it.
+    instructions: |
+      On your router or L3 switch create VLAN interfaces 10, 20, 30 and 40 with the `.1` gateway address of each
+      subnet. Set the interface MTU to 9000 (or the device maximum) for VLANs 20, 30 and 40. Allow routing from VLAN 10
+      to the internet (for NTP upstream and later the VCF online depot). Configure the switch port facing Proxmox as an
+      802.1Q trunk carrying VLANs 10, 20, 30 and 40 with jumbo frames enabled (many switches use a global or per-port
+      setting such as 9216).
+    hint: If your switch has a separate "L2 MTU" or "jumbo frame" global toggle, enable that too; some devices need a reboot after enabling jumbo frames.
+    validate: From a laptop on VLAN 10 (or the Proxmox host), ping each gateway address.
+    expected: All four gateways answer; the switch port shows trunk mode with the four VLANs allowed.
+  - id: proxmox-bridge
+    title: Make the Proxmox bridge VLAN-aware with MTU 9000
+    why: Nested ESX hosts must receive tagged frames (a trunk), exactly like physical ESX hosts on a ToR trunk, and the bridge MTU caps every nested frame.
+    instructions: |
+      On the Proxmox host edit `/etc/network/interfaces` (or use **Datacenter > Node > System > Network** in the UI):
+
+      ```shell
+      auto enp1s0f1
+      iface enp1s0f1 inet manual
+          mtu 9000
+
+      auto vmbr1
+      iface vmbr1 inet manual
+          bridge-ports enp1s0f1
+          bridge-stp off
+          bridge-fd 0
+          bridge-vlan-aware yes
+          bridge-vids 2-4094
+          mtu 9000
+      ```
+
+      Replace `enp1s0f1` with your NIC name. Apply with `ifreload -a`. For each nested ESX VM, attach the vNICs to
+      `vmbr1` with model **VMware vmxnet3**, **no VLAN tag**, and **Firewall unchecked** (the Proxmox VM firewall's MAC
+      filter, enabled by default when the firewall is on, can drop frames from MAC addresses other than the vNIC's).
+      Attach infra-01's vNIC to `vmbr1` with **VLAN tag 10**.
+    hint: "Check the result with `ip -d link show vmbr1` (look for mtu 9000 and vlan_filtering 1) and `bridge vlan show`."
+    validate: "`ip link show vmbr1` and `ip link show enp1s0f1` both report mtu 9000; `bridge vlan show` lists VLANs on the ESX tap interfaces."
+    expected: The bridge is VLAN-aware with MTU 9000; nested ESX vNICs carry tagged traffic for VLANs 10-40.
+  - id: dns-zones
+    title: Build DNS forward and reverse zones on infra-01
+    why: VCF requires forward and reverse DNS records for every management component; the VCF Installer validates both directions.
+    instructions: |
+      On infra-01 (static IP 10.10.10.2, gateway 10.10.10.1) install BIND: `apt install bind9 dnsutils`. In
+      `/etc/bind/named.conf.local` add a forward zone `lab.internal` and a reverse zone `10.10.10.in-addr.arpa`:
+
+      ```shell
+      zone "lab.internal" { type master; file "/etc/bind/db.lab.internal"; };
+      zone "10.10.10.in-addr.arpa" { type master; file "/etc/bind/db.10.10.10"; };
+      ```
+
+      Create the zone files with an SOA and NS record and one A record per host/component in the forward zone, and
+      one PTR record per IP in the reverse zone (for example `11 IN PTR esx-01.lab.internal.`). Include the reserved
+      VCF components from the plan. Configure forwarders for internet names in `named.conf.options`, allow queries from
+      10.10.0.0/16, then run `named-checkconf`, `named-checkzone lab.internal /etc/bind/db.lab.internal` and
+      `systemctl restart named`.
+    hint: Remember the trailing dot after FQDNs in PTR records, and increment the SOA serial after every change.
+    validate: "From infra-01 run `dig +short esx-01.lab.internal @127.0.0.1` and `dig +short -x 10.10.10.11 @127.0.0.1` for every record."
+    expected: Each FQDN returns exactly one IP and each IP returns exactly one FQDN that matches it.
+  - id: ntp-server
+    title: Run an internal NTP server
+    why: VCF 9 requires an internal NTP source for all management components; certificates and authentication break with clock skew.
+    instructions: |
+      On infra-01 install chrony (`apt install chrony`). In `/etc/chrony/chrony.conf` keep an upstream pool and add
+      `allow 10.10.0.0/16` so lab hosts may query it. Restart with `systemctl restart chrony`. Check upstream sync with
+      `chronyc tracking` and `chronyc sources`.
+    hint: If chrony never syncs upstream, check that VLAN 10 can reach the internet on UDP 123 through the router.
+    validate: "`chronyc tracking` shows a reference ID and a small system time offset; `chronyc clients` lists hosts after step 6."
+    expected: infra-01 is synchronized and serving time to the lab network.
+  - id: esx-dns-ntp
+    title: Point the nested ESX hosts at DNS and NTP
+    why: Hosts must resolve names and keep time before the VCF Installer validates them.
+    instructions: |
+      On each nested ESX host (SSH or ESX Shell):
+
+      ```shell
+      esxcli network ip dns server add --server=10.10.10.2
+      esxcli network ip dns search add --domain=lab.internal
+      esxcli system hostname set --fqdn=esx-01.lab.internal
+      esxcli system ntp set -s 10.10.10.2 -e 1
+      ```
+
+      Remove any other DNS servers the host received at install time if they do not hold your lab zones. In the Host
+      Client you can confirm under **Manage > System > Time & Date**.
+    hint: Use the IP of the NTP server, not its name, so time sync does not depend on DNS.
+    validate: "Run `esxcli network ip dns server list`, `esxcli system ntp get`, `nslookup esx-02.lab.internal`, `nslookup 10.10.10.12` and, after a few minutes, `ntpq -p`."
+    expected: "DNSServers shows 10.10.10.2; NTP is enabled with server 10.10.10.2; forward and reverse lookups answer; ntpq shows the peer with '*' and reach climbing to 377."
+  - id: vmk-networks
+    title: Create VLAN-tagged port groups and VMkernel adapters with MTU 9000
+    why: VCF hosts carry vMotion, vSAN and TEP on separate VLANs with jumbo frames; creating test vmks now proves the path before VCF builds the real VDS.
+    instructions: |
+      On each host (still on the standard switch vSwitch0 – the VDS is created later by VCF):
+
+      ```shell
+      esxcli network vswitch standard set -v vSwitch0 -m 9000
+      esxcli network vswitch standard portgroup add -p vMotion-20 -v vSwitch0
+      esxcli network vswitch standard portgroup set -p vMotion-20 --vlan-id 20
+      esxcli network ip interface add -i vmk1 -p vMotion-20 -N vmotion
+      esxcli network ip interface ipv4 set -i vmk1 -t static -I 10.10.20.11 -N 255.255.255.0
+      esxcli network ip interface set -i vmk1 -m 9000
+      ```
+
+      Repeat for `vSAN-30` (vmk2, 10.10.30.x, default netstack) and `TEP-40` (vmk3, 10.10.40.x, default netstack).
+      Use .12 addresses on esx-02. Real NSX TEPs (vmk10/vmk11 on the NSX netstack) are created later by NSX host
+      preparation; vmk3 only proves the TEP VLAN path and MTU.
+    hint: If the vMotion netstack does not exist yet, ESX creates it when the first vmk is added with -N vmotion.
+    validate: "`esxcli network ip interface list` and `esxcli network ip interface ipv4 get` on both hosts."
+    expected: vmk1 (netstack vmotion), vmk2 and vmk3 exist with MTU 9000 and the planned IPs on the right port groups.
+  - id: mtu-tests
+    title: Prove MTU per network with vmkping
+    why: A normal ping proves nothing about MTU; only DF-bit pings at the right payload size prove the path for vMotion, vSAN and overlay.
+    instructions: |
+      From esx-01 run, and record every result in your plan table:
+
+      ```shell
+      vmkping -I vmk0 -d -s 1472 10.10.10.12
+      vmkping -I vmk1 -S vmotion -d -s 8972 10.10.20.12
+      vmkping -I vmk2 -d -s 8972 10.10.30.12
+      vmkping -I vmk3 -d -s 1672 10.10.40.12
+      vmkping -I vmk3 -d -s 8972 10.10.40.12
+      vmkping -I vmk3 -d -s 8973 10.10.40.12
+      ```
+
+      The last command must fail (it needs a 9001-byte packet). Then test a routed path: `vmkping -I vmk0 10.10.20.1`
+      and `vmkping -I vmk3 -d -s 8972 10.10.40.1` (gateway MTU).
+    hint: If 1672 passes but 8972 fails everywhere, check bridge and tap MTU on Proxmox, then suspect the emulated NIC; record the largest working size.
+    validate: Compare each result against the plan's MTU column.
+    expected: "0% packet loss for 1472 on management, 8972 on vMotion/vSAN/TEP (or at least 1672 on TEP if the emulated NIC caps jumbo frames), and a failure for 8973."
+  - id: checklist
+    title: Record the network readiness checklist
+    why: Before any VCF deployment you need written evidence that DNS, NTP, VLANs, gateways and MTU are correct – the same checklist a VCF engineer completes before running the VCF Installer.
+    instructions: |
+      Write a checklist with a pass/fail and evidence line for: each VLAN and gateway; Proxmox bridge MTU; DNS forward
+      and reverse for every planned component; no duplicate PTRs (`dig +short -x` returns one line); ESX DNS servers;
+      ESX NTP sync (reach 377, '*' peer); time offset between infra-01 and each host under one second
+      (`esxcli system time get` vs `date -u`); every vmkping test.
+    validate: Every line has evidence copied from command output.
+    expected: A complete, evidence-backed readiness checklist you will reuse in the VCF deployment labs.
+troubleshooting:
+  - symptom: Nested ESX hosts cannot reach anything once the vNIC is on vmbr1.
+    fix: The management port group must carry VLAN 10 inside ESX (DCUI > Configure Management Network > VLAN) because the Proxmox vNIC is an untagged trunk. Also confirm the Proxmox firewall is disabled on the vNIC.
+  - symptom: Small pings work but every -d -s 8972 test fails, even between the two nested hosts.
+    fix: "Check `ip link` MTU of vmbr1, the physical bridge port and the tap interfaces (`ip link show tap<vmid>i0`), and vSwitch0/vmk MTU. If all are 9000, the emulated vmxnet3 path may be the limit; find the largest working size and make sure it is at least 1700 for the TEP network."
+  - symptom: nslookup of a name works but nslookup of its IP returns NXDOMAIN.
+    fix: The reverse zone is missing the PTR record, the zone is not loaded (check `named-checkzone` and the BIND log), or the host queries a different DNS server (`esxcli network ip dns server list`).
+  - symptom: ntpq -p shows reach 0 for the lab NTP server.
+    fix: "UDP 123 is not reaching chrony: check `allow` in chrony.conf, any firewall on infra-01, and capture with `tcpdump-uw -c 5 -n -i vmk0 host 10.10.10.2 and port 123` on the host."
+  - symptom: Routed vmkping to a gateway works at 1472 but fails at 8972.
+    fix: The router VLAN interface MTU is smaller than 9000. Raise it or accept that routed jumbo traffic is not supported on that VLAN (VCF requires the gateway MTU to match the VLAN's traffic).
+challenge: |
+  Add a second DNS server (a second VM with a BIND secondary zone) and a second NTP source, then prove that hosts keep
+  resolving and synchronizing when infra-01 is powered off. Then deliberately create a duplicate PTR record for
+  10.10.10.20 (`vcenter-01` and `vc-old`) and show with `dig +short -x` why the VCF Installer would reject it.
+cleanup: |
+  Keep DNS, NTP, VLANs and the bridge configuration – the VCF deployment labs use them. Remove the test VMkernel
+  adapters vmk1–vmk3 and their port groups if you will deploy VCF onto these hosts
+  (`esxcli network ip interface remove -i vmk3`, then `esxcli network vswitch standard portgroup remove -p TEP-40 -v vSwitch0`),
+  because VCF builds its own VDS, port groups and vmks.
+sources:
+  - title: "VCF 9.0 Design Library – Network Fabric Detailed Design"
+    url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/design/design-library/external-services-design/datacenter-network-requirements/network-fabric-design.html
+  - title: "Broadcom KB 313061 – Testing jumbo frame pings from ESXi"
+    url: https://knowledge.broadcom.com/external/article/313061/testing-jumbo-frame-pings-from-esxi-over.html
+  - title: "Broadcom KB 344313 – Testing VMkernel connectivity with vmkping"
+    url: https://knowledge.broadcom.com/external/article/344313
+  - title: "Proxmox VE – Firewall (macfilter option)"
+    url: https://pve.proxmox.com/wiki/Firewall
+  - title: "Nested ESXi install in Proxmox (vmxnet3, VLAN-aware bridge)"
+    url: https://virtualizationhowto.com/2023/12/nested-esxi-install-in-proxmox-step-by-step
+  - title: "William Lam – Initial MikroTik router/switch configuration for VCF 9.0"
+    url: https://williamlam.com/2025/07/initial-mikrotik-router-switch-configuration-for-vcf-9-0.html

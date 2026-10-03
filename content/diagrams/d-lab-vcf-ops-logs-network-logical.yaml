@@ -1,0 +1,32 @@
+id: d-lab-vcf-ops-logs-network-logical
+title: "Lab topology: logs, network operations, health, compliance and drift"
+description: >
+  Builds on the VCF Operations lab. VCF Operations for logs (Simple, one node with a VIP) is deployed Day 2 from VCF
+  Operations if resources allow. VCF Operations for networks is optional in the home lab because its platform node must
+  be Extra Large with full reservation; the lab treats it as conceptual unless the host has spare capacity. The learner
+  also uses VCF Health, Storage Operations, a compliance benchmark and a configuration drift template.
+width: 1000
+height: 520
+groups:
+  - { id: g-mgmt, x: 20, y: 20, w: 960, h: 480, label: "Nested VCF management domain on Proxmox", kind: mgmt }
+nodes:
+  - { id: ops, x: 400, y: 60, w: 200, h: 56, label: "VCF Operations", sublabel: "console", kind: ops, component: vcf-operations, info: "Log analysis, Network Operations, Storage Operations, VCF Health, Security > Compliance, Fleet Management > Configuration Drifts." }
+  - { id: logs, x: 60, y: 200, w: 220, h: 56, label: "VCF Ops for logs", sublabel: "Simple + VIP (Day 2)", kind: ops, component: vcf-operations-logs, info: "One node; the cluster VIP FQDN must exist in DNS before deployment." }
+  - { id: net, x: 720, y: 200, w: 220, h: 56, label: "VCF Ops for networks", sublabel: "optional / conceptual", kind: network, component: vcf-operations-networks, info: "Platform (Extra Large, 100% reservation) + collector. Usually too large for a single home-lab host alongside the rest of VCF." }
+  - { id: col, x: 400, y: 200, w: 200, h: 56, label: "Collector / cloud proxy", kind: ops, component: vcf-operations-collector, info: "vCenter adapter must be assigned here (not the Default Collector Group) for configuration drift." }
+  - { id: esx, x: 60, y: 360, w: 220, h: 56, label: "Nested ESX hosts", sublabel: "syslog", kind: compute, component: esx-host, info: "Send logs to VCF Operations for logs; evaluated by the compliance benchmark." }
+  - { id: vc, x: 400, y: 360, w: 200, h: 56, label: "vCenter", kind: mgmt, component: vcenter, info: "Configuration source for the drift template; vSAN data for Storage Operations." }
+  - { id: nsx, x: 720, y: 360, w: 220, h: 56, label: "NSX Manager", kind: nsx, component: nsx-manager, info: "Logs and network health." }
+edges:
+  - { from: esx, to: logs, label: "logs", kind: data }
+  - { from: vc, to: logs, kind: data }
+  - { from: nsx, to: logs, kind: data }
+  - { from: logs, to: ops, label: "integrated", kind: mgmt, bidirectional: true }
+  - { from: vc, to: col, label: "poll", kind: data, dashed: true }
+  - { from: col, to: ops, kind: data }
+  - { from: nsx, to: net, label: "flows", kind: data, dashed: true }
+  - { from: net, to: ops, label: "integrated", kind: mgmt, dashed: true }
+steps:
+  - { title: "Logs", text: "Deploy logs Day 2, confirm ESX, vCenter and NSX logs arrive, search and create a log-based alert.", highlight: [esx, vc, nsx, logs, ops] }
+  - { title: "Health, storage, compliance", text: "Use VCF Health, Storage Operations and a compliance benchmark on the data the collector already gathers.", highlight: [col, ops, vc] }
+  - { title: "Networks (optional)", text: "If capacity allows, deploy VCF Operations for networks; otherwise walk the Network Operations page conceptually.", highlight: [net, nsx, ops] }

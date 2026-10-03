@@ -1,0 +1,28 @@
+id: d-lab-nsx-tier0-bgp-edge-logical
+title: Lab – active/standby Tier-0 with BGP (logical view)
+description: >
+  Logical view of lab-nsx-tier0-bgp-edge. lab-router (AS 65000) peers via BGP with the Tier-0 gateway t0-lab (AS 65001,
+  active/standby) over two uplink VLANs. t0-lab is linked to t1-lab (Distributed Only) which carries seg-web and seg-app.
+  The Default project's transit gateway is attached to t0-lab by the centralized connectivity workflow and can host an
+  optional VPC with public and private subnets.
+width: 1000
+height: 560
+nodes:
+  - { id: rtr, x: 400, y: 30, w: 200, h: 56, label: "lab-router (FRR)", sublabel: "AS 65000", kind: external, info: "Linux VM with FRRouting acting as the ToR pair. Originates a default route to NSX." }
+  - { id: t0, x: 400, y: 160, w: 200, h: 60, label: "t0-lab", sublabel: "A/S, AS 65001", kind: nsx, info: "Tier-0 deployed by vCenter Network Connectivity (centralized). Uplinks 10.27.11.2/.3 and 10.27.12.2/.3." }
+  - { id: t1, x: 150, y: 300, w: 200, h: 56, label: "t1-lab", sublabel: "Distributed Only", kind: nsx, info: "From the segments lab; linked to t0-lab here. Advertises connected segments." }
+  - { id: tgw, x: 650, y: 300, w: 200, h: 56, label: "Transit gateway", sublabel: "Default project", kind: nsx, info: "Bound to t0-lab by the workflow; VPC External IP block 10.80.0.0/20." }
+  - { id: sweb, x: 40, y: 430, w: 180, h: 56, label: "seg-web", sublabel: "172.16.10.0/24", kind: network, info: "Must become visible on lab-router via BGP." }
+  - { id: sapp, x: 250, y: 430, w: 180, h: 56, label: "seg-app", sublabel: "172.16.20.0/24", kind: network, info: "Second segment." }
+  - { id: vpc, x: 650, y: 430, w: 200, h: 56, label: "vpc-lab (optional)", sublabel: "public + private", kind: vm, info: "Optional VPC: public /28 from 10.80.0.0/20, private /24 with External IP." }
+edges:
+  - { from: rtr, to: t0, label: "eBGP x2 VLANs", kind: north-south, bidirectional: true }
+  - { from: t0, to: t1, label: "router link", kind: data }
+  - { from: t0, to: tgw, kind: data }
+  - { from: t1, to: sweb, kind: data }
+  - { from: t1, to: sapp, kind: data }
+  - { from: tgw, to: vpc, kind: data, dashed: true }
+steps:
+  - { title: "BGP peering", text: "t0-lab peers with lab-router over two uplink VLANs and receives a default route.", highlight: [rtr, t0] }
+  - { title: "Tier-1 link", text: "Linking t1-lab gives the segments a path north; advertisement on t1 and redistribution on t0 make them visible to the router.", highlight: [t0, t1, sweb, sapp] }
+  - { title: "VPC (optional)", text: "The centralized workflow attaches the Default project's transit gateway to t0-lab; a VPC's public subnet is advertised from the External IP block.", highlight: [t0, tgw, vpc] }

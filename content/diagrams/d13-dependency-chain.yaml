@@ -1,0 +1,38 @@
+id: d13-dependency-chain
+title: "VCF dependency chain: DNS, NTP, certificates, identity, services, workflows"
+description: >
+  A left-to-right chain of dependencies. DNS (forward and reverse records) and NTP (common time source) are external
+  services at the base. Certificates depend on DNS (names in the SAN) and NTP (validity window). Identity (VCF Identity
+  Broker and the identity source) depends on certificates and time. Component services (vCenter, NSX Manager, SDDC
+  Manager, VCF Operations) depend on all of those to talk to each other over TLS by FQDN with tokens. Workflows such as
+  deployment, host commissioning, workload domain creation and lifecycle depend on the services. A failure at the left
+  propagates to everything on the right, which is why many simultaneous failures point to the left side.
+width: 1000
+height: 520
+groups:
+  - { id: g-external, x: 20, y: 20, w: 300, h: 470, label: "External services you provide", kind: external }
+  - { id: g-vcf, x: 340, y: 20, w: 640, h: 470, label: "VCF instance", kind: mgmt }
+nodes:
+  - { id: dns, x: 60, y: 90, w: 220, h: 64, label: "DNS", sublabel: "A + PTR records", kind: external, component: dns-service, info: "Forward and reverse records for every host and appliance. Test from the complaining component: nslookup FQDN and nslookup IP must agree." }
+  - { id: ntp, x: 60, y: 330, w: 220, h: 64, label: "NTP", sublabel: "one time source", kind: external, component: ntp-service, info: "All hosts, appliances, DNS server and CA must agree on time. Skew shows up as TLS 'not yet valid' and token errors. Check esxcli system ntp get and timedatectl." }
+  - { id: certs, x: 380, y: 210, w: 180, h: 64, label: "Certificates", sublabel: "valid, SAN, trusted", kind: security, info: "Each component presents a certificate that must be within its validity window, contain the FQDN used, and be issued by a CA the caller trusts. Managed from VCF Operations Fleet Management > Certificates in VCF 9." }
+  - { id: identity, x: 590, y: 210, w: 170, h: 64, label: "Identity", sublabel: "Identity Broker", kind: security, component: vcf-identity-broker, info: "VCF Identity Broker (embedded in vCenter or a three-node appliance cluster) and the external identity source. Scope problems by trying a local account." }
+  - { id: services, x: 790, y: 120, w: 170, h: 64, label: "Services", sublabel: "vCenter, NSX, SDDC Mgr", kind: mgmt, component: vcenter, info: "Component services call each other by FQDN over TLS using tokens. If a dependency on the left is broken, all of them log errors that look like the problem." }
+  - { id: ops, x: 790, y: 300, w: 170, h: 64, label: "VCF Operations", sublabel: "fleet management", kind: ops, component: vcf-operations, info: "Collects from and orchestrates the other components; often the first place where a dependency failure becomes visible, but rarely the cause." }
+  - { id: workflows, x: 590, y: 400, w: 370, h: 64, label: "Workflows", sublabel: "deploy, commission, WLD, lifecycle", kind: mgmt, component: sddc-manager, info: "Deployment, host commissioning, workload domain creation, certificate and password operations and upgrades. They fail when any dependency fails, usually with a generic error in the UI." }
+edges:
+  - { from: dns, to: certs, label: "names in SAN", kind: dependency }
+  - { from: ntp, to: certs, label: "validity window", kind: dependency }
+  - { from: certs, to: identity, label: "trust", kind: dependency }
+  - { from: ntp, to: identity, label: "token time", kind: dependency, dashed: true }
+  - { from: identity, to: services, label: "SSO tokens", kind: dependency }
+  - { from: dns, to: services, label: "FQDN", kind: dependency, dashed: true }
+  - { from: services, to: ops, label: "integrations", kind: mgmt }
+  - { from: services, to: workflows, label: "execute", kind: mgmt }
+  - { from: ops, to: workflows, label: "start", kind: mgmt }
+steps:
+  - { title: "Name resolution", text: "DNS comes first: forward and reverse lookups must agree, from the component that reports the problem.", highlight: [dns] }
+  - { title: "Time", text: "NTP second: compare UTC time on both ends; fix the source, never single clocks.", highlight: [ntp] }
+  - { title: "Trust", text: "Certificates need correct names (DNS) and correct time (NTP) and a trusted issuer.", highlight: [certs, dns, ntp] }
+  - { title: "Identity", text: "SSO needs trusted certificates, correct time and a reachable identity source.", highlight: [identity, certs] }
+  - { title: "Services and workflows", text: "Only when the left side is proven healthy is it worth reading individual service logs.", highlight: [services, ops, workflows] }

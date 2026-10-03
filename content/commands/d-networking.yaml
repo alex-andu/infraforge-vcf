@@ -1,0 +1,198 @@
+commands:
+  - id: vmkping-jumbo-df
+    technology: esxi
+    title: Test 9000-byte MTU end to end from a VMkernel adapter
+    purpose: Prove that every hop between two hosts carries 9000-byte packets without fragmentation (vMotion, vSAN, TEP).
+    syntax: "vmkping -I <vmkX> [-S <netstack>] -d -s 8972 <destination-ip>"
+    example: "vmkping -I vmk2 -d -s 8972 172.16.13.12"
+    output: |
+      PING 172.16.13.12 (172.16.13.12): 8972 data bytes
+      8980 bytes from 172.16.13.12: icmp_seq=0 ttl=64 time=0.412 ms
+      8980 bytes from 172.16.13.12: icmp_seq=1 ttl=64 time=0.388 ms
+      --- 172.16.13.12 ping statistics ---
+      3 packets transmitted, 3 packets received, 0% packet loss
+    mistake: "Omitting -d: without the DF bit the packet can be fragmented and the test passes on a 1500 path. Using -s 9000 instead of 8972 (the 28 bytes of IP and ICMP headers must be subtracted)."
+    lesson: network-fundamentals-for-vcf
+    version: general
+    source: { title: "Broadcom KB 313061 – Testing jumbo frame pings from ESXi", url: "https://knowledge.broadcom.com/external/article/313061/testing-jumbo-frame-pings-from-esxi-over.html" }
+  - id: vmkping-netstack
+    technology: esxi
+    title: vmkping on a specific TCP/IP stack (vMotion or NSX TEP)
+    purpose: Test vMotion or NSX host TEP vmks, which live on their own netstacks with their own routing tables.
+    syntax: "vmkping -I <vmkX> -S <vmotion|vxlan> -d -s <size> <destination-ip>"
+    example: "vmkping -I vmk10 -S vxlan -d -s 1672 172.16.14.12"
+    output: |
+      PING 172.16.14.12 (172.16.14.12): 1672 data bytes
+      1680 bytes from 172.16.14.12: icmp_seq=0 ttl=64 time=0.301 ms
+      --- 172.16.14.12 ping statistics ---
+      3 packets transmitted, 3 packets received, 0% packet loss
+    mistake: Testing a TEP or vMotion vmk without -S uses the default stack and gives misleading results (wrong routes, "no route to host").
+    lesson: network-fundamentals-for-vcf
+    version: general
+    source: { title: "Broadcom KB 344313 – Testing VMkernel connectivity with vmkping", url: "https://knowledge.broadcom.com/external/article/344313" }
+  - id: esxcli-ip-interface-list
+    technology: esxi
+    title: List VMkernel adapters with port group, netstack and MTU
+    purpose: See which vmks exist, which port group/VDS they use, their TCP/IP stack and MTU.
+    syntax: esxcli network ip interface list
+    example: esxcli network ip interface list
+    output: |
+      vmk1
+         Name: vmk1
+         MAC Address: 00:50:56:6a:11:02
+         Enabled: true
+         Portset: DvsPortset-0
+         Portgroup: N/A
+         Netstack Instance: vmotion
+         VDS Name: mgmt-vds01
+         MTU: 9000
+    mistake: Assuming the vmk MTU proves the path MTU. It is only the host side; switch ports and gateways must match.
+    lesson: vcf-network-design
+    version: general
+  - id: esxcli-dvs-list
+    technology: esxi
+    title: Show distributed switches as seen by the host
+    purpose: Confirm the host's VDS proxy switch, its uplinks and MTU.
+    syntax: esxcli network vswitch dvs vmware list
+    example: esxcli network vswitch dvs vmware list
+    output: |
+      mgmt-vds01
+         Name: mgmt-vds01
+         VDS ID: 50 2f f1 21 0b c2 7c 0b-50 d8 9b 26 12 ef e2 e2
+         Class: etherswitch
+         Num Ports: 2452
+         Used Ports: 12
+         MTU: 9000
+         CDP Status: listen
+         Uplinks: vmnic1, vmnic0
+         VMware Branded: true
+    mistake: Expecting port group names here; the output is about the switch, uplinks and ports. Use the vSphere Client for port group policies.
+    lesson: vsphere-distributed-switch
+    version: general
+  - id: esxcli-nic-list
+    technology: esxi
+    title: List physical NICs with link state and speed
+    purpose: Layer 1 check before blaming VLANs, routing or MTU.
+    syntax: esxcli network nic list
+    example: esxcli network nic list
+    output: |
+      Name    PCI Device    Driver  Admin Status  Link Status  Speed  Duplex  MAC Address        MTU   Description
+      vmnic0  0000:3b:00.0  ixgben  Up            Up           25000  Full    3c:fd:fe:aa:01:10  9000  Intel(R) Ethernet ...
+      vmnic1  0000:3b:00.1  ixgben  Up            Down             0  Half    3c:fd:fe:aa:01:11  9000  Intel(R) Ethernet ...
+    mistake: Forgetting that a NIC that is Up at the wrong speed (for example 1000 instead of 25000) is also a fault.
+    lesson: vsphere-distributed-switch
+    version: general
+  - id: esxcli-dns-server-list
+    technology: esxi
+    title: Show the DNS servers an ESX host uses
+    purpose: Confirm the host queries the DNS servers that hold the VCF records.
+    syntax: esxcli network ip dns server list
+    example: esxcli network ip dns server list
+    output: |
+      DNSServers: 10.10.10.2, 10.10.10.3
+    mistake: Testing DNS from your laptop, which may use a different DNS server than the host or appliance that failed.
+    lesson: dns-ntp-dependencies
+    version: general
+  - id: esxcli-ntp-get
+    technology: esxi
+    title: Show the NTP configuration of an ESX host
+    purpose: Check that NTP is enabled and points at the internal time sources.
+    syntax: esxcli system ntp get
+    example: esxcli system ntp get
+    output: |
+         Enabled: true
+         Server: 10.10.10.2
+    mistake: Treating configured as synchronized. Use ntpq -p to see whether the host actually reaches the server (reach 377).
+    lesson: dns-ntp-dependencies
+    version: general
+  - id: ntpq-peers
+    technology: esxi
+    title: Show NTP peers and synchronization status
+    purpose: See whether the host is synchronized, to which peer, and whether polls succeed.
+    syntax: ntpq -p
+    example: ntpq -pn
+    output: |2
+           remote           refid      st t when poll reach   delay   offset  jitter
+      ==============================================================================
+      *10.10.10.2      192.0.2.123      3 u   33   64  377    0.412   -0.081   0.034
+    mistake: "Ignoring the reach column: 0 means no reply has been received (often UDP 123 blocked); 377 means the last eight polls succeeded. '*' marks the selected peer."
+    lesson: dns-ntp-dependencies
+    version: general
+    source: { title: "Broadcom KB 443781 – NTP synchronization issues on ESXi hosts", url: "https://knowledge.broadcom.com/external/article/443781/ntp-synchronization-issues-on-esxi-host.html" }
+  - id: nslookup-forward-reverse
+    technology: linux
+    title: Check forward and reverse DNS for a VCF component
+    purpose: Prove that the FQDN resolves to the IP and the IP resolves back to the same single FQDN.
+    syntax: "nslookup <fqdn> ; nslookup <ip>"
+    example: "nslookup vcenter-01.lab.internal; nslookup 10.10.10.20"
+    output: |
+      Name:   vcenter-01.lab.internal
+      Address: 10.10.10.20
+
+      20.10.10.10.in-addr.arpa  name = vcenter-01.lab.internal.
+    mistake: Checking only the forward lookup. VCF validation also requires the reverse (PTR) record and fails on aliases.
+    lesson: dns-ntp-dependencies
+    version: general
+    source: { title: "Broadcom KB 437102 – VCF Installer precheck failure (DNS aliases / reverse lookup)", url: "https://knowledge.broadcom.com/external/article/437102/vcf-installer-precheck-failure-please-en.html" }
+  - id: dig-reverse
+    technology: linux
+    title: Reverse lookup with dig
+    purpose: Query the PTR record of an IP and detect duplicate PTRs.
+    syntax: "dig +short -x <ip> [@dns-server]"
+    example: "dig +short -x 10.10.10.11 @10.10.10.2"
+    output: |
+      esx-01.lab.internal.
+    mistake: Two lines of output mean two PTR records for the same IP — an alias that breaks VCF's "uniquely resolves" check.
+    lesson: dns-ntp-dependencies
+    version: general
+  - id: tcpdump-ntp
+    technology: esxi
+    title: Capture NTP packets on a VMkernel adapter
+    purpose: Prove whether NTP requests leave the host and whether replies come back (firewall diagnosis).
+    syntax: "tcpdump-uw -c 5 -n -i <vmkX> host <ntp-ip> and port 123"
+    example: "tcpdump-uw -c 5 -n -i vmk0 host 10.10.10.2 and port 123"
+    output: |
+      10:41:02.118 IP 10.10.10.11.123 > 10.10.10.2.123: NTPv4, Client, length 48
+      10:42:06.120 IP 10.10.10.11.123 > 10.10.10.2.123: NTPv4, Client, length 48
+    mistake: Concluding NTP works because vmkping to the server works; ICMP and UDP 123 can be filtered differently. Requests with no replies point at a firewall or the server.
+    lesson: dns-ntp-dependencies
+    version: general
+    source: { title: "Broadcom KB 442868 – ESXi NTP test fails", url: "https://knowledge.broadcom.com/external/article/442868" }
+  - id: esxcli-route-list
+    technology: esxi
+    title: Show the IPv4 routing table of the default netstack
+    purpose: Confirm the default gateway and routes used by vmk0 and other default-stack vmks.
+    syntax: esxcli network ip route ipv4 list
+    example: esxcli network ip route ipv4 list
+    output: |
+      Network     Netmask        Gateway     Interface  Source
+      ----------  -------------  ----------  ---------  ------
+      default     0.0.0.0        10.10.10.1  vmk0       MANUAL
+      10.10.10.0  255.255.255.0  0.0.0.0     vmk0       MANUAL
+    mistake: Forgetting that vMotion and TEP stacks have their own routing tables; this command shows only the default stack unless you select another netstack.
+    lesson: network-fundamentals-for-vcf
+    version: general
+  - id: esxcli-ntp-set
+    technology: esxi
+    title: Configure NTP servers on an ESX host
+    purpose: Point a host at the internal NTP servers and enable the service (prerequisite before VCF deployment).
+    syntax: "esxcli system ntp set -s <server> [-s <server2>] -e 1"
+    example: "esxcli system ntp set -s 10.10.10.2 -e 1"
+    output: "(no output on success; verify with esxcli system ntp get)"
+    mistake: Configuring a hostname for NTP before DNS on the host works, or forgetting to verify synchronization afterwards with ntpq -p.
+    lesson: dns-ntp-dependencies
+    version: general
+  - id: traceroute-path
+    technology: network
+    title: Trace the routed path to a service
+    purpose: Find where routed traffic (to DNS, NTP or another subnet) stops; distinguishes a gateway/routing problem from a VLAN problem.
+    syntax: "traceroute <destination-ip>"
+    example: "traceroute 10.10.50.5"
+    output: |
+      traceroute to 10.10.50.5 (10.10.50.5), 30 hops max, 40 byte packets
+       1  10.10.10.1  0.512 ms  0.401 ms  0.388 ms
+       2  * * *
+    mistake: Reading "* * *" as a dead host — many firewalls drop the probes. Combine with a test of the actual service port.
+    lesson: network-fundamentals-for-vcf
+    version: general
+    source: { title: "Broadcom KB 443781 – NTP synchronization issues (vmkping and traceroute validation)", url: "https://knowledge.broadcom.com/external/article/443781/ntp-synchronization-issues-on-esxi-host.html" }

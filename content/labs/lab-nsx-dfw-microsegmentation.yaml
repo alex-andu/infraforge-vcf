@@ -1,0 +1,123 @@
+id: lab-nsx-dfw-microsegmentation
+title: Micro-segment a three-tier app with the NSX distributed firewall
+level: intermediate
+complexity: 3
+minutes: 150
+version: vcf9
+technologies: [NSX 9, vDefend Distributed Firewall, Tags, Groups, Traceflow, nsxcli]
+topics: [nsx-security, nsx-segments]
+lessons: [nsx-security-dfw-gateway-firewall, nsx-segments-overlay]
+objectives:
+  - Tag workloads and build tag-based groups that follow VMs automatically.
+  - Write an Infrastructure policy for shared services and an Application policy with Applied-To.
+  - Block lateral movement inside a segment – something only the DFW can do.
+  - Verify enforcement with Traceflow and with the rules programmed on a vNIC (nsxcli).
+  - Explain why the gateway firewall would not have stopped the same traffic.
+prerequisites:
+  - "lab-nsx-segments-tier1 completed (t1-lab, seg-web, seg-app with test VMs)."
+  - "Firewall rule editing enabled in your NSX: in VCF 9 the firewall is the vDefend add-on (see KB 430651). If your entitlement lacks it and the UI refuses edits, do the lab as a design exercise: write the policy table and predict the Traceflow results."
+topology:
+  logical: d-lab-nsx-dfw-microsegmentation-logical
+  network: d-lab-nsx-dfw-microsegmentation-network
+requirements:
+  network:
+    - "Existing overlay segments seg-web (172.16.10.0/24) and seg-app (172.16.20.0/24) on t1-lab."
+    - "Optional: a third segment seg-db (172.16.30.0/24) on t1-lab."
+  vms:
+    - "web-01, web-02 (seg-web), app-01 (seg-app), db-01 (seg-db or seg-app) – tiny Linux VMs with a simple listener (e.g. `python3 -m http.server 8443` on app-01, `nc -l -p 5432` on db-01)."
+    - "A 'jump' VM or your workstation that represents an admin client."
+  ip:
+    - "web-01 172.16.10.11, web-02 172.16.10.12, app-01 172.16.20.21, db-01 172.16.30.31"
+startingState: |
+  The VMs talk freely to each other: the DFW default rule is allow. You will move to an allow-list for the "shop"
+  application without breaking infrastructure services.
+
+  :::tip
+  Keep a vSphere console open to each VM. If you lock yourself out over SSH, the console still works – the DFW filters
+  vNIC traffic, not the VM console.
+  :::
+steps:
+  - id: tags
+    title: Tag the workloads
+    why: Tags make policy follow the workload instead of IP addresses.
+    instructions: |
+      1. NSX Manager → **Inventory → Virtual Machines**: add tags (scope/tag) `app/shop` to all four VMs, and `tier/web`, `tier/app`, `tier/db` accordingly.
+      2. (Alternatively tag them from the vSphere Client if NSX tags are exposed there in your build.)
+    validate: Each VM shows two tags.
+    expected: web-01/web-02 tier/web, app-01 tier/app, db-01 tier/db, all app/shop.
+  - id: groups
+    title: Create tag-based groups
+    why: Groups resolve to the current members dynamically; rules reference groups.
+    instructions: |
+      1. **Inventory → Groups → Add Group**: `grp-shop` = VMs with tag app/shop.
+      2. `grp-shop-web` = tag app/shop AND tag tier/web. Same for `grp-shop-app` and `grp-shop-db`.
+      3. Open each group's members view.
+    validate: Membership lists the expected VMs and their IPs.
+    expected: grp-shop has 4 members, grp-shop-web 2, the others 1 each.
+  - id: infra-policy
+    title: Allow shared infrastructure first
+    why: A drop rule without infrastructure allowances breaks DNS, NTP and management – the classic micro-segmentation outage.
+    instructions: |
+      1. **Security → Distributed Firewall → Infrastructure** category → add policy `infra-services`.
+      2. Rule `dns-ntp`: Source grp-shop, Destination your DNS/NTP IPs (IP set group), Services DNS, DNS-UDP, NTP, Action Allow.
+      3. Rule `admin-ssh`: Source your admin client, Destination grp-shop, Service SSH, Allow. Publish.
+    validate: Policy published, no errors.
+    expected: Two allow rules in the Infrastructure category.
+  - id: app-policy
+    title: Write the application allow-list with Applied-To
+    why: Applied-To = grp-shop programs these rules only on the shop VMs' vNICs.
+    instructions: |
+      1. **Application** category → policy `shop`, set the policy's **Applied To** = `grp-shop`.
+      2. Rules (in this order): `web-to-app` grp-shop-web → grp-shop-app TCP 8443 Allow; `app-to-db` grp-shop-app → grp-shop-db TCP 5432 Allow; `any-to-web` any → grp-shop-web HTTP/HTTPS Allow; `shop-deny` grp-shop → grp-shop any **Drop**.
+      3. Publish.
+    hint: Create custom services for TCP 8443 and TCP 5432 if they don't exist.
+    validate: "From web-01: `curl http://172.16.20.21:8443` works; `nc -zv 172.16.30.31 5432` fails. From app-01 to db-01 port 5432 works."
+    expected: Only the intended tier-to-tier flows succeed.
+  - id: lateral
+    title: Block lateral movement inside the web tier
+    why: Two VMs on the same segment on the same host – no router or Edge ever sees this traffic, only the DFW can stop it.
+    instructions: |
+      1. From web-01, `ping 172.16.10.12` (web-02) and try SSH to it. With `shop-deny` in place this should already fail – confirm.
+      2. Run **Traceflow** web-01 → web-02 (TCP 22). Note the rule ID that dropped it.
+    validate: Traceflow shows "Dropped by firewall rule <id> (shop-deny)" at the vNIC.
+    expected: Lateral traffic between web VMs is dropped even though they share a segment.
+  - id: verify-host
+    title: Verify the rules on the host
+    why: The host CLI shows what is actually enforced on a vNIC – the ground truth.
+    instructions: |
+      1. SSH to the host running web-01 → `nsxcli` → `get firewall vifs` → find web-01's filter.
+      2. `get firewall <vif-uuid> ruleset rules` – find the shop rules.
+      3. On a host **without** any shop VM, list a VM's rules: the shop rules are absent (Applied-To at work).
+    validate: Shop rules appear only on shop vNICs.
+    expected: Rule IDs from the UI visible in the vNIC ruleset.
+  - id: compare-gfw
+    title: Reason about the gateway firewall
+    why: Exam favourite – picking DFW vs gateway firewall.
+    instructions: |
+      1. Write down which of the flows above would pass through a gateway firewall on t1-lab or t0-lab (hint: t1-lab is Distributed Only – it has no SR at all).
+      2. Describe the north-south case: internet → web VIP, where the gateway firewall (on the Tier-0 SR) and the DFW both apply.
+    validate: Your notes state that none of the east-west flows cross an SR.
+    expected: Gateway firewall = north-south/zone boundary only; DFW = per vNIC.
+troubleshooting:
+  - symptom: The UI won't let you add or edit firewall rules.
+    fix: vDefend add-on license not applied in NSX (System > Licenses) – see KB 430651; or the user lacks a security role.
+  - symptom: A rule never matches.
+    fix: Check group membership (tag typos), the policy's Applied-To, and rule order; use Traceflow to see which rule actually hit.
+  - symptom: Everything broke after publishing the drop rule.
+    fix: Missing Infrastructure allow rules (DNS, NTP, admin access) or Applied-To left as DFW so the drop hit every VM; scope the drop and add infra rules.
+  - symptom: Traceflow shows delivery but the application still fails.
+    fix: Wrong port in the service definition or the guest firewall/listener isn't running.
+challenge: |
+  Add an **Environment** category policy that drops all traffic between VMs tagged `env/dev` and `env/prod`, tag one
+  test VM as dev, and prove the Environment rule wins even though an Application rule would allow the flow (categories
+  are processed Ethernet → Emergency → Infrastructure → Environment → Application).
+cleanup: |
+  Disable or delete the `shop` policy (or set shop-deny to Allow) before running other labs, so later exercises are not
+  blocked. Keep the tags and groups – they are reusable.
+sources:
+  - title: vDefend Firewall 9.0 – Distributed Firewall
+    url: https://techdocs.broadcom.com/us/en/vmware-security-load-balancing/vdefend/vdefend-firewall/9-0/vdefend-distributed-firewall.html
+  - title: Broadcom KB 430651 – Unable to add or edit firewall rules (vDefend license)
+    url: https://knowledge.broadcom.com/external/article/430651/unable-to-add-or-edit-firewall-rules-in.html
+  - title: NSX CLI Guide 9.0.2 – ESX host commands
+    url: https://developer.broadcom.com/xapis/nsx-cli-guide/9.0.2/host_esx.html

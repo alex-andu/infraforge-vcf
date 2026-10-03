@@ -1,0 +1,257 @@
+terms:
+  - id: hostd
+    term: hostd
+    expansion: Host agent
+    definition: The ESX user-world service that is the host's own management API endpoint. It serves the VMware Host Client and executes actions relayed by vpxa from vCenter.
+    whyItMatters: If hostd hangs the host shows Not responding in vCenter while its VMs keep running. Restarting it (`/etc/init.d/hostd restart`) is a standard, non-disruptive fix. Log at /var/log/hostd.log.
+    version: general
+    related: [vpxa, fdm, host-client, esx]
+    lessons: [esx-architecture-host-management]
+  - id: vpxa
+    term: vpxa
+    expansion: vCenter agent
+    definition: The agent vCenter installs on each ESX host when the host is added. vCenter sends its actions to vpxa (as the vpxuser account), which relays them to hostd.
+    whyItMatters: A broken vpxa or a blocked path to vCenter makes the host Disconnected/Not responding without affecting running VMs. Log at /var/log/vpxa.log.
+    version: general
+    related: [hostd, fdm, vsphere-client]
+    lessons: [esx-architecture-host-management]
+  - id: fdm
+    term: FDM
+    expansion: Fault Domain Manager (vSphere HA agent)
+    definition: The vSphere HA agent that vCenter installs on every host of an HA-enabled cluster. The agents elect a primary, exchange heartbeats every second and restart VMs after a host failure.
+    whyItMatters: HA failover is executed by FDM on the hosts, not by vCenter, so VMs are restarted even when vCenter is down. Its log (/var/log/fdm.log) is the first stop for HA problems.
+    version: general
+    related: [ha, heartbeat-datastore, host-isolation, admission-control]
+    lessons: [vsphere-ha-deep-dive, esx-architecture-host-management]
+    labs: [lab-vcenter-cluster-ha-drs]
+  - id: dcui
+    term: DCUI
+    expansion: Direct Console User Interface
+    definition: The text-mode console of an ESX host, reached on the physical or remote (iLO/iDRAC) console, used to set the management IP, VLAN, DNS, test the management network and restart agents.
+    whyItMatters: It is the last-resort access path when the management network is broken. In strict lockdown mode the DCUI service is stopped; in normal lockdown only DCUI.Access users and exception users with admin privileges can log in.
+    version: general
+    related: [lockdown-mode, hostd]
+    lessons: [esx-architecture-host-management]
+  - id: lockdown-mode
+    term: Lockdown mode
+    definition: An ESX security setting that forces management through vCenter. Normal lockdown restricts the host API to vCenter (vpxuser) and exception users and limits the DCUI; strict lockdown additionally stops the DCUI service.
+    whyItMatters: It reduces the attack surface of hosts, but strict lockdown without exception users can leave a host unmanageable if vCenter is lost. Normal lockdown can be toggled from the DCUI; strict only from the vSphere Client.
+    version: general
+    related: [dcui, hostd, vpxa]
+    lessons: [esx-architecture-host-management]
+  - id: maintenance-mode
+    term: Maintenance mode
+    definition: A host state in which no VMs run or are placed on the host, used before patching, hardware work or removal. With DRS fully automated, vCenter evacuates running VMs with vMotion; vSAN hosts also need a data-migration choice.
+    whyItMatters: vSphere Lifecycle Manager and VCF lifecycle workflows put hosts in maintenance mode automatically; required affinity rules, local devices or HA admission control can block it.
+    version: general
+    related: [drs, vmotion, admission-control, affinity-rule]
+    lessons: [esx-architecture-host-management, drs-resource-management]
+    labs: [lab-vcenter-cluster-ha-drs]
+  - id: vsphere-client
+    term: vSphere Client
+    definition: The HTML5 web interface of vCenter (https://<vcenter-fqdn>/ui) used to manage hosts, clusters, VMs, networking, storage and permissions.
+    whyItMatters: It is the day-to-day management tool for every VCF domain vCenter. Not to be confused with the VMware Host Client, which talks directly to a single host.
+    version: general
+    related: [host-client, vami, vpxa]
+    lessons: [vcenter-architecture-inventory, esx-architecture-host-management]
+  - id: vami
+    term: vCenter Management Interface
+    expansion: formerly VAMI (Virtual Appliance Management Interface)
+    definition: The appliance management web UI of vCenter on port 5480, used for appliance health, services, networking, time, file-based backup and appliance updates.
+    whyItMatters: When the vSphere Client is down, port 5480 tells you whether the appliance is up and which services failed. In VCF, appliance-level changes such as FQDN or IP must not be made outside VCF workflows.
+    version: general
+    related: [vsphere-client]
+    lessons: [vcenter-architecture-inventory]
+  - id: sso-domain
+    term: vCenter Single Sign-On domain
+    definition: The local authentication space of a vCenter, stored in its directory service (default name vsphere.local). It holds local users and groups, identity sources and, with Enhanced Linked Mode, multiple vCenters.
+    whyItMatters: In VCF 9 each VI workload domain has a dedicated vCenter and SSO domain, so global permissions and SSO groups do not cross workload domains; VCF Single Sign-On through the Identity Broker provides the cross-component login.
+    version: vcf9
+    related: [enhanced-linked-mode, global-permission, vcf-single-sign-on]
+    lessons: [vcenter-architecture-inventory, vsphere-permissions]
+  - id: enhanced-linked-mode
+    term: Enhanced Linked Mode
+    expansion: ELM
+    definition: Joins up to 15 vCenter appliances in one vSphere SSO domain so one login shows and manages all their inventories, with replicated roles, permissions, tags and licensing.
+    whyItMatters: ELM is deprecated as of vCenter 9.0. VCF 4.x/5.x workload domains commonly shared the management SSO domain in ELM, which is why upgraded VCF 9 instances may still have shared SSO domains, while new VCF 9 workload domains get dedicated SSO domains.
+    version: vcf9
+    related: [sso-domain]
+    lessons: [vcenter-architecture-inventory]
+  - id: vcls
+    term: vCLS
+    expansion: vSphere Cluster Services
+    definition: Small system VMs that keep cluster services available independently of vCenter. vSphere 9.0 uses Embedded vCLS (vSphere Pod based) with up to two VMs per cluster; vCenter 9.0 deprecates vCLS.
+    whyItMatters: DRS depends on healthy vCLS VMs. Do not delete or rename them; Storage vMotion them or use retreat mode when evacuating their datastore.
+    version: vcf9
+    related: [drs, cluster]
+    lessons: [drs-resource-management, vcenter-architecture-inventory]
+  - id: vm-folder
+    term: VM folder
+    definition: An inventory folder in the VMs and Templates view that groups VMs and templates. Folders can hold only objects of one type (or other folders of that type).
+    whyItMatters: Folders are the recommended place to assign permissions; unlike resource pools, they do not change resource entitlement.
+    version: general
+    related: [permission, resource-pool]
+    lessons: [vcenter-architecture-inventory, vsphere-permissions]
+  - id: privilege
+    term: Privilege
+    definition: The smallest unit of authorization in vCenter, such as Virtual machine > Interaction > Power on or Datastore > Allocate space.
+    whyItMatters: Custom roles are built from privileges; missing one privilege (often a datastore or network one) is a common reason a user cannot deploy a VM.
+    version: general
+    related: [role, permission]
+    lessons: [vsphere-permissions]
+  - id: role
+    term: Role
+    definition: A named set of privileges. System roles (Administrator, Read-only, No access) are permanent and cannot be edited; sample roles can be cloned into custom roles.
+    whyItMatters: Clone a sample role before modifying it, because a modified custom role cannot be reset. Roles are reused by many permissions.
+    version: general
+    related: [privilege, permission, rbac]
+    lessons: [vsphere-permissions]
+  - id: permission
+    term: Permission
+    definition: The assignment of a role to a principal (user or group) on an inventory object, with an optional propagate-to-children flag.
+    whyItMatters: Resolution rules are tested often - a child permission overrides the parent, a user permission overrides group permissions, and multiple group permissions combine as a union.
+    version: general
+    related: [role, privilege, global-permission, vm-folder]
+    lessons: [vsphere-permissions]
+    labs: [lab-vcenter-cluster-ha-drs]
+  - id: global-permission
+    term: Global permission
+    definition: A permission assigned at a global root above all vCenter systems of an SSO domain; it reaches every inventory hierarchy and global objects such as tags and content libraries.
+    whyItMatters: Without Propagate, a global permission gives no access to inventory objects, only to some global functions such as creating roles. It does not cross VCF 9 workload domains that have separate SSO domains.
+    version: general
+    related: [permission, sso-domain, content-library]
+    lessons: [vsphere-permissions]
+  - id: heartbeat-datastore
+    term: Heartbeat datastore
+    definition: A shared datastore that vSphere HA uses as a second communication channel to tell a failed host from an isolated or partitioned one. vCenter selects two per host by default, up to five (das.heartbeatdsperhost).
+    whyItMatters: vSAN datastores cannot be heartbeat datastores, so all-vSAN VCF clusters often show a heartbeat datastore warning unless another shared datastore is mounted.
+    version: general
+    related: [fdm, ha, host-isolation]
+    lessons: [vsphere-ha-deep-dive]
+  - id: host-isolation
+    term: Host isolation
+    definition: The state of an ESX host that is running but has lost contact with the other HA agents and cannot ping its isolation addresses (by default the management gateway; das.isolationaddressX adds more). The host then applies the configured isolation response.
+    whyItMatters: The isolation response (Disabled by default, or shut down/power off and restart VMs) decides whether VMs keep running on an isolated host. On vSAN clusters, isolation also depends on reachability of the vSAN network.
+    version: general
+    related: [fdm, heartbeat-datastore, ha]
+    lessons: [vsphere-ha-deep-dive]
+  - id: admission-control
+    term: Admission control (vSphere HA)
+    definition: The HA mechanism that reserves capacity for failover by refusing operations (power-on, migration, reservation increase) that would leave too little capacity. Policies are cluster resource percentage, slot policy and dedicated failover hosts.
+    whyItMatters: It guarantees VMs can be restarted after a host failure, but can block power-ons and maintenance-mode evacuation in small clusters. VMs without reservations count as 32 MHz CPU and 0 MB memory, so set reservations or watch the performance degradation threshold.
+    version: general
+    related: [ha, fdm, reservation, maintenance-mode]
+    lessons: [vsphere-ha-deep-dive]
+    labs: [lab-vcenter-cluster-ha-drs]
+  - id: vm-restart-priority
+    term: VM restart priority
+    definition: The HA setting that orders VM restarts after a host failure - Highest, High, Medium (default), Low, Lowest - or Disabled, which means HA does not restart the VM.
+    whyItMatters: Infrastructure VMs (vCenter, NSX Managers, DNS) should restart before applications; when capacity is short, low-priority VMs lose out first.
+    version: general
+    related: [ha, admission-control]
+    lessons: [vsphere-ha-deep-dive]
+  - id: vmcp
+    term: VMCP
+    expansion: VM Component Protection
+    definition: The vSphere HA feature that responds to datastore accessibility failures - PDL (permanent device loss) and APD (all paths down) - by issuing events or powering off VMs and restarting them on hosts that still see the storage.
+    whyItMatters: Without VMCP, a VM whose storage disappears on one host just hangs there. Requires ESX 6.0+, host monitoring on, and the APD timeout enabled on hosts.
+    version: general
+    related: [ha, fdm]
+    lessons: [vsphere-ha-deep-dive]
+  - id: proactive-ha
+    term: Proactive HA
+    definition: An availability feature that reacts to degraded hardware reported by a vendor provider (for example a failed power supply) by evacuating or quarantining a host before it fails.
+    whyItMatters: It needs vSphere DRS to move VMs; a classic exam distractor when the question is about restart after a failure (that is vSphere HA).
+    version: general
+    related: [ha, drs]
+    lessons: [vsphere-ha-deep-dive]
+  - id: shares
+    term: Shares
+    definition: A relative priority for CPU, memory (and storage/network I/O) that only matters under contention. Presets Low/Normal/High equal 500/1000/2000 shares per vCPU and 5/10/20 shares per MB of memory.
+    whyItMatters: Shares do nothing when resources are free. On resource pools they are relative among siblings, so a High-share pool with many VMs can give each VM less than a Normal pool with few VMs.
+    version: general
+    related: [reservation, limit, resource-pool, drs]
+    lessons: [drs-resource-management]
+  - id: reservation
+    term: Reservation
+    definition: A guaranteed minimum amount of CPU (MHz) or memory (MB) for a VM or resource pool.
+    whyItMatters: A VM cannot power on unless its reservation can be satisfied, and reservations count against HA admission control. Over-reserving fragments the cluster.
+    version: general
+    related: [shares, limit, expandable-reservation, admission-control]
+    lessons: [drs-resource-management]
+  - id: limit
+    term: Limit
+    definition: A hard upper bound on CPU or memory for a VM or resource pool, enforced even when the host has spare capacity.
+    whyItMatters: Forgotten limits are a classic cause of "slow VM on an idle host". Prefer shares and reservations for prioritization.
+    version: general
+    related: [shares, reservation]
+    lessons: [drs-resource-management]
+  - id: expandable-reservation
+    term: Expandable reservation
+    definition: A resource pool setting (on by default) that lets the pool borrow unreserved capacity from its parent and further ancestors when its own reservation is not enough to admit a VM or child pool.
+    whyItMatters: Explains why a VM can power on in a pool whose reservation is exhausted (expandable) or fails to (fixed).
+    version: general
+    related: [resource-pool, reservation]
+    lessons: [drs-resource-management]
+  - id: affinity-rule
+    term: Affinity rule (DRS)
+    definition: A placement rule - VM-VM (keep together or separate) or VM-Host (must/should run or not run on a host group).
+    whyItMatters: Required (must) VM-Host rules are never violated by DRS, HA or DPM, so they can block maintenance mode and HA failover; preferential (should) rules can be violated.
+    version: general
+    related: [drs, maintenance-mode]
+    lessons: [drs-resource-management]
+  - id: storage-vmotion
+    term: Storage vMotion
+    definition: Live migration of a powered-on VM's disks and configuration files to another datastore without moving it to another host.
+    whyItMatters: Used to evacuate datastores for maintenance or rebalance capacity. Combined with vMotion it allows migration between hosts that share no storage.
+    version: general
+    related: [vmotion, snapshot]
+    lessons: [vm-lifecycle-templates]
+    labs: [lab-vm-templates-content-library]
+  - id: evc
+    term: EVC
+    expansion: Enhanced vMotion Compatibility
+    definition: A cluster or per-VM setting that presents a common CPU feature baseline so VMs can vMotion between hosts with different CPU generations from the same vendor. vSphere 9.0 adds custom EVC modes.
+    whyItMatters: Lets you add newer servers to an existing cluster without breaking vMotion. It never allows Intel-AMD migration, and changing a cluster's mode affects VMs only after a power cycle.
+    version: vcf9
+    related: [vmotion, cluster]
+    lessons: [vm-lifecycle-templates]
+  - id: vm-template
+    term: VM template
+    definition: A primary copy of a VM, which cannot be powered on, used to deploy new VMs. It can live in the vCenter inventory or as a VM template item in a content library with check-out/check-in versioning.
+    whyItMatters: Templates plus customization specifications give consistent builds. VM templates in libraries distribute only between linked vCenters; use OVF templates otherwise.
+    version: general
+    related: [content-library, guest-customization, ovf]
+    lessons: [vm-lifecycle-templates]
+    labs: [lab-vm-templates-content-library]
+  - id: content-library
+    term: Content library
+    definition: A vCenter container for OVF templates, VM templates, ISO images and other files. A local library can be published; a subscribed library follows a published one and cannot have items added to it.
+    whyItMatters: The standard way to share images across clusters and vCenters, and the image source for VCF Automation provider content and Supervisor VM Service.
+    version: general
+    related: [vm-template, ovf, global-permission]
+    lessons: [vm-lifecycle-templates]
+    labs: [lab-vm-templates-content-library]
+  - id: guest-customization
+    term: Guest customization
+    definition: Applying a VM customization specification (hostname, network, domain, time zone; Sysprep for Windows) to a guest OS during clone or deploy-from-template, executed through VMware Tools.
+    whyItMatters: Prevents duplicate hostnames and IPs. Fails silently-looking if VMware Tools is missing from the template.
+    version: general
+    related: [vm-template, vmware-tools]
+    lessons: [vm-lifecycle-templates]
+    labs: [lab-vm-templates-content-library]
+  - id: ovf
+    term: OVF / OVA
+    expansion: Open Virtualization Format / Open Virtual Appliance
+    definition: A portable package format for VMs and vApps. OVF is a set of files (.ovf descriptor, .vmdk disks, .mf manifest); OVA is the same packed into a single file.
+    whyItMatters: All VCF appliances are delivered as OVA/OVF, and OVF templates are the cross-vCenter way to distribute images through content libraries.
+    version: general
+    related: [content-library, vm-template]
+    lessons: [vm-lifecycle-templates]
+  - id: snapshot
+    term: Snapshot
+    definition: A point-in-time capture of a VM's disk (and optionally memory) state, implemented by redirecting writes into delta disks.
+    whyItMatters: Snapshots are not backups; long-lived snapshots consume space and hurt performance, and lingering snapshots on management VMs can fail lifecycle prechecks.
+    version: general
+    related: [storage-vmotion]
+    lessons: [vm-lifecycle-templates]

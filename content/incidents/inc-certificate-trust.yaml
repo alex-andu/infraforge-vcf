@@ -1,0 +1,220 @@
+id: inc-certificate-trust
+title: Services stop trusting vCenter after a certificate change
+difficulty: advanced
+version: vcf9
+topics: [certificates, lcm-recovery, troubleshooting-method]
+lessons: [certificate-management, lifecycle-failures-recovery, vcf-identity-sso-rbac]
+summary: The day after the vSphere team "renewed" a workload domain vCenter certificate, SDDC Manager prechecks fail, VCF Operations stops collecting from that vCenter and NSX shows the compute manager down. Browsers show a warning on one jump host, and everyone is staring at it.
+symptoms:
+  - "Lifecycle precheck on workload domain wld01 fails: Unable to connect to vCenter vc-wld01.lab.local."
+  - VCF Operations raises collection alerts for the vc-wld01 vCenter adapter; the management vCenter collects normally.
+  - In NSX Manager, the compute manager vc-wld01.lab.local shows connection status Down.
+  - On the shared Windows jump host, Chrome shows "Your connection is not private" for vc-wld01. Admin laptops show no warning.
+  - Yesterday's change ticket "Renew vc-wld01 machine certificate with new enterprise CA (LABCA-G2)" is closed as successful.
+environment: |
+  VCF 9.0 instance: management domain (vcenter-mgmt.lab.local, nsx-vip.lab.local, sddc-manager.lab.local) and workload
+  domain wld01 (vc-wld01.lab.local, nsx-wld01.lab.local). VCF Operations ops01.lab.local. The company is migrating from
+  its old issuing CA (LABCA-G1) to a new hierarchy (LABCA-ROOT-G2 > LABCA-G2). Admin laptops are domain joined and
+  receive the new root by group policy; the shared jump host is not domain joined. NTP and DNS are provided by
+  10.0.0.10/11.
+evidence:
+  - id: ev-precheck
+    category: logs
+    action: Open the failed precheck result for wld01 in VCF Operations
+    output: |
+      ```log
+      Precheck: wld01
+        vCenter vc-wld01.lab.local ............ FAILED
+          Unable to connect to vCenter vc-wld01.lab.local. Check connectivity and certificates.
+        NSX nsx-wld01.lab.local .............. PASSED
+        ESX hosts (4) ......................... PASSED
+      ```
+    relevance: useful
+    note: Only the vCenter check fails, while NSX and hosts in the same domain pass. Connectivity in general is fine; something about this one endpoint changed.
+  - id: ev-lcm-log
+    category: logs
+    action: Search the SDDC Manager lifecycle log for vc-wld01 around the precheck time
+    output: |
+      ```log
+      $ grep -n "vc-wld01" /var/log/vmware/vcf/lcm/lcm-debug.log | tail -3
+      ... ERROR ... Failed to connect to https://vc-wld01.lab.local:443/sdk
+      ... javax.net.ssl.SSLHandshakeException: PKIX path building failed:
+          sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target
+      ```
+    relevance: key
+    note: A Java PKIX path-building failure means SDDC Manager cannot chain the server certificate to any root it trusts. This is a trust problem on the client side, not a network or password problem.
+  - id: ev-openssl-sddc
+    category: certificates
+    action: From SDDC Manager, run openssl s_client -connect vc-wld01.lab.local:443 -servername vc-wld01.lab.local -showcerts
+    output: |
+      ```log
+      depth=0 CN = vc-wld01.lab.local
+      verify error:num=20:unable to get local issuer certificate
+      verify error:num=21:unable to verify the first certificate
+      Certificate chain
+       0 s:CN = vc-wld01.lab.local
+         i:DC = local, DC = lab, CN = LABCA-G2
+      ---
+      Verify return code: 21 (unable to verify the first certificate)
+      ```
+    relevance: key
+    note: The new leaf is issued by LABCA-G2, the server sends only the leaf, and SDDC Manager does not have LABCA-G2 or LABCA-ROOT-G2. Proven from the failing client.
+  - id: ev-openssl-mgmt
+    category: certificates
+    action: From SDDC Manager, run the same openssl test against vcenter-mgmt.lab.local
+    output: |
+      ```log
+       0 s:CN = vcenter-mgmt.lab.local
+         i:CN = CA, DC = vsphere, DC = local, ...
+      Verify return code: 0 (ok)
+      ```
+    relevance: useful
+    note: The management vCenter still has its previous certificate and is trusted. Comparison isolates the change to vc-wld01.
+  - id: ev-browser
+    category: certificates
+    action: Open https://vc-wld01.lab.local on the shared jump host and on an admin laptop
+    output: |
+      ```log
+      Jump host (not domain joined):  NET::ERR_CERT_AUTHORITY_INVALID
+      Admin laptop (domain joined):   padlock, issued by LABCA-G2, chain LABCA-ROOT-G2 > LABCA-G2 > vc-wld01
+      ```
+    relevance: noise
+    note: Red herring. The browsers only show which machines received the new root via group policy. They say nothing about whether SDDC Manager, VCF Operations or NSX trust the new CA.
+  - id: ev-nsx-cm
+    category: nsx
+    action: Check the compute manager vc-wld01 in NSX Manager (System > Fabric > Compute Managers)
+    output: |
+      ```log
+      Compute Manager: vc-wld01.lab.local
+      Registration Status: Registered
+      Connection Status:   Down
+      Error: Certificate thumbprint mismatch / certificate not trusted
+      ```
+    relevance: useful
+    note: NSX also connects to vCenter as a TLS client; the replaced certificate broke that integration too. Same root cause, another client.
+  - id: ev-vecs
+    category: certificates
+    action: On vc-wld01, list the machine SSL certificate with vecs-cli entry list --store MACHINE_SSL_CERT --text
+    output: |
+      ```log
+      Alias : __MACHINE_CERT
+      ...
+          Issuer: DC=local, DC=lab, CN=LABCA-G2
+          Validity
+              Not Before: (yesterday)
+              Not After : (in 2 years)
+          X509v3 Subject Alternative Name:
+              DNS:vc-wld01.lab.local
+      ```
+    relevance: useful
+    note: The certificate itself is fine (valid dates, correct SAN). The problem is not the certificate but the clients' trust of its issuer.
+  - id: ev-ntp
+    category: ntp
+    action: Check time on SDDC Manager and vc-wld01 (date -u on both)
+    output: |
+      ```shell
+      sddc-manager: Tue 2025-11-04 08:12:41 UTC
+      vc-wld01:     Tue 2025-11-04 08:12:43 UTC
+      ```
+    relevance: noise
+    note: Clocks agree within seconds; this rules out "not yet valid" problems caused by skew.
+  - id: ev-dns
+    category: dns
+    action: Resolve vc-wld01 forward and reverse from SDDC Manager
+    output: |
+      ```shell
+      $ nslookup vc-wld01.lab.local   -> 10.0.20.10
+      $ nslookup 10.0.20.10           -> vc-wld01.lab.local
+      ```
+    relevance: noise
+    note: DNS is healthy; the TLS connection is reached and fails at certificate verification, not at name resolution.
+  - id: ev-ticket
+    category: services
+    action: Read yesterday's change ticket
+    output: |
+      ```log
+      Change: Renew vc-wld01 machine certificate with LABCA-G2
+      Method: vSphere Client > Certificate Management > Machine SSL > Replace (custom certificate)
+      Trusted roots added to vCenter: LABCA-ROOT-G2
+      VCF Operations / SDDC Manager: not mentioned
+      ```
+    relevance: key
+    note: The replacement was done inside vCenter only. vCenter trusts the new root, but VCF's own clients (SDDC Manager, VCF Operations adapters, NSX) were never given the new chain.
+idealSequence: [ev-precheck, ev-lcm-log, ev-openssl-sddc, ev-openssl-mgmt, ev-ticket, ev-nsx-cm]
+rootCause:
+  - id: rc1
+    text: The vc-wld01 certificate was replaced outside VCF with a certificate from a new CA (LABCA-G2) that SDDC Manager, VCF Operations and NSX do not trust, and the server sends only the leaf.
+    correct: true
+    why: PKIX failure in the SDDC Manager log, openssl verify error 20/21 from SDDC Manager, the NSX compute manager error and the change ticket all point to client-side trust of the new issuer.
+  - id: rc2
+    text: The new certificate has expired or is not yet valid.
+    why: VECS shows valid dates and clocks agree; the error is about the issuer, not validity.
+  - id: rc3
+    text: The vCenter certificate is missing the FQDN in its SAN.
+    why: The SAN contains vc-wld01.lab.local; a name mismatch would produce a hostname verification error, not PKIX path building.
+  - id: rc4
+    text: Browsers on the jump host need the new root installed, which is what blocks VCF.
+    why: Browsers are not part of the service-to-service flows; the jump host warning is a red herring.
+nextStep:
+  - id: n1
+    text: Confirm the trust failure from the failing client (openssl s_client from SDDC Manager) and compare with a working vCenter before changing anything.
+    correct: true
+    why: It proves the hypothesis at the right place in minutes and isolates the change to one endpoint.
+  - id: n2
+    text: Roll back the vCenter certificate immediately to VMCA with certificate-manager.
+    why: It may restore service but discards the security change without understanding it, and certificate-manager changes outside VCF are what caused the problem.
+  - id: n3
+    text: Install the new root on the jump host and close the incident.
+    why: Fixes the browser warning only; SDDC Manager, VCF Operations and NSX remain broken.
+remediation:
+  - id: r1
+    text: Add the new CA chain (LABCA-ROOT-G2 and LABCA-G2) to the trust of SDDC Manager and the other VCF clients using the documented procedure for your version, re-establish the NSX compute manager trust for vc-wld01, and from now on perform replacements through VCF Operations (Fleet Management > Certificates, configured Microsoft CA or import with the full PEM chain).
+    correct: true
+    why: Fixes trust where it is broken, keeps the security change, and moves future changes onto the path where VCF distributes trust itself.
+  - id: r2
+    text: Disable certificate validation on SDDC Manager.
+    why: Unsupported and removes the protection TLS provides.
+  - id: r3
+    text: Restart all services on vc-wld01.
+    why: The server is fine; restarting it does not change what clients trust.
+  - id: r4
+    text: Redeploy SDDC Manager.
+    why: Massive overreaction; the trust store, not the appliance, is the problem.
+validation:
+  - id: v1
+    text: From SDDC Manager, openssl s_client to vc-wld01 returns "Verify return code 0 (ok)", the wld01 precheck passes, the VCF Operations adapter collects again and the NSX compute manager shows Up.
+    correct: true
+    why: Validates every affected client, not just one symptom.
+  - id: v2
+    text: The jump host browser shows a padlock.
+    why: Proves only that the jump host trusts the CA.
+  - id: v3
+    text: vecs-cli shows the LABCA-G2 certificate in MACHINE_SSL_CERT.
+    why: That was already true during the outage; it proves the server side, not client trust.
+hints:
+  - Which components are the TLS clients in the failing flows, and which is the server?
+  - The SDDC Manager log has a Java exception name that is specific to certificate path validation.
+  - Test the TLS handshake from SDDC Manager itself and compare with the management vCenter.
+  - The change ticket mentions vCenter's trusted roots but nothing about VCF's.
+debrief: |
+  Certificates fail on the **client** side. A server certificate can be perfectly valid (dates, SAN) and still be
+  rejected by every client that does not trust its issuer. Here the vSphere team replaced the vc-wld01 machine SSL
+  certificate inside vCenter with one from a new CA hierarchy. vCenter trusted the new root, admin laptops received it
+  by group policy, so "it works in my browser" looked like success.
+
+  But in VCF, vCenter's most important clients are not browsers: SDDC Manager (prechecks and every lifecycle and
+  password workflow), VCF Operations (collection) and NSX (compute manager). The SDDC Manager log showed `PKIX path
+  building failed`, and `openssl s_client` from SDDC Manager showed `unable to get local issuer certificate` with a
+  leaf-only chain, while the management vCenter verified fine. That is enough to name the root cause.
+
+  The jump host browser warning, NTP and DNS were noise: they look like certificate-adjacent problems but test the
+  wrong client or the wrong layer. The fix is to distribute the new chain to VCF's clients and to use VCF Operations
+  certificate management for future replacements, so trust is handled as part of the workflow. A good habit: every
+  certificate change ticket lists the clients that must trust the new issuer, and is validated from those clients.
+sources:
+  - title: "VCF 9.0 TechDocs - Certificate Management"
+    url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/fleet-management/certificate-management-9-0.html
+  - title: "Broadcom KB 376720 - vCenter Server certificate store guide"
+    url: https://knowledge.broadcom.com/external/article/376720/
+  - title: "OpenSSL documentation - s_client"
+    url: https://docs.openssl.org/master/man1/openssl-s_client/

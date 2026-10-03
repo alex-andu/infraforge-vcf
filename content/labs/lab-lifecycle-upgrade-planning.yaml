@@ -1,0 +1,141 @@
+id: lab-lifecycle-upgrade-planning
+title: Plan a VCF 9 Upgrade - Inventory, Binaries, Prechecks and Runbook
+level: intermediate
+complexity: 3
+minutes: 150
+version: vcf9
+technologies: [VCF Operations, SDDC Manager, vCenter, vSphere Lifecycle Manager, NSX, VCF Download Tool]
+topics: [lcm-concepts, lcm-workflow, lcm-recovery, vlcm]
+lessons: [lifecycle-concepts, lifecycle-upgrade-workflow, vlcm-images-host-remediation, lifecycle-failures-recovery]
+objectives:
+  - Inventory the exact versions of every management and core component and map them to the two lifecycle engines.
+  - Configure (or design) a depot and identify the binaries needed for a target release.
+  - Run a precheck on the management domain and interpret errors and warnings.
+  - Inspect the cluster's vLCM image and compliance.
+  - Produce an ordered upgrade runbook with backups, locks, verification and recovery criteria.
+prerequisites:
+  - A running VCF 9 management domain (lab-deploy-vcf-management-domain) for the hands-on parts; otherwise do the paper version described in the starting state.
+  - Lessons lifecycle-concepts and lifecycle-upgrade-workflow read.
+  - SSH access to SDDC Manager as the vcf user.
+topology:
+  logical: d-lab-lifecycle-upgrade-planning-logical
+requirements:
+  network:
+    - Management VLAN reachable from your workstation (HTTPS to VCF Operations, vCenter, SDDC Manager; SSH to SDDC Manager).
+    - Optional internet access (directly or through a proxy) from SDDC Manager and fleet management for an online depot.
+  vms:
+    - The VCF management domain appliances on 3-4 nested ESX hosts.
+    - Optional small Linux VM (2 vCPU, 4 GB RAM, 150 GB disk) for an offline depot web server.
+  ip:
+    - Use the Home Lab IP plan; give the optional depot VM a management VLAN address and DNS A/PTR records (for example depot.lab.local).
+startingState: |
+  A VCF 9 management domain is deployed and healthy. You may or may not have a newer VCF release available to you;
+  the lab works either way, because the goal is a **validated plan**, not pressing "Update Now".
+
+  **Honest note for the nested Proxmox lab:** upgrades of nested VCF work but are slow, and vSAN remediation of nested
+  hosts on a single physical server takes a long time. Snapshot-free recovery is hard on one box: take the
+  documented file-based backups before any real upgrade. If you have no binaries or entitlement yet, do steps 1, 2,
+  6 and 7 as a paper exercise with the TechDocs tables and come back later for steps 3-5.
+steps:
+  - id: s1-inventory
+    title: Inventory current versions
+    why: You cannot pick a target or an order without knowing exactly where every component is today.
+    instructions: |
+      Build a table `Component | FQDN | Family (management/core) | Engine (fleet management/SDDC Manager) | Current version`.
+      Sources:
+      - VCF Operations > Fleet Management > Lifecycle > **VCF Management** (management components) and **VCF Instances** (domains).
+      - vSphere Client > vCenter > Summary (vCenter build) and each host > Summary (ESX build).
+      - NSX Manager > System > Overview/upgrade view.
+      On one host, confirm via SSH: `esxcli system version get` and `esxcli software baseimage get`.
+    hint: Management components = VCF Operations, fleet management, VCF Automation, logs, networks, Identity Broker. Core = SDDC Manager, vCenter, NSX, ESX.
+    validate: Every deployed appliance and every host has a row with a version; the family/engine columns match the lesson table.
+    expected: A complete version table. All hosts in the cluster show the same base image build.
+  - id: s2-target
+    title: Choose a target and read the release notes
+    why: The target release defines the BOM, the order, and any known issues you must plan around.
+    instructions: |
+      Pick a target (for example the next 9.0 maintenance release). From the release notes record: the BOM versions,
+      upgrade prerequisites, known issues, and whether any patch is required first. Classify the change as major,
+      minor, maintenance or patch.
+    hint: Order matters for major/minor/maintenance; patches can go in any order (KB 390634). Upgrades are forward-only.
+    validate: You can state for each component the current and target version and the release type.
+    expected: A two-column current/target table plus a short list of known issues that apply to your lab.
+  - id: s3-depot
+    title: Connect a depot (or design an offline one)
+    why: Without binaries, nothing in the planner is actionable.
+    instructions: |
+      Online: generate a download token in the Broadcom Support Portal and configure the online depot for fleet
+      management (VCF Management > Binary Management) and for SDDC Manager (VCF Instances > Binary Management).
+      Offline (optional): on the depot VM install a web server with HTTPS, use the VCF Download Tool to list and download
+      the target binaries into `/depot`, keep `umds-patch-store` unauthenticated, and import your lab CA into the
+      consuming appliances before connecting.
+    hint: "Use `vcf-download-tool binaries list ... --type=UPGRADE` first to size the download."
+    validate: Binary Management lists the target version's binaries; download status reaches success for the ones you need.
+    expected: Target binaries for SDDC Manager, NSX, vCenter (and ESX components) available to SDDC Manager; management component binaries available to fleet management.
+  - id: s4-precheck
+    title: Run the precheck on the management domain
+    why: The precheck finds blocking problems while nothing has changed yet.
+    instructions: |
+      VCF Operations > Fleet Management > Lifecycle > VCF Instances > management domain > Updates > **Precheck**.
+      Record each error and warning with the component and the dependency it points to (DNS, NTP, certificates,
+      credentials, host state, disk space).
+      On SDDC Manager, follow the log during the precheck: `tail -f /var/log/vmware/vcf/lcm/lcm-debug.log`.
+    hint: If nothing is offered as an update, the planner may simply have no newer binaries; the precheck can still run.
+    validate: You have a precheck result and every error has a planned fix.
+    expected: In a healthy lab, a green precheck or a small number of warnings (nested environments often warn about hardware compatibility).
+  - id: s5-image
+    title: Inspect the vLCM image and compliance
+    why: The ESX step is a vLCM remediation; you need to know the image and whether hosts can enter maintenance mode.
+    instructions: |
+      vSphere Client > management cluster > Updates > Image: record base image, vendor add-on (should be none for
+      nested), firmware add-on (none), components. Click **Check Compliance**. Then test maintenance mode feasibility:
+      put one host in maintenance mode with the vSAN option your policy needs, observe evacuation, exit.
+    hint: On nested hosts there is no hardware support manager, so firmware is not part of the image.
+    validate: All hosts are compliant (or you know why not), and one host entered and left maintenance mode successfully.
+    expected: Compliant hosts with a base-image-only image; maintenance mode works with DRS fully automated.
+  - id: s6-runbook
+    title: Write the ordered runbook
+    why: The runbook is what you execute at 2 a.m.; the order and checks must be decided now.
+    instructions: |
+      Write numbered steps: backups (SDDC Manager, vCenter, NSX), fleet management, VCF Operations, other management
+      components, then SDDC Manager, NSX, vCenter, ESX, vSAN for the management domain (then any workload domain).
+      For each step add: expected duration, verification (version, health), and which operations are blocked by
+      resource locks (no certificate rotation, no backups, no host commissioning in that domain).
+    hint: Manager before managed; management before workload.
+    validate: Compare your order with the lesson's sequence diagram; every step has a verification.
+    expected: A one-page runbook in the documented order.
+  - id: s7-recovery
+    title: Write the recovery section
+    why: Upgrades are forward-only; your recovery plan is retry criteria plus backups.
+    instructions: |
+      For each stage write: which engine runs it, which log to read (SDDC Manager `lcm-debug.log`, fleet management
+      `/var/log/vrlcm/vmware_vrlcm.log`), the retry rule (fix cause, retry once), and the restore trigger (component
+      unusable). Note where your backups are and confirm the last backup succeeded.
+    hint: Retry first, restore last.
+    validate: Someone else could execute your recovery section without asking you questions.
+    expected: A recovery table per stage plus confirmed backup locations and timestamps.
+troubleshooting:
+  - symptom: Binary Management shows no available updates.
+    fix: Check depot connectivity and the download token; if you are already on the latest release, there is nothing newer to offer (forward-only).
+  - symptom: Offline depot connection fails with a certificate error.
+    fix: Import the depot web server's CA root into the consuming appliance, then reconnect. Test with `openssl s_client -connect depot.lab.local:443 -showcerts` from the appliance.
+  - symptom: ESX components missing while other binaries show.
+    fix: Make sure `umds-patch-store` is served without basic authentication and was populated with the UMDS commands of the VCF Download Tool.
+  - symptom: Precheck error that a host is not responding.
+    fix: Check the nested host's management network and vpxa/hostd; reconnect it in vCenter before re-running the precheck.
+  - symptom: Host cannot enter maintenance mode.
+    fix: Set DRS to fully automated, check VM-host affinity rules and vSAN data migration options, and ensure the remaining hosts have capacity.
+challenge: |
+  Add a hypothetical workload domain that shares nothing with the management domain and a second VCF instance. Update
+  your runbook: which steps happen once per fleet, which once per instance, which once per domain? Where could two
+  instances be upgraded in parallel, and what resource locks would still apply?
+cleanup: |
+  Exit maintenance mode on any host you tested. Remove downloaded binaries you will not use (trash icon in Binary
+  Management) to free SDDC Manager space. Keep the runbook and the version table in your lab notes.
+sources:
+  - title: "VCF 9.0 TechDocs - Lifecycle Management in VMware Cloud Foundation"
+    url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/lifecycle-management/lifecycle-management-in-vmware-cloud-foundation.html
+  - title: "VCF 9.0 TechDocs - Upgrade VCF core components (flexible BOM)"
+    url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/lifecycle-management/lifecycle-management-of-vcf-core-components/flexible-bom-upgrade-in-vmware-cloud-foundation.html
+  - title: "William Lam - VCF Software Depot structure deep dive"
+    url: https://williamlam.com/2025/10/vcf-software-depot-structure-deep-dive-for-install-upgrade.html

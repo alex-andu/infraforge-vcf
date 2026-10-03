@@ -1,0 +1,232 @@
+id: lab-esx-host-first-vm
+title: Your First ESX 9 Host and VM (nested on Proxmox)
+level: beginner
+complexity: 2
+minutes: 120
+version: vcf9
+technologies: [ESX 9, VMware Host Client, esxcli, vim-cmd, Proxmox VE]
+topics: [hypervisors, esx-host, virtual-hardware, cpu-memory-virt, datastores]
+lessons: [hypervisors-and-esx, cpu-memory-virtualization, storage-network-virtualization-basics, what-is-vcf]
+objectives:
+  - Build a nested ESX 9 host on Proxmox VE with settings ESX can use (CPU type host, vmxnet3 NICs, SATA disks).
+  - Configure the management network, DNS and NTP the way VCF will later expect (static IP, FQDN, forward and reverse DNS).
+  - Tour the VMware Host Client and identify the VMkernel, network and storage objects from the lessons.
+  - Create a VMFS datastore and a first VM with sensible virtual hardware, and install open-vm-tools.
+  - Verify everything from the ESX shell with esxcli and vim-cmd.
+prerequisites:
+  - "Proxmox prepared for nested virtualization (see lab-homelab-proxmox-prep in the Home Lab section): nested=Y for kvm_intel or kvm_amd."
+  - "ESX 9.0 installer ISO uploaded to a Proxmox ISO storage. Binaries require a Broadcom entitlement; if yours is not available yet, an ESXi 8.0 ISO lets you practise every step (the version strings differ)."
+  - "A small Linux ISO for the guest VM (any distribution that ships open-vm-tools)."
+  - "DNS server you control for the lab domain, and an NTP source."
+topology:
+  logical: d-lab-esx-host-first-vm-logical
+requirements:
+  network:
+    - "Management VLAN (or untagged lab network) reachable from your workstation, with a default gateway."
+    - "Proxmox Linux bridge (VLAN-aware if you tag the management VLAN) for the nested ESX NICs."
+  vms:
+    - "esx-lab-01: Proxmox VM, 1 socket x 8 cores, CPU type host, 16 GB RAM, SATA disk 1 = 40 GB (boot), SATA disk 2 = 100 GB (datastore), 2 x vmxnet3 NICs."
+    - "lab-vm01 (inside ESX): 1 vCPU, 2 GB RAM, 16 GB thin disk, vmxnet3 NIC."
+  ip:
+    - "esx-lab-01 management IP, static (example 10.0.10.21/24, gateway 10.0.10.1); take real values from the Home Lab IP plan."
+    - "DNS A record esx-lab-01.<lab-domain> and matching PTR record."
+    - "One IP (DHCP or static) for lab-vm01 on the VM Network."
+startingState: |
+  A Proxmox VE server with nested virtualization enabled, the ESX ISO and a Linux ISO available, and DNS/NTP reachable
+  on the lab network. No ESX host exists yet.
+
+  :::warning
+  Nested ESX is a learning tool, not a supported production configuration. Everything you learn about the Host Client,
+  datastores, port groups and the CLI is identical on physical hardware; performance is not.
+  :::
+steps:
+  - id: plan-names
+    title: Plan the name, IP and DNS records
+    why: >
+      VCF later refuses hosts whose forward and reverse DNS do not match. Building the habit on your very first host
+      avoids the most common VCF deployment failure.
+    instructions: |
+      1. Pick the hostname `esx-lab-01` and the management IP from your Home Lab IP plan.
+      2. On your lab DNS server create an **A record** `esx-lab-01.<lab-domain>` → IP and a **PTR record** IP → FQDN.
+      3. Note the gateway, DNS server(s), NTP server and VLAN ID (if the management network is tagged).
+    hint: If you have no lab DNS yet, do the Network Readiness lab first or temporarily run a small DNS server on Proxmox.
+    validate: |
+      From your workstation:
+      ```shell
+      nslookup esx-lab-01.<lab-domain>
+      nslookup <management-ip>
+      ```
+    expected: Both lookups succeed and return each other (FQDN ↔ IP). Nothing answers ping yet.
+
+  - id: check-nesting
+    title: Confirm nested virtualization on Proxmox
+    why: >
+      ESX can only run 64-bit VMs if it sees hardware virtualization (VT-x/AMD-V). Inside a Proxmox VM that requires
+      nested virtualization on the Proxmox host and CPU type "host" on the VM.
+    instructions: |
+      On the Proxmox shell run (Intel CPUs; use `kvm_amd` on AMD):
+      ```shell
+      cat /sys/module/kvm_intel/parameters/nested
+      ```
+    hint: If it shows N, follow the Proxmox nested virtualization steps in lab-homelab-proxmox-prep (modprobe option kvm-intel nested=Y, then reload the module with no VMs running).
+    validate: Read the output of the command.
+    expected: "`Y` (or `1`)."
+
+  - id: create-pve-vm
+    title: Create the esx-lab-01 VM in Proxmox
+    why: >
+      ESX has no VirtIO drivers, so the VM must present hardware ESX recognises: vmxnet3 NICs and SATA disks. The
+      boot disk must be at least 32 GB for ESX 9.
+    instructions: |
+      In the Proxmox UI create a VM:
+      - **General**: name `esx-lab-01`.
+      - **OS**: ESX ISO, guest OS type *Other*.
+      - **System**: machine q35, BIOS **OVMF (UEFI)** with an EFI disk, *pre-enrolled keys unchecked* (Secure Boot off for the lab).
+      - **Disks**: bus **SATA**, 40 GB on the NVMe-backed storage (boot). Add a second SATA disk of 100 GB (datastore).
+      - **CPU**: 1 socket, 8 cores, **type host**.
+      - **Memory**: 16384 MB, ballooning device off.
+      - **Network**: model **VMware vmxnet3** on your bridge (VLAN tag if needed). Add a second vmxnet3 NIC on the same bridge.
+      Or from the Proxmox shell, confirm the CPU type with `qm set <vmid> --cpu host`.
+    hint: Do not use an IDE controller (nested ESX 9 no longer supports it) or VirtIO NICs/disks (no ESX drivers).
+    validate: In Proxmox, open the VM's Hardware tab.
+    expected: Processor shows type host; two SATA disks; two vmxnet3 network devices; OVMF BIOS with an EFI disk.
+
+  - id: install-esx
+    title: Install ESX
+    why: The installer writes ESX to the boot device; you choose the disk and set the root password.
+    instructions: |
+      1. Start the VM and open the console.
+      2. Follow the installer: accept the EULA, select the **40 GB** disk as the install target, choose the keyboard, set a strong root password.
+      3. If the installer warns that the CPU is not supported, read the message: older CPUs can be allowed for labs with the `allowLegacyCPU=true` boot option (Shift+O at boot), see William Lam's VCF 9 lab resource.
+      4. When finished, detach the ISO in Proxmox and reboot.
+    hint: If no network adapters are found, the NIC model is not vmxnet3.
+    validate: Watch the console after reboot.
+    expected: The yellow/grey DCUI screen shows "VMware ESX 9.0.x" and a (DHCP or 169.254.x.x) management address.
+
+  - id: dcui-network
+    title: Configure the management network in the DCUI
+    why: >
+      vmk0 is the host's management interface. VCF needs a static IP, correct DNS servers and an FQDN hostname that
+      matches DNS.
+    instructions: |
+      Press F2, log in as root, then **Configure Management Network**:
+      - **Network Adapters**: select vmnic0 (and vmnic1 for redundancy).
+      - **VLAN**: set the management VLAN ID if Proxmox passes tagged frames; leave empty if untagged.
+      - **IPv4 Configuration**: static IP, subnet mask, default gateway.
+      - **IPv6**: disable if you do not use it (requires reboot).
+      - **DNS Configuration**: DNS server(s) and hostname `esx-lab-01.<lab-domain>`.
+      - **Custom DNS Suffixes**: your lab domain.
+      Press Esc and apply (Y). Then run **Test Management Network**.
+    validate: In the DCUI choose Test Management Network.
+    expected: Ping to gateway and DNS servers OK and "Resolve hostname" OK.
+
+  - id: host-client-login
+    title: Log in to the Host Client and take the tour
+    why: The Host Client (served by hostd) is how you manage a host without vCenter and your break-glass tool later.
+    instructions: |
+      1. Browse to `https://esx-lab-01.<lab-domain>/ui` and accept the self-signed certificate warning (lab only).
+      2. Log in as root.
+      3. Tour and note: **Host** (version, CPU, memory), **Manage → System → Time & date**, **Manage → Services**, **Networking** (Port groups, Virtual switches, Physical NICs, VMkernel NICs, TCP/IP stacks), **Storage** (Datastores, Adapters, Devices).
+      4. In **Manage → System → Time & date**, configure NTP with your NTP server, start the NTP service with policy "Start and stop with host".
+    validate: Compare Networking → VMkernel NICs and Physical NICs with the lesson diagram.
+    expected: vmk0 on the Management Network port group with your static IP; vmnic0 and vmnic1 listed; vSwitch0 with port groups "Management Network" and "VM Network"; NTP running.
+
+  - id: create-datastore
+    title: Create a VMFS datastore
+    why: VMs need a datastore for their files. The OSDATA volume is for ESX, not for VMs.
+    instructions: |
+      Storage → Datastores → **New datastore** → Create new VMFS datastore → name `datastore1` → select the **100 GB** disk → use full disk, VMFS 6 → Finish.
+    validate: Storage → Datastores.
+    expected: datastore1, type VMFS6, about 100 GB capacity.
+
+  - id: create-vm
+    title: Create your first VM
+    why: You apply the virtual hardware choices from the lessons (paravirtual devices, thin disk, current hardware version).
+    instructions: |
+      1. Storage → Datastore browser → create folder `iso` → **Upload** the Linux ISO.
+      2. Virtual Machines → **Create / Register VM** → Create a new virtual machine.
+      3. Name `lab-vm01`, compatibility **ESX 9.0 virtual machine** (hardware version 22), guest OS family Linux, matching version.
+      4. Storage: datastore1.
+      5. Customize: 1 vCPU, 2 GB memory, 16 GB hard disk **thin provisioned**, SCSI controller **VMware Paravirtual**, network adapter **VMXNET 3** on **VM Network**, CD/DVD = Datastore ISO file (your ISO), "Connect at power on" checked.
+      6. Finish and power on; open the console and install the OS.
+    hint: If the VM fails to power on with an error about virtualization or long mode, nested virtualization or CPU type host is missing (step 2/3).
+    validate: Open Virtual Machines → lab-vm01 → summary.
+    expected: Powered on, compatibility ESX 9.0 (VM version 22), disk thin on datastore1.
+
+  - id: guest-tools
+    title: Install open-vm-tools and check guest integration
+    why: VMware Tools/open-vm-tools provides vmxnet3/PVSCSI drivers, the balloon driver, clean shutdown and heartbeats used by HA.
+    instructions: |
+      Inside the guest, install the distribution's `open-vm-tools` package and enable its service (for example `sudo apt install open-vm-tools` or `sudo dnf install open-vm-tools`, then `sudo systemctl enable --now vmtoolsd`). Disconnect the ISO from the VM afterwards.
+    validate: Check the VM summary in the Host Client.
+    expected: VMware Tools shows as running (open-vm-tools, guest managed) and the guest IP address and hostname appear in the summary.
+
+  - id: cli-verify
+    title: Verify from the ESX shell
+    why: The CLI is how you troubleshoot when UIs are unavailable, and these exact commands reappear in later phases.
+    instructions: |
+      1. Manage → Services → start **TSM-SSH** (SSH) temporarily.
+      2. `ssh root@esx-lab-01.<lab-domain>` and run:
+      ```shell
+      esxcli system version get
+      esxcli hardware cpu global get
+      esxcli hardware memory get
+      esxcli network ip interface ipv4 get
+      esxcli network nic list
+      esxcli storage filesystem list
+      vim-cmd vmsvc/getallvms
+      vim-cmd vmsvc/power.getstate <vmid>
+      esxcli vm process list
+      ```
+    validate: Compare each output with what you configured.
+    expected: |
+      - Product VMware ESX, Version 9.0.x.
+      - CPU Packages 1, CPU Cores 8 (what you gave the Proxmox VM, not the physical server).
+      - About 16 GB physical memory (shown in bytes).
+      - vmk0 with your static IP; vmnic0/vmnic1 with driver nvmxnet3, link Up.
+      - datastore1 (VMFS-6) and an OSDATA volume.
+      - lab-vm01 listed with a Vmid and vmx-22; power state "Powered on"; it appears in esxcli vm process list with a World ID.
+
+  - id: secure-up
+    title: Stop SSH and take a configuration note
+    why: SSH and the ESX Shell should be off unless needed; VCF and hardening checks flag them.
+    instructions: |
+      Manage → Services → stop **TSM-SSH** (and TSM if you started it). Write down the host's FQDN, IP, version/build, datastore and VM settings in your lab notebook.
+    validate: Try `ssh root@esx-lab-01.<lab-domain>`.
+    expected: The connection is refused or times out (SSH service stopped).
+troubleshooting:
+  - symptom: Installer says no network adapters were detected.
+    fix: Shut down the VM and change the NIC model to VMware vmxnet3 in Proxmox. E1000/VirtIO are not reliable choices for nested ESX on Proxmox.
+  - symptom: Installer shows no disks or the disk is too small.
+    fix: Use SATA (not VirtIO SCSI or IDE) and make the boot disk at least 32 GB.
+  - symptom: "VM lab-vm01 will not power on: hardware virtualization is not available / long mode not supported."
+    fix: Set the Proxmox VM CPU type to host and confirm nested=Y on the Proxmox host, then cold-boot the ESX VM.
+  - symptom: Host Client unreachable but DCUI shows an IP.
+    fix: Check VLAN ID on vmk0 versus the Proxmox bridge/VLAN tag, the gateway, and your workstation's route to the management network. Run Test Management Network in the DCUI.
+  - symptom: Test Management Network says "Resolve hostname" failed.
+    fix: The A/PTR records are missing or wrong, or the DNS server IP is wrong. Fix DNS before continuing; VCF will fail on the same issue.
+  - symptom: Guest has no network although vNIC is connected.
+    fix: Install open-vm-tools (vmxnet3 driver), check the VM is on the VM Network port group, and check that the port group VLAN matches the physical/bridge configuration.
+challenge: |
+  Without the Host Client, using only the ESX shell: find lab-vm01's Vmid, shut it down gracefully with
+  `vim-cmd vmsvc/power.shutdown <vmid>`, confirm it is off with `vim-cmd vmsvc/power.getstate <vmid>`, then power it on
+  again with `vim-cmd vmsvc/power.on <vmid>`. Explain why power.shutdown needs open-vm-tools but power.off does not.
+  Bonus: add a port group "Lab-VLAN30" with VLAN 30 on vSwitch0 and explain what must also be configured outside ESX
+  for a VM on it to reach a gateway.
+cleanup: |
+  Keep esx-lab-01 if you have capacity: it is useful for the vCenter lab in Phase 2. If you need the resources back,
+  power off lab-vm01, then shut down esx-lab-01 from the Host Client (Host → Shut down) and stop or delete the
+  Proxmox VM. Remove the DNS records only if you delete the host.
+sources:
+  - title: "vSphere 9.0 – ESX Hardware Requirements"
+    url: https://techdocs.broadcom.com/us/en/vmware-cis/vsphere/vsphere/9-0/esx-installation-and-setup/installing-and-setting-up-esxi/esxi-requirements/esxi-hardware-requirements.html
+  - title: "vSphere 9.0 – Single Host Management (VMware Host Client)"
+    url: https://techdocs.broadcom.com/us/en/vmware-cis/vsphere/vsphere/9-0/vsphere-single-host-management-vmware-host-client.html
+  - title: "Proxmox VE wiki – Nested Virtualization"
+    url: https://pve.proxmox.com/wiki/Nested_Virtualization
+  - title: "William Lam – Ultimate lab resource for VCF 9.0"
+    url: https://williamlam.com/2025/06/ultimate-lab-resource-for-vcf-9-0.html
+  - title: "Broadcom KB 308360 – Common VM tasks with command-line utilities"
+    url: https://knowledge.broadcom.com/external/article/308360/performing-common-virtual-machinerelated.html
+  - title: "Broadcom KB 312100 – ESX hosts and compatible virtual machine hardware versions"
+    url: https://knowledge.broadcom.com/external/article/312100/esxiesx-hosts-and-compatible-virtual-mac.html

@@ -1,0 +1,33 @@
+id: d03-vsan-deployment-models
+title: vSAN HCI, storage cluster and compute cluster
+description: >
+  Three vSAN deployment models used in VCF 9. A vSAN HCI cluster provides compute and storage from the same hosts.
+  A vSAN storage cluster (formerly vSAN Max, ESA only, at least 4 hosts) provides disaggregated storage and should not
+  run workload VMs directly. A vSAN compute cluster has no local vSAN storage and mounts the storage cluster's
+  datastore remotely; in VCF it must be in the same workload domain as its storage cluster. ESA HCI clusters can
+  also mount a remote storage cluster datastore. Up to 10 client clusters and 128 hosts can connect to one storage
+  cluster datastore.
+width: 1000
+height: 520
+groups:
+  - { id: g-wld, x: 20, y: 20, w: 960, h: 480, label: "VI workload domain", kind: zone }
+  - { id: g-hci, x: 40, y: 70, w: 280, h: 400, label: "vSAN HCI cluster (ESA)", kind: compute }
+  - { id: g-sc, x: 360, y: 290, w: 280, h: 180, label: "vSAN storage cluster (ESA only)", kind: storage }
+  - { id: g-cc, x: 680, y: 70, w: 280, h: 400, label: "vSAN compute cluster", kind: compute }
+nodes:
+  - { id: hcivms, x: 70, y: 110, w: 220, h: 56, label: "Workload VMs", kind: vm, info: "In HCI, VMs run on the same hosts that provide vSAN storage." }
+  - { id: hcids, x: 70, y: 230, w: 220, h: 56, label: "Local vSAN datastore", kind: storage, component: vsan, info: "Built from the HCI hosts' NVMe devices." }
+  - { id: hcimount, x: 70, y: 350, w: 220, h: 56, label: "Remote datastore mount", sublabel: "optional", kind: storage, info: "An ESA HCI cluster can also mount the storage cluster's datastore as a client." }
+  - { id: scds, x: 390, y: 340, w: 220, h: 56, label: "Storage cluster datastore", sublabel: "≥4 hosts, 7+ recommended", kind: storage, component: vsan, info: "Disaggregated storage built on ESA. Not recommended for running VMs directly. Serves up to 10 client clusters / 128 hosts." }
+  - { id: ccvms, x: 710, y: 110, w: 220, h: 56, label: "Workload VMs", kind: vm, info: "Compute cluster hosts run VMs but contribute no vSAN capacity." }
+  - { id: ccnone, x: 710, y: 230, w: 220, h: 56, label: "No local vSAN devices", kind: compute, info: "A vSAN compute cluster is a vSphere cluster that mounts a remote vSAN datastore." }
+  - { id: ccmount, x: 710, y: 350, w: 220, h: 56, label: "Remote datastore mount", kind: storage, info: "Uses a VMkernel adapter tagged for vSAN storage cluster client traffic." }
+edges:
+  - { from: hcivms, to: hcids, kind: storage }
+  - { from: hcimount, to: scds, label: "client traffic", kind: storage, dashed: true }
+  - { from: ccvms, to: ccmount, kind: storage }
+  - { from: ccmount, to: scds, label: "client traffic", kind: storage }
+steps:
+  - { title: "HCI", text: "Compute and storage scale together on the same hosts.", highlight: [hcivms, hcids] }
+  - { title: "Storage cluster", text: "Dedicated ESA storage nodes; scale capacity without adding compute.", highlight: [scds] }
+  - { title: "Compute cluster", text: "Hosts without vSAN devices mount the remote datastore; same workload domain in VCF.", highlight: [ccvms, ccnone, ccmount, scds] }

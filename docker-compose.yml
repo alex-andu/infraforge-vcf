@@ -1,0 +1,8 @@
+services:
+  infraforge:
+    build: .
+    image: infraforge-vcf:latest
+    container_name: infraforge-vcf
+    restart: unless-stopped
+    ports:
+      - "${INFRAFORGE_PORT:-8080}:80"

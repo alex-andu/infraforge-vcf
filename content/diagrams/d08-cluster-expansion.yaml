@@ -1,0 +1,40 @@
+id: d08-cluster-expansion
+title: Expanding and shrinking a VCF domain
+description: >
+  Expansion: an unassigned host of the right storage type is added to an SDDC cluster from the vSphere Client; VCF
+  applies the cluster image to the new host only, adds it to the VDS, assigns VMkernel IPs from the network pool,
+  configures principal storage and prepares it as an NSX transport node. A new SDDC cluster can be added to the domain
+  with its own storage type. Shrink: remove a host (after moving workloads and any NSX Edge), then decommission,
+  re-image and commission it again before reuse. Deleting a cluster destroys vSAN datastores and unmounts other storage.
+  Imported clusters add hosts with the vSphere Client instead.
+width: 1000
+height: 600
+groups:
+  - { id: g-cl, x: 300, y: 40, w: 420, h: 330, label: "SDDC cluster (workload domain)", kind: compute }
+nodes:
+  - { id: un, x: 40, y: 80, w: 200, h: 64, label: "Unassigned host", sublabel: "same storage type", kind: compute, component: esx-host, info: "Commissioned host in active state." }
+  - { id: img, x: 330, y: 80, w: 170, h: 56, label: "1. vLCM image", kind: mgmt, info: "Remediation scoped to the newly added hosts." }
+  - { id: vds, x: 520, y: 80, w: 170, h: 56, label: "2. VDS uplinks", kind: network, component: vds, info: "Map free vmnics to existing uplinks; different NIC enumeration allowed." }
+  - { id: ip, x: 330, y: 170, w: 170, h: 56, label: "3. Pool IPs", sublabel: "vMotion/storage", kind: network, info: "From the host's network pool; add IP ranges when exhausted." }
+  - { id: st, x: 520, y: 170, w: 170, h: 56, label: "4. Principal storage", kind: storage, info: "Join vSAN or mount NFS/vVols automatically; FC must be zoned beforehand." }
+  - { id: tn, x: 420, y: 270, w: 190, h: 56, label: "5. NSX transport node", kind: nsx, component: nsx-manager, info: "TEP IPs from the static pool or DHCP." }
+  - { id: newcl, x: 770, y: 80, w: 200, h: 64, label: "Add SDDC cluster", sublabel: "own storage type", kind: compute, info: "vSphere Client > New Cluster > Create SDDC Cluster. Several add-cluster tasks can run in parallel." }
+  - { id: rm, x: 40, y: 430, w: 200, h: 60, label: "Remove host", sublabel: "VMs + Edges moved", kind: mgmt, info: "Clusters > Hosts > Remove Selected Hosts. Keep enough hosts for vSAN availability." }
+  - { id: dec, x: 290, y: 430, w: 200, h: 60, label: "Decommission", kind: mgmt, info: "Removes the unassigned host from inventory." }
+  - { id: rei, x: 540, y: 430, w: 200, h: 60, label: "Re-image + commission", kind: external, info: "Required before the host can be used in another domain." }
+  - { id: delcl, x: 770, y: 430, w: 200, h: 60, label: "Delete cluster", sublabel: "vSAN destroyed", kind: storage, info: "vSAN datastores destroyed, other storage unmounted." }
+  - { id: imp, x: 770, y: 250, w: 200, h: 64, label: "Imported cluster", sublabel: "vSphere Client add-host", kind: external, info: "VCF commissioned hosts cannot be added to an imported cluster." }
+edges:
+  - { from: un, to: img, label: "Add Unassigned Hosts", kind: mgmt }
+  - { from: img, to: vds, kind: mgmt }
+  - { from: vds, to: ip, kind: mgmt }
+  - { from: ip, to: st, kind: mgmt }
+  - { from: st, to: tn, kind: mgmt }
+  - { from: un, to: newcl, kind: mgmt, dashed: true }
+  - { from: rm, to: dec, kind: mgmt }
+  - { from: dec, to: rei, kind: mgmt }
+steps:
+  - { title: "Add a host", text: "VCF applies image, VDS, pool IPs, storage and NSX to the new host.", highlight: [un, img, vds, ip, st, tn] }
+  - { title: "Add a cluster", text: "A new SDDC cluster can use a different principal storage type.", highlight: [newcl] }
+  - { title: "Shrink", text: "Remove, decommission, re-image, commission. Deleting a cluster destroys vSAN data.", highlight: [rm, dec, rei, delcl] }
+  - { title: "Imported clusters", text: "Hosts in imported clusters are managed in the vSphere Client.", highlight: [imp] }

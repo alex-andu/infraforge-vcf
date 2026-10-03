@@ -1,0 +1,40 @@
+id: d-lab-vcenter-cluster-ha-drs-logical
+title: Lab topology - vCenter and a three-host HA/DRS cluster nested on Proxmox
+description: >
+  A single Proxmox VE server runs three nested ESX 9 VMs (esx-lab-01 to 03) on a VLAN-aware Linux bridge that trunks the
+  management and vMotion VLANs. The vCenter appliance runs as a VM on esx-lab-01 and manages data center dc-lab with cluster
+  cl-lab01 containing the three hosts. Each host has vmk0 for management and vmk1 for vMotion. An NFS export (from Proxmox or a
+  Linux VM, on the HDD pool) is mounted as nfs-ds01 on all hosts and holds test VMs. DNS and NTP come from the lab services.
+width: 1000
+height: 620
+groups:
+  - { id: g-pve, x: 20, y: 20, w: 960, h: 580, label: "Proxmox VE server (physical)", kind: zone }
+  - { id: g-cl, x: 40, y: 180, w: 680, h: 300, label: "dc-lab / cl-lab01 (HA + DRS)", kind: compute }
+nodes:
+  - { id: vc, x: 60, y: 60, w: 200, h: 56, label: "vcenter-lab", sublabel: "VM on esx-lab-01", kind: mgmt, component: vcenter, info: "Deployed with the UI installer (stage 1 deploy, stage 2 SSO setup). Manages the cluster. Don't power off its host when testing HA." }
+  - { id: svc, x: 300, y: 60, w: 200, h: 56, label: "DNS + NTP", sublabel: "lab services", kind: external, info: "Forward and reverse records for vcenter-lab and esx-lab-01..03; NTP for all. See lab-network-readiness." }
+  - { id: ws, x: 540, y: 60, w: 200, h: 56, label: "Workstation", sublabel: "vSphere Client · PowerCLI", kind: external, info: "Browser to https://vcenter-lab/ui and :5480; PowerCLI for automation steps." }
+  - { id: esx1, x: 60, y: 230, w: 200, h: 64, label: "esx-lab-01", sublabel: "vmk0 mgmt · vmk1 vMotion", kind: compute, component: esx-host, info: "Nested ESX 9 VM: CPU type host, nested virtualization on, 2 × vmxnet3, 32 GB RAM. Also runs the vCenter VM." }
+  - { id: esx2, x: 290, y: 230, w: 200, h: 64, label: "esx-lab-02", sublabel: "vmk0 · vmk1", kind: compute, info: "Used for the maintenance mode test." }
+  - { id: esx3, x: 510, y: 230, w: 190, h: 64, label: "esx-lab-03", sublabel: "vmk0 · vmk1", kind: compute, info: "Powered off hard from Proxmox to simulate a host failure." }
+  - { id: testvm, x: 290, y: 370, w: 200, h: 56, label: "Test VMs", sublabel: "on nfs-ds01", kind: vm, info: "Small Linux VMs used for vMotion, DRS rules and HA restart tests." }
+  - { id: nfs, x: 760, y: 370, w: 200, h: 64, label: "nfs-ds01", sublabel: "NFS export on HDD pool", kind: storage, info: "Shared datastore mounted on all three hosts — required for HA restarts and simple vMotion. Also usable as HA heartbeat datastore." }
+  - { id: bridge, x: 60, y: 520, w: 640, h: 56, label: "Proxmox VLAN-aware bridge", sublabel: "trunk: management VLAN + vMotion VLAN", kind: network, info: "Carries both VLANs to the nested hosts. VLAN IDs must match the ESX port groups." }
+  - { id: pvedisk, x: 760, y: 520, w: 200, h: 56, label: "Proxmox disks", sublabel: "NVMe (boot) · HDD (NFS)", kind: storage, info: "Nested ESX boot disks on fast storage; bulk shared storage on the HDD pool." }
+edges:
+  - { from: ws, to: vc, label: "HTTPS", kind: mgmt }
+  - { from: vc, to: esx1, label: "manage", kind: mgmt }
+  - { from: vc, to: esx2, kind: mgmt }
+  - { from: vc, to: esx3, kind: mgmt }
+  - { from: vc, to: svc, label: "DNS/NTP", kind: dependency, dashed: true }
+  - { from: esx1, to: esx2, label: "vMotion", kind: data, bidirectional: true }
+  - { from: esx2, to: esx3, label: "HA heartbeats", kind: control, bidirectional: true }
+  - { from: testvm, to: nfs, label: "VM files", kind: storage }
+  - { from: esx1, to: bridge, kind: data }
+  - { from: esx3, to: bridge, kind: data }
+  - { from: nfs, to: pvedisk, kind: storage, dashed: true }
+steps:
+  - { title: "Foundation", text: "Proxmox provides the bridge (two VLANs), disks and three nested ESX VMs.", highlight: [bridge, pvedisk, esx1, esx2, esx3] }
+  - { title: "vCenter", text: "vCenter runs on esx-lab-01 and depends on DNS and NTP.", highlight: [vc, svc, esx1] }
+  - { title: "Cluster", text: "dc-lab/cl-lab01 contains the three hosts, shared NFS storage and a vMotion network.", highlight: [esx1, esx2, esx3, nfs] }
+  - { title: "Tests", text: "Maintenance mode on esx-lab-02 (DRS evacuates), hard power-off of esx-lab-03 (HA restarts).", highlight: [esx2, esx3, testvm] }

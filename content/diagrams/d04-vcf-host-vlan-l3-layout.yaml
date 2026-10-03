@@ -1,0 +1,46 @@
+id: d04-vcf-host-vlan-l3-layout
+title: VLAN and L3 layout of a VCF ESX host
+description: >
+  One VCF ESX host has four VMkernel adapters: vmk0 for ESX management (VLAN 1611, MTU 1500), vmk1 for vMotion
+  (VLAN 1612, MTU 9000), vmk2 for vSAN (VLAN 1613, MTU 9000) and vmk10 as the NSX host TEP (VLAN 1614, MTU 9000).
+  All connect to port groups on one vSphere Distributed Switch whose two uplinks map to vmnic0 and vmnic1. Each vmnic
+  is cabled to a different top-of-rack switch; the ports are 802.1Q trunks with MTU 9216 carrying all four VLANs.
+  The ToR pair provides a VRRP first hop gateway per VLAN and routes to the services network where DNS and NTP live.
+  Traffic between hosts in the same VLAN is switched at layer 2; traffic to DNS/NTP or another subnet is routed via
+  the gateway.
+width: 1000
+height: 620
+groups:
+  - { id: g-host, x: 20, y: 20, w: 460, h: 580, label: "ESX host esx-01", kind: compute }
+  - { id: g-tor, x: 540, y: 20, w: 440, h: 380, label: "Top-of-rack pair (L2 + L3)", kind: network }
+nodes:
+  - { id: vmk0, x: 40, y: 70, w: 200, h: 56, label: "vmk0 ESX management", sublabel: "VLAN 1611 · MTU 1500", kind: mgmt, info: "Host management interface. VCF 9 guidance keeps it at MTU 1500. Uses the default TCP/IP stack and the management gateway for routed traffic to vCenter, DNS and NTP." }
+  - { id: vmk1, x: 40, y: 160, w: 200, h: 56, label: "vmk1 vMotion", sublabel: "VLAN 1612 · MTU 9000", kind: compute, info: "vMotion interface on the vMotion TCP/IP stack. 9000 MTU recommended. Test with vmkping -I vmk1 -S vmotion -d -s 8972." }
+  - { id: vmk2, x: 40, y: 250, w: 200, h: 56, label: "vmk2 vSAN", sublabel: "VLAN 1613 · MTU 9000", kind: storage, info: "Principal storage interface (vSAN, or NFS/iSCSI). 9000 MTU recommended. Hosts of a single-rack cluster share this subnet, so vSAN traffic is switched, not routed." }
+  - { id: vmk10, x: 40, y: 340, w: 200, h: 56, label: "vmk10 host TEP", sublabel: "VLAN 1614 · MTU 9000", kind: nsx, info: "NSX tunnel endpoint created by NSX host preparation. Geneve packets carry the DF bit; minimum 1600 MTU enforced, 1700 design minimum, 9000 recommended." }
+  - { id: vds, x: 270, y: 200, w: 190, h: 70, label: "vSphere Distributed Switch", sublabel: "MTU 9000 · port groups", kind: network, component: vds, info: "Port groups apply the VLAN tag for each vmk. The VDS MTU must be at least as large as the largest vmk MTU." }
+  - { id: vmnic0, x: 60, y: 480, w: 160, h: 56, label: "vmnic0 → uplink1", kind: network, info: "Physical NIC 0, mapped to VDS uplink1, cabled to ToR-A." }
+  - { id: vmnic1, x: 280, y: 480, w: 160, h: 56, label: "vmnic1 → uplink2", kind: network, info: "Physical NIC 1, mapped to VDS uplink2, cabled to ToR-B for switch-level redundancy." }
+  - { id: tora, x: 570, y: 280, w: 170, h: 70, label: "ToR-A", sublabel: "trunk 1611-1614 · MTU 9216", kind: network, component: physical-network, info: "802.1Q trunk port with PortFast trunk. Switch MTU set larger than host MTU (9216) so a 9000-byte host frame fits." }
+  - { id: torb, x: 790, y: 280, w: 170, h: 70, label: "ToR-B", sublabel: "trunk 1611-1614 · MTU 9216", kind: network, component: physical-network, info: "Second ToR. If ToR-A fails, the VDS fails traffic over to vmnic1." }
+  - { id: gw, x: 640, y: 80, w: 250, h: 70, label: "VRRP gateways (SVIs)", sublabel: ".1 per VLAN · MTU per VLAN", kind: network, info: "First hop gateway for each infrastructure VLAN, highly available across both ToRs (VCF-NET-REQD-GTW-001, RCMD-GTW-001). Gateway MTU must match the VLAN (REQD-GTW-002)." }
+  - { id: svc, x: 600, y: 470, w: 160, h: 60, label: "DNS + NTP", sublabel: "services subnet", kind: external, component: dns-service, info: "External services reached via routing from vmk0. Need UDP/TCP 53 and UDP 123 allowed from management subnets." }
+  - { id: peer, x: 800, y: 470, w: 160, h: 60, label: "esx-02 (same VLANs)", kind: compute, info: "Peer host in the same rack. vMotion, vSAN and TEP traffic to it is switched at layer 2 inside each VLAN." }
+edges:
+  - { from: vmk0, to: vds, kind: mgmt }
+  - { from: vmk1, to: vds, kind: data }
+  - { from: vmk2, to: vds, kind: storage }
+  - { from: vmk10, to: vds, kind: overlay }
+  - { from: vds, to: vmnic0, label: "uplink1" }
+  - { from: vds, to: vmnic1, label: "uplink2" }
+  - { from: vmnic0, to: tora, label: "802.1Q trunk", kind: data }
+  - { from: vmnic1, to: torb, label: "802.1Q trunk", kind: data }
+  - { from: tora, to: gw, label: "L3", kind: north-south, bidirectional: true }
+  - { from: torb, to: gw, label: "L3", kind: north-south, bidirectional: true }
+  - { from: tora, to: peer, label: "L2 same VLAN", kind: data, dashed: true }
+  - { from: gw, to: svc, label: "routed", kind: dependency, dashed: true }
+steps:
+  - { title: "One vmk per traffic type", text: "Each VMkernel adapter has its own VLAN, subnet and MTU. Management stays at 1500; vMotion, vSAN and TEP use 9000.", highlight: [vmk0, vmk1, vmk2, vmk10] }
+  - { title: "VDS applies the VLAN tag", text: "Port groups on the VDS tag frames; the VDS MTU must be at least the largest vmk MTU.", highlight: [vds, vmnic0, vmnic1] }
+  - { title: "Trunks to two ToRs", text: "Both uplinks are 802.1Q trunks carrying all VLANs, to two different switches, with MTU 9216.", highlight: [vmnic0, vmnic1, tora, torb] }
+  - { title: "Switched vs routed", text: "Host-to-host traffic in the same VLAN is switched at L2. Traffic to DNS/NTP goes through the VRRP gateway.", highlight: [tora, peer, gw, svc] }

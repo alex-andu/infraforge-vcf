@@ -1,0 +1,137 @@
+id: lab-nsx-segments-tier1
+title: Build overlay segments on a Tier-1 and prove every east-west packet walk
+level: intermediate
+complexity: 3
+minutes: 150
+version: vcf9
+technologies: [NSX 9, ESX 9, vCenter 9, VDS, Geneve, Traceflow, nsxcli, Proxmox VE]
+topics: [nsx-segments, nsx-transport, nsx-routing, nsx-architecture]
+lessons: [nsx-architecture, nsx-transport-nodes-teps, nsx-segments-overlay, nsx-tier0-tier1-routing]
+objectives:
+  - Verify that the hosts are healthy NSX transport nodes with working TEPs and a correct overlay MTU.
+  - Create a Distributed Only Tier-1 gateway and two overlay segments with gateway addresses.
+  - Place test VMs so you can demonstrate same-host, cross-host and routed east-west traffic.
+  - Use Traceflow and nsxcli to see where each packet was switched, routed and encapsulated.
+  - Explain why none of this traffic touched an NSX Edge.
+prerequisites:
+  - "A running nested VCF 9 environment with NSX (lab-deploy-vcf-management-domain), or at minimum a vCenter cluster of 2–3 nested ESX 9 hosts prepared for NSX by an NSX Manager."
+  - "Host TEP VLAN trunked to the nested ESX VMs, with Proxmox bridge MTU 9000 (or at least 1700) – see lab-network-readiness and lab-homelab-proxmox-prep."
+  - "SSH access to the NSX Manager (admin) and to the ESX hosts (root)."
+  - "A tiny Linux image (e.g. Alpine or Debian netinst) to create three small test VMs."
+topology:
+  logical: d-lab-nsx-segments-tier1-logical
+  network: d-lab-nsx-segments-tier1-network
+requirements:
+  network:
+    - "Host TEP VLAN (example: VLAN 13, 192.168.13.0/24, gateway 192.168.13.1) on every nested ESX vmnic trunk."
+    - "Proxmox: VLAN-aware bridge and the physical switch ports with MTU 9000; nested ESX VDS MTU 9000 (or ≥ 1700)."
+    - "No new physical VLANs are needed for the overlay segments – that is the point of the lab."
+  vms:
+    - "2 or 3 nested ESX 9 hosts already prepared as NSX host transport nodes (one cluster)."
+    - "3 test VMs: 1 vCPU, 512 MB–1 GB RAM, 4–8 GB thin disk each (web-01, web-02, app-01)."
+    - "No NSX Edge is required for this lab."
+  ip:
+    - "seg-web: 172.16.10.0/24, gateway 172.16.10.1 (Tier-1 downlink); web-01 .11, web-02 .12"
+    - "seg-app: 172.16.20.0/24, gateway 172.16.20.1; app-01 .21"
+    - "Avoid 100.64.0.0/16 and 169.254.0.0/24 – NSX uses them internally for gateway transit links."
+startingState: |
+  NSX Manager is up (cluster or single node), vCenter is registered as compute manager, and a transport node
+  profile is attached to the lab cluster so all hosts show as prepared. No segments or gateways you created exist yet.
+
+  :::note
+  Nested ESX on Proxmox is fine for learning NSX switching and distributed routing: the kernel modules, Geneve
+  tunnels and DFW all work. What you cannot judge is performance. The most common nested failure is MTU: every layer
+  (physical switch, Proxmox bridge, nested ESX vmnic/VDS) must carry the larger TEP frames.
+  :::
+steps:
+  - id: verify-fabric
+    title: Verify the transport nodes and TEPs
+    why: The overlay only works if every host is a healthy transport node with a reachable TEP; checking first saves hours later.
+    instructions: |
+      1. NSX Manager → **System → Fabric → Hosts**. Select the lab cluster: every host should show NSX configured / Success and node status Up.
+      2. On each host (SSH as root) list VMkernel adapters: `esxcli network ip interface ipv4 get`. Note the TEP vmk (often vmk10) and its IP.
+      3. From host 1, ping host 2's TEP on the vxlan stack: `vmkping ++netstack=vxlan 192.168.13.12`.
+      4. Test MTU with don't-fragment: `vmkping ++netstack=vxlan -d -s 1572 192.168.13.12` (and `-s 8972` if your fabric is 9000).
+    hint: If the small ping works and the big one fails, fix MTU on the Proxmox bridge / physical switch / VDS before continuing.
+    validate: Both vmkping tests succeed between every pair of hosts.
+    expected: "Replies with 0% packet loss, e.g. `1580 bytes from 192.168.13.12: icmp_seq=0 ttl=64`."
+  - id: create-t1
+    title: Create a Distributed Only Tier-1 gateway
+    why: A Tier-1 gives the segments a default gateway; Distributed Only means no SR, so routing stays entirely in the host kernels.
+    instructions: |
+      1. NSX Manager → **Networking → Tier-1 Gateways → Add Tier-1 Gateway**.
+      2. Name `t1-lab`. HA Mode **Distributed Only**. Leave **Linked Tier-0 Gateway** empty for now (you will link it in lab-nsx-tier0-bgp-edge).
+      3. Do **not** select an edge cluster.
+      4. Route Advertisement: enable **All Connected Segments and Service Ports** (harmless now, essential later).
+      5. Save.
+    hint: If the HA Mode list doesn't offer Distributed Only in your build, simply leave the edge cluster empty – no edge cluster means no SR.
+    validate: The gateway shows status Success and no edge cluster.
+    expected: "`t1-lab` listed with HA mode Distributed Only, realized state Success."
+  - id: create-segments
+    title: Create two overlay segments
+    why: Overlay segments are L2 networks that need no physical VLAN – only the TEP network.
+    instructions: |
+      1. **Networking → Segments → Add Segment**: name `seg-web`, Connected Gateway `t1-lab`, Transport Zone = the overlay TZ (e.g. `nsx-overlay-transportzone` or the VCF-created overlay TZ), Subnets `172.16.10.1/24`. Save.
+      2. Repeat for `seg-app` with `172.16.20.1/24`.
+      3. In the vSphere Client, open **Networking**: both segments appear as port groups on the NSX-enabled VDS.
+    validate: Both segments show realized state Success; both are visible as port groups in vCenter.
+    expected: Two NSX segments with gateway addresses .1 and the port groups listed under the VDS.
+  - id: place-vms
+    title: Place three test VMs deliberately
+    why: The packet-walk cases depend on which host each VM runs on.
+    instructions: |
+      1. Create `web-01` and `web-02` on **host 1**, both on `seg-web` (172.16.10.11 and .12, gateway .1).
+      2. Create `app-01` on **host 2** on `seg-app` (172.16.20.21, gateway 172.16.20.1).
+      3. Create a temporary DRS rule or set DRS to manual for the test so the VMs stay put.
+    validate: vCenter shows web-01/web-02 on host 1 and app-01 on host 2.
+    expected: Each VM can ping its own default gateway.
+  - id: walk-same-host
+    title: "Case 1: same segment, same host"
+    why: Shows that local L2 traffic never leaves the host.
+    instructions: |
+      1. From web-01, `ping 172.16.10.12`.
+      2. NSX Manager → **Plan & Troubleshoot → Traffic Analysis → Traceflow**: source web-01, destination web-02, ICMP. Trace.
+    validate: Traceflow shows the packet delivered without any tunnel/encapsulation observation.
+    expected: Delivered; observations on host 1 only (no "Tunnel" hop).
+  - id: walk-cross-host
+    title: "Case 2 and 3: cross-host and routed"
+    why: Shows Geneve encapsulation between TEPs and distributed routing at the source host.
+    instructions: |
+      1. vMotion web-02 to host 2. Ping it again from web-01 and run Traceflow: you now see the packet leave host 1's TEP and arrive at host 2's TEP.
+      2. From web-01 `ping 172.16.20.21` (app-01). Run Traceflow web-01 → app-01.
+      3. On host 1: `nsxcli` then `get logical-switches` (both VNIs listed) and `get logical-routers` (a DR instance for `t1-lab`).
+    hint: In Traceflow, look for the logical router hop observed on the source transport node – that is the DR routing locally.
+    validate: Traceflow for web-01 → app-01 shows routing by t1-lab on host 1, then tunnel to host 2, then delivery.
+    expected: "Observations: Received (host 1) → Forwarded by logical router t1-lab (host 1) → Tunnel to 192.168.13.12 → Delivered (host 2). No Edge appears."
+  - id: inspect-control-plane
+    title: Look at the control plane
+    why: Connects the packet walk to the CCP/LCP model.
+    instructions: |
+      1. On host 1 (nsxcli): `get controllers` – note which manager node holds the active CCP session.
+      2. On the NSX Manager: `get cluster status` – all groups STABLE.
+      3. (Optional) Power off one NSX Manager VM in a 3-node cluster, repeat the pings, then power it back on.
+    validate: Pings keep working while a manager node is down; `get controllers` shows the host reconnected to a surviving node if its node was the one powered off.
+    expected: Data plane unaffected by a single manager failure.
+troubleshooting:
+  - symptom: Segments don't appear as port groups on a host.
+    fix: Host not in the overlay transport zone or not prepared – check System → Fabric → Hosts and the transport node profile.
+  - symptom: VMs on the same host talk, VMs on different hosts don't (or only small packets work).
+    fix: TEP problem – vmkping on the vxlan netstack with -d -s 1572; fix VLAN trunking or MTU on Proxmox bridge, physical switch and VDS.
+  - symptom: VMs can't ping their gateway 172.16.x.1.
+    fix: Segment not connected to t1-lab, or wrong subnet/gateway configured in the guest; check the segment's Connected Gateway and Subnets.
+  - symptom: Traceflow shows a DFW drop.
+    fix: A distributed firewall rule (or default rule) blocks ICMP – check Security → Distributed Firewall and the rule ID in Traceflow.
+challenge: |
+  Create a third segment `seg-db` (172.16.30.0/24) **not** connected to any gateway, put a VM on it and explain why it
+  cannot reach anything outside its subnet. Then connect it to `t1-lab` and prove the change with Traceflow. Finally
+  describe what would change in the packet walk if you attached an edge cluster to `t1-lab`.
+cleanup: |
+  Keep `t1-lab`, `seg-web` and `seg-app` – they are reused in lab-nsx-tier0-bgp-edge and lab-nsx-dfw-microsegmentation.
+  Remove any temporary DRS rules. Delete `seg-db` if you created it.
+sources:
+  - title: VCF 9.0 – Create an NSX Segment
+    url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/advanced-network-management/administration-guide/segments/add-an-nsx-segment.html
+  - title: VCF 9.0 – Add an NSX Tier-1 Gateway
+    url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/advanced-network-management/administration-guide/tier-1-gateways/add-an-nsx-tier-1-gateway.html
+  - title: VCF 9.0 – NSX MTU Guidance
+    url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/advanced-network-management/administration-guide/transport-zones-and-transport-nodes/mtu-guidance.html

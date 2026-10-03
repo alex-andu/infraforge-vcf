@@ -1,0 +1,37 @@
+id: d03-vsan-troubleshooting-flow
+title: vSAN troubleshooting flow
+description: >
+  A decision flow for vSAN problems. Start at Skyline Health (score and top finding sorted by impact), then classify
+  objects with the object health summary. Branch on the evidence: a network partition (member counts differ,
+  vmkping fails on the vSAN VMkernel), a device or host failure (degraded or absent components, device errors in
+  vobd.log, host disconnected), capacity (cluster near red threshold, rebuild cannot proceed), or configuration and
+  compatibility findings (HCL, driver, firmware, which rarely affect object availability). After remediation, watch
+  resync reach zero and run RETEST.
+width: 1000
+height: 600
+groups:
+  - { id: g-evidence, x: 20, y: 220, w: 960, h: 200, label: "Classify the cause", kind: zone }
+nodes:
+  - { id: sky, x: 380, y: 30, w: 240, h: 60, label: "Skyline Health", sublabel: "score + top finding", kind: ops, info: "Findings are weighted by Availability, Performance, Capacity, Efficiency/Compliance and sorted with root causes first." }
+  - { id: obj, x: 380, y: 130, w: 240, h: 60, label: "Object health summary", sublabel: "absent / rebuild / no-rebuild", kind: storage, info: "esxcli vsan debug object health summary get, or Monitor > vSAN > Virtual Objects." }
+  - { id: net, x: 40, y: 270, w: 210, h: 100, label: "Network partition", sublabel: "member count, vmkping", kind: network, info: "esxcli vsan cluster get on each host; esxcli vsan network list; vmkping -I vmkX -s 8972 -d to peers." }
+  - { id: dev, x: 280, y: 270, w: 210, h: 100, label: "Device / host failure", sublabel: "degraded vs absent", kind: storage, info: "Degraded = permanent, rebuild now. Absent = temporary, 60-minute repair delay. Check Disk Management, storagepool list, vobd.log." }
+  - { id: cap, x: 520, y: 270, w: 210, h: 100, label: "Capacity", sublabel: "rebuild blocked", kind: storage, info: "Monitor > vSAN > Capacity; reserves; resync stalled; reduced-availability-with-no-rebuild." }
+  - { id: cfg, x: 760, y: 270, w: 200, h: 100, label: "Config / HCL", sublabel: "often noise", kind: mgmt, info: "Outdated HCL DB, non-certified controller in a lab, performance service off. Fix later; they rarely explain degraded objects." }
+  - { id: fix, x: 260, y: 460, w: 220, h: 60, label: "Remediate", sublabel: "replace, fix VLAN/MTU, free space", kind: compute, info: "Fix the cause, not the symptom. Do not force rebuilds while a host is expected back." }
+  - { id: verify, x: 520, y: 460, w: 220, h: 60, label: "Verify", sublabel: "resync = 0, RETEST", kind: ops, info: "esxcli vsan debug resync summary get reaches zero; object health all healthy; RETEST Skyline Health." }
+edges:
+  - { from: sky, to: obj, kind: dependency }
+  - { from: obj, to: net, kind: dependency }
+  - { from: obj, to: dev, kind: dependency }
+  - { from: obj, to: cap, kind: dependency }
+  - { from: obj, to: cfg, kind: dependency, dashed: true }
+  - { from: net, to: fix, kind: dependency }
+  - { from: dev, to: fix, kind: dependency }
+  - { from: cap, to: fix, kind: dependency }
+  - { from: fix, to: verify, kind: dependency }
+steps:
+  - { title: "Observe", text: "Read the score and the top-impact finding.", highlight: [sky] }
+  - { title: "Classify objects", text: "Absent, rebuilding, not rebuilding, or inaccessible?", highlight: [obj] }
+  - { title: "Find the cause", text: "Partition, device/host, capacity — or configuration noise.", highlight: [net, dev, cap, cfg] }
+  - { title: "Fix and verify", text: "Remediate, wait for resync to complete, RETEST.", highlight: [fix, verify] }

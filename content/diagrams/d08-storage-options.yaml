@@ -1,0 +1,38 @@
+id: d08-storage-options
+title: Principal vs supplemental storage in VCF 9.0
+description: >
+  Principal storage is chosen when a cluster is created and is fixed: vSAN ESA, vSAN OSA, NFS v3 and VMFS on Fibre
+  Channel everywhere; vSAN storage clusters and vSAN compute clusters everywhere except the management domain default
+  cluster; vVols for workload domains but deprecated in 9.0. Supplemental storage is added afterwards with vSphere
+  workflows: NFS v4.1, iSCSI, NVMe/TCP, NVMe/FC, NVMe/RDMA and also VMFS on FC. The host storage type at commissioning
+  and the network pool networks must match the cluster's principal storage.
+width: 1000
+height: 600
+groups:
+  - { id: g-pri, x: 20, y: 20, w: 600, h: 400, label: "Principal (chosen at cluster creation, fixed)", kind: storage }
+  - { id: g-sup, x: 650, y: 20, w: 330, h: 400, label: "Supplemental only (day 2)", kind: zone }
+  - { id: g-chain, x: 20, y: 450, w: 960, h: 130, label: "The choice flows through", kind: mgmt }
+nodes:
+  - { id: esa, x: 40, y: 70, w: 170, h: 56, label: "vSAN ESA", sublabel: "HCI or storage", kind: storage, component: vsan, info: "Single-tier NVMe; principal everywhere. In a WLD: vSAN HCI or vSAN Storage cluster type; auto-managed policy." }
+  - { id: osa, x: 230, y: 70, w: 170, h: 56, label: "vSAN OSA", kind: storage, info: "Disk groups; choose FTT and dedup+compression at creation." }
+  - { id: nfs3, x: 420, y: 70, w: 180, h: 56, label: "NFS v3", kind: storage, info: "Principal everywhere, including the management domain default cluster in 9.0." }
+  - { id: fc, x: 40, y: 170, w: 170, h: 56, label: "VMFS on FC", sublabel: "principal or supplemental", kind: storage, info: "Zoning, LUN and datastore must be ready before commissioning/expansion." }
+  - { id: max, x: 230, y: 170, w: 170, h: 56, label: "vSAN storage cluster", kind: storage, info: "Disaggregated storage-only vSAN (NVMe). Not for the management domain default cluster." }
+  - { id: cmp, x: 420, y: 170, w: 180, h: 56, label: "vSAN compute cluster", kind: compute, info: "Mounts a remote vSAN datastore. Not for the management domain default cluster." }
+  - { id: vvol, x: 140, y: 290, w: 360, h: 56, label: "vVols (WLD wizard) - deprecated in 9.0", kind: external, info: "Still selectable for workload domains (VASA provider first) but deprecated and not supported for vCenter import." }
+  - { id: nfs41, x: 680, y: 70, w: 270, h: 50, label: "NFS v4.1", kind: storage, info: "Supplemental only." }
+  - { id: iscsi, x: 680, y: 140, w: 270, h: 50, label: "iSCSI", kind: storage, info: "Supplemental only; network pools can supply iSCSI VMkernel IPs." }
+  - { id: nvme, x: 680, y: 210, w: 270, h: 50, label: "NVMe/TCP, NVMe/FC, NVMe/RDMA", kind: storage, info: "Supplemental only." }
+  - { id: fc2, x: 680, y: 280, w: 270, h: 50, label: "VMFS on FC (extra datastores)", kind: storage, info: "FC can also be supplemental." }
+  - { id: c1, x: 40, y: 500, w: 280, h: 56, label: "Host storage type at commissioning", kind: compute, info: "VSAN_ESA, VSAN, VSAN_MAX, VSAN_REMOTE, NFS, VMFS_FC, VVOL." }
+  - { id: c2, x: 360, y: 500, w: 280, h: 56, label: "Network pool networks", kind: network, info: "vSAN, vSAN Storage Client, NFS or iSCSI plus vMotion." }
+  - { id: c3, x: 680, y: 500, w: 280, h: 56, label: "Cluster principal storage", kind: storage, info: "All hosts in a cluster share the type; each cluster may differ." }
+edges:
+  - { from: c1, to: c2, kind: dependency }
+  - { from: c2, to: c3, kind: dependency }
+steps:
+  - { title: "Principal options", text: "vSAN ESA/OSA, NFS v3 and VMFS on FC everywhere.", highlight: [esa, osa, nfs3, fc] }
+  - { title: "Disaggregated vSAN", text: "Storage and compute clusters - not for the management default cluster.", highlight: [max, cmp] }
+  - { title: "Deprecated", text: "vVols remains in the WLD wizard but is deprecated.", highlight: [vvol] }
+  - { title: "Supplemental", text: "NFS 4.1, iSCSI and NVMe transports only as supplemental.", highlight: [nfs41, iscsi, nvme, fc2] }
+  - { title: "Consistency chain", text: "Commissioning storage type, pool networks and cluster storage must match.", highlight: [c1, c2, c3] }

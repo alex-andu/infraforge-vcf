@@ -1,0 +1,127 @@
+id: lab-vcf-api-powercli
+title: "VCF APIs and PowerCLI: vCenter, NSX, SDDC Manager and VCF Operations"
+level: intermediate
+complexity: 3
+minutes: 120
+version: vcf9
+technologies: [VCF.PowerCLI, vCenter REST API, NSX Policy API, SDDC Manager API, VCF Operations API, curl, jq]
+topics: [apis-powercli]
+lessons: [vcf-apis-powercli]
+objectives:
+  - Install VCF.PowerCLI and connect to vCenter and SDDC Manager.
+  - Authenticate to the vCenter REST API and list VMs; read the JSON.
+  - Query the NSX management and Policy APIs.
+  - Obtain, use and refresh an SDDC Manager API token; interpret 401/403/404.
+  - Acquire a VCF Operations API token and make one call.
+prerequisites:
+  - "Parts 1-2 need only a vCenter (from lab-vcenter-cluster-ha-drs) - you can do them in your home lab today."
+  - "Parts 3-5 need the VCF management domain (lab-deploy-vcf-management-domain)."
+  - "A jump host VM (Linux or Windows) with PowerShell 7, curl and jq, on the lab management network."
+topology:
+  logical: d-lab-vcf-api-powercli-logical
+requirements:
+  network:
+    - "Jump host reaches vCenter, NSX Manager, SDDC Manager and VCF Operations on HTTPS (443)."
+    - "Internet access from the jump host to the PowerShell Gallery, or an offline copy of the VCF.PowerCLI module."
+  vms:
+    - "Jump host: 2 vCPU, 4 GB RAM, 40 GB disk."
+  ip:
+    - "One management-VLAN IP for the jump host with DNS pointing to the lab DNS server."
+startingState: |
+  vCenter (and later VCF) running; nothing installed on the jump host besides the OS, PowerShell 7, curl and jq.
+steps:
+  - id: install
+    title: Install VCF.PowerCLI
+    why: VCF 9 renamed the module; the SDDC Manager cmdlets exist only in VCF.PowerCLI.
+    instructions: |
+      ```powershell
+      Install-Module -Name VCF.PowerCLI -Scope CurrentUser
+      Get-Module -ListAvailable VCF.* | Select-Object Name, Version
+      Set-PowerCLIConfiguration -InvalidCertificateAction Ignore -Scope User -Confirm:$false   # lab only
+      ```
+    hint: If VMware.PowerCLI is installed, uninstall it first as Broadcom recommends.
+    validate: "`Get-Command Connect-VcfSddcManagerServer` returns a command."
+    expected: VCF.PowerCLI modules listed; the SDDC Manager connection cmdlet is available.
+  - id: vcenter-api
+    title: vCenter REST API with curl
+    why: Understand the session-ID pattern used by vCenter.
+    instructions: |
+      ```shell
+      SID=$(curl -sk -X POST -u 'administrator@vsphere.local:<password>' https://<vcenter>/api/session | tr -d '"')
+      curl -sk https://<vcenter>/api/vcenter/vm -H "vmware-api-session-id: $SID" | jq '.[] | {vm, name, power_state, cpu_count}'
+      curl -sk -X DELETE https://<vcenter>/api/session -H "vmware-api-session-id: $SID"
+      ```
+      Then repeat the GET with `Authorization: Bearer $SID` and note the result.
+    validate: Compare the VM list with the vSphere Client.
+    expected: VM summaries with IDs like vm-1012; the Bearer attempt fails with an authentication error.
+  - id: powercli-vcenter
+    title: PowerCLI against vCenter
+    why: The fastest way to report on many objects.
+    instructions: |
+      ```powershell
+      Connect-VIServer -Server <vcenter> -Credential (Get-Credential)
+      Get-VM | Select-Object Name, PowerState, NumCpu, MemoryGB | Export-Csv vms.csv -NoTypeInformation
+      Get-VMHost | Get-AdvancedSetting -Name 'UserVars.SuppressShellWarning' | Select-Object Entity, Value
+      ```
+    validate: Open vms.csv.
+    expected: CSV with all VMs; one advanced setting value per host.
+  - id: nsx-api
+    title: NSX management and Policy APIs
+    why: Recognise the two NSX API families.
+    instructions: |
+      ```shell
+      curl -sk -u 'admin:<password>' https://<nsx-vip>/api/v1/cluster/status | jq '.mgmt_cluster_status.status, .control_cluster_status.status'
+      curl -sk -u 'admin:<password>' https://<nsx-vip>/policy/api/v1/infra/segments | jq '.result_count, .results[].display_name'
+      curl -sk -u 'admin:<password>' https://<nsx-vip>/policy/api/v1/infra/tier-0s | jq '.results[].display_name'
+      ```
+    validate: Compare segments and Tier-0s with the NSX UI.
+    expected: STABLE cluster status; segment and Tier-0 names match the UI.
+  - id: sddc-api
+    title: SDDC Manager token, domains and refresh
+    why: Practise Bearer tokens, expiry and the meaning of 401/403/404.
+    instructions: |
+      ```shell
+      RESP=$(curl -sk -X POST https://<sddc-manager>/v1/tokens -H 'Content-Type: application/json' \
+        -d '{"username":"administrator@vsphere.local","password":"<password>"}')
+      TOKEN=$(echo "$RESP" | jq -r .accessToken); REFRESH=$(echo "$RESP" | jq -r .refreshToken.id)
+      curl -sk https://<sddc-manager>/v1/domains -H "Authorization: Bearer $TOKEN" | jq '.elements[] | {name, type, status}'
+      curl -sk -o /dev/null -w '%{http_code}\n' https://<sddc-manager>/v1/domains          # no token
+      curl -sk -X PATCH https://<sddc-manager>/v1/tokens/access-token/refresh -H 'Content-Type: application/json' -d "\"$REFRESH\""
+      ```
+      Then in PowerShell: `Connect-VcfSddcManagerServer -Server <sddc-manager> ...; Get-SddcDomain`.
+    validate: Note the HTTP code without a token and the new token from the refresh call.
+    expected: Domains listed; 401 without a token; refresh returns a new access token.
+  - id: ops-api
+    title: VCF Operations API token
+    why: Scripted access to alerts and inventory.
+    instructions: |
+      ```shell
+      OPSTOKEN=$(curl -sk -X POST https://<ops>/suite-api/api/auth/token/acquire -H 'Content-Type: application/json' \
+        -H 'Accept: application/json' -d '{"username":"admin","password":"<password>","authSource":"local"}' | jq -r .token)
+      curl -sk https://<ops>/suite-api/api/deployment/licenses -H 'Accept: application/json' -H "Authorization: vRealizeOpsToken $OPSTOKEN"
+      ```
+    validate: Check the HTTP status and JSON.
+    expected: A token and a JSON response; check the API reference of your version for other endpoints (alerts, resources).
+troubleshooting:
+  - symptom: "`Connect-VcfSddcManagerServer` is not recognized."
+    fix: VMware.PowerCLI is loaded instead of VCF.PowerCLI; install VCF.PowerCLI and start a new session.
+  - symptom: vCenter API returns 401 Unauthenticated.
+    fix: Session expired or the ID was sent in the wrong header; use vmware-api-session-id.
+  - symptom: SDDC Manager refresh returns 404.
+    fix: Refresh token expired (24 h) or wrong value; request a new token pair.
+  - symptom: TLS errors everywhere after certificate replacement.
+    fix: Trust the new CA on the jump host; do not keep -k / Ignore in production scripts.
+challenge: |
+  Write one PowerShell script that connects to SDDC Manager, lists domains, connects to each domain's vCenter, counts
+  VMs and powered-on VMs, and writes `domain,vcenter,vms,poweredOn` to a CSV. Credentials come from Get-Credential, not
+  the script. Make it safe to run twice.
+cleanup: |
+  Disconnect sessions (`Disconnect-VIServer -Confirm:$false`), delete the vCenter session, remove CSV files containing
+  inventory if the jump host is shared. Reset InvalidCertificateAction if you will use this host for anything else.
+sources:
+  - title: "SDDC Manager API 9.0"
+    url: https://developer.broadcom.com/xapis/sddc-manager-api/9.0/
+  - title: "VMware blog - Introducing VCF PowerCLI 9.0"
+    url: https://blogs.vmware.com/cloud-foundation/2025/06/24/introducing-vcf-powercli-9-0/
+  - title: "Broadcom KB 447072 - REST API token acquire"
+    url: https://knowledge.broadcom.com/external/article/447072/

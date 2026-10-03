@@ -1,0 +1,236 @@
+id: lab-vsan-esa-cluster
+title: Build a nested vSAN ESA cluster on Proxmox
+level: intermediate
+complexity: 4
+minutes: 240
+version: vcf9
+technologies: [ESX 9, vCenter 9, vSAN ESA, Proxmox VE, QEMU NVMe emulation, esxcli]
+topics: [vsan-architecture, vsan-health, datastores]
+lessons: [vsan-architecture-esa-osa, storage-fundamentals-datastores, vsan-health-troubleshooting]
+objectives:
+  - Give nested ESX hosts virtual NVMe devices on Proxmox so that vSAN ESA can claim them.
+  - Configure a vSAN VMkernel network with jumbo frames and prove it end to end with vmkping.
+  - Understand why nested ESA needs a hardware-compatibility workaround, apply it, and know why it is lab-only.
+  - Enable vSAN ESA on a four-host cluster, claim devices into storage pools and verify the datastore.
+  - Read Skyline Health in a lab, separating expected "unsupported hardware" findings from real problems, and observe a partition.
+prerequisites:
+  - "lab-homelab-proxmox-prep completed (nested virtualization, VLAN-aware bridge vmbr1, MTU 9000)."
+  - "lab-vcenter-cluster-ha-drs completed: vcenter-lab managing nested hosts esx-lab-01..03 in a cluster, with DNS A/PTR records."
+  - "lab-network-readiness completed: VLAN 30 (vSAN, 10.10.30.0/24, MTU 9000) exists and is trunked to Proxmox."
+  - "A fourth nested ESX 9 host esx-lab-04 installed the same way (DNS records, NTP) — four hosts let vSAN rebuild after a host failure."
+  - "Internet access from your workstation to download the vSAN ESA mock hardware VIB from William Lam's GitHub repository."
+topology:
+  logical: d-lab-vsan-esa-cluster-logical
+requirements:
+  network:
+    - "VLAN 10 management, VLAN 20 vMotion, VLAN 30 vSAN — all trunked on vmbr1 (MTU 9000 on bridge, switch port and router interface)."
+    - "A port group for vSAN (VLAN 30) on the cluster's distributed switch or on each host's standard switch."
+  vms:
+    - "4 × nested ESX 9 VMs (esx-lab-01..04): 8 vCPU (CPU type host), 32 GB RAM, 2 × vmxnet3, 1 × 32 GB boot disk (SATA is fine), plus 2 × 100 GB virtual NVMe disks for vSAN."
+    - "Back the virtual NVMe disks with the physical 1 TB NVMe SSD (8 × 100 GB thin = 800 GB provisioned; real usage stays far lower while the cluster is small)."
+    - "vcenter-lab from the previous lab (keep it on a host-local or NFS datastore, not on vSAN, while you experiment)."
+  ip:
+    - "vmk2 (vSAN) on each host: 10.10.30.21-24/24, no gateway needed for a single-site cluster, MTU 9000."
+    - "Management and vMotion addresses as in lab-vcenter-cluster-ha-drs (take real values from the Home Lab IP plan)."
+startingState: |
+  vCenter manages a cluster with three (soon four) nested ESX 9 hosts that use NFS shared storage. vSphere HA and DRS
+  are configured. No vSAN exists yet.
+
+  :::warning
+  **Honest limits of nested vSAN ESA on Proxmox.** ESA in production requires certified NVMe TLC devices, ESA-certified
+  hardware and (per TechDocs) at least 128 GB of memory per host. A nested lab meets none of that:
+
+  - Proxmox has no GUI option for NVMe disks; you add them with QEMU arguments (`-device nvme`). The Proxmox forum
+    solution notes that such disks are outside normal Proxmox disk handling (backups, templates, migration).
+  - vSAN ESA validates hardware against its compatibility list, and emulated NVMe devices are not on it. William Lam's
+    **vSAN ESA hardware mock VIB** fakes the eligibility data so the check passes; he states it is not supported by
+    Broadcom. VCF's own ESA disk check (VCF Installer/SDDC Manager) has a separate workaround, covered in the VCF
+    deployment labs.
+  - All "devices" share one physical NVMe; performance and failure behaviour are not representative.
+
+  Use this lab to learn the workflow, the objects, the commands and the health views — never as a performance test.
+  :::
+steps:
+  - id: plan
+    title: Plan memory, disks and addresses
+    why: >
+      vSAN ESA multiplies resource use: four hosts at 32 GB each plus vCenter consume more than half of the server's
+      256 GB, and eight virtual NVMe disks share one physical SSD. Planning avoids overcommitting Proxmox memory, which
+      makes nested hosts unstable.
+    instructions: |
+      1. Write down for each host: Proxmox VM ID, name, RAM (32 GB), the two NVMe disk names you will create and their serials (for example `esxlab01nvme1`, `esxlab01nvme2`).
+      2. Choose the Proxmox storage on the 1 TB NVMe that will hold the disks (an LVM-thin pool or directory storage; called `<nvme-storage>` below).
+      3. Reserve vmk2 addresses 10.10.30.21-24 on VLAN 30.
+      4. Add up RAM: 4 × 32 GB + vCenter + Proxmox itself must stay below 256 GB with some headroom.
+    hint: If memory is tight, lower DRS-driven test VMs rather than the nested hosts; vSAN needs host memory for its own structures.
+    validate: Review the plan against `free -g` on the Proxmox host.
+    expected: A table of four hosts with VM IDs, disk names, unique serials and vmk2 IPs; total planned RAM well under 256 GB.
+
+  - id: add-nvme
+    title: Add two virtual NVMe disks to each nested ESX VM
+    why: >
+      vSAN ESA only claims NVMe devices. William Lam documented that nested hosts whose disks sit on SCSI controllers
+      "do not contribute to the vSAN ESA storage". Proxmox can emulate NVMe through QEMU arguments.
+    instructions: |
+      Power off one nested ESX VM at a time (put the host in maintenance mode in vCenter first). On the Proxmox shell:
+
+      ```shell
+      # allocate two 100 GB volumes for VM 201 (adjust storage name and VM ID)
+      pvesm alloc <nvme-storage> 201 vm-201-disk-11 100G
+      pvesm alloc <nvme-storage> 201 vm-201-disk-12 100G
+      pvesm path <nvme-storage>:vm-201-disk-11
+      pvesm path <nvme-storage>:vm-201-disk-12
+      ```
+
+      Use the two paths printed by `pvesm path` in the QEMU arguments (one `-drive` + one `-device nvme` per disk, each with a unique serial):
+
+      ```shell
+      qm set 201 --args "-drive file=<path-1>,if=none,id=nvme1,format=raw -device nvme,drive=nvme1,serial=esxlab01nvme1 -drive file=<path-2>,if=none,id=nvme2,format=raw -device nvme,drive=nvme2,serial=esxlab01nvme2"
+      ```
+
+      Start the VM, exit maintenance mode, and repeat for the other three hosts with their own IDs and serials.
+    hint: >
+      Use format=raw for LVM-thin volumes; for qcow2 files on directory storage use format=qcow2. Every serial must be
+      unique across the cluster, otherwise ESX may treat two devices as one.
+    validate: |
+      On each nested host (SSH or ESX Shell):
+      ```shell
+      esxcli storage core device list | grep -E "^(t10|eui|naa|mpx)|Display Name|Size:|Is SSD"
+      ```
+    expected: "Two new devices per host shown as NVMe (\"Local NVMe Disk ...\"), about 102400 MB each, `Is SSD: true`. If they do not appear, check `qm config <vmid>` for the args line and that the VM was fully powered off and on (not just rebooted from inside ESX)."
+
+  - id: vsan-vmk
+    title: Create the vSAN VMkernel adapters (VLAN 30, MTU 9000)
+    why: >
+      Every host in a vSAN cluster needs a VMkernel adapter tagged for vSAN traffic, even hosts that contribute no
+      capacity. A mismatched MTU is the classic cause of partitions that appear only under load.
+    instructions: |
+      1. On the cluster's distributed switch (or each host's vSwitch) create port group `pg-vsan` with VLAN ID 30; make sure the switch MTU is 9000.
+      2. On each host add a VMkernel adapter on `pg-vsan`: IPv4 static 10.10.30.21-24/24, MTU 9000, enabled service **vSAN**.
+      3. Note the vmk number (usually vmk2).
+    validate: |
+      From esx-lab-01:
+      ```shell
+      esxcli vsan network list
+      vmkping -I vmk2 -s 8972 -d 10.10.30.22
+      vmkping -I vmk2 -s 8972 -d 10.10.30.24
+      ```
+    expected: "`Traffic Type: vsan` on vmk2, and replies from every peer with 8972-byte payloads and the don't-fragment bit set. Failure with -s 8972 but success with -s 1472 means an MTU 9000 gap somewhere (bridge, switch, router or VDS)."
+
+  - id: mock-vib
+    title: Install the vSAN ESA hardware mock VIB (lab only)
+    why: >
+      When you configure vSAN ESA from vCenter or VCF, the host hardware is validated against the vSAN ESA compatibility
+      list. Emulated NVMe devices fail that check. The mock VIB places a `stress.json` file that makes the nested host
+      appear eligible. It is unsupported by Broadcom and must never be used on production hosts.
+    instructions: |
+      1. Download the VIB (or offline bundle) from the Releases page of `github.com/lamw/nested-vsan-esa-mock-hw-vib` and copy it to `/tmp` on each host.
+      2. On each host:
+      ```shell
+      esxcli software acceptance set --level CommunitySupported
+      esxcli software vib install -v /tmp/nested-vsan-esa-mock-hw.vib --no-sig-check
+      /etc/init.d/vsanmgmtd restart
+      ```
+    hint: The README says no reboot is needed. William Lam's June 2025 post states the VIB is compatible with VCF 9.0; check the repository for the current release before installing.
+    validate: |
+      ```shell
+      esxcli software vib list | grep -i mock
+      ```
+    expected: The `nested-vsan-esa-mock-hw` VIB is listed with acceptance level CommunitySupported on all four hosts.
+
+  - id: enable-esa
+    title: Enable vSAN ESA on the cluster and claim devices
+    why: >
+      This is the "deploy a vSAN cluster" task from objective 2.3 done by hand. In VCF the deployment and workload domain
+      workflows do the same steps automatically.
+    instructions: |
+      1. Turn **off** vSphere HA on the cluster (Configure → Services → vSphere Availability → Edit). vSAN cannot be enabled while HA is on; you will turn it back on afterwards.
+      2. Cluster → **Configure → vSAN → Services → Configure vSAN**.
+      3. Choose **vSAN ESA** and a **single site** cluster.
+      4. Leave data-at-rest encryption off for this lab; leave auto-policy management at its default and note what it says.
+      5. On the disk claim page let vSAN claim the eligible NVMe devices of each host into its storage pool (two per host).
+      6. Review and finish. Watch Recent Tasks until vSAN is configured on all hosts.
+      7. Turn vSphere HA back on.
+    hint: If the wizard reports no eligible disks, go back to the add-nvme and mock-vib steps — the devices must be NVMe and the mock data must be present on every host.
+    validate: |
+      ```shell
+      esxcli vsan cluster get
+      esxcli vsan storagepool list | grep -E "Device:|Used by this host|Is Mounted"
+      ```
+      In the vSphere Client: Datastores → `vsanDatastore` → Summary.
+    expected: "`Enabled: true`, `Sub-Cluster Member Count: 4` and `vSAN ESA Enabled: true` on every host; two devices per host in the storage pool; a vsanDatastore of roughly 8 × 100 GB raw capacity mounted on all four hosts."
+
+  - id: health
+    title: Read Skyline Health like an engineer
+    why: >
+      Nested labs always show some findings. Knowing which are expected (unsupported hardware, no internet for the HCL
+      database) and which would be real problems (partition, object health) is exactly the triage skill the exam and
+      real incidents need.
+    instructions: |
+      1. Cluster → **Monitor → Skyline Health** (vSAN). Note the health score and the top findings.
+      2. For each non-green finding decide: *expected in a nested lab* or *real problem*.
+      3. From a host run the CLI view of the same checks.
+    validate: |
+      ```shell
+      esxcli vsan health cluster list
+      esxcli vsan debug object health summary get
+      ```
+    expected: Network/partition and object health checks are green; findings about hardware compatibility, controller/driver certification, the HCL database age or host memory are expected in this lab and can be documented and ignored.
+
+  - id: partition-test
+    title: Cause and fix a vSAN partition
+    why: >
+      A host that loses vSAN connectivity becomes a separate partition. Seeing the evidence once makes the incident in
+      this phase (and real outages) much easier to diagnose.
+    instructions: |
+      1. Deploy a small test VM on the vsanDatastore (thin, 10 GB) and keep it running on esx-lab-01.
+      2. On **esx-lab-04** remove the vSAN tag from its VMkernel adapter:
+      ```shell
+      esxcli vsan network remove -i vmk2
+      ```
+      3. Within a minute check Skyline Health and run `esxcli vsan cluster get` on esx-lab-04 and on esx-lab-01.
+      4. Restore vSAN traffic on esx-lab-04:
+      ```shell
+      esxcli vsan network ip add -i vmk2
+      ```
+    hint: Only do this to one host. Removing vSAN from two hosts of a four-host FTT=1 cluster can make objects inaccessible.
+    validate: Compare `Sub-Cluster Member Count` on both hosts during and after the test, then run `esxcli vsan debug resync summary get`.
+    expected: During the test esx-lab-04 reports a member count of 1 and esx-lab-01 reports 3; Skyline Health shows a partition finding and objects with absent components. After restoring, all hosts report 4, a short resync completes and the findings clear after RETEST.
+
+troubleshooting:
+  - symptom: The virtual NVMe disks do not appear in ESX.
+    fix: Check `qm config <vmid>` for the `args:` line, confirm the volume paths exist (`pvesm path`), and do a full Proxmox stop/start of the VM. Each `-device nvme` needs its own `-drive` id and a unique `serial`.
+  - symptom: The Configure vSAN wizard finds no eligible disks for ESA.
+    fix: The disks are not NVMe (still on SATA/SCSI) or the ESA compatibility check failed. Verify with `esxcli storage core device list`, and confirm the mock VIB is installed and `vsanmgmtd` was restarted on every host.
+  - symptom: vmkping works with -s 1472 but fails with -s 8972 -d.
+    fix: An MTU 9000 gap. Check, in order, the VDS/vSwitch MTU, the vmk MTU, the Proxmox bridge `mtu 9000`, the physical switch port and the router VLAN interface.
+  - symptom: "Hosts show different Sub-Cluster Member Counts."
+    fix: Network partition. Check `esxcli vsan network list` (vSAN tag on the right vmk), VLAN 30 on the port group, then `esxcli vsan cluster unicastagent list` for missing peers.
+  - symptom: Nested hosts become slow or crash during resync.
+    fix: Proxmox memory or the single NVMe is saturated. Reduce test VMs, avoid ballooning on nested ESX VMs, and keep vCenter off the vSAN datastore while experimenting.
+challenge: |
+  Add a fifth nested host without local NVMe disks (only a vSAN VMkernel adapter) to the cluster. Predict whether it can
+  run VMs on the vsanDatastore, then prove it. Explain how this differs from a **vSAN compute cluster** mounting a remote
+  **vSAN storage cluster** datastore, and why a vSAN storage cluster requires ESA and at least four hosts.
+cleanup: |
+  Keep the cluster: the next lab (lab-vsan-storage-policies) uses it. When you are finished with vSAN entirely: move VMs
+  off the vsanDatastore, disable vSAN (Configure → vSAN → Services → Turn off vSAN), remove the mock VIB
+  (`esxcli software vib remove -n nested-vsan-esa-mock-hw`), set the acceptance level back to PartnerSupported, remove
+  the `args:` line with `qm set <vmid> --delete args`, and free the volumes with `pvesm free <nvme-storage>:<volume>`.
+sources:
+  - title: "William Lam – vSAN ESA HCL hardware mock VIB for nested ESXi"
+    url: https://williamlam.com/2025/01/vsan-esa-hcl-hardware-mock-vib-for-nested-esxi.html
+  - title: "William Lam – vSAN ESA disk HCL workaround for VCF 9.0"
+    url: https://williamlam.com/2025/06/vsan-esa-disk-hcl-workaround-for-vcf-9-0.html
+  - title: "William Lam – Nested ESXi for VCF workload domain fails with vSAN ESA auto disk claim"
+    url: https://williamlam.com/2024/05/using-nested-esxi-for-vmware-cloud-foundation-vcf-workload-domain-fails-with-vsan-esa-auto-disk-claim.html
+  - title: "GitHub – lamw/nested-vsan-esa-mock-hw-vib (README)"
+    url: https://github.com/lamw/nested-vsan-esa-mock-hw-vib
+  - title: "Proxmox forum – How do you set up a VM with NVMe interface?"
+    url: https://forum.proxmox.com/posts/563618/
+  - title: "vSAN 9.0 – Hardware Requirements for vSAN"
+    url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/vsan-deployment-administration-and-monitoring/vsan-planning-and-deployment/requirements-for-creating-a-virtual-san-cluster/hardware-requirements-for-virtual-san.html
+  - title: "vSAN 9.0 – Networking Requirements for vSAN"
+    url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/vsan-deployment-administration-and-monitoring/vsan-planning-and-deployment/requirements-for-creating-a-virtual-san-cluster/network-requirements.html
+  - title: "ESXCLI command reference 9.0 – esxcli vsan"
+    url: https://developer.broadcom.com/xapis/esxcli-command-reference/9.0.0/namespace/esxcli_vsan.html

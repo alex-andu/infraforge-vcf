@@ -1,0 +1,38 @@
+id: d03-raid-layouts
+title: Component layout of one 100 GB VMDK under RAID-1, ESA RAID-5 4+1 and RAID-6
+description: >
+  A six-host vSAN ESA cluster stores the same 100 GB virtual disk three ways. Row 1, FTT=1 RAID-1: two full 100 GB
+  replicas on host 1 and host 2 plus a small witness component on host 3 (200 GB consumed). Row 2, FTT=1 RAID-5 4+1:
+  five components (data and rotating parity) on hosts 1-5, about 125 GB consumed; on fewer than 6 hosts ESA uses 2+1
+  (150 GB). Row 3, FTT=2 RAID-6 4+2: six components on all six hosts, 150 GB consumed, survives two host failures.
+  Each object stays accessible while more than 50 percent of its votes are available.
+width: 1000
+height: 560
+groups:
+  - { id: g-r1, x: 20, y: 40, w: 960, h: 140, label: "FTT=1 RAID-1 (mirror) — 200 GB, needs 3 hosts", kind: zone }
+  - { id: g-r5, x: 20, y: 210, w: 960, h: 140, label: "FTT=1 RAID-5 4+1 (ESA, 6+ hosts) — ~125 GB", kind: zone }
+  - { id: g-r6, x: 20, y: 380, w: 960, h: 140, label: "FTT=2 RAID-6 4+2 — 150 GB, needs 6 hosts", kind: zone }
+nodes:
+  - { id: r1a, x: 40, y: 90, w: 140, h: 60, label: "Replica A", sublabel: "host 1 · 100 GB", kind: storage, info: "Full copy of the data." }
+  - { id: r1b, x: 200, y: 90, w: 140, h: 60, label: "Replica B", sublabel: "host 2 · 100 GB", kind: storage, info: "Second full copy on a different host (or fault domain)." }
+  - { id: r1w, x: 360, y: 90, w: 140, h: 60, label: "Witness", sublabel: "host 3 · metadata", kind: mgmt, info: "Metadata only (~4 MB). Gives the 3rd vote so that any single host failure leaves >50 % of votes." }
+  - { id: r1note, x: 540, y: 90, w: 420, h: 60, label: "Survives 1 failure", sublabel: "rebuild needs a 4th host", kind: external, info: "With exactly 3 hosts, FTT=1 RAID-1 survives a host failure but cannot rebuild until the host returns." }
+  - { id: r5a, x: 40, y: 260, w: 140, h: 60, label: "Data/parity", sublabel: "host 1", kind: storage, info: "ESA RAID-5 rotates parity across components." }
+  - { id: r5b, x: 200, y: 260, w: 140, h: 60, label: "Data/parity", sublabel: "host 2", kind: storage, info: "Each component holds part of the data stripe." }
+  - { id: r5c, x: 360, y: 260, w: 140, h: 60, label: "Data/parity", sublabel: "host 3", kind: storage, info: "Component 3 of 5." }
+  - { id: r5d, x: 520, y: 260, w: 140, h: 60, label: "Data/parity", sublabel: "host 4", kind: storage, info: "Component 4 of 5." }
+  - { id: r5e, x: 680, y: 260, w: 140, h: 60, label: "Data/parity", sublabel: "host 5", kind: storage, info: "Component 5 of 5. Host 6 is the spare that allows rebuild." }
+  - { id: r5note, x: 840, y: 260, w: 120, h: 60, label: "Adaptive", sublabel: "<6 hosts → 2+1", kind: external, info: "ESA picks 2+1 (150 %) below 6 hosts and 4+1 (125 %) at 6 or more, and reconfigures automatically when the host count changes for a sustained period." }
+  - { id: r6a, x: 40, y: 430, w: 140, h: 60, label: "Data/parity", sublabel: "host 1", kind: storage, info: "RAID-6 uses double parity." }
+  - { id: r6b, x: 200, y: 430, w: 140, h: 60, label: "Data/parity", sublabel: "host 2", kind: storage, info: "Component 2 of 6." }
+  - { id: r6c, x: 360, y: 430, w: 140, h: 60, label: "Data/parity", sublabel: "host 3", kind: storage, info: "Component 3 of 6." }
+  - { id: r6d, x: 520, y: 430, w: 140, h: 60, label: "Data/parity", sublabel: "host 4", kind: storage, info: "Component 4 of 6." }
+  - { id: r6e, x: 680, y: 430, w: 140, h: 60, label: "Data/parity", sublabel: "host 5", kind: storage, info: "Component 5 of 6." }
+  - { id: r6f, x: 840, y: 430, w: 120, h: 60, label: "Data/parity", sublabel: "host 6", kind: storage, info: "Component 6 of 6. A 7th host is recommended so vSAN can rebuild after a host loss." }
+edges:
+  - { from: r1a, to: r1b, label: "mirror", kind: storage, bidirectional: true }
+steps:
+  - { title: "RAID-1", text: "Two full copies + a witness. Simple, fast, 2x capacity.", highlight: [r1a, r1b, r1w] }
+  - { title: "Quorum", text: "Lose any one of the three components: 2 of 3 votes remain, object accessible.", highlight: [r1b, r1w, r1note] }
+  - { title: "ESA RAID-5", text: "Five components at 6+ hosts (4+1), 1.25x capacity, one failure tolerated.", highlight: [r5a, r5b, r5c, r5d, r5e, r5note] }
+  - { title: "RAID-6", text: "Six components, two failures tolerated at 1.5x capacity — the same overhead as ESA RAID-5 2+1.", highlight: [r6a, r6b, r6c, r6d, r6e, r6f] }

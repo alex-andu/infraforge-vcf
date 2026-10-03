@@ -1,0 +1,43 @@
+id: d10-logs-network-dataflow
+title: Log and network data flows into VCF Operations
+description: >
+  Two optional Day-2 components extend VCF Operations. VCF Operations for logs receives logs from VCF components
+  (the pre-installed agents in VCF appliances, ESX hosts, vCenter and NSX) and stores and indexes them; its log
+  forwarding configuration is managed centrally from VCF Operations, and a cloud proxy carries the configuration
+  across network boundaries. VCF Operations for networks has a platform node (analytics, UI, search) and a collector
+  node that polls vCenter and NSX and receives flow records. VCF Operations shows both through integrated pages:
+  log analysis, Network Operations, plus Storage Operations and VCF Health which use the core collected data.
+width: 1000
+height: 600
+groups:
+  - { id: g-sources, x: 20, y: 40, w: 220, h: 520, label: "VCF components", kind: zone }
+  - { id: g-logs, x: 300, y: 40, w: 300, h: 230, label: "VCF Operations for logs (Day 2)", kind: ops }
+  - { id: g-net, x: 300, y: 320, w: 300, h: 240, label: "VCF Operations for networks (Day 2)", kind: network }
+nodes:
+  - { id: esx, x: 40, y: 80, w: 180, h: 56, label: "ESX hosts", sublabel: "syslog", kind: compute, component: esx-host, info: "ESX hosts forward their logs to VCF Operations for logs." }
+  - { id: vc, x: 40, y: 200, w: 180, h: 56, label: "vCenter", kind: mgmt, component: vcenter, info: "Sends logs to VCF Operations for logs and is a data source for VCF Operations for networks (inventory, VDS)." }
+  - { id: nsx, x: 40, y: 320, w: 180, h: 56, label: "NSX Manager / Edges", kind: nsx, component: nsx-manager, info: "Sends logs; provides NSX inventory, firewall rules and flow data to VCF Operations for networks." }
+  - { id: mgmt, x: 40, y: 440, w: 180, h: 56, label: "SDDC Mgr, Ops, Automation", sublabel: "pre-installed agent", kind: mgmt, info: "VCF management appliances ship with a log agent whose configuration is managed centrally from VCF Operations." }
+  - { id: lognode, x: 320, y: 90, w: 260, h: 56, label: "Logs cluster", sublabel: "primary + workers, VIP", kind: ops, component: vcf-operations-logs, info: "Simple model: one node (VIP still required). HA model: primary node plus two worker nodes behind an integrated load balancer VIP." }
+  - { id: logcp, x: 320, y: 190, w: 260, h: 56, label: "Cloud proxy log forwarder", kind: ops, info: "Carries encrypted log-collection configuration and forwarding across data centers / network boundaries." }
+  - { id: netcol, x: 320, y: 370, w: 260, h: 56, label: "Networks collector node", sublabel: "polls + flows", kind: network, component: vcf-operations-networks, info: "Collects data from vCenter, NSX and other data sources and receives flow records. Sends processed data to the platform." }
+  - { id: netplat, x: 320, y: 480, w: 260, h: 56, label: "Networks platform node(s)", sublabel: "analytics, search, UI", kind: network, info: "Simple: one Extra Large platform node with 100% CPU/RAM reservation. A 3-node platform cluster adds scale and performance, not HA." }
+  - { id: ops, x: 680, y: 260, w: 280, h: 70, label: "VCF Operations console", sublabel: "Logs, Network Ops, Storage Ops, Health", kind: ops, component: vcf-operations, info: "Integrated pages: log analysis (search, fields, log-based alerts), Network Operations (NSX health, flows, traffic), Storage Operations (vSAN health score, performance diagnostics) and VCF Health." }
+  - { id: admin, x: 720, y: 450, w: 200, h: 56, label: "Operator", kind: external, info: "Investigates from one console: alert, then logs, then network path or storage view." }
+edges:
+  - { from: esx, to: lognode, label: "logs", kind: data }
+  - { from: vc, to: lognode, kind: data }
+  - { from: nsx, to: lognode, kind: data }
+  - { from: mgmt, to: logcp, label: "agent", kind: data }
+  - { from: logcp, to: lognode, kind: data }
+  - { from: vc, to: netcol, label: "inventory", kind: data, dashed: true }
+  - { from: nsx, to: netcol, label: "config + flows", kind: data, dashed: true }
+  - { from: netcol, to: netplat, label: "processed data", kind: data }
+  - { from: lognode, to: ops, label: "integrated", kind: mgmt, bidirectional: true }
+  - { from: netplat, to: ops, label: "integrated", kind: mgmt, bidirectional: true }
+  - { from: ops, to: admin, kind: mgmt }
+steps:
+  - { title: "Logs from every layer", text: "ESX, vCenter, NSX and the VCF management appliances send logs to VCF Operations for logs. Appliances use a pre-installed agent configured centrally from VCF Operations.", highlight: [esx, vc, nsx, mgmt, lognode] }
+  - { title: "Cross-boundary forwarding", text: "A cloud proxy forwarder carries log configuration and traffic across data centers.", highlight: [mgmt, logcp, lognode] }
+  - { title: "Network data", text: "The networks collector polls vCenter and NSX and receives flows; the platform node analyses and indexes them.", highlight: [vc, nsx, netcol, netplat] }
+  - { title: "One console", text: "VCF Operations integrates both, so an operator moves from an alert to the logs and network path without changing tools.", highlight: [lognode, netplat, ops, admin] }

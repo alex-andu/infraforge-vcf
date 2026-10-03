@@ -1,0 +1,274 @@
+id: inc-nsx-edge-north-south
+title: East-west works, north-south is dead after an overnight automation run
+difficulty: advanced
+version: vcf9
+topics: [nsx-routing, nsx-edge, troubleshooting-method]
+lessons: [nsx-tier0-tier1-routing, nsx-edge-nodes-clusters, nsx-vpcs-and-vcf-networking]
+summary: >
+  At 07:30 users report that every application in workload domain wld01 is unreachable from the corporate network,
+  but the application teams say their tiers still talk to each other. NSX Manager shows no red Edge nodes. Several alarms
+  and a recent change compete for attention.
+symptoms:
+  - Users on the corporate LAN cannot reach any VM on NSX segments or VPC public subnets in wld01.
+  - VMs on different segments (web → app → db) still communicate normally.
+  - VMs cannot reach DNS servers or update repositories outside NSX.
+  - NSX Manager shows both Edge transport nodes as Up, and an alarm "Edge CPU usage high" on edge-02.
+  - The change calendar shows an overnight Terraform run "normalise NSX segment settings" at 02:13.
+environment: |
+  VCF 9.0 workload domain `wld01` with a three-node NSX Manager cluster (`nsx-wld01.corp.local`). Centralized
+  connectivity: edge cluster `ec-wld01` (edge-01, edge-02, Medium) and Tier-0 `t0-wld01` in **Active/Standby**, BGP AS
+  65001 to two ToRs (AS 65000): ToR-A 10.27.11.1 on VLAN 2711 and ToR-B 10.27.12.1 on VLAN 2712. Tier-0 uplinks on
+  edge-01: 10.27.11.2 / 10.27.12.2, on edge-02: 10.27.11.3 / 10.27.12.3, using VLAN segments `seg-uplink-a` and
+  `seg-uplink-b`. Tenant Tier-1 `t1-shop` (Distributed Only) with `seg-web` 172.16.10.0/24 and `seg-app` 172.16.20.0/24,
+  plus a VPC in the Default project. Host and Edge TEPs on VLAN 13 (192.168.13.0/24), MTU 9000.
+evidence:
+  - id: ev-ew
+    category: network
+    action: From web-01 (172.16.10.11) ping app-01 (172.16.20.21) and the seg-web gateway 172.16.10.1
+    output: |
+      ```shell
+      web-01$ ping -c 3 172.16.20.21
+      3 packets transmitted, 3 received, 0% packet loss
+      web-01$ ping -c 3 172.16.10.1
+      3 packets transmitted, 3 received, 0% packet loss
+      web-01$ ping -c 3 10.1.1.53
+      3 packets transmitted, 0 received, 100% packet loss
+      ```
+    relevance: useful
+    note: Distributed routing on the hosts and the overlay are fine. The problem is beyond the DRs – the SR, Edge uplinks, BGP or the physical side.
+  - id: ev-traceflow
+    category: nsx
+    action: Run Traceflow from web-01 to the corporate DNS server 10.1.1.53 (UDP 53)
+    output: |
+      ```log
+      Received          esx-03   Logical Port web-01
+      Forwarded         esx-03   Logical Router t1-shop (DR)
+      Forwarded         esx-03   Logical Router t0-wld01 (DR)
+      Tunnel            esx-03   Remote TEP 192.168.13.21
+      Received          edge-01  Logical Router t0-wld01 (SR)
+      Dropped           edge-01  Logical Router t0-wld01 (SR)   Reason: No route
+      ```
+    relevance: key
+    note: The packet reaches the active Tier-0 SR on edge-01 through a healthy tunnel, then is dropped for lack of a route. Overlay, DFW and Tier-1 are cleared; the SR has no route to 10.1.1.53 – it has lost its BGP-learned routes.
+  - id: ev-bgp
+    category: nsx
+    action: SSH to edge-01, get logical-routers, enter the Tier-0 SR VRF and run get bgp neighbor summary
+    output: |
+      ```shell
+      edge-01> vrf 1
+      edge-01(tier0_sr)> get bgp neighbor summary
+      BGP summary information for VRF default for address-family: ipv4Unicast
+      Router ID: 10.27.11.2  Local AS: 65001
+
+      Neighbor      AS     State   Up/DownTime  BFD  InMsgs  OutMsgs  InPfx  OutPfx
+      10.27.11.1    65000  Active  05:17:02     NC   0       0        0      0
+      10.27.12.1    65000  Active  05:17:02     NC   0       0        0      0
+      ```
+    relevance: key
+    note: Both sessions dropped about 05:17 ago (≈ 02:13, the Terraform run) and are stuck in Active – the SR keeps trying to open TCP 179 and gets no answer. That is a reachability problem, not an AS or password mismatch (those usually show Idle/OpenSent flapping with messages exchanged).
+  - id: ev-route
+    category: nsx
+    action: In the same VRF, run get route
+    output: |
+      ```shell
+      edge-01(tier0_sr)> get route
+      Total number of routes: 4
+      t0c> * 10.27.11.0/24 is directly connected, uplink-1
+      t0c> * 10.27.12.0/24 is directly connected, uplink-2
+      t1c> * 172.16.10.0/24 [3/0] via 100.64.112.1, downlink-2
+      t1c> * 172.16.20.0/24 [3/0] via 100.64.112.1, downlink-2
+      ```
+    relevance: useful
+    note: Tier-1 segments are present (advertisement works) but no BGP default route exists. Consistent with BGP down.
+  - id: ev-ping-tor
+    category: network
+    action: From the Tier-0 SR VRF on edge-01, ping both ToR addresses
+    output: |
+      ```shell
+      edge-01(tier0_sr)> ping 10.27.11.1
+      PING 10.27.11.1 (10.27.11.1): 56 data bytes
+      Request timeout for icmp_seq 0
+      Request timeout for icmp_seq 1
+      edge-01(tier0_sr)> ping 10.27.12.1
+      Request timeout for icmp_seq 0
+      ```
+    relevance: useful
+    note: No L3 reachability on either directly connected uplink subnet. Something between the SR interface and the ToR SVI broke at Layer 2 – VLAN tagging, trunks or port groups.
+  - id: ev-segment
+    category: nsx
+    action: Open the uplink VLAN segments in NSX Manager and check their VLAN ID and the audit log
+    output: |
+      ```log
+      Segment seg-uplink-a   Transport zone: vlan-tz-edge   VLAN: 3711   Last modified: 02:13:41 by svc-terraform
+      Segment seg-uplink-b   Transport zone: vlan-tz-edge   VLAN: 3712   Last modified: 02:13:42 by svc-terraform
+
+      Audit: PATCH /policy/api/v1/infra/segments/seg-uplink-a  {"vlan_ids":["3711"]}  user=svc-terraform  result=SUCCESS
+      Audit: PATCH /policy/api/v1/infra/segments/seg-uplink-b  {"vlan_ids":["3712"]}  user=svc-terraform  result=SUCCESS
+      ```
+    relevance: key
+    note: The uplink segments were changed from VLAN 2711/2712 to 3711/3712 by the overnight Terraform run (a staging variable file). The SR interfaces now tag frames with VLANs the ToRs don't use for these subnets.
+  - id: ev-tor
+    category: network
+    action: Ask the network team for ToR-A ARP and trunk state for VLAN 2711
+    output: |
+      ```log
+      ToR-A# show ip arp vlan 2711
+      Address        Age   MAC Address      Interface
+      10.27.11.2     -     Incomplete       Vlan2711
+      10.27.11.3     -     Incomplete       Vlan2711
+
+      ToR-A# show interfaces trunk | include Eth1/1[0-1]
+      Eth1/10   allowed: 10,13,20,30,2711,2712
+      Eth1/11   allowed: 10,13,20,30,2711,2712
+      ```
+    relevance: key
+    note: The physical side is unchanged and still expects VLAN 2711/2712; ARP for the Edge uplink IPs is incomplete. VLANs 3711/3712 are not even allowed on the host trunks. Confirms the mismatch is on the NSX side.
+  - id: ev-tunnels
+    category: nsx
+    action: On edge-01 run get bfd-sessions and check tunnel status in System > Fabric > Nodes
+    output: |
+      ```shell
+      edge-01> get bfd-sessions
+      Local_address : 192.168.13.21   Remote_address : 192.168.13.11   State : up
+      Local_address : 192.168.13.21   Remote_address : 192.168.13.12   State : up
+      Local_address : 192.168.13.21   Remote_address : 192.168.13.13   State : up
+      Local_address : 192.168.13.21   Remote_address : 192.168.13.22   State : up
+      ```
+    relevance: useful
+    note: Overlay to the Edge is healthy (hosts and peer Edge reachable). Rules out a TEP/MTU problem.
+  - id: ev-adv
+    category: nsx
+    action: Check t1-shop route advertisement and t0-wld01 route redistribution
+    output: |
+      ```log
+      t1-shop  Route Advertisement: All Connected Segments and Service Ports = ON, All NAT IPs = ON
+      t0-wld01 Route Re-distribution: [T0 Connected Interfaces & Segments, T1 Connected Interfaces & Segments, T1 NAT IPs]
+      t0-wld01 last modified: 3 weeks ago
+      ```
+    relevance: useful
+    note: Advertisement and redistribution are correct and unchanged. A missing advertisement would affect only some prefixes, and BGP would still be Established.
+  - id: ev-cpu
+    category: nsx
+    action: Open the "Edge CPU usage high" alarm on edge-02
+    output: |
+      ```log
+      Alarm: Edge CPU Usage High   Node: edge-02   Value: 87% (datapath cores)   Raised: 3 days ago
+      ```
+    relevance: noise
+    note: edge-02 is the standby, and DPDK fast-path cores always look busy because they poll. The alarm predates the outage by days. Red herring.
+  - id: ev-mgr
+    category: services
+    action: On an NSX Manager node run get cluster status
+    output: |
+      ```shell
+      nsx-wld01-a> get cluster status
+      Overall Status: STABLE
+      Group Type: DATASTORE    Group Status: STABLE
+      Group Type: CONTROLLER   Group Status: STABLE
+      Group Type: MANAGER      Group Status: STABLE
+      ```
+    relevance: noise
+    note: The management plane is healthy – and even if it weren't, it isn't in the data path. Not the cause.
+  - id: ev-ntp
+    category: ntp
+    action: Check time sync on edge-01 (get ntp-server associations)
+    output: |
+      ```shell
+      edge-01> get ntp-server associations
+           remote           refid      st t when poll reach   delay   offset  jitter
+      *10.1.1.123      .GPS.        1 u   44   64  377    0.412   -0.218   0.051
+      ```
+    relevance: noise
+    note: Time is fine. Not related.
+  - id: ev-dfw
+    category: logs
+    action: Search firewall logs for drops from seg-web
+    output: |
+      ```log
+      2026-10-03T07:21:44Z esx-03 FIREWALL-PKTLOG: INET match DROP 3105 OUT 60 TCP 172.16.10.14/41522->172.16.30.31/5432 S
+      ```
+    relevance: noise
+    note: One expected drop from a micro-segmentation rule (web → db is not allowed). Unrelated to the outage; Traceflow showed no DFW drop.
+idealSequence: [ev-ew, ev-traceflow, ev-bgp, ev-ping-tor, ev-segment, ev-tor]
+rootCause:
+  - id: rc-vlan
+    text: The Tier-0 uplink VLAN segments were changed to VLAN 3711/3712, so the Edge uplinks can't reach the ToRs and both BGP sessions are down.
+    correct: true
+    why: Traceflow dies at the SR with "No route", BGP is stuck in Active since 02:13, the SR can't ping its directly connected peers, the segments show VLAN 3711/3712 modified by svc-terraform, and the ToRs still expect 2711/2712 with incomplete ARP.
+  - id: rc-adv
+    text: Route advertisement on the Tier-1 was disabled, so the segments are no longer advertised.
+    why: Advertisement is ON and the SR has the Tier-1 prefixes; besides, BGP itself is down, which advertisement can't cause.
+  - id: rc-mtu
+    text: The TEP network MTU was reduced, breaking Geneve between hosts and Edges.
+    why: BFD tunnels are up and Traceflow shows the packet reaching the SR through the tunnel. MTU problems also hurt east-west across hosts, which works.
+  - id: rc-cpu
+    text: edge-02 is overloaded and dropping traffic.
+    why: edge-02 is the standby SR, the alarm is days old, and DPDK cores always look busy.
+  - id: rc-mgr
+    text: The NSX Manager cluster lost quorum, so routes were withdrawn.
+    why: The cluster is STABLE, and the management plane is not in the forwarding path.
+nextStep:
+  - id: ns-compare
+    text: Compare the VLAN IDs of seg-uplink-a/b with the ToR SVIs and trunk allowed lists, and confirm in the audit log who changed them.
+    correct: true
+    why: Proves the mismatch from both sides before you change anything, and identifies the automation that must also be fixed or it will revert your repair.
+  - id: ns-clear
+    text: Run clear bgp neighbors on edge-01.
+    why: Resetting sessions can't fix a Layer-2 path that doesn't exist; they will stay Active.
+  - id: ns-failover
+    text: Force a failover to edge-02.
+    why: edge-02 uses the same uplink segments with the same wrong VLANs; it will fail identically.
+remediation:
+  - id: rem-revert
+    text: Set seg-uplink-a/b back to VLAN 2711/2712 (fix and re-apply the Terraform variables so the pipeline matches), then watch BGP re-establish.
+    correct: true
+    why: Restores the documented design with the smallest change, and fixes the source of truth so the next pipeline run doesn't break it again.
+  - id: rem-tor
+    text: Ask the network team to add VLANs 3711/3712 to the trunks and move the ToR SVIs to them.
+    why: It would work only after re-engineering the physical side to match a mistake, on both ToRs, outside the change process – the NSX side is what changed.
+  - id: rem-redeploy
+    text: Redeploy the edge cluster and Tier-0 from vCenter Network Connectivity.
+    why: Disruptive and unnecessary; the Edges are healthy, and if the same segment values are used the problem remains.
+  - id: rem-static
+    text: Switch the Tier-0 to static routing to bypass BGP.
+    why: Static routes also need Layer-2 reachability to the next hop; the VLAN mismatch would still break them.
+validation:
+  - id: val-full
+    text: BGP Established on both neighbors with prefixes received, a default route in get route on the SR, the ToRs learning 172.16.10.0/24 and 172.16.20.0/24, and Traceflow plus a user test from the corporate LAN succeeding.
+    correct: true
+    why: Validates every layer of the path – session, routing table on both sides and real traffic – not just one indicator.
+  - id: val-ui
+    text: Both Edge nodes show Up in NSX Manager.
+    why: They showed Up during the outage too; node status says nothing about BGP or uplink reachability.
+  - id: val-ew
+    text: web-01 can ping app-01 again.
+    why: East-west never failed; it doesn't test north-south.
+hints:
+  - East-west works, so the DRs and the overlay are probably fine. Where does north-south traffic go that east-west doesn't?
+  - Follow a packet with Traceflow to an external address and look at the last hop that saw it.
+  - The SR has no external routes. What should have provided them, and what state is that in?
+  - BGP is in Active and the SR can't ping a directly connected neighbor. What decides whether frames from the SR uplink reach the ToR – and did anything change it at 02:13?
+debrief: |
+  **Reasoning path.** Scoping first: east-west works across hosts and segments, so the Tier-1/Tier-0 DRs, TEPs and DFW are
+  not the problem. North-south traffic is the only traffic that needs the Tier-0 **SR** on an Edge and its uplinks. Traceflow
+  confirms the packet reaches the SR on edge-01 over a healthy tunnel and is dropped with *No route*. `get route` shows the
+  Tier-1 prefixes (so advertisement works) but no BGP routes, and `get bgp neighbor summary` shows both neighbors in
+  **Active** since the time of the Terraform run – the SR is trying to open TCP 179 and nothing answers. A ping from the SR VRF
+  to its directly connected ToR addresses fails, which is a Layer-2 problem on the uplink. The uplink VLAN segments now carry
+  VLAN 3711/3712 (modified by `svc-terraform` at 02:13), while the ToRs still use 2711/2712 and show incomplete ARP.
+
+  **Why the red herrings are red herrings.** The Edge CPU alarm is on the standby and predates the outage; DPDK cores poll
+  and look busy by design. The NSX Manager cluster is stable and is not in the data path anyway. NTP and the DFW drop are
+  unrelated. Edge nodes showing "Up" is a node-health signal, not a routing signal.
+
+  **Fix and prevention.** Revert the VLAN IDs and fix the Terraform variable file so the pipeline doesn't reapply the mistake.
+  Validate end to end: BGP Established, default route present, ToRs learning NSX prefixes, real user traffic. Add a pipeline
+  guard (plan review for any change to Edge uplink segments) and an alarm on BGP neighbor down so the next occurrence pages
+  someone at 02:14 instead of 07:30.
+sources:
+  - title: Broadcom KB 339392 – Troubleshooting NSX BGP
+    url: https://knowledge.broadcom.com/external/article/339392/
+  - title: NSX CLI Guide 9.0.2 – get logical-router bgp neighbor summary
+    url: https://developer.broadcom.com/xapis/nsx-cli-guide/9.0.2/GetLogicalRouterUuidBgpNeighborsSummary.html
+  - title: VCF 9.0 – Configure Centralized Network Connectivity with Edge Clusters
+    url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/building-your-private-cloud-infrastructure/managing-network-connectivity-in-vcenter/managing-centralized-network-connectivity-with-edge-clusters.html

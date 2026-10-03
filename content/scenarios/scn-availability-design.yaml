@@ -1,0 +1,102 @@
+id: scn-availability-design
+title: Choose a fleet deployment model for a regional hospital group
+topics: [design-availability, deployment-models, vsan-resilience, design-sizing]
+lessons: [design-availability-failure-domains, design-sizing-scalability, design-network-security-tradeoffs]
+brief: |
+  A hospital group is replacing its vSphere estate with VCF 9. It has two data halls on one campus (2 km apart, dark
+  fibre, measured 1 ms RTT) and a third, small room in a separate building on the campus. A second data center
+  operated by a partner exists 300 km away. You must pick the fleet deployment model, cluster models and management
+  component availability, and justify the cost.
+requirements:
+  - "Electronic health record (EHR): survive the loss of a data hall with no data loss and restart within 15 minutes."
+  - "All clinical systems: recover from a regional disaster or ransomware within 8 hours, maximum 1 hour of data loss."
+  - "Back-office systems: host failures tolerated; a data-hall outage may cause downtime."
+  - "Monitoring and fleet management (VCF Operations) must keep working if one data hall fails."
+constraints:
+  - "Budget allows doubling capacity only for EHR and clinical systems."
+  - "The partner site can host a second VCF instance but has limited bandwidth (1 Gbps)."
+  - "The operations team is small; avoid complexity that does not serve a requirement."
+existing: |
+  Current estate: two vSphere clusters, one per hall, no stretched storage, nightly backups copied to tape. Network:
+  layer 2 can be extended between the halls; VRRP gateways can be made active in both halls. The third room can host a
+  small witness appliance.
+decisions:
+  - id: d-fleet
+    question: Which VCF fleet deployment model meets all requirements?
+    options:
+      - id: a
+        text: Basic design in one hall with good backups.
+        why: A hall outage causes downtime and backups cannot meet RPO 0 for EHR.
+      - id: b
+        text: Site High Availability (across zones) only.
+        why: Covers hall loss with RPO 0 but not regional disaster or ransomware (synchronous copies are corrupted too).
+      - id: c
+        text: Disaster Recovery (across regions) only.
+        why: Recovers from regional disasters but cannot provide RPO 0 for a hall outage.
+      - id: d
+        text: Fault Domains and Disaster Recovery – two AZs (the halls) with stretched clusters, plus a second VCF instance at the partner site for DR.
+        correct: true
+        why: The only model covering both the hall (AZ) failure with RPO 0 and the regional/cyber requirement with point-in-time recovery.
+  - id: d-cluster
+    question: Which cluster models do you use for the workload domains?
+    options:
+      - id: a
+        text: Stretch every cluster, including back office.
+        why: Doubles capacity for systems that do not need it; violates the budget constraint.
+      - id: b
+        text: Stretched cluster (witness in the third room) for EHR and clinical; single-rack clusters in one hall for back office.
+        correct: true
+        why: Spends the extra capacity only where the requirement demands AZ resilience.
+      - id: c
+        text: Layer 3 multi-rack clusters spanning both halls.
+        why: Layer 3 multi-rack clusters cannot be stretched and protect against rack, not AZ, failure.
+  - id: d-ops
+    question: How do you deploy VCF Operations?
+    options:
+      - id: a
+        text: Simple (single node) protected by vSphere HA.
+        why: Monitoring would be interrupted during failover and depends on the stretched cluster restart.
+      - id: b
+        text: Continuous availability model with nodes in both availability zones.
+        correct: true
+        why: Designed for "no service interruption in case of a single availability zone failure", matching the requirement; requires ≤ 10 ms between zones (1 ms measured).
+      - id: c
+        text: HA model with all three nodes in hall 1.
+        why: A hall-1 outage takes all nodes down at once.
+  - id: d-network
+    question: Which network prerequisite is mandatory for the stretched clusters?
+    options:
+      - id: a
+        text: Separate ESX management, vMotion and vSAN port groups for AZ2, VM networks and their gateway available in both halls on the same IP, < 5 ms RTT for vSAN between halls, and the witness reachable from both halls.
+        correct: true
+        why: Matches VCF stretched-cluster network requirements; VMs restarted in hall 2 must keep their IPs and gateway.
+      - id: b
+        text: Only a 1 Gbps link to the witness.
+        why: Necessary but far from sufficient; the inter-hall data network and gateway design are the critical parts.
+      - id: c
+        text: BGP between the halls instead of stretched layer 2.
+        why: The site HA model relies on stretched IP addressing for workload mobility; routing alone does not let a VM keep its IP.
+  - id: d-dr
+    question: How do you meet the 1-hour RPO / 8-hour RTO with the 1 Gbps partner link?
+    options:
+      - id: a
+        text: Stretch the clusters to the partner site.
+        why: 300 km and 1 Gbps violate stretched cluster latency and bandwidth requirements.
+      - id: b
+        text: Asynchronous replication of clinical VMs with point-in-time copies to the second instance, sized for the daily change rate, plus backup/restore for VCF Automation and replication or backup for VCF Operations; test runbooks quarterly.
+        correct: true
+        why: Meets RPO/RTO with available bandwidth and follows the VCF DR model guidance for protecting fleet components.
+      - id: c
+        text: Nightly backups shipped to the partner site.
+        why: A 24-hour RPO violates the 1-hour requirement.
+recommended: |
+  **VCF Fleet Deployment with Fault Domains and Disaster Recovery.** The two halls are availability zones (1 ms RTT).
+  EHR and clinical systems run in a workload domain whose clusters are **stretched** across the halls with the vSAN
+  witness in the third room; back-office systems run on **single-rack** clusters in one hall. The management domain
+  cluster is stretched so management components can restart in hall 2. VCF Operations uses the **continuous
+  availability** model across both halls; NSX Manager uses the **3-node HA** model; edge clusters are
+  availability-zone fault tolerant. Networks: AZ2 port groups, VM networks and gateways active in both halls on the same
+  IPs. A second VCF instance at the partner site receives asynchronous, point-in-time replication of clinical systems
+  (RPO ≤ 1 h) and protects fleet components (VCF Operations by replication or backup, VCF Automation by backup and
+  restore). The design is the most expensive model, justified only because both the AZ and regional requirements exist;
+  back office deliberately stays on the cheapest model.

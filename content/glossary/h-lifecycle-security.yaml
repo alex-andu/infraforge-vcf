@@ -1,0 +1,241 @@
+terms:
+  - id: bom
+    term: BOM
+    expansion: Bill of Materials
+    definition: The list of exact component versions (SDDC Manager, vCenter, NSX, ESX and others) that make up one VCF release and were tested together.
+    whyItMatters: Upgrades move domains from one BOM to the next. Staying on BOM combinations keeps you inside what Broadcom tested and supports; flexible BOM in 9.0 still validates every selection.
+    version: vcf9
+    related: [flexible-bom, bundle, depot]
+    lessons: [lifecycle-concepts, lifecycle-upgrade-workflow]
+    labs: [lab-lifecycle-upgrade-planning]
+
+  - id: flexible-bom
+    term: Flexible BOM
+    definition: The VCF 9.0 upgrade planner option (Customize Upgrade) that lets you choose any supported target version for each core component of a domain, validate the selection, and let VCF compute the update order.
+    whyItMatters: Lets you hold one component back or move one ahead (for example for a security fix) without abandoning VCF's compatibility validation.
+    version: vcf9
+    related: [bom]
+    lessons: [lifecycle-upgrade-workflow, lifecycle-concepts]
+
+  - id: bundle
+    term: Bundle (binaries)
+    definition: A downloadable package of VCF binaries for install, upgrade or patch of a component, plus its metadata. In VCF 9.0 the UI talks about "binaries" managed in Binary Management; older VCF versions called them bundles.
+    whyItMatters: A partially downloaded or stale bundle is a classic cause of failed prechecks and upgrades; delete and re-download before retrying.
+    version: general
+    related: [depot, bom]
+    lessons: [lifecycle-concepts, lifecycle-failures-recovery]
+
+  - id: depot
+    term: Depot
+    definition: A structured repository of VCF binaries and metadata (release manifests, product catalog, compatibility data). VCF 9.0 can use the online Broadcom depot (with a download token), an offline depot on your own HTTPS web server, or no depot (manual upload).
+    whyItMatters: Fleet management and every SDDC Manager need a depot (or manual uploads) before any upgrade can be planned. Offline depots are the standard for air-gapped sites.
+    version: vcf9
+    related: [download-token, vcf-download-tool, bundle]
+    lessons: [lifecycle-concepts]
+    labs: [lab-lifecycle-upgrade-planning]
+
+  - id: download-token
+    term: Download token
+    definition: A token generated in the Broadcom Support Portal that proves your entitlement when VCF appliances or the VCF Download Tool download binaries in VCF 9.0.
+    whyItMatters: Without a valid token the online depot cannot be used and no updates appear. In VCF 9.1 it is replaced by an activation code for VCF Installer downloads.
+    version: vcf9
+    related: [depot, vcf-download-tool]
+    lessons: [lifecycle-concepts]
+
+  - id: vcf-download-tool
+    term: VCF Download Tool
+    definition: A command-line utility for downloading, listing, uploading and cleaning up VCF binaries and metadata, and for running UMDS to fetch ESX content, used to build offline depots or side-load binaries.
+    whyItMatters: It is how air-gapped VCF environments get their upgrade binaries.
+    version: vcf9
+    related: [depot, download-token]
+    lessons: [lifecycle-concepts]
+
+  - id: precheck
+    term: Precheck
+    definition: A read-only validation that VCF runs against a domain or component before an upgrade, reporting blocking errors and non-blocking warnings.
+    whyItMatters: Completing a precheck is a prerequisite for the core component upgrade. Most upgrade failures are visible in a precheck if you run it and fix what it finds.
+    version: vcf9
+    related: [resource-lock, remediation]
+    lessons: [lifecycle-upgrade-workflow, lifecycle-failures-recovery]
+    labs: [lab-lifecycle-upgrade-planning]
+
+  - id: resource-lock
+    term: Resource lock
+    definition: A lock SDDC Manager acquires during core component upgrades or patches (SYSTEM, DOMAIN or CLUSTER scope) that blocks conflicting day-N operations.
+    whyItMatters: Explains why backups, certificate rotation, host commissioning or SDDC Manager upgrades are rejected during an upgrade window.
+    version: vcf9
+    related: [precheck]
+    lessons: [lifecycle-upgrade-workflow]
+
+  - id: vlcm-image
+    term: vLCM image
+    expansion: vSphere Lifecycle Manager image
+    definition: The declarative desired state of every ESX host in a cluster, made of a required ESX base image plus optional vendor add-on, firmware and drivers add-on, and individual components.
+    whyItMatters: VCF 9.0 is image-only (baselines are not supported in vSphere 9). Images are created in the vSphere Client and imported into VCF for domain, cluster and upgrade operations.
+    version: vcf9
+    related: [hardware-support-manager, remediation]
+    lessons: [vlcm-images-host-remediation]
+
+  - id: hardware-support-manager
+    term: Hardware support manager
+    definition: A server vendor plugin registered with vCenter that lets vSphere Lifecycle Manager read and apply firmware as part of a cluster image.
+    whyItMatters: Without it, firmware is not part of the image or of compliance; with it, firmware updates ride in the same remediation cycle as ESX.
+    version: general
+    related: [vlcm-image]
+    lessons: [vlcm-images-host-remediation]
+
+  - id: remediation
+    term: Remediation (vLCM)
+    definition: The process in which vSphere Lifecycle Manager makes non-compliant hosts match the cluster image, host by host, using maintenance mode and reboots where required.
+    whyItMatters: The ESX step of every VCF upgrade is a remediation; DRS, vSAN and capacity determine whether it succeeds.
+    version: general
+    related: [vlcm-image, precheck]
+    lessons: [vlcm-images-host-remediation, lifecycle-failures-recovery]
+
+  - id: tls
+    term: TLS
+    expansion: Transport Layer Security
+    definition: The protocol that encrypts and authenticates connections such as HTTPS. The server proves its identity with a certificate the client must trust.
+    whyItMatters: Every VCF component talks TLS to the others; a certificate a client does not trust breaks that conversation.
+    version: general
+    related: [certificate-chain, root-ca]
+    lessons: [certificate-management]
+
+  - id: certificate-chain
+    term: Certificate chain
+    definition: The ordered path from a server's leaf certificate through intermediate CA certificates to a trusted root CA certificate.
+    whyItMatters: A client trusts a server only if it can build this chain to a root in its own trust store. Missing intermediates or roots cause "unable to get local issuer certificate".
+    version: general
+    related: [root-ca, intermediate-ca, tls]
+    lessons: [certificate-management]
+    labs: [lab-certificate-replacement]
+
+  - id: root-ca
+    term: Root CA
+    expansion: Root certificate authority
+    definition: The top-level certificate authority whose self-signed certificate anchors trust. Its certificate must be present in each client's trust store.
+    whyItMatters: When you move VCF to a new enterprise CA, distributing the new root to every component is what keeps services talking.
+    version: general
+    related: [intermediate-ca, certificate-chain]
+    lessons: [certificate-management]
+
+  - id: intermediate-ca
+    term: Intermediate CA
+    definition: A certificate authority signed by the root (or another intermediate) that actually signs server certificates; also called the issuing CA.
+    whyItMatters: Servers should present it together with their leaf; VCF imports expect the chain in PEM with the intermediate before the root.
+    version: general
+    related: [root-ca, certificate-chain]
+    lessons: [certificate-management]
+
+  - id: csr
+    term: CSR
+    expansion: Certificate Signing Request
+    definition: A request generated by a component, containing its public key and subject details (CN, SANs, organisation), that a CA signs to produce a certificate. The private key stays on the component.
+    whyItMatters: In VCF 9.0 you generate CSRs in VCF Operations (key size 2048 or 4096, ESX 2048 only) before replacing certificates with a configured or external CA.
+    version: general
+    related: [certificate-chain, vmca]
+    lessons: [certificate-management]
+    labs: [lab-certificate-replacement]
+
+  - id: vmca
+    term: VMCA
+    expansion: VMware Certificate Authority
+    definition: The certificate authority built into vCenter that issues the vCenter machine SSL and ESX host certificates by default.
+    whyItMatters: Clients that must trust vCenter or hosts with VMCA-signed certificates need the VMCA root; VCF auto-renewal supports VMCA-issued certificates.
+    version: general
+    related: [vecs, root-ca]
+    lessons: [certificate-management]
+
+  - id: vecs
+    term: VECS
+    expansion: VMware Endpoint Certificate Store
+    definition: The certificate store on vCenter that holds its certificates and keys in named stores such as MACHINE_SSL_CERT and TRUSTED_ROOTS.
+    whyItMatters: Inspecting VECS with vecs-cli shows which certificate vCenter presents and which roots it trusts.
+    version: general
+    related: [vmca, machine-ssl-certificate]
+    lessons: [certificate-management]
+
+  - id: machine-ssl-certificate
+    term: Machine SSL certificate
+    definition: The vCenter certificate presented by its reverse proxy on port 443, stored in the VECS MACHINE_SSL_CERT store.
+    whyItMatters: It is the certificate SDDC Manager, VCF Operations and browsers see when they connect to vCenter.
+    version: general
+    related: [vecs, vmca]
+    lessons: [certificate-management]
+
+  - id: vcf-single-sign-on
+    term: VCF Single Sign-On
+    definition: The VCF 9 capability that gives users one login, from a corporate identity provider through the VCF Identity Broker, across vCenter, NSX, VCF Operations, VCF Automation and other fleet components (not the SDDC Manager UI or ESX).
+    whyItMatters: Centralises authentication and MFA for the fleet; roles still have to be assigned in each component.
+    version: vcf9
+    related: [identity-provider, scim, rbac]
+    lessons: [vcf-identity-sso-rbac]
+
+  - id: identity-provider
+    term: Identity provider
+    expansion: IdP
+    definition: The system that authenticates users, such as Okta, Microsoft Entra ID, ADFS, Ping or any SAML 2.0 IdP, or a directory such as Active Directory/LDAP or OpenLDAP.
+    whyItMatters: VCF SSO federates with the IdP using SAML 2.0 or OIDC (or syncs from AD/LDAP); passwords and MFA stay in the IdP.
+    version: general
+    related: [vcf-single-sign-on, scim]
+    lessons: [vcf-identity-sso-rbac]
+
+  - id: scim
+    term: SCIM
+    expansion: System for Cross-domain Identity Management
+    definition: A standard (SCIM 2.0) by which an identity provider pushes users and groups to a service.
+    whyItMatters: One of the provisioning methods for VCF SSO, alongside JIT and AD/LDAP sync; groups must exist before roles can be assigned to them.
+    version: general
+    related: [identity-provider, vcf-single-sign-on]
+    lessons: [vcf-identity-sso-rbac]
+
+  - id: rbac
+    term: RBAC
+    expansion: Role-Based Access Control
+    definition: Granting permissions by assigning roles (sets of privileges) to users or groups, optionally on a scope of objects.
+    whyItMatters: In VCF each component (vCenter, NSX, VCF Operations, VCF Automation) keeps its own roles; SSO only proves who the user is.
+    version: general
+    related: [vcf-single-sign-on]
+    lessons: [vcf-identity-sso-rbac]
+
+  - id: password-rotation
+    term: Password rotation
+    definition: Changing an account's password to an auto-generated value on both the component (server side) and in VCF's credential store (client side); can be scheduled. In VCF 9.0 performed through SDDC Manager.
+    whyItMatters: Meets security policy without breaking automation. ESX accounts can be rotated but not on a schedule.
+    version: vcf9
+    related: [password-remediation, service-account]
+    lessons: [password-management]
+    labs: [lab-password-rotation]
+
+  - id: password-remediation
+    term: Password remediation
+    definition: Giving VCF the password that was already changed directly on a component so that its stored credential matches again (client side only).
+    whyItMatters: The correct fix after any out-of-band password change or expired-password reset; Update would change the password again.
+    version: vcf9
+    related: [password-rotation]
+    lessons: [password-management]
+    labs: [lab-password-rotation]
+
+  - id: service-account
+    term: Service account
+    definition: A non-human account (svc-* in VCF) used by one component to talk to another, for example NSX to vCenter or SDDC Manager to ESX.
+    whyItMatters: System-managed service accounts are rotated automatically; changing them by hand breaks integrations.
+    version: vcf9
+    related: [password-rotation]
+    lessons: [password-management]
+
+  - id: license-file
+    term: License file
+    definition: The subscription-based license artifact that replaces 25-character license keys in VCF 9; obtained from the VCF Business Services console and imported into VCF Operations.
+    whyItMatters: Licenses are assigned only to vCenter instances from VCF Operations; usage must be reported at least every 180 days.
+    version: vcf9
+    related: [vcf-business-services-console]
+    lessons: [license-management]
+
+  - id: vcf-business-services-console
+    term: VCF Business Services console
+    definition: Broadcom's portal at vcf.broadcom.com where subscriptions appear as default licenses, VCF Operations instances are registered, allocations are split and usage reports are uploaded.
+    whyItMatters: Registration of VCF Operations here, in connected or disconnected mode, is required within the 90-day evaluation period.
+    version: vcf9
+    related: [license-file]
+    lessons: [license-management]

@@ -1,0 +1,227 @@
+id: inc-vcf-ops-collection
+title: VCF Operations stops collecting metrics for one workload domain
+difficulty: intermediate
+version: vcf9
+topics: [vcf-ops-architecture, metrics-properties, certificates]
+lessons: [vcf-operations-architecture, vcf-operations-logs-network-ops, dashboards-alerts-policies]
+summary: Since early morning, VMs and hosts of workload domain wld01 show flat, stale metrics in VCF Operations while the management domain looks perfect. Several plausible causes compete - a busy collector, a service account, time, DNS and an unrelated vSAN warning.
+symptoms:
+  - "Dashboards for wld01 clusters show flat lines since 02:10; management domain charts are current."
+  - "The capacity team reports that the wld01 weekly report generated at 06:00 contains no data for the last four hours."
+  - "No alerts are being raised for wld01 objects, although a test VM there is at 100% CPU."
+  - "The night change log mentions 'security maintenance on wld01' without detail."
+environment: |
+  VCF 9.0 fleet with one VCF instance: management domain (vc-mgmt.lab.local) and VI workload domain wld01
+  (vc-wld01.lab.local, nsx-wld01.lab.local). VCF Operations in the Simple model (ops01.lab.local), one VCF Operations
+  collector / cloud proxy (cp01.lab.local) running all adapters, fleet management appliance (fm01.lab.local). The vCenter
+  adapters authenticate with the service account svc-ops@vsphere.local. DNS 10.0.0.10, NTP 10.0.0.10.
+evidence:
+  - id: ev-scope
+    category: hosts
+    action: Compare the latest collected timestamps for a wld01 VM, a wld01 host and a management VM in VCF Operations
+    output: |
+      ```log
+      Object                     Adapter             Last collected
+      app-web01 (VM, wld01)      vCenter vc-wld01    02:09
+      esx-w01 (Host, wld01)      vCenter vc-wld01    02:09
+      sddc-manager (VM, mgmt)    vCenter vc-mgmt     06:41
+      nsx-wld01 (NSX Manager)    NSX nsx-wld01       06:40
+      ```
+    relevance: useful
+    note: Only objects collected by the vc-wld01 vCenter adapter are stale. NSX for wld01 and the management vCenter still collect, so the analytics node and the collector work. Scope = one integration.
+  - id: ev-integration
+    category: services
+    action: Open Administration > Integrations and look at the vCenter adapter for vc-wld01
+    output: |
+      ```log
+      Integration            Collector   Status
+      vCenter vc-mgmt        cp01        Collecting / OK
+      vCenter vc-wld01       cp01        Collection failed (since 02:10)
+      NSX nsx-wld01          cp01        Collecting / OK
+      SDDC Manager           cp01        Collecting / OK
+      Details: Unable to establish a valid connection to the target system. Certificate is not trusted.
+      ```
+    relevance: key
+    note: The failure is in this one adapter, and the message points at certificate trust, not credentials.
+  - id: ev-collector
+    category: services
+    action: Check the status of collector cp01 and which adapters it runs
+    output: |
+      ```log
+      Collector cp01.lab.local    Status: Online    Version: 9.0.x
+      Adapter instances: vCenter vc-mgmt, vCenter vc-wld01, NSX nsx-mgmt, NSX nsx-wld01, SDDC Manager
+      Last heartbeat: 06:42
+      ```
+    relevance: useful
+    note: The collector is online and its other adapters collect. A collector failure would stop all of them.
+  - id: ev-collector-cpu
+    category: hosts
+    action: Look at cp01 VM CPU and memory in vCenter
+    output: |
+      ```log
+      cp01  CPU 78% (avg 1h)  Memory 71%  Disk latency 3 ms
+      ```
+    relevance: noise
+    note: Busy but not saturated, and busy collectors slow everything - they do not fail a single adapter with a certificate message.
+  - id: ev-creds
+    category: services
+    action: Log in to the vSphere Client of vc-wld01 as svc-ops@vsphere.local
+    output: |
+      ```log
+      Login successful. User: svc-ops@vsphere.local  Last password change: 41 days ago
+      ```
+    relevance: useful
+    note: The service account and password are valid; credential expiry is excluded.
+  - id: ev-adapter-log
+    category: logs
+    action: Search the collector's vCenter adapter log for vc-wld01 around 02:10
+    output: |
+      ```log
+      2026-10-03T02:10:14Z ERROR [vc-wld01] Collection failed: connection to https://vc-wld01.lab.local:443 rejected
+      2026-10-03T02:10:14Z ERROR [vc-wld01] javax.net.ssl.SSLHandshakeException: PKIX path building failed:
+          unable to find valid certification path to requested target
+      2026-10-03T02:15:14Z ERROR [vc-wld01] Collection failed: certificate not trusted (thumbprint mismatch)
+      ```
+    relevance: key
+    note: TLS handshake fails because the presented certificate does not chain to anything the adapter trusts and its thumbprint changed.
+  - id: ev-cert
+    category: certificates
+    action: Run openssl s_client against vc-wld01.lab.local:443 from the jump host
+    output: |
+      ```shell
+      $ openssl s_client -connect vc-wld01.lab.local:443 -servername vc-wld01.lab.local </dev/null 2>/dev/null \
+          | openssl x509 -noout -subject -issuer -dates -fingerprint -sha256
+      subject=CN = vc-wld01.lab.local
+      issuer=CN = lab-issuing-ca
+      notBefore=Oct  3 02:05:31 2026 GMT
+      notAfter=Oct  3 02:05:31 2028 GMT
+      sha256 Fingerprint=4C:9E:0B:...:A1
+      ```
+    relevance: key
+    note: A brand-new certificate issued at 02:05 by a new issuing CA - five minutes before collection failed.
+  - id: ev-task
+    category: certificates
+    action: Review the certificate management task history in VCF Operations fleet management
+    output: |
+      ```log
+      02:01  Generate CSR            vc-wld01.lab.local     Successful
+      02:05  Replace certificate     vc-wld01.lab.local     Successful
+      02:07  Restart services        vc-wld01.lab.local     Successful
+      ```
+    relevance: key
+    note: 'Confirms the "security maintenance": the wld01 vCenter certificate was replaced with a CA-signed one. The VCF Operations adapter still holds the old trust.'
+  - id: ev-ntp
+    category: ntp
+    action: Check time on cp01, ops01 and vc-wld01
+    output: |
+      ```log
+      cp01      offset +0.31 s   synced to 10.0.0.10
+      ops01     offset -0.12 s   synced to 10.0.0.10
+      vc-wld01  offset +0.08 s   synced to 10.0.0.10
+      ```
+    relevance: noise
+    note: Clocks agree within a second; time skew would also affect other integrations and token/certificate validity everywhere.
+  - id: ev-dns
+    category: dns
+    action: Resolve vc-wld01.lab.local forward and reverse from cp01
+    output: |
+      ```shell
+      vc-wld01.lab.local -> 10.0.20.10
+      10.0.20.10 -> vc-wld01.lab.local
+      ```
+    relevance: noise
+    note: DNS is fine; the adapter reaches the server, it just refuses its certificate.
+  - id: ev-vsan
+    category: storage
+    action: Open Storage Operations for the management vSAN cluster
+    output: |
+      ```log
+      vSAN Cluster Health Score (mgmt-cl01): 92  - Warning: network latency check (nested lab)
+      ```
+    relevance: noise
+    note: A long-standing warning in the management cluster, unrelated to wld01 collection.
+idealSequence: [ev-scope, ev-integration, ev-collector, ev-creds, ev-adapter-log, ev-cert, ev-task]
+rootCause:
+  - id: rc-cert
+    text: The vc-wld01 certificate was replaced, and the VCF Operations vCenter adapter does not trust the new certificate, so collection for that adapter fails.
+    correct: true
+    why: Single-adapter scope, "certificate not trusted" status, PKIX errors, new certificate at 02:05 and the replacement task all agree.
+  - id: rc-collector
+    text: Collector cp01 is overloaded and dropping work.
+    why: cp01 is online and its other adapters collect normally; 78% CPU is not saturation and would not produce certificate errors.
+  - id: rc-password
+    text: The svc-ops service account password expired.
+    why: The account logs in successfully; the adapter error is a TLS trust failure, not authentication.
+  - id: rc-time
+    text: Time skew between the collector and vc-wld01 invalidates sessions.
+    why: All clocks are within a second and synced to the same source.
+  - id: rc-policy
+    text: The wld01 objects were moved to a policy that stops metric collection.
+    why: A policy change would not show "Collection failed" on the integration nor TLS errors in the adapter log.
+nextStep:
+  - id: ns-validate
+    text: Edit the vc-wld01 integration and run Validate Connection to see the certificate it is now presented with.
+    correct: true
+    why: It tests credentials and certificate trust in one step and shows the new certificate for review.
+  - id: ns-reboot
+    text: Reboot collector cp01.
+    why: The collector is healthy; rebooting interrupts every other integration and changes nothing about trust.
+  - id: ns-redeploy
+    text: Redeploy VCF Operations.
+    why: Massive overkill; the analytics cluster is not involved.
+remediation:
+  - id: rem-accept
+    text: Compare the presented fingerprint with the one from openssl / the fleet management task, accept the new certificate in the integration, save, and wait for the next collection.
+    correct: true
+    why: Re-establishes trust for exactly the changed endpoint after verifying it is genuine.
+  - id: rem-disable-validation
+    text: Configure the adapter (or all adapters) to ignore certificate validation.
+    why: Removes protection against man-in-the-middle attacks and hides the next real problem.
+  - id: rem-default-group
+    text: Move the vc-wld01 adapter to the Default Collector Group.
+    why: The collector is not the problem, and moving vCenter adapters off the cloud proxy breaks features such as configuration drift (KB 438361).
+  - id: rem-rollback
+    text: Roll back the vCenter certificate to the old self-signed one.
+    why: Undoes an intentional security change; the monitoring tool must follow the platform, not the other way round.
+validation:
+  - id: val-collecting
+    text: The integration shows Collecting/OK and wld01 objects have new data points after the next collection cycles; the test VM's CPU alert appears.
+    correct: true
+    why: Proves data flows again end to end, including alerting.
+  - id: val-no-alerts
+    text: There are no more alerts for wld01.
+    why: No alerts was the original symptom - it proves nothing.
+  - id: val-dashboard-opens
+    text: The wld01 dashboard opens without errors.
+    why: It opened before too; it just showed stale data.
+hints:
+  - "Is everything stale, or only some objects? What do the stale objects have in common?"
+  - "Look at the status of each integration, not just the collector."
+  - "Read the adapter error carefully: is it about who you are, or about whom you are talking to?"
+  - "What changed on vc-wld01 at about 02:05? Check the certificate it presents now and the fleet management task history."
+debrief: |
+  **Reasoning path.** Start with *scope*: only objects collected by the vc-wld01 vCenter adapter are stale, while NSX
+  for the same domain and the management vCenter collect fine on the **same collector**. That excludes the analytics
+  node, the collector, DNS and NTP in one move. The integration status then says *certificate is not trusted*, and the
+  adapter log shows a PKIX/TLS handshake failure - a trust problem, not a credential problem (the service account logs in
+  fine). `openssl s_client` shows a certificate issued at 02:05 by a new CA, and the fleet management task history
+  explains why: the vCenter certificate was replaced during the night's "security maintenance".
+
+  **Why it happens.** VCF Operations adapters store trust for the endpoint they connect to. Replacing a component's
+  certificate (exam topic 4.2, certificate management) is correct practice, but every client that pinned the old
+  certificate - VCF Operations integrations, scripts, backup tools - must be told to trust the new one.
+
+  **Fix.** Validate the integration, compare the presented fingerprint with the one you obtained independently, accept,
+  save, and confirm data and alerts resume. Never "fix" it by disabling certificate validation.
+
+  **Prevention.** Add "re-validate VCF Operations integrations and automation clients" to the certificate replacement
+  runbook, and create an alert/notification on integration collection failures so this is detected in minutes, not when
+  the morning report is empty.
+
+  **Red herrings.** Collector CPU at 78%, a vSAN latency warning in the management cluster, DNS and NTP checks - all
+  normal or unrelated. The scope check makes each of them unnecessary.
+sources:
+  - title: "VCF 9.0 Architectural Options - VCF Operations Models"
+    url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/design/vmware-cloud-foundation-concepts/vcf-operations.html
+  - title: "Broadcom KB 438361 - vCenter Servers not listed in VCF Operations Configuration Drift source list (adapter/collector assignment)"
+    url: https://knowledge.broadcom.com/external/article/438361/vcenter-servers-not-listed-in-vcf-operat.html
