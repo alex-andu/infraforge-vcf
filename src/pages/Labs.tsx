@@ -7,7 +7,7 @@ import { DifficultyChip, VersionChip, Dots, StatusDot, fmtMinutes, useDocumentTi
 const LEVELS = ['beginner', 'intermediate', 'advanced', 'challenge'] as const;
 
 export default function Labs() {
-  useDocumentTitle('Laboratoare');
+  useDocumentTitle('Ghiduri practice');
   const labsState = useStore((s) => s.labs);
   const lessons = useStore((s) => s.lessons);
   const [level, setLevel] = useState<string | null>(null);
@@ -18,8 +18,8 @@ export default function Labs() {
     <div className="page">
       <div className="page-head">
         <div>
-          <h1>Laboratoare</h1>
-          <p>Practică pe home lab-ul tău (nested ESX pe Proxmox). Fiecare laborator are topologie, cerințe, pași cu validare și procedură de cleanup. {done}/{meta.labs.length} finalizate.</p>
+          <h1>Ghiduri practice</h1>
+          <p>Proceduri separate de teorie, aplicate pe infrastructura ta VCF. Fiecare ghid are context, cerințe, pași explicați, rezultate așteptate, dovezi și cleanup. {done}/{meta.labs.length} finalizate.</p>
         </div>
         <div className="row">
           <Link className="btn" to="/homelab">Construiește home lab-ul</Link>
@@ -30,10 +30,10 @@ export default function Labs() {
         <button type="button" aria-pressed={!level} onClick={() => setLevel(null)}>Toate ({meta.labs.length})</button>
         {LEVELS.map((l) => <button key={l} type="button" aria-pressed={level === l} onClick={() => setLevel(l)}>{{ beginner: 'Începător', intermediate: 'Intermediar', advanced: 'Avansat', challenge: 'Provocare' }[l]} ({meta.labs.filter((x) => x.level === l).length})</button>)}
       </div>
-      {list.length === 0 ? <Empty title="Niciun laborator pentru acest filtru." /> : (
+      {list.length === 0 ? <Empty title="Niciun ghid pentru acest filtru." /> : (
         <div className="table-wrap">
           <table className="table">
-            <thead><tr><th>Laborator</th><th>Nivel</th><th>Complexitate</th><th>Durată</th><th>Tehnologii</th><th>Pregătit de</th><th>Stare</th></tr></thead>
+            <thead><tr><th>Ghid practic</th><th>Nivel</th><th>Complexitate</th><th>Durată</th><th>Tehnologii</th><th>Teorie parcursă</th><th>Stare</th></tr></thead>
             <tbody>
               {list.map((l) => {
                 const st = labsState[l.id];

@@ -4,7 +4,7 @@ import { getSearchDocs, type SearchDoc } from '../content';
 export const GROUPS: { id: string; label: string }[] = [
   { id: 'lessons', label: 'Lecții' },
   { id: 'architecture', label: 'Arhitectură' },
-  { id: 'labs', label: 'Laboratoare' },
+  { id: 'labs', label: 'Ghiduri practice' },
   { id: 'troubleshooting', label: 'Troubleshooting' },
   { id: 'glossary', label: 'Glosar' },
   { id: 'commands', label: 'Comenzi' },

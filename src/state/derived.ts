@@ -122,7 +122,7 @@ export function useRecommendations(): Recommendation[] {
     // 4. Practical work linked to completed lessons.
     const doneLessons = new Set(Object.entries(s.lessons).filter(([, v]) => v.status === 'completed').map(([k]) => k));
     const lab = meta.labs.find((l) => s.labs[l.id]?.status !== 'completed' && l.lessons.some((x) => doneLessons.has(x)));
-    if (lab) out.push({ kind: 'lab', text: `Laborator recomandat: ${lab.title}`, url: `/labs/${lab.id}`, cta: 'Deschide laboratorul' });
+    if (lab) out.push({ kind: 'lab', text: `Ghid practic recomandat: ${lab.title}`, url: `/labs/${lab.id}`, cta: 'Deschide ghidul' });
     const inc = meta.incidents.find((i) => !(s.incidents[i.id] ?? []).some((r) => r.solved) && i.lessons.some((x) => doneLessons.has(x)));
     if (inc) out.push({ kind: 'incident', text: `Incident de investigat: ${inc.title}`, url: `/troubleshoot/${inc.id}`, cta: 'Investighează' });
 

@@ -1,6 +1,6 @@
 # Content status
 
-Snapshot as of 2026-10-07, from `npm run content:check --strict`: 0 errors, 0 warnings.
+Snapshot as of 2026-10-08, from `npm run content:check --strict`: 0 errors, 0 warnings.
 
 **This repo is VMware Cloud Foundation (VCF 9 / 2V0-17.25) only. It has no RHCSA content**; "InfraForge RHCSA" is a separate project.
 
@@ -8,12 +8,12 @@ Totals:
 
 | Item | Count |
 |---|---|
-| Lessons | 70 (150,079 words) |
+| Lessons | 70 (151,034 words) |
 | Questions | 615 |
-| Labs | 23 |
+| Practical guides (internal `lab` schema) | 24 |
 | Incidents | 10 |
 | Scenarios | 3 |
-| Diagrams | 104 |
+| Diagrams | 105 |
 | Glossary terms | 256 |
 | Commands / API entries | 116 |
 | Architecture components | 23 |
@@ -27,7 +27,7 @@ Totals:
 | p01 | Virtualization Foundations | 4/4 | 6,876 | 27 | 2 |
 | p02 | vSphere Core | 6/6 | 13,467 | 52 | 2 |
 | p03 | Storage and vSAN | 6/6 | 14,385 | 52 | 2 |
-| p04 | Networking | 4/4 | 9,122 | 35 | 2 |
+| p04 | Networking | 4/4 | 10,077 | 35 | 3 |
 | p05 | NSX | 7/7 | 15,226 | 64 | 3 |
 | p06 | VCF Architecture | 6/6 | 12,127 | 66 | 3 |
 | p07 | VCF Deployment | 4/4 | 8,769 | 35 | 4 |
@@ -42,7 +42,7 @@ Totals:
 
 The lab counts are labs linked to that phase's lessons; one lab can be linked to several phases.
 
-- Every lesson has all 18 template sections, sources, at least one diagram, an inline quiz and a lab link. The shortest lesson is 1,663 words.
+- The standalone-theory template requires 17 sections, sources, at least one diagram and an inline quiz. The DNS/NTP pilot uses it; the other 69 lessons remain valid with their legacy `Lab` sections during incremental migration.
 - **Gaps:**
   - VCF Operations HCX and foundational Kubernetes have no dedicated lessons. Both are named in the official candidate profile.
   - Coverage per objective *item* (for example "configure a provider content library") is not tracked.
@@ -80,9 +80,9 @@ The lab counts are labs linked to that phase's lessons; one lab can be linked to
   - 4.3 (14 items) and 4.4 (12 items) have the fewest questions per item.
   - Questions carry no per-item tag.
 
-## Labs (`content/labs/*.yaml`)
+## Practical guides (`content/labs/*.yaml`)
 
-23 labs. Each has objectives, prerequisites, a topology diagram, steps with validation, expected results, hints and troubleshooting.
+24 practical guides in the existing internal lab schema. Each has objectives, prerequisites, a topology diagram, steps with validation, expected results, hints and troubleshooting.
 
 - **Home lab and infrastructure:** `lab-homelab-proxmox-prep`, `lab-network-readiness`, `lab-esx-host-first-vm`, `lab-vcenter-cluster-ha-drs`, `lab-vm-templates-content-library`
 - **Storage:** `lab-vsan-esa-cluster`, `lab-vsan-storage-policies`
@@ -91,10 +91,12 @@ The lab counts are labs linked to that phase's lessons; one lab can be linked to
 - **Operate:** `lab-lifecycle-upgrade-planning`, `lab-certificate-replacement`, `lab-password-rotation`, `lab-vcf-ops-dashboards-alerts`, `lab-vcf-ops-logs-network`
 - **Consume:** `lab-vcfa-organization-setup`, `lab-vcf-api-powercli`
 - **Troubleshooting:** `lab-troubleshooting-drill` (5 injected faults)
+- **Real-infrastructure verification:** `lab-verify-vcf-dns-ntp` (read-only DNS, reverse-resolution and time evidence for the documented VCF lab)
 
 **Status:**
-- Written for a *generic* nested-on-Proxmox plan (`lab.internal`, 10.10.x.0/24).
-- **Not yet adapted to Alex's deployed lab** (`vcf.home.arpa`, 10.100.x.0/24, single-node management domain, vSAN OSA FTT0). See `docs/CURRENT_STATE.md`.
+- The 23 legacy guides are written for a *generic* nested-on-Proxmox plan (`lab.internal`, 10.10.x.0/24).
+- The DNS/NTP pilot is the first separate, read-only guide for Alex's documented environment (`vcf.home.arpa`, DNS/NTP `infra01` at `10.100.80.10`, vCenter `10.100.10.21`, ESX hosts `10.100.10.11-.14`). Fresh PTR, saved-setting and synchronization evidence remain pending the real-lab run. See `docs/CURRENT_STATE.md` and `docs/LAB_ENVIRONMENT.md`.
+- The pilot is also the reference for the new UI-first runbook standard. The other 23 legacy guides still need bounded conversion to exact, build-verified click paths, field values, validation and rollback.
 - No labs for phases 14–15, HCX or Operations for Networks deployment.
 
 ## Troubleshooting incidents and scenarios

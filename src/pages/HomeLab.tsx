@@ -64,7 +64,7 @@ export default function HomeLab() {
               <tbody>{hl.platforms.map((pl) => <tr key={pl.id}><td style={{ fontWeight: 600 }}>{pl.name}</td><td>{pl.verdict}</td><td className="small"><Md src={pl.notes} /></td></tr>)}</tbody></table></div>
           </section>
           {homelabLabs.length > 0 && (
-            <section className="panel"><h2>Laboratoare de construcție</h2><ul className="list">{homelabLabs.map((l) => <li key={l.id}><Link to={`/labs/${l.id}`}>{l.title}</Link></li>)}</ul></section>
+            <section className="panel"><h2>Ghiduri de construcție</h2><ul className="list">{homelabLabs.map((l) => <li key={l.id}><Link to={`/labs/${l.id}`}>{l.title}</Link></li>)}</ul></section>
           )}
         </div>
       )}

@@ -1,0 +1,38 @@
+id: d-lab-verify-vcf-dns-ntp-logical
+title: DNS and time verification paths in the documented VCF lab
+description: >
+  Alex's Windows workstation reaches the VCF lab through VPN. An NRPT rule sends queries for vcf.home.arpa to the
+  internal DNS server at 10.100.80.10 while public queries keep their normal resolver. The confirmed vCenter record
+  maps vcenter01.vcf.home.arpa to 10.100.10.21. From inside the lab, a trusted administration host and selected VCF
+  components query the internal DNS service directly. infra01 at 10.100.80.10 provides both DNS and chrony NTP. The
+  guide verifies the saved configuration and current synchronization state rather than assuming that a documented
+  service is healthy.
+width: 1000
+height: 570
+groups:
+  - { id: g-client, x: 20, y: 25, w: 260, h: 520, label: "Administration workstation", kind: external }
+  - { id: g-services, x: 330, y: 25, w: 260, h: 520, label: "Internal services", kind: network }
+  - { id: g-vcf, x: 640, y: 25, w: 335, h: 520, label: "VCF management environment", kind: mgmt }
+nodes:
+  - { id: win, x: 55, y: 100, w: 190, h: 64, label: "Windows workstation", sublabel: "VPN connected", kind: external, info: "Uses NRPT so only vcf.home.arpa queries are sent to the internal resolver." }
+  - { id: public-dns, x: 55, y: 350, w: 190, h: 64, label: "Normal resolver", sublabel: "public names", kind: external, info: "Public queries remain on the workstation's normal resolver. This is split DNS." }
+  - { id: dns, x: 365, y: 100, w: 190, h: 64, label: "Internal DNS", sublabel: "10.100.80.10", kind: network, component: dns-service, info: "Authoritative/resolving path used for the vcf.home.arpa zone. The guide verifies both A and PTR answers." }
+  - { id: admin, x: 365, y: 235, w: 190, h: 64, label: "Trusted internal host", sublabel: "read-only tests", kind: external, info: "Runs direct queries against the internal resolver so VPN/NRPT behavior is separated from zone correctness." }
+  - { id: ntp, x: 365, y: 385, w: 190, h: 64, label: "infra01 · chrony NTP", sublabel: "10.100.80.10", kind: network, component: ntp-service, info: "The supplied inventory identifies infra01 at 10.100.80.10 as the lab NTP source. The guide still proves live synchronization on each component." }
+  - { id: vc, x: 690, y: 85, w: 235, h: 70, label: "vCenter", sublabel: "vcenter01.vcf.home.arpa / 10.100.10.21", kind: mgmt, component: vcenter, info: "Forward mapping was previously confirmed. The guide verifies the matching PTR without changing DNS." }
+  - { id: esx, x: 690, y: 235, w: 235, h: 70, label: "esx01 · ESX 9.0.2", sublabel: "10.100.10.11", kind: compute, component: esx-host, info: "The pilot uses esx01 for the first run. Record resolver configuration, forward/reverse answers, configured time source and live synchronization evidence." }
+  - { id: stack, x: 690, y: 385, w: 235, h: 70, label: "VCF management components", sublabel: "compare name and UTC time", kind: mgmt, component: sddc-manager, info: "Check a small representative set from the component that would run the workflow. Do not expose credentials in evidence." }
+edges:
+  - { from: win, to: dns, label: ".vcf.home.arpa via NRPT", kind: dependency }
+  - { from: win, to: public-dns, label: "other names", kind: dependency }
+  - { from: dns, to: vc, label: "A + PTR", kind: dependency, bidirectional: true }
+  - { from: admin, to: dns, label: "direct query", kind: data }
+  - { from: esx, to: dns, label: "resolver check", kind: dependency, dashed: true }
+  - { from: stack, to: dns, label: "resolver check", kind: dependency, dashed: true }
+  - { from: esx, to: ntp, label: "UDP 123 / sync", kind: dependency }
+  - { from: stack, to: ntp, label: "time source", kind: dependency, dashed: true }
+steps:
+  - { title: "Separate client and zone tests", text: "First confirm the workstation's NRPT routing, then query 10.100.80.10 directly from inside the lab. These prove different things.", highlight: [win, public-dns, dns, admin] }
+  - { title: "Prove the identity pair", text: "vcenter01.vcf.home.arpa must resolve to 10.100.10.21 and that IP must resolve back to the same FQDN.", highlight: [dns, vc] }
+  - { title: "Compare component perspective", text: "A resolver can work from the laptop while a VCF component uses a different or broken configuration. Check from a representative internal context.", highlight: [admin, dns, esx, stack] }
+  - { title: "Prove time health", text: "Record both configured NTP peers and evidence of active synchronization. Configuration alone is not proof of sync.", highlight: [ntp, esx, stack] }

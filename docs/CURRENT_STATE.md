@@ -1,8 +1,38 @@
 # Current state
 
-Snapshot as of 2026-10-07. The only commit on `main` is `95aca5b`, the V3 build. Product: **InfraForge VCF**, a local single-user learning platform for VMware Cloud Foundation 9 and the **2V0-17.25 VCF 9.0 Administrator** exam. Owner: Alex.
+Product/content snapshot as of 2026-10-07; repository/planning assessment on 2026-10-08. Inspected `main` is `577f553` (Claude instructions), after `8ffc48c` (handoff docs) and `95aca5b` (V3 build). Product: **InfraForge VCF**, a local single-user learning platform for VMware Cloud Foundation 9 and the **2V0-17.25 VCF 9.0 Administrator** exam. Owner: Alex.
 
 Note: this repo has no RHCSA content. "InfraForge RHCSA" is a separate project.
+
+## Parallel-work checkpoint (2026-10-08)
+
+This section is the source of truth for work ownership and holds. Operating rules: [VCF_PARALLEL_WORKFLOW.md](VCF_PARALLEL_WORKFLOW.md). Proposed module batches: [VCF_MODULE_ROADMAP.md](VCF_MODULE_ROADMAP.md).
+
+- **Current milestone:** `THEORY-LABS-01` is complete locally: the DNS/NTP lesson is a standalone theory sample and its real-infrastructure verification is a separate practical guide. The next gate is Alex's read-only run on the real lab and review of the teaching structure.
+- **Authorized now:** Alex approved the bounded DNS/NTP pilot and automatic feature-branch pushes on 2026-10-08. Branch: `docs/vcf-parallel-workflow`, based on `577f553`. Push only after checks and a secret scan; no direct push to `main`, force-push, PR, merge, deployment or infrastructure mutation is authorized.
+- **Implementation hold:** tasks #2–#10 remain on hold until Alex confirms the separate RHCSA project is finished. No such confirmation was given in this session.
+- **Privacy:** verified on 2026-10-08: the unauthenticated GitHub API returns 404 while authenticated Git remote read succeeds, so the repository is private and this workstation retains access. The pilot stores only sanitized topology values and no credentials, tokens or unredacted captures. Task #1 is complete.
+- **Exam baseline:** Alex supplied the official-description excerpt updated 2026-04-23. Its 8 objectives / 59 items match `content/objectives.yaml`; Kubernetes/HCX and DNS/NTP/certificates are candidate-profile prerequisites. Ordinal item IDs are repository conventions; mock allocation/scoring remain practice estimates, not official weights or a raw passing percentage.
+- **New learning direction (Alex, 2026-10-08):** develop clearer, deeper standalone theory and keep practical work as separate guides based on the existing infrastructure and mapped to the official exam description. The validator now accepts the 17-section standalone-theory template; the other 69 lesson bodies remain compatible and can be migrated in bounded batches.
+- **Visual requirement (Alex, 2026-10-08):** combine original diagrams/generated illustrations with verified official VMware/Broadcom figures and genuine product screenshots. Default to official-source embeds with attribution; plan offline alternatives separately. Screenshots belong beside relevant guide steps, architecture visuals beside theory explanations. Track provenance/version and never present generated UI as official. Documented only; assets are not yet integrated.
+- **Operating model and context budget (Alex, 2026-10-08):** ChatGPT is the primary end-to-end owner; Claude is optional for a bounded batch. Repository checkpoints/specs hold durable memory. Sessions use targeted reads, one small batch, reusable source/evidence manifests and compact handoffs; no routine full-repository rescans or repeated research. See `VCF_PARALLEL_WORKFLOW.md`.
+- **Practical-guide standard (Alex, 2026-10-08):** every runnable guide is a complete UI-first runbook: product URL, required role, exact versioned click path, button, field, real lab value or discovery variable, commit action, validation, expected screen/evidence and rollback. The DNS/NTP pilot now demonstrates this with vSphere Client, ESXi Host Client and VAMI paths plus official ESX 9.x figures. The remaining legacy guides require incremental migration; they must not be represented as meeting this standard yet.
+- **Sanitized real-lab inventory (Alex, 2026-10-08):** `docs/LAB_ENVIRONMENT.md` now records the supplied VCF 9.0.2 topology without credentials. It confirms `infra01` / `10.100.80.10` as BIND DNS + chrony NTP, ESX hosts `esx01`–`esx04` / `10.100.10.11-.14`, and the deployed management components. The DNS/NTP guide now uses `esx01` and the actual NTP address. PTR and live sync state still require the guide run.
+
+| Work item | Owner | Status | Scope / prerequisites | Next handoff |
+|---|---|---|---|---|
+| Parallel setup | ChatGPT | COMPLETE (local) | Assessed repository; wrote workflow/roadmap and established bounded-batch ownership | Use this file as the live checkpoint |
+| THEORY-LABS-01: theory / guide separation + DNS/NTP pilot | ChatGPT | COMPLETE (local); WAITING FOR REAL-LAB VALIDATION | Standalone theory, UI-first read-only guide using the sanitized real inventory, original topology diagram, official Broadcom figures, compatibility transition and learner-facing labels | Alex runs the guide on esx01, then repeats on esx02–04; ChatGPT records sanitized PTR/settings/sync evidence |
+| p08 Kubernetes foundations spec (part of #4) | ChatGPT | PROPOSED, after pilot | Follow the approved theory/guide separation; no Supervisor/WLD runtime availability assumed | Prepare a bounded companion package later |
+| #2 objective-item tagging/report | ChatGPT (Claude optional) | ON HOLD | RHCSA completion and explicit resume required; scope in task list below | Approved bounded implementation, then tests and QA |
+| #3–#10 remaining implementation | ChatGPT (Claude optional) | ON HOLD | Existing task order retained; #3 depends on #2 report; shared-file edits serialized | One approved batch at a time |
+| Real-lab validation and acceptance | Alex | NOT STARTED for new batches | Build/component/RAM evidence and approved lab steps; privacy confirmation before lab-specific content | Record observed results and milestone approval |
+
+The completed pilot spec and evidence sheet are in `docs/specs/theory-labs-separation/spec.md`. The hold still applies to the older tasks #2–#10; it does not roll back this explicitly approved pilot. The feature branch may be committed and pushed automatically under `CLAUDE.md`; PR, merge and deployment remain separate.
+
+Fresh local checks on 2026-10-08 after the UI-first pilot update: strict content validation **0 errors / 0 warnings**, **23/23 unit tests passed**, typecheck passed, production build passed, and browser smoke passed on **15 routes with no console errors**, including the expanded guide and its official figures. Inventory is 70 lessons / 151,034 words, 615 questions, 24 guides in the internal lab schema, and 105 diagrams. Docker deployment and real-lab behavior were not revalidated.
+
+Windows checkout note: the initial strict check reported 70 missing-frontmatter errors and 1,312 cascading warnings because Git converted lesson files to CRLF while `scripts/content-loader.ts:101` expects LF. Setting this clone's `core.autocrlf=input` and normalizing only unchanged lesson working-copy line endings to LF restored passing checks. Git reports no tracked content changes. A portable parser or repository line-ending policy is a separate proposed maintenance fix, not implemented here.
 
 ## Completed
 
@@ -16,7 +46,7 @@ Note: this repo has no RHCSA content. "InfraForge RHCSA" is a separate project.
   - YAML/Markdown in `content/`, validated by zod (`scripts/content-loader.ts`).
   - Exposed through virtual modules (`scripts/vite-plugin-content.ts`).
   - The production build fails on any content error.
-- Learn mode: 16 phases, 70 lessons, all with the 18-section template. See `docs/CONTENT_STATUS.md`.
+- Learn mode: 16 phases and 70 lessons. The new standalone-theory contract has 17 required sections; 69 untouched lessons may retain their legacy `Lab` section until migrated. See `docs/CONTENT_STATUS.md`.
 - Lesson page:
   - TOC with section tracking.
   - Callouts (vcf9 / legacy / exam / trap …).
@@ -27,7 +57,7 @@ Note: this repo has no RHCSA content. "InfraForge RHCSA" is a separate project.
   - Mock exam: 60 questions in 135 minutes, distributed by the number of items per objective, with timer, navigator, flags and result page.
   - Per-question page.
 - Review: spaced-repetition (Leitner) queue and review session.
-- Labs: 23 guided labs with step checklists, hints, validation and expected results.
+- Practical guides: 24 records in the existing lab schema, with step checklists, hints, validation and expected results.
 - Troubleshooting: 10 incidents in a 6-stage simulator (evidence → cause → next step → remediation → validation → debrief), scored with LCS.
 - Scenarios: 3 design scenarios.
 - Architecture Explorer:

@@ -70,7 +70,7 @@ export default function Onboarding() {
           <p className="muted">Platforma te duce de la „știu virtualizare de bază” la „pot construi, opera și depana VMware Cloud Foundation 9” și la examenul <strong>2V0-17.25 VCF 9.0 Administrator</strong>.</p>
           <ul className="muted small">
             <li>Teorie înainte de laboratoare, cu diagrame interactive și surse oficiale.</li>
-            <li>Laboratoare pe home lab-ul tău, simulator de incidente și examene simulate.</li>
+            <li>Ghiduri practice pe home lab-ul tău, simulator de incidente și examene simulate.</li>
             <li>Progresul și recomandările se adaptează la ce știi deja. Totul se salvează local.</li>
           </ul>
           <p className="small faint">Durează cam 5 minute (sau 1 minut fără testul de diagnostic).</p>
@@ -128,7 +128,7 @@ export default function Onboarding() {
           <div className="choice-grid">
             <Choice k="goal" v="learn" title="Să înțeleg VCF" text="Arhitectură și operare în profunzime." />
             <Choice k="goal" v="cert" title="Certificarea" text="Pregătire țintită pentru 2V0-17.25." />
-            <Choice k="goal" v="hands-on" title="Practică" text="Laboratoare și troubleshooting." />
+            <Choice k="goal" v="hands-on" title="Practică" text="Ghiduri aplicate și troubleshooting." />
             <Choice k="goal" v="all" title="Toate" text="Teorie, practică și examen, echilibrat." />
           </div>
           <div className="row between"><button className="btn ghost" onClick={() => setStep(2)}>Înapoi</button><button className="btn primary" onClick={() => setStep(4)}>Continuă</button></div>
@@ -139,7 +139,7 @@ export default function Onboarding() {
         <section className="panel stack">
           <h2>Ce hardware ai pentru laborator?</h2>
           <div className="choice-grid">
-            <Choice k="hardware" v="none" title="Nimic încă" text="Laboratoarele vor fi doar ghiduri și simulatoare." />
+            <Choice k="hardware" v="none" title="Nimic încă" text="Ghidurile care cer infrastructură vor rămâne în așteptare; simulatoarele rămân disponibile." />
             <Choice k="hardware" v="workstation" title="PC / laptop" text="VMware Workstation, resurse limitate." />
             <Choice k="hardware" v="single-server" title="Un server" text="Ex.: Proxmox sau ESX cu nested ESX (cazul tău)." />
             <Choice k="hardware" v="multi-host" title="Mai multe hosturi" text="ESX fizic, 3+ servere." />

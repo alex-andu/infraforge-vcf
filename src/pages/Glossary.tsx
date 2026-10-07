@@ -66,7 +66,7 @@ export default function Glossary() {
               <div><div className="section-label">De ce contează</div><Md src={term.whyItMatters} /></div>
               {term.related.length > 0 && <div><div className="section-label">Concepte conexe</div><div className="row" style={{ gap: 5 }}>{term.related.map((r) => termsById.has(r) ? <Link key={r} className="chip" to={`/glossary/${r}`}>{termsById.get(r)!.term}</Link> : null)}</div></div>}
               {term.lessons.some((l) => lessonsById.has(l)) && <div><div className="section-label">Lecții</div><ul className="list small">{term.lessons.filter((l) => lessonsById.has(l)).map((l) => <li key={l}><Link to={`/learn/${l}`}>{lessonsById.get(l)!.title}</Link></li>)}</ul></div>}
-              {term.labs.some((l) => labsById.has(l)) && <div><div className="section-label">Laboratoare</div><ul className="list small">{term.labs.filter((l) => labsById.has(l)).map((l) => <li key={l}><Link to={`/labs/${l}`}>{labsById.get(l)!.title}</Link></li>)}</ul></div>}
+              {term.labs.some((l) => labsById.has(l)) && <div><div className="section-label">Ghiduri practice</div><ul className="list small">{term.labs.filter((l) => labsById.has(l)).map((l) => <li key={l}><Link to={`/labs/${l}`}>{labsById.get(l)!.title}</Link></li>)}</ul></div>}
               <div className="small"><Link to={`/search?q=${encodeURIComponent(term.term)}`}>Caută „{term.term}” în tot conținutul →</Link></div>
             </article>
           )}
