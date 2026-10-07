@@ -8,12 +8,12 @@ Note: this repo has no RHCSA content. "InfraForge RHCSA" is a separate project.
 
 This section is the source of truth for work ownership and holds. Operating rules: [VCF_PARALLEL_WORKFLOW.md](VCF_PARALLEL_WORKFLOW.md). Proposed module batches: [VCF_MODULE_ROADMAP.md](VCF_MODULE_ROADMAP.md).
 
-- **Current milestone:** `THEORY-LABS-01` is complete locally: the DNS/NTP lesson is a standalone theory sample and its real-infrastructure verification is a separate practical guide. The next gate is Alex's read-only run on the real lab and review of the teaching structure.
-- **Authorized now:** Alex approved the bounded DNS/NTP pilot and automatic feature-branch pushes on 2026-10-08. Branch: `docs/vcf-parallel-workflow`, based on `577f553`. Push only after checks and a secret scan; no direct push to `main`, force-push, PR, merge, deployment or infrastructure mutation is authorized.
-- **Implementation hold:** tasks #2–#10 remain on hold until Alex confirms the separate RHCSA project is finished. No such confirmation was given in this session.
+- **Current milestone:** `K8S-FOUND-01` is implemented and validated locally: a standalone Kubernetes foundations lesson now precedes the advanced Supervisor lesson, with an original Supervisor/VKS boundary diagram, official Kubernetes architecture figure, glossary and questions. No runtime guide was created because the documented lab has no confirmed Workload Domain or Supervisor. `THEORY-LABS-01` remains waiting for Alex's read-only lab run.
+- **Authorized now:** Alex approved the bounded DNS/NTP pilot, then explicitly asked to continue with the proposed Kubernetes foundations package, and approved automatic feature-branch pushes on 2026-10-08. Current branch: `content/kubernetes-foundations`, based on pushed pilot commit `d0e8af2`. Push only after checks and a secret scan; no direct push to `main`, force-push, PR, merge, deployment or infrastructure mutation is authorized.
+- **Implementation hold:** this bounded Kubernetes slice of task #4 was resumed by Alex. Tasks #2–#3, the HCX slice of #4, and tasks #5–#10 remain on hold until Alex confirms the separate RHCSA project is finished or explicitly resumes another bounded package.
 - **Privacy:** verified on 2026-10-08: the unauthenticated GitHub API returns 404 while authenticated Git remote read succeeds, so the repository is private and this workstation retains access. The pilot stores only sanitized topology values and no credentials, tokens or unredacted captures. Task #1 is complete.
 - **Exam baseline:** Alex supplied the official-description excerpt updated 2026-04-23. Its 8 objectives / 59 items match `content/objectives.yaml`; Kubernetes/HCX and DNS/NTP/certificates are candidate-profile prerequisites. Ordinal item IDs are repository conventions; mock allocation/scoring remain practice estimates, not official weights or a raw passing percentage.
-- **New learning direction (Alex, 2026-10-08):** develop clearer, deeper standalone theory and keep practical work as separate guides based on the existing infrastructure and mapped to the official exam description. The validator now accepts the 17-section standalone-theory template; the other 69 lesson bodies remain compatible and can be migrated in bounded batches.
+- **New learning direction (Alex, 2026-10-08):** develop clearer, deeper standalone theory and keep practical work as separate guides based on the existing infrastructure and mapped to the official exam description. The validator accepts the 17-section standalone-theory template; two lessons use it and the other 69 lesson bodies remain compatible for bounded migration.
 - **Visual requirement (Alex, 2026-10-08):** combine original diagrams/generated illustrations with verified official VMware/Broadcom figures and genuine product screenshots. Default to official-source embeds with attribution; plan offline alternatives separately. Screenshots belong beside relevant guide steps, architecture visuals beside theory explanations. Track provenance/version and never present generated UI as official. Documented only; assets are not yet integrated.
 - **Operating model and context budget (Alex, 2026-10-08):** ChatGPT is the primary end-to-end owner; Claude is optional for a bounded batch. Repository checkpoints/specs hold durable memory. Sessions use targeted reads, one small batch, reusable source/evidence manifests and compact handoffs; no routine full-repository rescans or repeated research. See `VCF_PARALLEL_WORKFLOW.md`.
 - **Practical-guide standard (Alex, 2026-10-08):** every runnable guide is a complete UI-first runbook: product URL, required role, exact versioned click path, button, field, real lab value or discovery variable, commit action, validation, expected screen/evidence and rollback. The DNS/NTP pilot now demonstrates this with vSphere Client, ESXi Host Client and VAMI paths plus official ESX 9.x figures. The remaining legacy guides require incremental migration; they must not be represented as meeting this standard yet.
@@ -23,14 +23,14 @@ This section is the source of truth for work ownership and holds. Operating rule
 |---|---|---|---|---|
 | Parallel setup | ChatGPT | COMPLETE (local) | Assessed repository; wrote workflow/roadmap and established bounded-batch ownership | Use this file as the live checkpoint |
 | THEORY-LABS-01: theory / guide separation + DNS/NTP pilot | ChatGPT | COMPLETE (local); WAITING FOR REAL-LAB VALIDATION | Standalone theory, UI-first read-only guide using the sanitized real inventory, original topology diagram, official Broadcom figures, compatibility transition and learner-facing labels | Alex runs the guide on esx01, then repeats on esx02–04; ChatGPT records sanitized PTR/settings/sync evidence |
-| p08 Kubernetes foundations spec (part of #4) | ChatGPT | PROPOSED, after pilot | Follow the approved theory/guide separation; no Supervisor/WLD runtime availability assumed | Prepare a bounded companion package later |
+| K8S-FOUND-01: Kubernetes foundations for Supervisor (part of #4) | ChatGPT | COMPLETE (local); RUNTIME GUIDE GATED | 17-section theory, original Supervisor/VKS mapping, official Kubernetes figure, glossary and five questions; no Supervisor/WLD runtime availability assumed | Push feature branch; later confirm prerequisites before writing a practical guide |
 | #2 objective-item tagging/report | ChatGPT (Claude optional) | ON HOLD | RHCSA completion and explicit resume required; scope in task list below | Approved bounded implementation, then tests and QA |
 | #3–#10 remaining implementation | ChatGPT (Claude optional) | ON HOLD | Existing task order retained; #3 depends on #2 report; shared-file edits serialized | One approved batch at a time |
 | Real-lab validation and acceptance | Alex | NOT STARTED for new batches | Build/component/RAM evidence and approved lab steps; privacy confirmation before lab-specific content | Record observed results and milestone approval |
 
 The completed pilot spec and evidence sheet are in `docs/specs/theory-labs-separation/spec.md`. The hold still applies to the older tasks #2–#10; it does not roll back this explicitly approved pilot. The feature branch may be committed and pushed automatically under `CLAUDE.md`; PR, merge and deployment remain separate.
 
-Fresh local checks on 2026-10-08 after the UI-first pilot update: strict content validation **0 errors / 0 warnings**, **23/23 unit tests passed**, typecheck passed, production build passed, and browser smoke passed on **15 routes with no console errors**, including the expanded guide and its official figures. Inventory is 70 lessons / 151,034 words, 615 questions, 24 guides in the internal lab schema, and 105 diagrams. Docker deployment and real-lab behavior were not revalidated.
+Fresh local checks on 2026-10-08 after `K8S-FOUND-01`: strict content validation **0 errors / 0 warnings**, **23/23 unit tests passed**, typecheck passed, production build passed, and browser smoke passed on **15 main routes plus the new lesson route with no console errors**. Inventory is 71 lessons / 154,175 words, 620 questions, 24 guides in the internal lab schema, 106 diagrams and 266 glossary terms. Docker deployment and real-lab behavior were not revalidated.
 
 Windows checkout note: the initial strict check reported 70 missing-frontmatter errors and 1,312 cascading warnings because Git converted lesson files to CRLF while `scripts/content-loader.ts:101` expects LF. Setting this clone's `core.autocrlf=input` and normalizing only unchanged lesson working-copy line endings to LF restored passing checks. Git reports no tracked content changes. A portable parser or repository line-ending policy is a separate proposed maintenance fix, not implemented here.
 
@@ -46,7 +46,7 @@ Windows checkout note: the initial strict check reported 70 missing-frontmatter 
   - YAML/Markdown in `content/`, validated by zod (`scripts/content-loader.ts`).
   - Exposed through virtual modules (`scripts/vite-plugin-content.ts`).
   - The production build fails on any content error.
-- Learn mode: 16 phases and 70 lessons. The new standalone-theory contract has 17 required sections; 69 untouched lessons may retain their legacy `Lab` section until migrated. See `docs/CONTENT_STATUS.md`.
+- Learn mode: 16 phases and 71 lessons. The standalone-theory contract has 17 required sections; 69 untouched lessons may retain their legacy `Lab` section until migrated. See `docs/CONTENT_STATUS.md`.
 - Lesson page:
   - TOC with section tracking.
   - Callouts (vcf9 / legacy / exam / trap …).
@@ -90,7 +90,7 @@ Windows checkout note: the initial strict check reported 70 missing-frontmatter 
 - **Blueprint depth.**
   - `content/objectives.yaml` lists every 2.1–4.4 item verbatim from the official exam guide.
   - Questions are tagged per objective, not per objective item, so coverage of each item is not measured or guaranteed.
-  - Topics named in the guide's "Minimally Qualified Candidate" profile are thin: VCF Operations HCX, foundational Kubernetes, and VCF Operations for Networks depth.
+  - Topics named in the guide's "Minimally Qualified Candidate" profile remain thin in VCF Operations HCX and VCF Operations for Networks. Foundational Kubernetes now has a dedicated lesson, but no real-lab guide until Supervisor prerequisites exist.
 - **Fact verification.**
   - Content authors hit the shared WebFetch budget. Unverified details are written as "check your version", not stated as fact. Examples: some UI menu paths, ESX 9 / SDDC Manager log paths, sample command outputs, precheck contents.
 - **Labs vs the real lab.**
@@ -103,7 +103,7 @@ Windows checkout note: the initial strict check reported 70 missing-frontmatter 
 
 - Rebuilding labs on Alex's real lab (see the task list below).
 - Per-objective-item tagging and a coverage report.
-- HCX and Kubernetes lessons.
+- HCX lesson and Kubernetes practical guide.
 - Install labs for components not yet in Alex's lab: VCF Automation, Operations for Logs, Operations for Networks, HCX, a workload domain.
 - CI: no GitHub Actions workflow.
 - Browser-level accessibility audit beyond the basics already built in (skip link, ARIA labels, focus states).
@@ -156,7 +156,7 @@ INFRAFORGE_PORT=80 docker compose up -d    # change port
 
 ## Next 10 tasks (priority order)
 
-Tasks 2–10 were requested on 2026-10-07 but are **on hold until Alex says his separate "InfraForge RHCSA" project is finished**.
+Tasks 2–10 were requested on 2026-10-07. Alex explicitly resumed the bounded Kubernetes foundations slice of task #4; tasks #2–#3, the HCX slice of #4 and tasks #5–#10 remain **on hold until Alex says his separate "InfraForge RHCSA" project is finished or explicitly resumes another bounded package**.
 
 1. **Make the GitHub repo private.** Only Alex can do this: Settings → General → Danger Zone. Confirm before adding any lab-specific content.
 2. **Tag every question with its objective item.** Add an optional `objectiveItem` field to the question schema, backfill the 615 questions, and extend `scripts/check-content.ts` with a per-item coverage report.

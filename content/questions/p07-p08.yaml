@@ -1198,6 +1198,103 @@ questions:
       correct: "Keep enough hosts for configured vSAN availability before removing."
       concept: "Shrink safety"
       trap: "Treating Force Remove as harmless."
+  # ---------------------------------------------------------------- kubernetes-foundations-for-supervisor
+  - id: k8s-found-001
+    type: single
+    kind: concept
+    difficulty: foundation
+    version: general
+    topics: [supervisor]
+    objective: "4.1"
+    lesson: kubernetes-foundations-for-supervisor
+    section: concept
+    stem: "A Deployment requests three replicas. One Pod fails and Kubernetes creates a replacement without another user action. Which concept explains this behavior?"
+    options:
+      - { id: a, text: "Continuous reconciliation of observed state toward desired state", correct: true, why: "Controllers keep comparing the requested replica count with the current state and act on differences." }
+      - { id: b, text: "A one-time provisioning script reruns automatically", why: "Kubernetes uses persistent API state and control loops, not a completed imperative script." }
+      - { id: c, text: "The Service stores a backup copy of every Pod", why: "A Service supplies discovery and traffic routing; it does not preserve Pods." }
+      - { id: d, text: "The container registry schedules a new Pod", why: "A registry stores images; Kubernetes controllers and the scheduler manage Pods." }
+    explanation:
+      correct: "The Deployment and ReplicaSet controllers reconcile the actual replica count with the requested count."
+      concept: "Desired state and reconciliation"
+      trap: "Treating Kubernetes as a sequence of one-time create commands."
+  - id: k8s-found-002
+    type: single
+    kind: architecture
+    difficulty: foundation
+    version: general
+    topics: [supervisor]
+    objective: "4.1"
+    lesson: kubernetes-foundations-for-supervisor
+    section: components
+    stem: "Which Kubernetes component chooses a suitable node for a Pod that has not yet been assigned?"
+    options:
+      - { id: a, text: "kube-scheduler", correct: true, why: "The scheduler assigns unscheduled Pods to suitable nodes." }
+      - { id: b, text: "kubelet", why: "Kubelet runs and monitors Pods already assigned to its node." }
+      - { id: c, text: "etcd", why: "etcd stores API data; it does not make placement decisions." }
+      - { id: d, text: "Container registry", why: "A registry stores images." }
+    explanation:
+      correct: "The scheduler evaluates available resources and constraints and binds the Pod to a node."
+      concept: "Control-plane responsibilities"
+      trap: "Confusing the scheduler's placement decision with kubelet's node-local execution role."
+  - id: k8s-found-003
+    type: multi
+    kind: troubleshooting
+    difficulty: intermediate
+    version: general
+    topics: [supervisor]
+    objective: "4.1"
+    lesson: kubernetes-foundations-for-supervisor
+    section: how-it-works
+    select: 2
+    stem: "A Kubernetes Service exists but has no endpoints. Which two checks directly test the normal Service-to-Pod relationship? (Choose two.)"
+    options:
+      - { id: a, text: "Compare the Service selector with the labels on the Pods", correct: true, why: "Selectors determine which Pods become candidate endpoints." }
+      - { id: b, text: "Check whether the matching Pods are Ready", correct: true, why: "Unready Pods are not usable endpoints for normal Service traffic." }
+      - { id: c, text: "Increase the etcd disk size", why: "Nothing in the symptom points to control-plane storage capacity." }
+      - { id: d, text: "Change the ESX management VMkernel gateway", why: "The missing endpoint relationship is inside the Kubernetes object model." }
+    explanation:
+      correct: "The selector must match Pod labels and matching Pods must be ready."
+      concept: "Service selection and readiness"
+      trap: "Escalating immediately to the physical or VCF network before checking object relationships."
+  - id: k8s-found-004
+    type: single
+    kind: troubleshooting
+    difficulty: intermediate
+    version: general
+    topics: [supervisor]
+    objective: "4.1"
+    lesson: kubernetes-foundations-for-supervisor
+    section: deep-dive
+    stem: "A PVC remains Pending. Which evidence should an administrator inspect first?"
+    options:
+      - { id: a, text: "The PVC events and its requested StorageClass", correct: true, why: "They show binding/provisioning failures and the requested storage policy path." }
+      - { id: b, text: "The application HTTP access log", why: "The application cannot use storage that has not been provisioned or bound." }
+      - { id: c, text: "The Service cluster IP", why: "Service networking does not bind persistent volumes." }
+      - { id: d, text: "The Deployment rollout history only", why: "Rollout history does not explain a storage claim's provisioning status." }
+    explanation:
+      correct: "Follow PVC → StorageClass/provisioner → PV and read claim events before changing storage."
+      concept: "Kubernetes storage request path"
+      trap: "Starting with application logs when the dependency has not been created."
+  - id: k8s-found-005
+    type: single
+    kind: architecture
+    difficulty: intermediate
+    version: vcf9
+    topics: [supervisor, workload-domains]
+    objective: "4.4"
+    lesson: kubernetes-foundations-for-supervisor
+    section: deep-dive
+    stem: "Which statement correctly separates vSphere Supervisor from a VKS cluster?"
+    options:
+      - { id: a, text: "Supervisor governs infrastructure-facing resources and can provision a VKS cluster; the VKS cluster has its own API for application workloads", correct: true, why: "They are separate Kubernetes API boundaries with different resources and operators." }
+      - { id: b, text: "Supervisor and every VKS cluster share one API endpoint and one namespace tree", why: "Each VKS cluster has a separate control plane and API context." }
+      - { id: c, text: "VKS replaces Supervisor after the first cluster is created", why: "VKS is delivered and governed through Supervisor; it does not replace it." }
+      - { id: d, text: "Application Deployments normally run directly in the vCenter inventory", why: "They are Kubernetes objects submitted to the selected cluster API." }
+    explanation:
+      correct: "Supervisor is the vSphere platform control plane; each VKS cluster is a distinct workload cluster."
+      concept: "Supervisor and VKS API boundaries"
+      trap: "Treating all Kubernetes resources exposed by vSphere as one cluster."
   # ---------------------------------------------------------------- supervisor-in-workload-domain
   - id: wld-sup-001
     type: single

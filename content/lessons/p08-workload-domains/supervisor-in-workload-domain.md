@@ -13,7 +13,7 @@ keyTerms: [supervisor, vsphere-zone, vsphere-namespace, supervisor-service, vks,
 labs: [lab-enable-supervisor]
 incidents: []
 components: [supervisor, workload-domain, vcenter, nsx-manager, nsx-edge-cluster, vds, vcf-automation]
-related: [host-commissioning-wld-creation, nsx-vpcs-and-vcf-networking, nsx-edge-nodes-clusters, vcf-automation-architecture, vcf-automation-tenancy-regions]
+related: [kubernetes-foundations-for-supervisor, host-commissioning-wld-creation, nsx-vpcs-and-vcf-networking, nsx-edge-nodes-clusters, vcf-automation-architecture, vcf-automation-tenancy-regions]
 sources:
   - title: "VCF 9.0 – vSphere Supervisor Installation and Configuration"
     url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/vsphere-supervisor-installation-and-configuration.html

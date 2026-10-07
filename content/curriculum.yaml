@@ -113,7 +113,7 @@ phases:
       - id: m08-wld
         title: Workload Domain Operations
         summary: Host commissioning, domain creation, storage and expansion.
-        lessons: [host-commissioning-wld-creation, workload-domain-storage, cluster-host-expansion, supervisor-in-workload-domain]
+        lessons: [host-commissioning-wld-creation, workload-domain-storage, cluster-host-expansion, kubernetes-foundations-for-supervisor, supervisor-in-workload-domain]
 
   - id: p09-lifecycle
     number: 9
