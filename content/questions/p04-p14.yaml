@@ -8,6 +8,7 @@ questions:
     difficulty: foundation
     topics: [l2-l3]
     objective: "2.4"
+    objectiveItem: "2.4.2"
     lesson: network-fundamentals-for-vcf
     section: concept
     diagnostic: networking
@@ -28,6 +29,7 @@ questions:
     difficulty: foundation
     topics: [mtu]
     objective: "2.4"
+    objectiveItem: "2.4.2"
     lesson: network-fundamentals-for-vcf
     section: mtu-the-largest-frame-a-link-carries
     diagnostic: networking
@@ -47,6 +49,7 @@ questions:
     difficulty: foundation
     topics: [mtu]
     objective: "2.4"
+    objectiveItem: "2.4.2"
     lesson: network-fundamentals-for-vcf
     section: why-8972-and-1472
     diagnostic: networking
@@ -66,6 +69,7 @@ questions:
     difficulty: intermediate
     topics: [mtu, l2-l3]
     objective: "2.4"
+    objectiveItem: "2.4.2"
     lesson: network-fundamentals-for-vcf
     section: troubleshooting
     diagnostic: troubleshooting
@@ -92,6 +96,7 @@ questions:
     difficulty: intermediate
     topics: [mtu, vcf-network-design]
     objective: "2.4"
+    objectiveItem: "2.4.2"
     lesson: network-fundamentals-for-vcf
     section: infrastructure-vlans-and-their-mtu-vcf-9-guidance
     select: 2
@@ -111,6 +116,7 @@ questions:
     difficulty: intermediate
     topics: [mtu, nsx-segments]
     objective: "2.4"
+    objectiveItem: "2.4.2"
     lesson: network-fundamentals-for-vcf
     section: overlay-segment-mtu-tep-mtu-200
     stem: "Host TEP MTU is 9000 across the fabric. What is the largest MTU you can configure on an NSX overlay segment for workload VMs per VCF 9 requirements?"
@@ -129,6 +135,7 @@ questions:
     difficulty: advanced
     topics: [l2-l3, vcf-network-design]
     objective: "2.4"
+    objectiveItem: "2.4.2"
     lesson: network-fundamentals-for-vcf
     section: addressing-rules-worth-memorising
     stem: "A team deploys a workload domain with a /26 vMotion subnet for a cluster expected to grow from 8 to 70 hosts. What is the problem with this design?"
@@ -147,6 +154,7 @@ questions:
     difficulty: intermediate
     topics: [vcf-network-design, l2-l3]
     objective: "2.4"
+    objectiveItem: "2.4.2"
     lesson: network-fundamentals-for-vcf
     section: network-fabric-models
     stem: "Match each VCF 9 network fabric model with the vSphere cluster model it supports."
@@ -164,6 +172,7 @@ questions:
     difficulty: intermediate
     topics: [l2-l3]
     objective: "2.4"
+    objectiveItem: "2.4.2"
     lesson: network-fundamentals-for-vcf
     section: concept
     stem: "Which VCF 9 recommendation keeps an infrastructure VLAN's gateway available when one top-of-rack switch fails?"
@@ -186,6 +195,7 @@ questions:
     difficulty: foundation
     topics: [dns]
     objective: "4.1"
+    objectiveItem: "4.1.3"
     lesson: dns-ntp-dependencies
     section: concept
     diagnostic: networking
@@ -205,6 +215,7 @@ questions:
     difficulty: intermediate
     topics: [dns, deployment-validation]
     objective: "4.1"
+    objectiveItem: "4.1.3"
     lesson: dns-ntp-dependencies
     section: deep-dive
     context: |
@@ -230,6 +241,7 @@ questions:
     difficulty: advanced
     topics: [ntp, host-commissioning, certificates]
     objective: "4.1"
+    objectiveItem: "4.1.3"
     lesson: dns-ntp-dependencies
     section: failure-scenarios
     context: |
@@ -254,6 +266,7 @@ questions:
     difficulty: intermediate
     topics: [ntp]
     objective: "4.1"
+    objectiveItem: "4.1.3"
     lesson: dns-ntp-dependencies
     section: ntp-sync-health-on-esx
     diagnostic: troubleshooting
@@ -280,6 +293,7 @@ questions:
     difficulty: intermediate
     topics: [ntp, certificates]
     objective: "4.1"
+    objectiveItem: "4.1.3"
     lesson: dns-ntp-dependencies
     section: concept
     select: 2
@@ -299,6 +313,7 @@ questions:
     difficulty: advanced
     topics: [dns, ntp, deployment-planning]
     objective: "4.1"
+    objectiveItem: "4.1.3"
     lesson: dns-ntp-dependencies
     section: designing-dns-and-ntp-for-vcf
     stem: "A customer plans to run their only DNS servers as VMs inside the VCF management domain they are about to deploy. What is the main design concern?"
@@ -317,6 +332,7 @@ questions:
     difficulty: intermediate
     topics: [ntp]
     objective: "4.1"
+    objectiveItem: "4.1.3"
     lesson: dns-ntp-dependencies
     section: troubleshooting
     stem: "`vmkping -I vmk0 10.10.10.2` to the NTP server succeeds from a host, but ntpq shows reach 0. Which tool best proves whether UDP 123 replies arrive?"
@@ -335,6 +351,7 @@ questions:
     difficulty: foundation
     topics: [dns]
     objective: "4.1"
+    objectiveItem: "4.1.3"
     lesson: dns-ntp-dependencies
     section: cli-api
     stem: "Type the esxcli command that lists the DNS servers an ESX host is configured to use."
@@ -350,6 +367,7 @@ questions:
     difficulty: intermediate
     topics: [dns, troubleshooting-method]
     objective: "4.1"
+    objectiveItem: "4.1.3"
     lesson: dns-ntp-dependencies
     section: troubleshooting
     stem: "Put the DNS troubleshooting steps for a failed VCF validation in the most efficient order."
@@ -373,6 +391,7 @@ questions:
     difficulty: foundation
     topics: [vds]
     objective: "2.4"
+    objectiveItem: "2.4.2"
     lesson: vsphere-distributed-switch
     section: concept
     stem: "vCenter becomes unavailable. What happens to running VMs connected to a vSphere Distributed Switch?"
@@ -391,6 +410,7 @@ questions:
     difficulty: intermediate
     topics: [vds]
     objective: "2.4"
+    objectiveItem: "2.4.2"
     lesson: vsphere-distributed-switch
     section: teaming-policies
     stem: "Which teaming policy does VCF 9 design guidance recommend for the ESX management, vMotion and storage distributed port groups?"
@@ -409,6 +429,7 @@ questions:
     difficulty: intermediate
     topics: [vds]
     objective: "2.4"
+    objectiveItem: "2.4.2"
     lesson: vsphere-distributed-switch
     section: port-binding
     stem: "The management vCenter VM must be recoverable even when vCenter itself is down and its port must be reassigned. Which port binding does VCF 9 recommend for the VM management port group?"
@@ -427,6 +448,7 @@ questions:
     difficulty: intermediate
     topics: [vds]
     objective: "2.4"
+    objectiveItem: "2.4.2"
     lesson: vsphere-distributed-switch
     section: lacp-and-link-aggregation-in-vcf-9
     stem: "A network team proposes static EtherChannel between ESX hosts and ToR switches in a VCF 9 environment. What is the correct response?"
@@ -445,6 +467,7 @@ questions:
     difficulty: advanced
     topics: [vds]
     objective: "2.4"
+    objectiveItem: "2.4.2"
     lesson: vsphere-distributed-switch
     section: real-world-scenario
     stem: "After an admin changed the vMotion port group teaming to 'Route based on IP hash', vMotion became unreliable and the switches log MAC flapping. No switch change was made. What is the best fix?"
@@ -463,6 +486,7 @@ questions:
     difficulty: intermediate
     topics: [vds]
     objective: "2.4"
+    objectiveItem: "2.4.2"
     lesson: vsphere-distributed-switch
     section: components
     stem: "Match each VCF 9 NIOC traffic type with its default share value."
@@ -481,6 +505,7 @@ questions:
     difficulty: foundation
     topics: [vds]
     objective: "2.4"
+    objectiveItem: "2.4.2"
     lesson: vsphere-distributed-switch
     section: concept
     stem: "True or false: VCF 9 design guidance requires one vSphere Distributed Switch to be shared across all vSphere clusters of a workload domain."
@@ -497,6 +522,7 @@ questions:
     difficulty: advanced
     topics: [vds]
     objective: "2.4"
+    objectiveItem: "2.4.2"
     lesson: vsphere-distributed-switch
     section: failover-detection-and-the-standby-list
     stem: "Which statement about network failover detection on a VDS is correct?"
@@ -519,6 +545,7 @@ questions:
     difficulty: intermediate
     topics: [vcf-network-design, vds]
     objective: "2.4"
+    objectiveItem: "2.4.2"
     lesson: vcf-network-design
     section: the-six-distributed-switch-models
     stem: "Hosts have six 25 GbE ports. Security requires infrastructure, storage and workload traffic on fully separate physical NICs, each with redundancy. Which distributed switch model fits?"
@@ -537,6 +564,7 @@ questions:
     difficulty: intermediate
     topics: [vcf-network-design]
     objective: "2.4"
+    objectiveItem: "2.4.2"
     lesson: vcf-network-design
     section: deep-dive
     stem: "Which cluster model requires separate ESX management, vMotion and storage port groups per rack?"
@@ -555,6 +583,7 @@ questions:
     difficulty: advanced
     topics: [vcf-network-design, design-availability]
     objective: "2.4"
+    objectiveItem: "2.4.2"
     lesson: vcf-network-design
     section: cluster-models-change-the-vlan-plan
     stem: "A customer wants to stretch a workload domain cluster that was built as a layer 3 multi-rack cluster. What do you tell them?"
@@ -573,6 +602,7 @@ questions:
     difficulty: intermediate
     topics: [vcf-network-design, mtu]
     objective: "4.1"
+    objectiveItem: "4.1.6"
     lesson: vcf-network-design
     section: concept
     context: |
@@ -595,6 +625,7 @@ questions:
     difficulty: intermediate
     topics: [vcf-network-design]
     objective: "2.4"
+    objectiveItem: "2.4.2"
     lesson: vcf-network-design
     section: traffic-types-in-a-vcf-instance
     select: 3
@@ -615,6 +646,7 @@ questions:
     difficulty: advanced
     topics: [mtu, vcf-network-design]
     objective: "2.4"
+    objectiveItem: "2.4.2"
     lesson: vcf-network-design
     section: troubleshooting
     stem: "After cluster expansion into a new rack, VMs on the new hosts can be pinged but large transfers hang. NSX shows all tunnels Up. Which statement is correct?"
@@ -633,6 +665,7 @@ questions:
     difficulty: advanced
     topics: [vcf-network-design, design-availability]
     objective: "2.4"
+    objectiveItem: "2.4.2"
     lesson: vcf-network-design
     section: cluster-models-change-the-vlan-plan
     stem: "In a stretched cluster, the VM management VLAN exists only in AZ1. AZ1 fails and HA restarts vCenter in AZ2. What happens?"
@@ -651,6 +684,7 @@ questions:
     difficulty: foundation
     topics: [vcf-network-design]
     objective: "2.4"
+    objectiveItem: "2.4.2"
     lesson: vcf-network-design
     section: what-vcf-builds-for-nsx
     stem: "Who creates the host TEP VMkernel adapters (for example vmk10 and vmk11) in a VCF cluster?"
@@ -669,6 +703,7 @@ questions:
     difficulty: expert
     topics: [vcf-network-design, vds]
     objective: "2.4"
+    objectiveItem: "2.4.2"
     lesson: vcf-network-design
     section: nioc-and-the-dedicated-edge-cluster-model
     stem: "You deploy the 'Dedicated vSphere cluster for NSX Edge nodes' distributed switch model. Which post-deployment step does the VCF 9 documentation call out?"
@@ -691,6 +726,7 @@ questions:
     difficulty: intermediate
     topics: [design-availability, deployment-models]
     objective: "4.1"
+    objectiveItem: "4.1.2"
     lesson: design-availability-failure-domains
     section: fleet-deployment-models-per-fleet
     stem: "Requirement: workloads must survive a power outage of one data hall on the same campus with no data loss. There is no regional DR requirement. Which VCF fleet deployment model is the most appropriate?"
@@ -709,6 +745,7 @@ questions:
     difficulty: intermediate
     topics: [design-availability, deployment-models]
     objective: "4.1"
+    objectiveItem: "4.1.2"
     lesson: design-availability-failure-domains
     section: fleet-deployment-models-per-fleet
     stem: "A customer must recover from ransomware and regional disasters within hours, accepting some data loss, and has no second data hall nearby. Which model fits?"
@@ -727,6 +764,7 @@ questions:
     difficulty: intermediate
     topics: [design-availability]
     objective: "4.1"
+    objectiveItem: "4.1.2"
     lesson: design-availability-failure-domains
     section: vsphere-cluster-models-per-cluster
     stem: "Match each vSphere cluster model with the largest failure it is designed to survive."
@@ -745,6 +783,7 @@ questions:
     difficulty: foundation
     topics: [design-availability]
     objective: "4.1"
+    objectiveItem: "4.1.2"
     lesson: design-availability-failure-domains
     section: availability-vs-recovery
     stem: "What does RPO describe?"
@@ -763,6 +802,7 @@ questions:
     difficulty: advanced
     topics: [design-availability, vsan-resilience]
     objective: "4.1"
+    objectiveItem: "4.1.2"
     lesson: design-availability-failure-domains
     section: stretched-cluster-prerequisites
     select: 3
@@ -783,6 +823,7 @@ questions:
     difficulty: advanced
     topics: [design-availability, vcf-ops-architecture]
     objective: "4.1"
+    objectiveItem: "4.1.2"
     lesson: design-availability-failure-domains
     section: components
     stem: "VCF Operations must keep monitoring with no service interruption if one of two availability zones fails. Which VCF Operations model fits?"
@@ -801,6 +842,7 @@ questions:
     difficulty: expert
     topics: [design-availability, deployment-models]
     objective: "4.1"
+    objectiveItem: "4.1.2"
     lesson: design-availability-failure-domains
     section: ha-is-not-dr
     stem: "A bank already runs stretched clusters across two halls. The auditor says the design does not address cyber attacks. Why, and what is the least disruptive extension?"
@@ -819,6 +861,7 @@ questions:
     difficulty: intermediate
     topics: [design-availability, deployment-models]
     objective: "4.1"
+    objectiveItem: "4.1.2"
     lesson: design-availability-failure-domains
     section: fleet-deployment-models-per-fleet
     stem: "In the VCF 9 DR (across regions) design, how are VCF Operations and VCF Automation protected at the secondary site?"
@@ -841,6 +884,7 @@ questions:
     difficulty: intermediate
     topics: [design-sizing, management-domain]
     objective: "4.1"
+    objectiveItem: "4.1.3"
     lesson: design-sizing-scalability
     section: minimum-host-counts-management-domain
     stem: "Why does the high availability deployment of the VCF 9 management domain require a minimum of four hosts?"
@@ -859,6 +903,7 @@ questions:
     difficulty: advanced
     topics: [design-sizing, workload-domains]
     objective: "4.1"
+    objectiveItem: "4.1.3"
     lesson: design-sizing-scalability
     section: components
     stem: "A customer plans five new workload domains over two years, each with its own NSX Manager cluster. Which resource must grow the most?"
@@ -877,6 +922,7 @@ questions:
     difficulty: advanced
     topics: [design-sizing]
     objective: "4.1"
+    objectiveItem: "4.1.3"
     lesson: design-sizing-scalability
     section: worked-example-cpu-ram
     stem: "Demand after growth and target utilisation is 160 cores and 4.9 TB RAM. Hosts have 64 cores and 1 TB RAM. How many hosts do you need including N+1?"
@@ -895,6 +941,7 @@ questions:
     difficulty: foundation
     topics: [design-sizing, workload-domains]
     objective: "4.1"
+    objectiveItem: "4.1.3"
     lesson: design-sizing-scalability
     section: scale-units-in-vcf
     stem: "According to the VCF 9 Workload Domain Models page, how many workload domains can a single VCF instance scale to?"
@@ -913,6 +960,7 @@ questions:
     difficulty: expert
     topics: [design-sizing, design-availability]
     objective: "4.1"
+    objectiveItem: "4.1.3"
     lesson: design-sizing-scalability
     section: how-it-works
     stem: "A stretched cluster has 8 hosts per AZ and runs at 80% average utilisation across all 16 hosts. What happens if one AZ fails?"
@@ -931,6 +979,7 @@ questions:
     difficulty: foundation
     topics: [design-sizing, management-domain]
     objective: "4.1"
+    objectiveItem: "4.1.3"
     lesson: design-sizing-scalability
     section: minimum-host-counts-management-domain
     stem: "True or false: With simple (non-HA) management components and external principal storage, VCF 9 documents a management domain minimum of two ESX hosts."
@@ -951,6 +1000,7 @@ questions:
     difficulty: intermediate
     topics: [design-tradeoffs, nsx-security]
     objective: "2.4"
+    objectiveItem: "2.4.4"
     lesson: design-network-security-tradeoffs
     section: the-isolation-ladder
     stem: "Requirement: web, app and database tiers of one application may only talk on approved ports. Admins and lifecycle are shared. What is the most appropriate construct?"
@@ -969,6 +1019,7 @@ questions:
     difficulty: advanced
     topics: [design-tradeoffs, workload-domains]
     objective: "4.1"
+    objectiveItem: "4.1.7"
     lesson: design-network-security-tradeoffs
     section: how-it-works
     stem: "PCI workloads need separate administrators, a separate change window and a network control plane whose failure cannot affect other workloads. What is the least costly design that meets all three?"
@@ -987,6 +1038,7 @@ questions:
     difficulty: intermediate
     topics: [design-tradeoffs, nsx-vpc]
     objective: "2.4"
+    objectiveItem: "2.4.2"
     lesson: design-network-security-tradeoffs
     section: network-consumption-models-how-users-get-networks
     stem: "Which limitation does the VCF 9 documentation list for the VLAN network consumption model?"
@@ -1005,6 +1057,7 @@ questions:
     difficulty: expert
     topics: [design-tradeoffs, vds]
     objective: "2.4"
+    objectiveItem: "2.4.2"
     lesson: design-network-security-tradeoffs
     section: software-segmentation-vs-physical-separation
     stem: "A regulator requires that storage traffic never shares physical links or switches with VM traffic. Which approach satisfies this?"
@@ -1023,6 +1076,7 @@ questions:
     difficulty: advanced
     topics: [design-tradeoffs, identity-sso]
     objective: "4.1"
+    objectiveItem: "4.1.7"
     lesson: design-network-security-tradeoffs
     section: management-plane-security
     stem: "What is the main trade-off of a fleet-wide VCF single sign-on scope?"
@@ -1041,6 +1095,7 @@ questions:
     difficulty: advanced
     topics: [design-tradeoffs, nsx-edge]
     objective: "2.4"
+    objectiveItem: "2.4.3"
     lesson: design-network-security-tradeoffs
     section: components
     stem: "Several tenants share one NSX edge cluster. One tenant's traffic spikes regularly degrade others' north-south throughput. Which change addresses this with the smallest scope?"

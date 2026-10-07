@@ -7,6 +7,7 @@ questions:
     version: vcf9
     topics: [deployment-planning, vcf-installer]
     objective: "4.1"
+    objectiveItem: "4.1.3"
     lesson: deployment-planning-prereqs
     section: concept
     diagnostic: vcf
@@ -28,6 +29,7 @@ questions:
     version: vcf9
     topics: [deployment-planning, host-commissioning]
     objective: "4.1"
+    objectiveItem: "4.1.3"
     lesson: deployment-planning-prereqs
     section: deep-dive
     select: 3
@@ -52,6 +54,7 @@ questions:
     version: vcf9
     topics: [deployment-planning, wld-storage, management-domain]
     objective: "4.1"
+    objectiveItem: "4.1.3"
     lesson: deployment-planning-prereqs
     section: concept
     stem: "Which storage types can be selected as principal storage for the default cluster of a new VCF 9.0 management domain?"
@@ -72,6 +75,7 @@ questions:
     version: vcf9
     topics: [deployment-models, deployment-planning]
     objective: "4.1"
+    objectiveItem: "4.1.3"
     lesson: deployment-planning-prereqs
     section: concept
     stem: "Compared with the simple model, what does the high availability deployment model change for a new fleet?"
@@ -92,6 +96,7 @@ questions:
     version: vcf9
     topics: [deployment-planning, vcf-installer, lcm-concepts]
     objective: "4.1"
+    objectiveItem: "4.1.3"
     lesson: deployment-planning-prereqs
     section: deep-dive
     context: |
@@ -114,6 +119,7 @@ questions:
     version: vcf9
     topics: [deployment-planning, certificates]
     objective: "4.1"
+    objectiveItem: "4.1.3"
     lesson: deployment-planning-prereqs
     section: deep-dive
     stem: "Put the host preparation steps for a freshly installed ESX host in the correct order."
@@ -134,6 +140,7 @@ questions:
     version: vcf9
     topics: [deployment-planning, vcf-installer]
     objective: "4.1"
+    objectiveItem: "4.1.3"
     lesson: deployment-planning-prereqs
     section: deep-dive
     context: |
@@ -157,6 +164,7 @@ questions:
     version: vcf9
     topics: [deployment-planning, wld-storage]
     objective: "4.1"
+    objectiveItem: "4.1.3"
     lesson: deployment-planning-prereqs
     section: concept
     stem: "The principal storage type selected for the management domain can be changed later from SDDC Manager."
@@ -175,6 +183,7 @@ questions:
     version: vcf9
     topics: [vcf-installer, sddc-manager]
     objective: "4.1"
+    objectiveItem: "4.1.3"
     lesson: vcf-installer-workflow
     section: concept
     diagnostic: vcf
@@ -196,6 +205,7 @@ questions:
     version: vcf9
     topics: [vcf-installer, sddc-manager]
     objective: "4.1"
+    objectiveItem: "4.1.3"
     lesson: vcf-installer-workflow
     section: concept
     context: |
@@ -219,6 +229,7 @@ questions:
     version: vcf9
     topics: [vcf-installer]
     objective: "4.1"
+    objectiveItem: "4.1.3"
     lesson: vcf-installer-workflow
     section: how-it-works
     stem: "Order the high-level VCF Installer process for a new VCF fleet."
@@ -241,6 +252,7 @@ questions:
     version: vcf9
     topics: [vcf-installer, vcf-ops-logs, network-ops]
     objective: "4.1"
+    objectiveItem: "4.1.4"
     lesson: vcf-installer-workflow
     section: components
     select: 2
@@ -265,6 +277,7 @@ questions:
     version: vcf9
     topics: [vcf-installer, vcf-automation]
     objective: "4.1"
+    objectiveItem: "4.1.4"
     lesson: vcf-installer-workflow
     section: how-it-works
     context: |
@@ -287,6 +300,7 @@ questions:
     version: vcf9
     topics: [vcf-installer]
     objective: "4.1"
+    objectiveItem: "4.1.3"
     lesson: vcf-installer-workflow
     section: how-it-works
     stem: "Match each wizard decision with the page where it is made."
@@ -307,6 +321,7 @@ questions:
     version: vcf9
     topics: [vcf-installer, apis-powercli]
     objective: "4.1"
+    objectiveItem: "4.1.3"
     lesson: vcf-installer-workflow
     section: cli-api
     stem: "Which VCF Installer API call validates a deployment specification without deploying it?"
@@ -327,6 +342,7 @@ questions:
     version: vcf9
     topics: [vcf-installer, vcf-fleet]
     objective: "4.1"
+    objectiveItem: "4.1.4"
     lesson: vcf-installer-workflow
     section: real-world-scenario
     context: |
@@ -350,6 +366,7 @@ questions:
     version: vcf9
     topics: [deployment-validation]
     objective: "4.1"
+    objectiveItem: "4.1.3"
     lesson: deployment-validation-failures
     section: concept
     diagnostic: troubleshooting
@@ -370,6 +387,7 @@ questions:
     version: vcf9
     topics: [deployment-validation, dns]
     objective: "4.1"
+    objectiveItem: "4.1.3"
     lesson: deployment-validation-failures
     section: deep-dive
     context: |
@@ -397,6 +415,7 @@ questions:
     version: vcf9
     topics: [deployment-validation, mtu]
     objective: "4.1"
+    objectiveItem: "4.1.3"
     lesson: deployment-validation-failures
     section: deep-dive
     context: |
@@ -423,6 +442,7 @@ questions:
     version: vcf9
     topics: [deployment-validation, certificates]
     objective: "4.1"
+    objectiveItem: "4.1.3"
     lesson: deployment-validation-failures
     section: deep-dive
     context: |
@@ -445,6 +465,7 @@ questions:
     version: vcf9
     topics: [deployment-validation, troubleshooting-method]
     objective: "4.1"
+    objectiveItem: "4.1.3"
     lesson: deployment-validation-failures
     section: how-it-works
     stem: "Order the diagnostic loop for a failed VCF Installer validation."
@@ -465,6 +486,7 @@ questions:
     version: vcf9
     topics: [deployment-validation, vcf-installer]
     objective: "4.1"
+    objectiveItem: "4.1.3"
     lesson: deployment-validation-failures
     section: real-world-scenario
     context: |
@@ -487,6 +509,7 @@ questions:
     version: vcf9
     topics: [deployment-validation, host-commissioning]
     objective: "4.1"
+    objectiveItem: "4.1.3"
     lesson: deployment-validation-failures
     section: deep-dive
     select: 2
@@ -510,6 +533,7 @@ questions:
     version: vcf9
     topics: [deployment-validation, ntp, certificates]
     objective: "4.1"
+    objectiveItem: "4.1.3"
     lesson: deployment-validation-failures
     section: deep-dive
     context: |
@@ -534,6 +558,7 @@ questions:
     version: vcf9
     topics: [vcenter-import]
     objective: "4.2"
+    objectiveItem: "4.2.6"
     lesson: import-existing-vcenter
     section: concept
     diagnostic: vcf
@@ -554,6 +579,7 @@ questions:
     version: vcf9
     topics: [vcenter-import, vlcm, drs]
     objective: "4.2"
+    objectiveItem: "4.2.6"
     lesson: import-existing-vcenter
     section: components
     select: 3
@@ -575,6 +601,7 @@ questions:
     version: vcf9
     topics: [vcenter-import]
     objective: "4.2"
+    objectiveItem: "4.2.6"
     lesson: import-existing-vcenter
     section: how-it-works
     stem: "Order the steps of importing a vCenter as a workload domain in VCF Operations."
@@ -596,6 +623,7 @@ questions:
     version: vcf9
     topics: [vcenter-import, cluster-expansion]
     objective: "4.2"
+    objectiveItem: "4.2.6"
     lesson: import-existing-vcenter
     section: deep-dive
     context: |
@@ -618,6 +646,7 @@ questions:
     version: vcf9
     topics: [vcenter-import, nsx-security]
     objective: "4.2"
+    objectiveItem: "4.2.6"
     lesson: import-existing-vcenter
     section: how-it-works
     stem: "What happens to the NSX Distributed Firewall after a vCenter without NSX is imported and a new NSX Manager is deployed?"
@@ -637,6 +666,7 @@ questions:
     version: vcf9
     topics: [vcenter-import, management-domain]
     objective: "4.2"
+    objectiveItem: "4.2.6"
     lesson: import-existing-vcenter
     section: concept
     context: |
@@ -660,6 +690,7 @@ questions:
     version: vcf9
     topics: [vcenter-import]
     objective: "4.2"
+    objectiveItem: "4.2.6"
     lesson: import-existing-vcenter
     section: components
     stem: "When importing a vCenter, you can choose to import only some of its clusters."
@@ -677,6 +708,7 @@ questions:
     version: vcf9
     topics: [vcenter-import, vlcm, troubleshooting-method]
     objective: "4.2"
+    objectiveItem: "4.2.6"
     lesson: import-existing-vcenter
     section: failure-scenarios
     context: |
@@ -700,6 +732,7 @@ questions:
     version: vcf9
     topics: [host-commissioning]
     objective: "4.1"
+    objectiveItem: "4.1.7"
     lesson: host-commissioning-wld-creation
     section: concept
     diagnostic: vcf
@@ -720,6 +753,7 @@ questions:
     version: vcf9
     topics: [host-commissioning]
     objective: "4.1"
+    objectiveItem: "4.1.7"
     lesson: host-commissioning-wld-creation
     section: concept
     stem: "Where does TechDocs for VCF 9.0 document the Commission Hosts workflow?"
@@ -739,6 +773,7 @@ questions:
     version: vcf9
     topics: [host-commissioning]
     objective: "4.1"
+    objectiveItem: "4.1.7"
     lesson: host-commissioning-wld-creation
     section: how-it-works
     stem: "Order the Commission Hosts wizard steps."
@@ -759,6 +794,7 @@ questions:
     version: vcf9
     topics: [host-commissioning, wld-storage]
     objective: "4.1"
+    objectiveItem: "4.1.7"
     lesson: host-commissioning-wld-creation
     section: components
     context: |
@@ -781,6 +817,7 @@ questions:
     version: vcf9
     topics: [workload-domains, management-domain]
     objective: "4.1"
+    objectiveItem: "4.1.7"
     lesson: host-commissioning-wld-creation
     section: architecture
     stem: "Where does the vCenter of a newly created VI workload domain run?"
@@ -800,6 +837,7 @@ questions:
     version: vcf9
     topics: [workload-domains, nsx-edge, supervisor]
     objective: "4.1"
+    objectiveItem: "4.1.7"
     lesson: host-commissioning-wld-creation
     section: how-it-works
     select: 2
@@ -823,6 +861,7 @@ questions:
     version: general
     topics: [host-commissioning, certificates]
     objective: "4.1"
+    objectiveItem: "4.1.7"
     lesson: host-commissioning-wld-creation
     section: deep-dive
     context: |
@@ -842,6 +881,7 @@ questions:
     version: vcf9
     topics: [host-commissioning]
     objective: "4.1"
+    objectiveItem: "4.1.7"
     lesson: host-commissioning-wld-creation
     section: deep-dive
     stem: "A host that was part of workload domain A must be reused in workload domain B. What is the correct sequence?"
@@ -861,6 +901,7 @@ questions:
     version: vcf9
     topics: [host-commissioning]
     objective: "4.1"
+    objectiveItem: "4.1.7"
     lesson: host-commissioning-wld-creation
     section: deep-dive
     stem: "Which statement about network pools in VCF 9.0 is correct?"
@@ -881,6 +922,7 @@ questions:
     version: vcf9
     topics: [wld-storage]
     objective: "4.1"
+    objectiveItem: "4.1.8"
     lesson: workload-domain-storage
     section: concept
     diagnostic: storage
@@ -901,6 +943,7 @@ questions:
     version: vcf9
     topics: [wld-storage, datastores]
     objective: "4.1"
+    objectiveItem: "4.1.8"
     lesson: workload-domain-storage
     section: concept
     select: 3
@@ -922,6 +965,7 @@ questions:
     version: vcf9
     topics: [wld-storage]
     objective: "4.1"
+    objectiveItem: "4.1.8"
     lesson: workload-domain-storage
     section: real-world-scenario
     context: |
@@ -944,6 +988,7 @@ questions:
     version: vcf9
     topics: [wld-storage, vsan-architecture, management-domain]
     objective: "4.1"
+    objectiveItem: "4.1.8"
     lesson: workload-domain-storage
     section: concept
     stem: "Where can a vSAN storage cluster be used as principal storage?"
@@ -963,6 +1008,7 @@ questions:
     version: vcf9
     topics: [wld-storage, host-commissioning]
     objective: "4.1"
+    objectiveItem: "4.1.8"
     lesson: workload-domain-storage
     section: architecture
     stem: "Match the commissioning storage type value with the cluster type the host can join."
@@ -983,6 +1029,7 @@ questions:
     version: vcf9
     topics: [wld-storage, cluster-expansion]
     objective: "4.1"
+    objectiveItem: "4.1.8"
     lesson: workload-domain-storage
     section: deep-dive
     stem: "An administrator deletes a cluster that used vSAN as principal storage and also had an NFS supplemental datastore. What happens to the storage?"
@@ -1002,6 +1049,7 @@ questions:
     version: vcf9
     topics: [wld-storage]
     objective: "4.1"
+    objectiveItem: "4.1.8"
     lesson: workload-domain-storage
     section: deep-dive
     stem: "Different clusters in the same workload domain can use different principal storage types."
@@ -1019,6 +1067,7 @@ questions:
     version: vcf9
     topics: [wld-storage, host-commissioning]
     objective: "4.1"
+    objectiveItem: "4.1.8"
     lesson: workload-domain-storage
     section: failure-scenarios
     context: |
@@ -1042,6 +1091,7 @@ questions:
     version: vcf9
     topics: [cluster-expansion]
     objective: "4.1"
+    objectiveItem: "4.1.7"
     lesson: cluster-host-expansion
     section: concept
     stem: "In VCF 9.0, where does TechDocs document adding an unassigned host to an existing SDDC cluster?"
@@ -1061,6 +1111,7 @@ questions:
     version: vcf9
     topics: [cluster-expansion, vlcm]
     objective: "4.1"
+    objectiveItem: "4.1.7"
     lesson: cluster-host-expansion
     section: architecture
     select: 3
@@ -1082,6 +1133,7 @@ questions:
     version: vcf9
     topics: [cluster-expansion, host-commissioning]
     objective: "4.1"
+    objectiveItem: "4.1.7"
     lesson: cluster-host-expansion
     section: how-it-works
     stem: "Order the steps to replace an old host in a vSAN SDDC cluster without dropping below capacity."
@@ -1103,6 +1155,7 @@ questions:
     version: vcf9
     topics: [cluster-expansion, nsx-edge]
     objective: "4.1"
+    objectiveItem: "4.1.7"
     lesson: cluster-host-expansion
     section: how-it-works
     stem: "Removing a host from a workload domain cluster is blocked. The host runs an NSX Edge node VM. What must be done first?"
@@ -1122,6 +1175,7 @@ questions:
     version: vcf9
     topics: [cluster-expansion, wld-storage]
     objective: "4.1"
+    objectiveItem: "4.1.7"
     lesson: cluster-host-expansion
     section: deep-dive
     context: |
@@ -1144,6 +1198,7 @@ questions:
     version: vcf9
     topics: [cluster-expansion, host-commissioning]
     objective: "4.1"
+    objectiveItem: "4.1.7"
     lesson: cluster-host-expansion
     section: failure-scenarios
     context: |
@@ -1166,6 +1221,7 @@ questions:
     version: vcf9
     topics: [cluster-expansion]
     objective: "4.1"
+    objectiveItem: "4.1.7"
     lesson: cluster-host-expansion
     section: how-it-works
     stem: "After a host is removed from a VCF cluster, it can immediately be added to a cluster in another workload domain."
@@ -1183,6 +1239,7 @@ questions:
     version: vcf9
     topics: [cluster-expansion, vsan-resilience]
     objective: "4.1"
+    objectiveItem: "4.1.7"
     lesson: cluster-host-expansion
     section: deep-dive
     context: |
@@ -1206,6 +1263,7 @@ questions:
     version: general
     topics: [supervisor]
     objective: "4.1"
+    objectiveItem: "4.1.9"
     lesson: kubernetes-foundations-for-supervisor
     section: concept
     stem: "A Deployment requests three replicas. One Pod fails and Kubernetes creates a replacement without another user action. Which concept explains this behavior?"
@@ -1225,6 +1283,7 @@ questions:
     version: general
     topics: [supervisor]
     objective: "4.1"
+    objectiveItem: "4.1.9"
     lesson: kubernetes-foundations-for-supervisor
     section: components
     stem: "Which Kubernetes component chooses a suitable node for a Pod that has not yet been assigned?"
@@ -1244,6 +1303,7 @@ questions:
     version: general
     topics: [supervisor]
     objective: "4.1"
+    objectiveItem: "4.1.9"
     lesson: kubernetes-foundations-for-supervisor
     section: how-it-works
     select: 2
@@ -1264,6 +1324,7 @@ questions:
     version: general
     topics: [supervisor]
     objective: "4.1"
+    objectiveItem: "4.1.9"
     lesson: kubernetes-foundations-for-supervisor
     section: deep-dive
     stem: "A PVC remains Pending. Which evidence should an administrator inspect first?"
@@ -1283,6 +1344,7 @@ questions:
     version: vcf9
     topics: [supervisor, workload-domains]
     objective: "4.4"
+    objectiveItem: "4.4.12"
     lesson: kubernetes-foundations-for-supervisor
     section: deep-dive
     stem: "Which statement correctly separates vSphere Supervisor from a VKS cluster?"
@@ -1303,6 +1365,7 @@ questions:
     version: vcf9
     topics: [supervisor]
     objective: "4.1"
+    objectiveItem: "4.1.9"
     lesson: supervisor-in-workload-domain
     section: concept
     stem: "What is vSphere Supervisor in VCF 9.0?"
@@ -1322,6 +1385,7 @@ questions:
     version: vcf9
     topics: [supervisor]
     objective: "4.1"
+    objectiveItem: "4.1.9"
     lesson: supervisor-in-workload-domain
     section: concept
     stem: "What makes each ESX host in a Supervisor cluster a Kubernetes node?"
@@ -1341,6 +1405,7 @@ questions:
     version: vcf9
     topics: [supervisor, nsx-vpc]
     objective: "4.1"
+    objectiveItem: "4.1.9"
     lesson: supervisor-in-workload-domain
     section: components
     select: 2
@@ -1361,6 +1426,7 @@ questions:
     version: vcf9
     topics: [supervisor]
     objective: "4.4"
+    objectiveItem: "4.4.12"
     lesson: supervisor-in-workload-domain
     section: how-it-works
     context: |
@@ -1383,6 +1449,7 @@ questions:
     version: vcf9
     topics: [supervisor]
     objective: "4.4"
+    objectiveItem: "4.4.12"
     lesson: supervisor-in-workload-domain
     section: how-it-works
     stem: "Order the steps to deploy a Supervisor Service such as Contour."
@@ -1403,6 +1470,7 @@ questions:
     version: vcf9
     topics: [supervisor, design-availability]
     objective: "4.1"
+    objectiveItem: "4.1.9"
     lesson: supervisor-in-workload-domain
     section: components
     stem: "Which Supervisor topology is valid?"
@@ -1422,6 +1490,7 @@ questions:
     version: vcf9
     topics: [supervisor, nsx-edge]
     objective: "4.1"
+    objectiveItem: "4.1.9"
     lesson: supervisor-in-workload-domain
     section: real-world-scenario
     context: |
@@ -1444,6 +1513,7 @@ questions:
     version: vcf9
     topics: [supervisor]
     objective: "4.4"
+    objectiveItem: "4.4.12"
     lesson: supervisor-in-workload-domain
     section: how-it-works
     stem: "Match each Supervisor Service with its purpose."
@@ -1464,6 +1534,7 @@ questions:
     version: vcf9
     topics: [supervisor, vcf-automation, nsx-vpc]
     objective: "4.1"
+    objectiveItem: "4.1.9"
     lesson: supervisor-in-workload-domain
     section: deep-dive
     context: |
@@ -1486,6 +1557,7 @@ questions:
     version: vcf9
     topics: [supervisor]
     objective: "4.1"
+    objectiveItem: "4.1.9"
     lesson: supervisor-in-workload-domain
     section: deep-dive
     stem: "In which Supervisor construct does a DevOps user get quotas, storage policies and VM classes?"
@@ -1506,6 +1578,7 @@ questions:
     version: general
     topics: [deployment-planning, esx-host]
     objective: "4.1"
+    objectiveItem: "4.1.3"
     lesson: deployment-planning-prereqs
     section: deep-dive
     stem: "Type the esxcli command that sets the host name of an ESX host to the FQDN esx01.lab.local."
@@ -1522,6 +1595,7 @@ questions:
     version: vcf9
     topics: [vcf-installer, lcm-concepts]
     objective: "4.1"
+    objectiveItem: "4.1.3"
     lesson: vcf-installer-workflow
     section: concept
     select: 2
@@ -1542,6 +1616,7 @@ questions:
     version: vcf9
     topics: [deployment-validation, logs-locations]
     objective: "4.1"
+    objectiveItem: "4.1.3"
     lesson: deployment-validation-failures
     section: cli-api
     stem: "On the VCF Installer / SDDC Manager appliance, which log is most useful for following deployment orchestration in real time?"
@@ -1561,6 +1636,7 @@ questions:
     version: vcf9
     topics: [host-commissioning, apis-powercli]
     objective: "4.1"
+    objectiveItem: "4.1.7"
     lesson: host-commissioning-wld-creation
     section: cli-api
     stem: "Which SDDC Manager API call lists commissioned hosts that are ready to be used in a new cluster?"

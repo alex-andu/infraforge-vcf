@@ -23,7 +23,7 @@ export function QuestionMeta({ q }: { q: TQuestion }) {
       <span className="chip">{KIND_RO[q.kind]}</span>
       <DifficultyChip d={q.difficulty} />
       {q.version !== 'vcf9' && <VersionChip v={q.version} />}
-      {q.objective && <span className="chip accent" title="Obiectiv din exam guide 2V0-17.25">Obiectiv {q.objective}</span>}
+      {q.objective && <span className="chip accent" title="Punct din programa oficială 2V0-17.25">Obiectiv {q.objectiveItem ?? q.objective}</span>}
       {q.topics.slice(0, 2).map((t) => <span key={t} className="chip">{topicsById.get(t)?.title ?? t}</span>)}
     </div>
   );

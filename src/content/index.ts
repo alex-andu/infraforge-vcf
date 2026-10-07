@@ -15,6 +15,7 @@ export type IncidentMeta = Pick<TIncident, 'id' | 'title' | 'difficulty' | 'vers
 export type ScenarioMeta = Pick<TScenario, 'id' | 'title' | 'topics' | 'lessons' | 'brief'>;
 export interface QuestionIndexEntry {
   id: string; lesson: string; topics: string[]; difficulty: TQuestion['difficulty']; objective: string | null;
+  objectiveItem?: string | null;
   kind: TQuestion['kind']; type: TQuestion['type']; diagnostic: string | null;
 }
 export interface SearchDoc { id: string; group: string; title: string; context: string; text: string; url: string }

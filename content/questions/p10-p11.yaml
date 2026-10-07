@@ -8,6 +8,7 @@ questions:
   topics:
   - vcf-ops-architecture
   objective: '4.3'
+  objectiveItem: "4.3.2"
   lesson: vcf-operations-architecture
   section: components
   stem: Which three node roles make up the analytics cluster in the VCF Operations High Availability model?
@@ -41,6 +42,7 @@ questions:
   topics:
   - vcf-ops-architecture
   objective: '4.3'
+  objectiveItem: "4.3.2"
   lesson: vcf-operations-architecture
   section: deep-dive
   stem: An administrator must increase the number of objects a VCF Operations HA cluster can analyse without changing node
@@ -74,6 +76,7 @@ questions:
   topics:
   - vcf-ops-architecture
   objective: '4.3'
+  objectiveItem: "4.3.2"
   lesson: vcf-operations-architecture
   section: components
   stem: A customer runs two VCF instances in two availability zones about 5 ms apart and requires that monitoring has no service
@@ -107,6 +110,7 @@ questions:
   - vcf-ops-architecture
   - fleet-management
   objective: '4.3'
+  objectiveItem: "4.3.2"
   lesson: vcf-operations-architecture
   section: components
   stem: Which two appliances are deployed alongside VCF Operations in every VCF Operations model (Simple, High Availability,
@@ -144,6 +148,7 @@ questions:
   - vcf-ops-architecture
   - certificates
   objective: '4.3'
+  objectiveItem: "4.3.2"
   lesson: vcf-operations-architecture
   section: components
   stem: You deploy VCF Operations in the HA model behind an external load balancer. Which certificate requirement applies?
@@ -175,6 +180,7 @@ questions:
   topics:
   - vcf-ops-architecture
   objective: '4.3'
+  objectiveItem: "4.3.2"
   lesson: vcf-operations-architecture
   section: deep-dive
   stem: In a multi-node VCF Operations cluster you may mix Medium and Large nodes as long as the primary is the largest.
@@ -198,6 +204,7 @@ questions:
   topics:
   - vcf-ops-architecture
   objective: '4.3'
+  objectiveItem: "4.3.2"
   lesson: vcf-operations-architecture
   section: failure-scenarios
   stem: In a Simple VCF Operations deployment the only collector VM crashes. What do operators observe?
@@ -228,6 +235,7 @@ questions:
   topics:
   - metrics-properties
   objective: '4.3'
+  objectiveItem: "4.3.3"
   lesson: metrics-properties-views-reports
   section: concept
   stem: Which item is a property, not a metric, of a VM in VCF Operations?
@@ -259,6 +267,7 @@ questions:
   topics:
   - metrics-properties
   objective: '4.3'
+  objectiveItem: "4.3.4"
   lesson: metrics-properties-views-reports
   section: concept
   stem: An auditor wants a monthly list of every ESX host and its exact build number. Which data and view type should you
@@ -291,6 +300,7 @@ questions:
   topics:
   - metrics-properties
   objective: '4.3'
+  objectiveItem: "4.3.4"
   lesson: metrics-properties-views-reports
   section: components
   stem: Match each requirement to the VCF Operations view type that fits best.
@@ -320,6 +330,7 @@ questions:
   topics:
   - metrics-properties
   objective: '4.3'
+  objectiveItem: "4.3.4"
   lesson: metrics-properties-views-reports
   section: how-it-works
   stem: Which two statements about reports in VCF Operations are correct? (Choose two.)
@@ -352,6 +363,7 @@ questions:
   topics:
   - metrics-properties
   objective: '4.3'
+  objectiveItem: "4.3.4"
   lesson: metrics-properties-views-reports
   section: how-it-works
   stem: Put the steps to deliver a new weekly capacity table to managers in order.
@@ -377,6 +389,7 @@ questions:
   - metrics-properties
   - dashboards-alerts
   objective: '4.3'
+  objectiveItem: "4.3.3"
   lesson: metrics-properties-views-reports
   section: failure-scenarios
   stem: A super metric you created shows "no data" on a cluster, although the metrics in its formula exist on the cluster
@@ -409,6 +422,7 @@ questions:
   topics:
   - metrics-properties
   objective: '4.3'
+  objectiveItem: "4.3.3"
   lesson: metrics-properties-views-reports
   section: concept
   stem: According to TechDocs, where are properties typically used in VCF Operations besides views and reports?
@@ -438,6 +452,7 @@ questions:
   topics:
   - metrics-properties
   objective: '4.3'
+  objectiveItem: "4.3.4"
   lesson: metrics-properties-views-reports
   section: components
   stem: You want a dashboard panel that shows the same table as your custom List view. Which widget do you use?
@@ -466,6 +481,7 @@ questions:
   topics:
   - dashboards-alerts
   objective: '4.3'
+  objectiveItem: "4.3.6"
   lesson: dashboards-alerts-policies
   section: concept
   stem: What does an alert definition in VCF Operations combine?
@@ -497,6 +513,7 @@ questions:
   topics:
   - dashboards-alerts
   objective: '4.3'
+  objectiveItem: "4.3.6"
   lesson: dashboards-alerts-policies
   section: components
   stem: Which three are symptom definition types in VCF Operations 9.0? (Choose three.)
@@ -531,6 +548,7 @@ questions:
   topics:
   - dashboards-alerts
   objective: '4.3'
+  objectiveItem: "4.3.5"
   lesson: dashboards-alerts-policies
   section: components
   stem: A NOC team must see a dashboard you built, but must not change it. How do you share it?
@@ -560,6 +578,7 @@ questions:
   topics:
   - dashboards-alerts
   objective: '4.3'
+  objectiveItem: "4.3.5"
   lesson: dashboards-alerts-policies
   section: components
   stem: Which file formats can you import as a dashboard in VCF Operations 9.0?
@@ -589,6 +608,7 @@ questions:
   topics:
   - dashboards-alerts
   objective: '4.3'
+  objectiveItem: "4.3.11"
   lesson: dashboards-alerts-policies
   section: how-it-works
   stem: VM web01 belongs to custom group "Prod" (policy Prod, priority 1 - highest) and to custom group "Web" (policy Web,
@@ -620,6 +640,7 @@ questions:
   topics:
   - dashboards-alerts
   objective: '4.3'
+  objectiveItem: "4.3.6"
   lesson: dashboards-alerts-policies
   section: how-it-works
   stem: Order the alert pipeline from data to notification.
@@ -644,6 +665,7 @@ questions:
   topics:
   - dashboards-alerts
   objective: '4.3'
+  objectiveItem: "4.3.6"
   lesson: dashboards-alerts-policies
   section: troubleshooting
   stem: You created a correct alert definition for datastores, but no datastore ever raises it, even while low on space. What
@@ -675,6 +697,7 @@ questions:
   topics:
   - dashboards-alerts
   objective: '4.3'
+  objectiveItem: "4.3.6"
   lesson: dashboards-alerts-policies
   section: architecture
   stem: An alert indicates that a cluster will run out of memory in about two weeks if growth continues. Which alert impact
@@ -705,6 +728,7 @@ questions:
   topics:
   - dashboards-alerts
   objective: '4.3'
+  objectiveItem: "4.3.11"
   lesson: dashboards-alerts-policies
   section: deep-dive
   stem: A dev cluster is intentionally overcommitted and floods the team with CPU contention alerts, while production must
@@ -739,6 +763,7 @@ questions:
   topics:
   - dashboards-alerts
   objective: '4.3'
+  objectiveItem: "4.3.5"
   lesson: dashboards-alerts-policies
   section: components
   stem: Where do you create a new dashboard in VCF Operations 9.0?
@@ -768,6 +793,7 @@ questions:
   topics:
   - dashboards-alerts
   objective: '4.3'
+  objectiveItem: "4.3.6"
   lesson: dashboards-alerts-policies
   section: how-it-works
   stem: An alert should fire only when BOTH high datastore latency AND high VM CPU ready are present on a host. How should
@@ -798,6 +824,7 @@ questions:
   topics:
   - dashboards-alerts
   objective: '4.3'
+  objectiveItem: "4.3.6"
   lesson: dashboards-alerts-policies
   section: concept
   stem: An alert must email the on-call team. Which two objects provide this in VCF Operations?
@@ -829,6 +856,7 @@ questions:
   - vcf-ops-logs
   - network-ops
   objective: '4.3'
+  objectiveItem: "4.3.1"
   lesson: vcf-operations-logs-network-ops
   section: concept
   stem: An application owner asks which VMs communicate with the database on TCP 3306 and which firewall rules allow it. Which
@@ -863,6 +891,7 @@ questions:
   topics:
   - vcf-ops-logs
   objective: '4.3'
+  objectiveItem: "4.3.1"
   lesson: vcf-operations-logs-network-ops
   section: concept
   stem: After a host disconnect at 02:13, you need the vmkernel messages of all hosts in that window in one place. Which component
@@ -895,6 +924,7 @@ questions:
   topics:
   - network-ops
   objective: '4.3'
+  objectiveItem: "4.3.9"
   lesson: vcf-operations-logs-network-ops
   section: deep-dive
   stem: A customer wants VCF Operations for networks to survive the loss of one platform node, and proposes a three-node platform
@@ -927,6 +957,7 @@ questions:
   topics:
   - network-ops
   objective: '4.3'
+  objectiveItem: "4.3.9"
   lesson: vcf-operations-logs-network-ops
   section: components
   stem: Which two statements about the Simple VCF Operations for networks model are true? (Choose two.)
@@ -959,6 +990,7 @@ questions:
   topics:
   - vcf-ops-logs
   objective: '4.3'
+  objectiveItem: "4.3.7"
   lesson: vcf-operations-logs-network-ops
   section: components
   stem: What makes up the High Availability VCF Operations for logs model?
@@ -990,6 +1022,7 @@ questions:
   topics:
   - vcf-ops-logs
   objective: '4.3'
+  objectiveItem: "4.3.7"
   lesson: vcf-operations-logs-network-ops
   section: components
   stem: When deploying the Simple (single-node) VCF Operations for logs model, no VIP IP or FQDN is needed.
@@ -1013,6 +1046,7 @@ questions:
   - vcf-ops-logs
   - dashboards-alerts
   objective: '4.3'
+  objectiveItem: "4.3.7"
   lesson: vcf-operations-logs-network-ops
   section: how-it-works
   stem: Security wants an alert whenever an ESX host logs repeated failed root logins. What is the VCF 9.0 way to do this?
@@ -1045,6 +1079,7 @@ questions:
   topics:
   - health-diagnostics
   objective: '4.3'
+  objectiveItem: "4.3.8"
   lesson: vcf-operations-logs-network-ops
   section: components
   stem: Which health areas does VCF Health in VCF Operations cover?
@@ -1075,6 +1110,7 @@ questions:
   topics:
   - health-diagnostics
   objective: '4.3'
+  objectiveItem: "4.3.8"
   lesson: vcf-operations-logs-network-ops
   section: components
   stem: Before opening a support case, you want VCF Operations to check whether your environment matches known issues and
@@ -1108,6 +1144,7 @@ questions:
   topics:
   - health-diagnostics
   objective: '4.3'
+  objectiveItem: "4.3.10"
   lesson: vcf-operations-logs-network-ops
   section: how-it-works
   stem: A new vSAN cluster must be checked for performance before production workloads move in. Which Storage Operations diagnostics
@@ -1139,6 +1176,7 @@ questions:
   topics:
   - health-diagnostics
   objective: '4.3'
+  objectiveItem: "4.3.10"
   lesson: vcf-operations-logs-network-ops
   section: concept
   stem: Which statement about Storage Operations in VCF Operations 9.0 is correct?
@@ -1170,6 +1208,7 @@ questions:
   topics:
   - network-ops
   objective: '4.3'
+  objectiveItem: "4.3.9"
   lesson: vcf-operations-logs-network-ops
   section: how-it-works
   stem: On the Network Operations page, the "Business Applications with Flows" and "Traffic Summary" widgets are empty, while
@@ -1201,6 +1240,7 @@ questions:
   topics:
   - compliance-drift
   objective: '4.3'
+  objectiveItem: "4.3.13"
   lesson: compliance-drift-app-monitoring
   section: concept
   stem: Security must prove that ESX hosts follow VMware security configuration (hardening) guidance. Where do you configure
@@ -1233,6 +1273,7 @@ questions:
   topics:
   - compliance-drift
   objective: '4.3'
+  objectiveItem: "4.3.14"
   lesson: compliance-drift-app-monitoring
   section: failure-scenarios
   context: 'Administration > Integrations shows: vCenter vc-mgmt - Collector/Group: Default Collector Group.'
@@ -1268,6 +1309,7 @@ questions:
   topics:
   - compliance-drift
   objective: '4.3'
+  objectiveItem: "4.3.14"
   lesson: compliance-drift-app-monitoring
   section: how-it-works
   stem: Order the steps to start tracking configuration drift for three vCenter instances against a reference vCenter.
@@ -1291,6 +1333,7 @@ questions:
   topics:
   - compliance-drift
   objective: '4.3'
+  objectiveItem: "4.3.12"
   lesson: compliance-drift-app-monitoring
   section: components
   stem: An EC2 instance in a public cloud must send OS metrics to VCF Operations. Which option fits?
@@ -1323,6 +1366,7 @@ questions:
   - compliance-drift
   - dashboards-alerts
   objective: '4.3'
+  objectiveItem: "4.3.13"
   lesson: compliance-drift-app-monitoring
   section: deep-dive
   stem: A compliance benchmark shows scores for cluster A hosts but nothing for cluster B hosts. Cluster B hosts belong to
@@ -1354,6 +1398,7 @@ questions:
   topics:
   - compliance-drift
   objective: '4.3'
+  objectiveItem: "4.3.13"
   lesson: compliance-drift-app-monitoring
   section: components
   stem: Which three are compliance benchmark categories in VCF Operations? (Choose three.)
@@ -1390,6 +1435,7 @@ questions:
   topics:
   - compliance-drift
   objective: '4.3'
+  objectiveItem: "4.3.12"
   lesson: compliance-drift-app-monitoring
   section: components
   stem: The DBA team wants their SQL Server service (not just the VM) monitored, with the agent installed and lifecycled from
@@ -1423,6 +1469,7 @@ questions:
   topics:
   - compliance-drift
   objective: '4.3'
+  objectiveItem: "4.3.14"
   lesson: compliance-drift-app-monitoring
   section: deep-dive
   stem: What is the reference that configuration drift compares a vCenter against?
@@ -1452,6 +1499,7 @@ questions:
   topics:
   - vcf-automation
   objective: '4.4'
+  objectiveItem: "4.4.1"
   lesson: vcf-automation-architecture
   section: concept
   stem: Several lines of business need self-service VMs and Kubernetes clusters with quotas, isolation and approvals. Which
@@ -1484,6 +1532,7 @@ questions:
   topics:
   - vcf-automation
   objective: '4.4'
+  objectiveItem: "4.4.2"
   lesson: vcf-automation-architecture
   section: components
   stem: How many IP addresses does the VcfAutomationSpec ipPool require for the High Availability VCF Automation deployment?
@@ -1513,6 +1562,7 @@ questions:
   topics:
   - vcf-automation
   objective: '4.4'
+  objectiveItem: "4.4.2"
   lesson: vcf-automation-architecture
   section: components
   stem: A production self-service portal must remain available if one VCF Automation node fails. Which deployment do you choose?
@@ -1542,6 +1592,7 @@ questions:
   topics:
   - vcf-automation
   objective: '4.4'
+  objectiveItem: "4.4.2"
   lesson: vcf-automation-architecture
   section: architecture
   stem: How is VCF Automation itself built and where does it run?
@@ -1573,6 +1624,7 @@ questions:
   topics:
   - vcf-automation
   objective: '4.4'
+  objectiveItem: "4.4.2"
   lesson: vcf-automation-architecture
   section: deep-dive
   stem: If the single VCF Automation node of a Simple deployment fails, VMs and VKS clusters already deployed through it stop
@@ -1598,6 +1650,7 @@ questions:
   - vcf-automation
   - vcfa-tenancy
   objective: '4.4'
+  objectiveItem: "4.4.2"
   lesson: vcf-automation-architecture
   section: concept
   stem: A team only needs VM self-service on vSphere clusters that do not have Supervisor enabled. Which organization type
@@ -1629,6 +1682,7 @@ questions:
   topics:
   - vcf-automation
   objective: '4.4'
+  objectiveItem: "4.4.2"
   lesson: vcf-automation-architecture
   section: components
   stem: Which value is valid for internalClusterCidr when deploying VCF Automation?
@@ -1658,6 +1712,7 @@ questions:
   - vcf-automation
   - fleet-management
   objective: '4.4'
+  objectiveItem: "4.4.2"
   lesson: vcf-automation-architecture
   section: how-it-works
   stem: VCF Automation was not deployed during the initial VCF deployment. How is it added and later upgraded?
@@ -1688,6 +1743,7 @@ questions:
   topics:
   - vcfa-tenancy
   objective: '4.4'
+  objectiveItem: "4.4.3"
   lesson: vcf-automation-tenancy-regions
   section: concept
   stem: What is a region in VCF Automation?
@@ -1720,6 +1776,7 @@ questions:
   - vcfa-tenancy
   - supervisor
   objective: '4.4'
+  objectiveItem: "4.4.3"
   lesson: vcf-automation-tenancy-regions
   section: components
   stem: A provider cannot combine two Supervisors into one region. Which two conditions would prevent it? (Choose two.)
@@ -1752,6 +1809,7 @@ questions:
   topics:
   - vcfa-tenancy
   objective: '4.4'
+  objectiveItem: "4.4.5"
   lesson: vcf-automation-tenancy-regions
   section: components
   stem: Which object does a VCF Automation provider gateway use?
@@ -1782,6 +1840,7 @@ questions:
   topics:
   - vcfa-tenancy
   objective: '4.4'
+  objectiveItem: "4.4.5"
   lesson: vcf-automation-tenancy-regions
   section: failure-scenarios
   stem: Tenant VMs on a VPC public subnet receive IPs from the provider IP space 172.31.0.0/24 but cannot be reached from
@@ -1812,6 +1871,7 @@ questions:
   topics:
   - vcfa-tenancy
   objective: '4.4'
+  objectiveItem: "4.4.6"
   lesson: vcf-automation-tenancy-regions
   section: concept
   stem: A provider publishes golden images in a provider content library shared with all organizations. What can organization
@@ -1841,6 +1901,7 @@ questions:
   topics:
   - vcfa-tenancy
   objective: '4.4'
+  objectiveItem: "4.4.4"
   lesson: vcf-automation-tenancy-regions
   section: components
   stem: A business unit is being sold. The provider must immediately stop all its users from using VCF Automation without
@@ -1870,6 +1931,7 @@ questions:
   topics:
   - vcfa-tenancy
   objective: '4.4'
+  objectiveItem: "4.4.4"
   lesson: vcf-automation-tenancy-regions
   section: concept
   stem: Region quotas in VCF Automation apply to which organizations?
@@ -1899,6 +1961,7 @@ questions:
   topics:
   - vcfa-tenancy
   objective: '4.4'
+  objectiveItem: "4.4.5"
   lesson: vcf-automation-tenancy-regions
   section: how-it-works
   stem: Order the provider tasks to give a new All Apps organization working north-south networking.
@@ -1925,6 +1988,7 @@ questions:
   - vcfa-tenancy
   - supervisor
   objective: '4.4'
+  objectiveItem: "4.4.12"
   lesson: vcf-automation-tenancy-regions
   section: deep-dive
   stem: Inside an All Apps organization namespace, which Supervisor-based services do users consume to deploy VMs and Kubernetes
@@ -1957,6 +2021,7 @@ questions:
   topics:
   - vcfa-tenancy
   objective: '4.4'
+  objectiveItem: "4.4.4"
   lesson: vcf-automation-tenancy-regions
   section: how-it-works
   stem: Which organization does the provider administrator log in to for provider tasks?
@@ -1986,6 +2051,7 @@ questions:
   topics:
   - vcfa-org-admin
   objective: '4.4'
+  objectiveItem: "4.4.7"
   lesson: vcf-automation-org-admin
   section: components
   stem: In VCF Automation, what is a namespace?
@@ -2016,6 +2082,7 @@ questions:
   topics:
   - vcfa-org-admin
   objective: '4.4'
+  objectiveItem: "4.4.11"
   lesson: vcf-automation-org-admin
   section: components
   stem: Match each requirement to the governance policy type.
@@ -2043,6 +2110,7 @@ questions:
   topics:
   - vcfa-org-admin
   objective: '4.4'
+  objectiveItem: "4.4.10"
   lesson: vcf-automation-org-admin
   section: deep-dive
   stem: After provisioning, an IPAM workflow must return the IP address before the next workflow uses it. How should the event
@@ -2074,6 +2142,7 @@ questions:
   topics:
   - vcfa-org-admin
   objective: '4.4'
+  objectiveItem: "4.4.10"
   lesson: vcf-automation-org-admin
   section: components
   stem: For blocking event subscriptions in VCF Automation, priority 0 is the highest priority.
@@ -2096,6 +2165,7 @@ questions:
   topics:
   - vcfa-org-admin
   objective: '4.4'
+  objectiveItem: "4.4.7"
   lesson: vcf-automation-org-admin
   section: components
   stem: Two development teams in the same organization must never see each other's deployments. What should the org admin
@@ -2127,6 +2197,7 @@ questions:
   topics:
   - vcfa-org-admin
   objective: '4.4'
+  objectiveItem: "4.4.7"
   lesson: vcf-automation-org-admin
   section: failure-scenarios
   stem: An org admin cannot create a namespace with 64 GB of memory, although the Supervisor cluster has plenty of free memory.
@@ -2158,6 +2229,7 @@ questions:
   topics:
   - vcfa-org-admin
   objective: '4.4'
+  objectiveItem: "4.4.7"
   lesson: vcf-automation-org-admin
   section: components
   stem: What does a namespace class provide?
@@ -2187,6 +2259,7 @@ questions:
   topics:
   - vcfa-org-admin
   objective: '4.4'
+  objectiveItem: "4.4.10"
   lesson: vcf-automation-org-admin
   section: components
   stem: Users must be able to request "Open a firewall change" from the self-service catalog, which runs an existing automated
@@ -2218,6 +2291,7 @@ questions:
   topics:
   - vcfa-org-admin
   objective: '4.4'
+  objectiveItem: "4.4.11"
   lesson: vcf-automation-org-admin
   section: components
   stem: Which two statements about governance policies for All Apps organizations are correct? (Choose two.)
@@ -2249,6 +2323,7 @@ questions:
   topics:
   - vcfa-org-admin
   objective: '4.4'
+  objectiveItem: "4.4.11"
   lesson: vcf-automation-org-admin
   section: troubleshooting
   stem: Several requests completed but behaved unexpectedly (some needed approval, some did not). Where does the org admin
@@ -2280,6 +2355,7 @@ questions:
   topics:
   - vcfa-org-admin
   objective: '4.4'
+  objectiveItem: "4.4.9"
   lesson: vcf-automation-org-admin
   section: components
   stem: Where does an org admin give teams their own hardened VM images to deploy, in addition to the provider images?
@@ -2311,6 +2387,7 @@ questions:
   topics:
   - apis-powercli
   objective: '4.4'
+  objectiveItem: "4.4.10"
   lesson: vcf-apis-powercli
   section: concept
   stem: Which header carries the session after POST /api/session on the vCenter REST API?
@@ -2342,6 +2419,7 @@ questions:
   topics:
   - apis-powercli
   objective: '4.4'
+  objectiveItem: "4.4.10"
   lesson: vcf-apis-powercli
   section: failure-scenarios
   stem: A script calling the SDDC Manager API worked for an hour and now returns HTTP 401 on every call. The refresh token
@@ -2372,6 +2450,7 @@ questions:
   topics:
   - apis-powercli
   objective: '4.4'
+  objectiveItem: "4.4.10"
   lesson: vcf-apis-powercli
   section: how-it-works
   stem: Type the PowerShell command to install the VCF 9 PowerCLI module from the PowerShell Gallery (module name only, no
@@ -2392,6 +2471,7 @@ questions:
   topics:
   - apis-powercli
   objective: '4.4'
+  objectiveItem: "4.4.10"
   lesson: vcf-apis-powercli
   section: components
   stem: Which cmdlet, new in VCF.PowerCLI 9.0, connects to SDDC Manager?
@@ -2421,6 +2501,7 @@ questions:
   topics:
   - apis-powercli
   objective: '4.4'
+  objectiveItem: "4.4.10"
   lesson: vcf-apis-powercli
   section: concept
   stem: Match each component with its API authentication pattern.
@@ -2448,6 +2529,7 @@ questions:
   topics:
   - apis-powercli
   objective: '4.4'
+  objectiveItem: "4.4.10"
   lesson: vcf-apis-powercli
   section: failure-scenarios
   stem: An SDDC Manager API call returns HTTP 403 with a valid access token. What does it indicate?
@@ -2478,6 +2560,7 @@ questions:
   topics:
   - apis-powercli
   objective: '4.4'
+  objectiveItem: "4.4.10"
   lesson: vcf-apis-powercli
   section: deep-dive
   stem: You need a PowerCLI cmdlet for an NSX API path that has no hand-written cmdlet. How do you find it?
@@ -2509,6 +2592,7 @@ questions:
   - apis-powercli
   - certificates
   objective: '4.4'
+  objectiveItem: "4.4.10"
   lesson: vcf-apis-powercli
   section: real-world-scenario
   stem: After the vCenter certificates were replaced with CA-signed ones, a scheduled PowerCLI report fails with TLS errors,
@@ -2543,6 +2627,7 @@ questions:
   - vcf-ops-architecture
   - certificates
   objective: '4.3'
+  objectiveItem: "4.3.2"
   lesson: vcf-operations-architecture
   section: troubleshooting
   stem: Metrics stopped only for objects of the wld01 vCenter at 02:10. Integrations shows "Collection failed - certificate
@@ -2579,6 +2664,7 @@ questions:
   - vcf-ops-logs
   - vcf-ops-architecture
   objective: '4.3'
+  objectiveItem: "4.3.7"
   lesson: vcf-operations-logs-network-ops
   section: components
   stem: A remote site has VCF components behind a firewall that blocks direct connections to the central VCF Operations for
@@ -2612,6 +2698,7 @@ questions:
   - vcfa-tenancy
   - supervisor
   objective: '4.4'
+  objectiveItem: "4.4.3"
   lesson: vcf-automation-tenancy-regions
   section: real-world-scenario
   stem: A provider has two Supervisors on one NSX instance; Supervisor A offers storage class "gold" and B offers "Gold-vSAN"
@@ -2642,6 +2729,7 @@ questions:
   topics:
   - vcfa-org-admin
   objective: '4.4'
+  objectiveItem: "4.4.10"
   lesson: vcf-automation-org-admin
   section: deep-dive
   stem: A blocking subscription calls an external CMDB that sometimes times out, failing provisioning. Business wants provisioning

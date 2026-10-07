@@ -33,11 +33,13 @@ export default function ExamPrep() {
 
   const objStats = useMemo(() => meta.objectives.map((o) => {
     const qs = meta.questionIndex.filter((q) => q.objective === o.id);
+    const itemCounts = new Map<string, number>();
+    for (const q of qs) if (q.objectiveItem) itemCounts.set(q.objectiveItem, (itemCounts.get(q.objectiveItem) ?? 0) + 1);
     const ids = new Set(qs.map((q) => q.id));
     const at = attempts.filter((a) => ids.has(a.qid) && a.mode !== 'diagnostic');
     const acc = at.length ? at.reduce((n2, a) => n2 + a.score, 0) / at.length : null;
     const ms = o.topics.map((t) => mastery.get(t)?.score ?? 0);
-    return { o, questions: qs.length, acc, mastery: ms.length ? Math.round(ms.reduce((a, b) => a + b, 0) / ms.length) : 0 };
+    return { o, questions: qs.length, itemCoverage: o.items.filter((item) => (itemCounts.get(item.id) ?? 0) >= 5).length, acc, mastery: ms.length ? Math.round(ms.reduce((a, b) => a + b, 0) / ms.length) : 0 };
   }), [attempts, mastery]);
 
   const topicsByDomain = useMemo(() => {
@@ -131,12 +133,12 @@ export default function ExamPrep() {
         <div className="section-label">Hartă obiective examen (exam guide oficial)</div>
         <div className="table-wrap">
           <table className="table">
-            <thead><tr><th>Obiectiv</th><th>Itemi în exam guide</th><th>Întrebări</th><th>Acuratețea ta</th><th>Stăpânire topicuri</th><th /></tr></thead>
+            <thead><tr><th>Obiectiv</th><th>Acoperire itemi</th><th>Întrebări</th><th>Acuratețea ta</th><th>Stăpânire topicuri</th><th /></tr></thead>
             <tbody>
-              {objStats.map(({ o, questions, acc, mastery: m }) => (
+              {objStats.map(({ o, questions, itemCoverage, acc, mastery: m }) => (
                 <tr key={o.id} style={preObjective === o.id ? { outline: '2px solid var(--accent)' } : undefined}>
                   <td><strong>{o.id}</strong> {o.title}<div className="tiny faint">{o.topics.map((t) => topicsById.get(t)?.title).filter(Boolean).slice(0, 5).join(' · ')}</div></td>
-                  <td>{o.items.length}</td>
+                  <td>{itemCoverage}/{o.items.length} <span className="tiny faint">cu ≥5 întrebări</span></td>
                   <td>{questions}</td>
                   <td>{acc == null ? <span className="faint">—</span> : `${Math.round(acc * 100)}%`}</td>
                   <td style={{ width: 160 }}><Bar value={m} tone={toneFor(m)} label={`Stăpânire ${o.title}`} /></td>
@@ -151,7 +153,10 @@ export default function ExamPrep() {
           {meta.objectives.map((o) => (
             <div key={o.id} style={{ marginTop: 8 }}>
               <strong className="small">{o.id} {o.title}</strong>
-              <ul className="small muted" style={{ margin: '4px 0' }}>{o.items.map((it) => <li key={it}>{it}</li>)}</ul>
+              <ul className="small muted" style={{ margin: '4px 0' }}>{o.items.map((it) => {
+                const count = meta.questionIndex.filter((q) => q.objectiveItem === it.id).length;
+                return <li key={it.id}><strong>{it.id}</strong> · {it.text} <span className={count >= 5 ? 'chip ok' : 'chip bad'}>{count} întrebări</span></li>;
+              })}</ul>
             </div>
           ))}
           <p className="tiny faint">Sursă: <a href="https://docs.broadcom.com/doc/vmware-cloud-foundation-administrator-exam-guide" target="_blank" rel="noopener noreferrer">VMware Cloud Foundation Administrator Exam Guide (2V0-17.25)</a>. Secțiunile 1 și 3 nu au obiective testabile.</p>

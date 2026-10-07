@@ -45,7 +45,7 @@ The lab counts are labs linked to that phase's lessons; one lab can be linked to
 - The standalone-theory template requires 17 sections, sources, at least one diagram and an inline quiz. The DNS/NTP pilot and Kubernetes foundations lesson use it; the other 69 lessons remain valid with their legacy `Lab` sections during incremental migration.
 - **Gaps:**
   - VCF Operations HCX has no dedicated lesson. Foundational Kubernetes now has a dedicated theory lesson; its practical guide is gated on an available Workload Domain and Supervisor.
-  - Coverage per objective *item* (for example "configure a provider content library") is not tracked.
+  - The item report identifies 23 official items below the internal five-question target. A question mapping is evidence of coverage, but each item still needs its linked theory section reviewed for sufficient depth.
 - **Unverified facts** are written as "check your version" rather than stated. The main areas:
   - ESX 9, vCenter and SDDC Manager log paths (only `domainmanager.log`, `hostd.log` and the sos output path are confirmed for VCF 9)
   - some vSphere Client / VCF Operations menu paths
@@ -62,7 +62,7 @@ The lab counts are labs linked to that phase's lessons; one lab can be linked to
 
   | Objective | Questions |
   |---|---|
-  | 2.1 | 32 |
+  | 2.1 | 29 |
   | 2.2 | 75 |
   | 2.3 | 52 |
   | 2.4 | 89 |
@@ -76,9 +76,10 @@ The lab counts are labs linked to that phase's lessons; one lab can be linked to
 - **Diagnostic pool:** 58 questions across 8 areas (16 are drawn at onboarding).
 - **Kinds:** concept, architecture, troubleshooting, log, command, scenario and design are all present.
 - Every question has an explanation: correct answer, concept, architecture, trap. It also has a lesson + section link and a `why` on each option.
+- All 617 objective-tagged questions have a primary `objectiveItem`; the three exam-strategy questions remain intentionally outside the testable objectives. See [EXAM_COVERAGE.md](EXAM_COVERAGE.md).
 - **Gaps:**
-  - 4.3 (14 items) and 4.4 (12 items) have the fewest questions per item.
-  - Questions carry no per-item tag.
+  - 36/59 items meet the internal target of at least five questions; 23 are below it.
+  - `4.4.8` organizational networks has zero dedicated questions. Most other low-count items are in 4.3 Operations and 4.4 Consume and Automate.
 
 ## Practical guides (`content/labs/*.yaml`)
 
@@ -126,7 +127,7 @@ The lab counts are labs linked to that phase's lessons; one lab can be linked to
 | i-ops-automation | 38 |
 | j-troubleshooting | 11 |
 
-**Missing:** HCX and Kubernetes terms (pod, namespace, CNI, kubeconfig and similar).
+**Missing:** HCX terminology and selected Kubernetes operational terms such as CNI and kubeconfig. Core Kubernetes terms including control plane, node, pod, Deployment, Service, Namespace, PVC, StorageClass, Supervisor and VKS are present.
 
 ## Commands / API reference (`content/commands/*.yaml`)
 

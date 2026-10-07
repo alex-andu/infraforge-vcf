@@ -51,11 +51,16 @@ export const Topic = z.object({
   description: z.string(),
 });
 
+export const ExamObjectiveItem = z.object({
+  id: z.string().regex(/^\d+\.\d+\.\d+$/),
+  text: z.string(),
+});
+
 export const ExamObjective = z.object({
   id: z.string().regex(/^\d+\.\d+(\.\d+)?$/),
   section: z.string(),
   title: z.string(),
-  items: z.array(z.string()).default([]),
+  items: z.array(ExamObjectiveItem).default([]),
   topics: z.array(id).default([]),
 });
 
@@ -101,6 +106,8 @@ const QuestionBase = z.object({
   version: VersionTag.default('vcf9'),
   topics: z.array(id).min(1),
   objective: z.string().optional(),
+  /** Primary official exam-guide item assessed by this question (for example 4.3.10). */
+  objectiveItem: z.string().regex(/^\d+\.\d+\.\d+$/).optional(),
   lesson: id,
   section: z.string().optional(),
   /** Optional extra context shown above the stem: a scenario, a log excerpt, command output. */

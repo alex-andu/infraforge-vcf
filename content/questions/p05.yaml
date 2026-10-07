@@ -7,6 +7,7 @@ questions:
     version: vcf9
     topics: [nsx-architecture]
     objective: "2.4"
+    objectiveItem: "2.4.1"
     lesson: nsx-architecture
     section: concept
     diagnostic: nsx
@@ -28,6 +29,7 @@ questions:
     version: vcf9
     topics: [nsx-architecture]
     objective: "2.4"
+    objectiveItem: "2.4.1"
     lesson: nsx-architecture
     section: why-the-data-plane-survives-a-management-outage
     context: |
@@ -50,6 +52,7 @@ questions:
     version: vcf9
     topics: [nsx-architecture]
     objective: "2.4"
+    objectiveItem: "2.4.1"
     lesson: nsx-architecture
     section: nsx-manager-deployment-models-vcf-9-design
     stem: "An automation platform makes thousands of NSX API calls per hour. The three-node NSX Manager cluster uses its built-in VIP. Which design change spreads API load across all three managers?"
@@ -69,6 +72,7 @@ questions:
     version: vcf9
     topics: [nsx-architecture]
     objective: "4.1"
+    objectiveItem: "4.1.6"
     lesson: nsx-architecture
     section: where-nsx-sits-in-a-vcf-instance
     stem: "While creating a second VI workload domain from VCF Operations, what NSX choice does the wizard offer?"
@@ -89,6 +93,7 @@ questions:
     version: vcf9
     topics: [nsx-architecture, nsx-transport]
     objective: "2.4"
+    objectiveItem: "2.4.1"
     lesson: nsx-architecture
     section: components
     select: 2
@@ -110,6 +115,7 @@ questions:
     version: vcf9
     topics: [nsx-architecture]
     objective: "2.4"
+    objectiveItem: "2.4.1"
     lesson: nsx-architecture
     section: concept
     stem: "True or false: In VCF 9.0, NSX Manager is configured in Policy mode only; the Manager mode UI and Manager API objects are deprecated for configuration."
@@ -127,6 +133,7 @@ questions:
     version: vcf9
     topics: [nsx-architecture, nsx-transport]
     objective: "2.4"
+    objectiveItem: "2.4.1"
     lesson: nsx-architecture
     section: transport-nodes-and-the-lcp
     context: |
@@ -154,6 +161,7 @@ questions:
     version: vcf9
     topics: [nsx-architecture]
     objective: "2.4"
+    objectiveItem: "2.4.1"
     lesson: nsx-architecture
     section: concept
     stem: "Match each NSX plane to its job."
@@ -173,6 +181,7 @@ questions:
     version: vcf9
     topics: [nsx-transport]
     objective: "2.4"
+    objectiveItem: "2.4.2"
     lesson: nsx-transport-nodes-teps
     section: transport-zone
     diagnostic: nsx
@@ -193,6 +202,7 @@ questions:
     version: vcf9
     topics: [nsx-transport]
     objective: "2.4"
+    objectiveItem: "2.4.2"
     lesson: nsx-transport-nodes-teps
     section: mtu-the-numbers-to-memorize
     stem: "According to NSX MTU guidance in VCF 9.0, what is the minimum MTU required on the underlay for overlay traffic, and what is recommended?"
@@ -212,6 +222,7 @@ questions:
     version: vcf9
     topics: [nsx-transport]
     objective: "2.4"
+    objectiveItem: "2.4.2"
     lesson: nsx-transport-nodes-teps
     section: testing-mtu-properly
     stem: "From an ESX host shell, write the command that tests reachability to remote TEP 192.168.13.12 for a 1600-byte path MTU using the TEP TCP/IP stack and the don't-fragment bit."
@@ -233,6 +244,7 @@ questions:
     version: vcf9
     topics: [nsx-transport]
     objective: "2.4"
+    objectiveItem: "2.4.2"
     lesson: nsx-transport-nodes-teps
     section: failure-scenarios
     context: |
@@ -261,6 +273,7 @@ questions:
     version: vcf9
     topics: [nsx-transport]
     objective: "2.4"
+    objectiveItem: "2.4.2"
     lesson: nsx-transport-nodes-teps
     section: components
     stem: "An administrator adds two new hosts to an NSX-prepared vSphere cluster. They are automatically prepared with the same VDS, transport zones and TEP settings. Which object makes this happen?"
@@ -280,6 +293,7 @@ questions:
     version: vcf9
     topics: [nsx-transport, nsx-edge]
     objective: "4.1"
+    objectiveItem: "4.1.6"
     lesson: nsx-transport-nodes-teps
     section: tep-addressing-and-routing
     stem: "You deploy Edge VMs with the VCF 9 vCenter Network Connectivity workflow onto NSX-prepared hosts and want the Edge TEPs on the same VLAN as the host TEPs. What does the workflow require?"
@@ -299,6 +313,7 @@ questions:
     version: vcf9
     topics: [nsx-transport]
     objective: "2.4"
+    objectiveItem: "2.4.2"
     lesson: nsx-transport-nodes-teps
     section: transport-zone
     select: 2
@@ -319,6 +334,7 @@ questions:
     version: vcf9
     topics: [nsx-transport, nsx-edge]
     objective: "2.4"
+    objectiveItem: "2.4.2"
     lesson: nsx-transport-nodes-teps
     section: bfd-on-tunnels
     context: |
@@ -347,6 +363,7 @@ questions:
     version: vcf9
     topics: [nsx-segments]
     objective: "2.4"
+    objectiveItem: "2.4.3"
     lesson: nsx-segments-overlay
     section: case-1-same-segment-same-host
     diagnostic: nsx
@@ -368,6 +385,7 @@ questions:
     version: vcf9
     topics: [nsx-segments, nsx-transport]
     objective: "2.4"
+    objectiveItem: "2.4.3"
     lesson: nsx-segments-overlay
     section: case-2-same-segment-different-hosts
     diagram: d05-east-west-packet-walk
@@ -388,6 +406,7 @@ questions:
     version: vcf9
     topics: [nsx-segments, nsx-routing]
     objective: "2.4"
+    objectiveItem: "2.4.3"
     lesson: nsx-segments-overlay
     section: case-3-different-segments-same-tier-1-routed-east-west
     stem: "VM-A on seg-web (host 1) sends to VM-D on seg-app (host 2). Both segments connect to the same Tier-1, which has no edge cluster. Where is the packet routed?"
@@ -408,6 +427,7 @@ questions:
     version: vcf9
     topics: [nsx-segments]
     objective: "2.4"
+    objectiveItem: "2.4.3"
     lesson: nsx-segments-overlay
     section: concept
     stem: "A team needs 40 new isolated networks per month for test environments, and the physical network team can't add VLANs that fast. Which segment type fits?"
@@ -427,6 +447,7 @@ questions:
     version: vcf9
     topics: [nsx-segments]
     objective: "2.4"
+    objectiveItem: "2.4.3"
     lesson: nsx-segments-overlay
     section: concept
     select: 3
@@ -447,6 +468,7 @@ questions:
     version: vcf9
     topics: [nsx-segments]
     objective: "2.4"
+    objectiveItem: "2.4.3"
     lesson: nsx-segments-overlay
     section: bum-replication
     stem: "Which statement about broadcast/unknown-unicast/multicast (BUM) traffic on an NSX overlay segment is correct?"
@@ -466,6 +488,7 @@ questions:
     version: vcf9
     topics: [nsx-segments, nsx-transport]
     objective: "2.4"
+    objectiveItem: "2.4.3"
     lesson: nsx-segments-overlay
     section: troubleshooting
     stem: "A newly created overlay segment appears as a port group on hosts esx-01 to esx-04 but not on esx-05 in the same vCenter. What is the most likely cause?"
@@ -484,6 +507,7 @@ questions:
     version: vcf9
     topics: [nsx-segments, nsx-security]
     objective: "2.4"
+    objectiveItem: "2.4.4"
     lesson: nsx-segments-overlay
     section: troubleshooting
     stem: "web VMs can't reach app VMs on another segment. You suspect either routing or firewall. Which NSX tool shows, hop by hop, whether the packet was routed by the DR and whether a DFW rule dropped it?"
@@ -503,6 +527,7 @@ questions:
     version: vcf9
     topics: [nsx-edge]
     objective: "2.4"
+    objectiveItem: "2.4.3"
     lesson: nsx-edge-nodes-clusters
     section: concept
     stem: "Why does NSX need Edge nodes when hosts already route between segments?"
@@ -521,6 +546,7 @@ questions:
     version: vcf9
     topics: [nsx-edge]
     objective: "4.1"
+    objectiveItem: "4.1.6"
     lesson: nsx-edge-nodes-clusters
     section: sizing-edge-vm
     stem: "You will enable vSphere Supervisor and need routing plus NAT at under 2 Gbps. Which Edge VM form factor is the smallest sensible choice?"
@@ -540,6 +566,7 @@ questions:
     version: vcf9
     topics: [nsx-edge]
     objective: "2.4"
+    objectiveItem: "2.4.3"
     lesson: nsx-edge-nodes-clusters
     section: concept
     select: 2
@@ -559,6 +586,7 @@ questions:
     version: vcf9
     topics: [nsx-edge]
     objective: "4.1"
+    objectiveItem: "4.1.6"
     lesson: nsx-edge-nodes-clusters
     section: how-it-works
     stem: "In VCF 9.0, where do you start the guided deployment of an NSX edge cluster and Tier-0 gateway for a workload domain?"
@@ -578,6 +606,7 @@ questions:
     version: vcf9
     topics: [nsx-edge]
     objective: "2.4"
+    objectiveItem: "2.4.3"
     lesson: nsx-edge-nodes-clusters
     section: components
     stem: "Which statement about NSX edge clusters is correct?"
@@ -596,6 +625,7 @@ questions:
     version: vcf9
     topics: [nsx-edge, nsx-routing]
     objective: "2.4"
+    objectiveItem: "2.4.3"
     lesson: nsx-edge-nodes-clusters
     section: active-standby-vs-active-active
     stem: "A design requires SNAT for tenant networks and vSphere Supervisor, and the architect proposes an Active/Active Tier-0 for throughput. What is the correct response?"
@@ -615,6 +645,7 @@ questions:
     version: vcf9
     topics: [nsx-edge]
     objective: "2.4"
+    objectiveItem: "2.4.3"
     lesson: nsx-edge-nodes-clusters
     section: failure-scenarios
     stem: "During host maintenance, all north-south traffic drops for several minutes although the edge cluster has two Edges in Active/Standby. What design flaw is most likely?"
@@ -633,6 +664,7 @@ questions:
     version: vcf9
     topics: [nsx-edge, nsx-routing]
     objective: "2.4"
+    objectiveItem: "2.4.3"
     lesson: nsx-edge-nodes-clusters
     section: one-tier-0-per-edge
     stem: "A provider needs three separate routing tables for three tenants on the same pair of Edge nodes. What does NSX documentation say?"
@@ -652,6 +684,7 @@ questions:
     version: vcf9
     topics: [nsx-routing]
     objective: "2.4"
+    objectiveItem: "2.4.3"
     lesson: nsx-tier0-tier1-routing
     section: concept
     diagnostic: nsx
@@ -672,6 +705,7 @@ questions:
     version: vcf9
     topics: [nsx-routing]
     objective: "2.4"
+    objectiveItem: "2.4.3"
     lesson: nsx-tier0-tier1-routing
     section: concept
     stem: "An administrator selects an edge cluster on a Tier-1 gateway 'just in case' but configures no services. What is the consequence?"
@@ -691,6 +725,7 @@ questions:
     version: vcf9
     topics: [nsx-routing, nsx-edge]
     objective: "2.4"
+    objectiveItem: "2.4.3"
     lesson: nsx-tier0-tier1-routing
     section: north-south-vm-to-the-internet-tier-1-without-sr
     diagram: d05-north-south-packet-walk
@@ -711,6 +746,7 @@ questions:
     version: vcf9
     topics: [nsx-routing]
     objective: "2.4"
+    objectiveItem: "2.4.3"
     lesson: nsx-tier0-tier1-routing
     section: the-return-path
     stem: "A reply from the internet arrives at the Tier-0 SR on edge-01 for a VM on host esx-03. Where is it routed into the VM's segment?"
@@ -729,6 +765,7 @@ questions:
     version: vcf9
     topics: [nsx-routing]
     objective: "2.4"
+    objectiveItem: "2.4.3"
     lesson: nsx-tier0-tier1-routing
     section: getting-routes-from-segments-to-the-physical-network
     stem: "BGP between the Tier-0 and the ToRs is Established. A new segment on Tier-1 t1-dev isn't reachable from the corporate network, while older segments on the same Tier-1 are. On the Tier-0 SR, get route doesn't show the new prefix. What should you check?"
@@ -748,6 +785,7 @@ questions:
     version: vcf9
     topics: [nsx-routing]
     objective: "2.4"
+    objectiveItem: "2.4.3"
     lesson: nsx-tier0-tier1-routing
     section: bgp-on-the-tier-0
     context: |
@@ -773,6 +811,7 @@ questions:
     version: vcf9
     topics: [nsx-routing, nsx-edge]
     objective: "2.4"
+    objectiveItem: "2.4.3"
     lesson: nsx-tier0-tier1-routing
     section: cli-api
     stem: "You are logged in to an NSX Edge as admin. Which command lists the gateway instances (SRs and DRs) on the Edge with their VRF numbers, so you can enter the Tier-0 SR context?"
@@ -789,6 +828,7 @@ questions:
     version: vcf9
     topics: [nsx-routing]
     objective: "2.4"
+    objectiveItem: "2.4.3"
     lesson: nsx-tier0-tier1-routing
     section: cli-api
     stem: "Inside the Tier-0 SR VRF on an Edge, which command shows each BGP neighbor's state and prefix counts?"
@@ -805,6 +845,7 @@ questions:
     version: vcf9
     topics: [nsx-routing]
     objective: "2.4"
+    objectiveItem: "2.4.3"
     lesson: nsx-tier0-tier1-routing
     section: static-routing
     stem: "A Tier-0 in Active/Standby uses static routing. Where should the physical router's static routes for the NSX prefixes point?"
@@ -823,6 +864,7 @@ questions:
     version: vcf9
     topics: [nsx-routing]
     objective: "2.4"
+    objectiveItem: "2.4.3"
     lesson: nsx-tier0-tier1-routing
     section: architecture
     stem: "Match each internal NSX link with its default subnet."
@@ -840,6 +882,7 @@ questions:
     version: vcf9
     topics: [nsx-routing]
     objective: "2.4"
+    objectiveItem: "2.4.3"
     lesson: nsx-tier0-tier1-routing
     section: concept
     stem: "Which gateway exchanges routes with the physical network using BGP?"
@@ -858,6 +901,7 @@ questions:
     version: vcf9
     topics: [nsx-routing]
     objective: "2.4"
+    objectiveItem: "2.4.3"
     lesson: nsx-tier0-tier1-routing
     section: failover-modes-a-s
     stem: "A Tier-1 with an SR uses the default failover mode. The preferred Edge fails and later recovers. What happens?"
@@ -877,6 +921,7 @@ questions:
     version: vcf9
     topics: [nsx-vpc]
     objective: "2.4"
+    objectiveItem: "2.4.3"
     lesson: nsx-vpcs-and-vcf-networking
     section: the-consumption-stack
     stem: "How many transit gateways can an NSX project have in VCF 9.0?"
@@ -895,6 +940,7 @@ questions:
     version: vcf9
     topics: [nsx-vpc]
     objective: "2.4"
+    objectiveItem: "2.4.3"
     lesson: nsx-vpcs-and-vcf-networking
     section: subnet-types
     stem: "Match each VPC subnet type with its reachability."
@@ -912,6 +958,7 @@ questions:
     version: vcf9
     topics: [nsx-vpc, nsx-edge]
     objective: "4.1"
+    objectiveItem: "4.1.5"
     lesson: nsx-vpcs-and-vcf-networking
     section: centralized-vs-distributed-connectivity
     stem: "A customer wants VPC networking from vCenter with no NSX Edge VMs to deploy or patch. All hosts can reach a shared VLAN whose gateway is a physical router. Which connectivity type fits?"
@@ -931,6 +978,7 @@ questions:
     version: vcf9
     topics: [nsx-vpc]
     objective: "2.4"
+    objectiveItem: "2.4.3"
     lesson: nsx-vpcs-and-vcf-networking
     section: centralized-vs-distributed-connectivity
     select: 2
@@ -950,6 +998,7 @@ questions:
     version: vcf9
     topics: [nsx-vpc, nsx-edge]
     objective: "4.1"
+    objectiveItem: "4.1.5"
     lesson: nsx-vpcs-and-vcf-networking
     section: failure-scenarios
     context: |
@@ -972,6 +1021,7 @@ questions:
     version: vcf9
     topics: [nsx-vpc]
     objective: "4.1"
+    objectiveItem: "4.1.5"
     lesson: nsx-vpcs-and-vcf-networking
     section: vcf-network-gateway
     stem: "Exam objective 4.1 mentions deploying and configuring a 'VCF Network Gateway'. In the VCF 9.0 product, which workflow does this correspond to?"
@@ -991,6 +1041,7 @@ questions:
     version: vcf9
     topics: [nsx-vpc, nsx-edge]
     objective: "4.1"
+    objectiveItem: "4.1.5"
     lesson: nsx-vpcs-and-vcf-networking
     section: deploying-a-centralized-gateway-vsphere-client
     stem: "Order the pages of the vCenter centralized connectivity workflow."
@@ -1011,6 +1062,7 @@ questions:
     version: vcf9
     topics: [nsx-vpc]
     objective: "2.4"
+    objectiveItem: "2.4.3"
     lesson: nsx-vpcs-and-vcf-networking
     section: subnet-types
     stem: "A VM on a private VPC subnet must be reachable from the corporate network on a fixed address, without moving it to a public subnet. What do you use?"
@@ -1029,6 +1081,7 @@ questions:
     version: vcf9
     topics: [nsx-vpc]
     objective: "4.1"
+    objectiveItem: "4.1.5"
     lesson: nsx-vpcs-and-vcf-networking
     section: vcf-edge-is-not-an-nsx-edge
     stem: "What does the 'VCF Edge models' page of the VCF 9.0 design guide describe?"
@@ -1048,6 +1101,7 @@ questions:
     version: vcf9
     topics: [nsx-vpc]
     objective: "4.1"
+    objectiveItem: "4.1.5"
     lesson: nsx-vpcs-and-vcf-networking
     section: distributed-tgw-behaviour
     context: |
@@ -1071,6 +1125,7 @@ questions:
     version: vcf9
     topics: [nsx-security]
     objective: "2.4"
+    objectiveItem: "2.4.4"
     lesson: nsx-security-dfw-gateway-firewall
     section: concept
     stem: "You must prevent two web servers on the same segment and same host from talking to each other. Which NSX feature can do this?"
@@ -1090,6 +1145,7 @@ questions:
     version: vcf9
     topics: [nsx-security]
     objective: "2.4"
+    objectiveItem: "2.4.4"
     lesson: nsx-security-dfw-gateway-firewall
     section: concept
     stem: "In which order are DFW rule categories processed?"
@@ -1108,6 +1164,7 @@ questions:
     version: vcf9
     topics: [nsx-security]
     objective: "2.4"
+    objectiveItem: "2.4.4"
     lesson: nsx-security-dfw-gateway-firewall
     section: why-applied-to-matters
     stem: "What does the Applied-To field of a DFW rule control?"
@@ -1127,6 +1184,7 @@ questions:
     version: vcf9
     topics: [nsx-security, nsx-routing]
     objective: "2.4"
+    objectiveItem: "2.4.4"
     lesson: nsx-security-dfw-gateway-firewall
     section: nat-types-tier-0-tier-1
     stem: "A Tier-0 runs Active/Active (non-stateful) for ECMP. The team needs to translate a range of tenant addresses 1:1 to public addresses. Which NAT type is appropriate?"
@@ -1145,6 +1203,7 @@ questions:
     version: vcf9
     topics: [nsx-security]
     objective: "2.4"
+    objectiveItem: "2.4.4"
     lesson: nsx-security-dfw-gateway-firewall
     section: failure-scenarios
     stem: "In a new VCF 9.0 environment, the NSX UI refuses to let administrators add or edit distributed firewall rules. Core VCF licensing is synced. What is the most likely cause?"
@@ -1163,6 +1222,7 @@ questions:
     version: vcf9
     topics: [nsx-security]
     objective: "2.4"
+    objectiveItem: "2.4.4"
     lesson: nsx-security-dfw-gateway-firewall
     section: gateway-firewall-on-north-south
     select: 2
@@ -1182,6 +1242,7 @@ questions:
     version: vcf9
     topics: [nsx-security]
     objective: "2.4"
+    objectiveItem: "2.4.4"
     lesson: nsx-security-dfw-gateway-firewall
     section: cli-api
     context: |
@@ -1209,6 +1270,7 @@ questions:
     version: vcf9
     topics: [nsx-security, nsx-vpc]
     objective: "2.4"
+    objectiveItem: "2.4.4"
     lesson: nsx-security-dfw-gateway-firewall
     section: gateway-firewall-and-ha-mode
     stem: "A tenant requires stateful north-south filtering for its VPC and outbound SNAT for private subnets. The provider proposes distributed VPC connectivity to avoid Edges. What is your assessment?"
@@ -1227,6 +1289,7 @@ questions:
     version: vcf9
     topics: [nsx-routing, nsx-edge]
     objective: "2.4"
+    objectiveItem: "2.4.3"
     lesson: nsx-tier0-tier1-routing
     section: troubleshooting
     context: |
@@ -1252,6 +1315,7 @@ questions:
     version: vcf9
     topics: [nsx-routing, nsx-edge, nsx-security]
     objective: "2.4"
+    objectiveItem: "2.4.4"
     lesson: nsx-tier0-tier1-routing
     section: with-a-tier-1-sr-nat-gateway-firewall-lb
     stem: "Tenant A needs only routing between its segments and to the Tier-0. Tenant B needs DNAT and a gateway firewall at its boundary. How do you configure their Tier-1 gateways for the most efficient data path?"

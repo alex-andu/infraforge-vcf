@@ -7,6 +7,7 @@ questions:
     version: general
     topics: [troubleshooting-method]
     objective: "4.3"
+    objectiveItem: "4.3.8"
     lesson: troubleshooting-methodology
     section: concept
     stem: "Put the steps of the troubleshooting method used in this course in the correct order."
@@ -30,6 +31,7 @@ questions:
     difficulty: foundation
     topics: [troubleshooting-method]
     objective: "4.3"
+    objectiveItem: "4.3.8"
     lesson: troubleshooting-methodology
     section: architecture
     context: |
@@ -54,6 +56,7 @@ questions:
     difficulty: intermediate
     topics: [troubleshooting-method, esx-host]
     objective: "2.2"
+    objectiveItem: "2.2.1"
     lesson: troubleshooting-methodology
     section: troubleshooting
     context: |
@@ -78,6 +81,7 @@ questions:
     difficulty: intermediate
     topics: [health-diagnostics, troubleshooting-method]
     objective: "4.3"
+    objectiveItem: "4.3.8"
     lesson: troubleshooting-methodology
     section: components
     stem: "Which areas does VCF Health in VCF Operations diagnostics summarise? (Choose three.)"
@@ -99,6 +103,7 @@ questions:
     difficulty: intermediate
     topics: [health-diagnostics, logs-locations]
     objective: "4.3"
+    objectiveItem: "4.3.8"
     lesson: troubleshooting-methodology
     section: components
     stem: "An administrator wants to send log bundles from vCenter, ESX, SDDC Manager and NSX to Broadcom Support for an open case, including the currently active diagnostic findings, without using an FTP client. Which feature should be used?"
@@ -119,6 +124,7 @@ questions:
     difficulty: intermediate
     topics: [troubleshooting-method]
     objective: "4.1"
+    objectiveItem: "4.1.3"
     lesson: troubleshooting-methodology
     section: deep-dive
     context: |
@@ -142,6 +148,7 @@ questions:
     difficulty: foundation
     topics: [nsx-architecture, troubleshooting-method]
     objective: "2.4"
+    objectiveItem: "2.4.1"
     lesson: troubleshooting-methodology
     section: deep-dive
     stem: "True or false: if the NSX Manager cluster becomes unavailable, all overlay traffic between running VMs stops immediately."
@@ -160,6 +167,7 @@ questions:
     difficulty: foundation
     topics: [troubleshooting-method]
     objective: "4.3"
+    objectiveItem: "4.3.8"
     lesson: troubleshooting-methodology
     section: concept
     stem: "Which statement is a root cause rather than a symptom?"
@@ -179,6 +187,7 @@ questions:
     difficulty: intermediate
     topics: [health-diagnostics]
     objective: "4.3"
+    objectiveItem: "4.3.8"
     lesson: troubleshooting-methodology
     section: components
     stem: "Where is the Troubleshooting Workbench opened in VCF Operations 9.0?"
@@ -198,6 +207,7 @@ questions:
     difficulty: advanced
     topics: [troubleshooting-method, logs-locations]
     objective: "4.3"
+    objectiveItem: "4.3.7"
     lesson: troubleshooting-methodology
     section: failure-scenarios
     context: |
@@ -222,6 +232,7 @@ questions:
     difficulty: foundation
     topics: [dns, host-commissioning]
     objective: "4.1"
+    objectiveItem: "4.1.3"
     lesson: troubleshooting-core-dependencies
     section: deep-dive
     context: |
@@ -251,6 +262,7 @@ questions:
     difficulty: intermediate
     topics: [ntp, certificates]
     objective: "4.2"
+    objectiveItem: "4.2.4"
     lesson: troubleshooting-core-dependencies
     section: deep-dive
     context: |
@@ -276,6 +288,7 @@ questions:
     difficulty: intermediate
     topics: [dns, ntp, certificates, identity-sso]
     objective: "4.2"
+    objectiveItem: "4.2.2"
     lesson: troubleshooting-core-dependencies
     section: how-it-works
     stem: "An integration between two VCF components fails with a generic connection error. Order the checks from first to last as recommended in this course."
@@ -298,6 +311,7 @@ questions:
     difficulty: intermediate
     topics: [identity-sso]
     objective: "4.2"
+    objectiveItem: "4.2.2"
     lesson: troubleshooting-core-dependencies
     section: deep-dive
     context: |
@@ -321,6 +335,7 @@ questions:
     difficulty: intermediate
     topics: [identity-sso]
     objective: "4.2"
+    objectiveItem: "4.2.2"
     lesson: troubleshooting-core-dependencies
     section: architecture
     stem: "Match each VCF Identity Broker model with its characteristic."
@@ -340,6 +355,7 @@ questions:
     difficulty: intermediate
     topics: [dns, ntp]
     objective: "4.2"
+    objectiveItem: "4.2.7"
     lesson: troubleshooting-core-dependencies
     section: configuration
     stem: "In VCF 9.0, where does an administrator change the DNS and NTP servers used by a VCF instance?"
@@ -360,6 +376,7 @@ questions:
     difficulty: advanced
     topics: [vcf-installer, dns, deployment-validation]
     objective: "4.1"
+    objectiveItem: "4.1.3"
     lesson: troubleshooting-core-dependencies
     section: deep-dive
     context: |
@@ -387,6 +404,7 @@ questions:
     difficulty: expert
     topics: [certificates, troubleshooting-method]
     objective: "4.2"
+    objectiveItem: "4.2.4"
     lesson: troubleshooting-core-dependencies
     section: deep-dive
     context: |
@@ -411,6 +429,7 @@ questions:
     difficulty: foundation
     topics: [host-commissioning]
     objective: "4.1"
+    objectiveItem: "4.1.3"
     lesson: troubleshooting-vcf-services
     section: concept
     stem: "In VCF 9.0, where does an administrator start host commissioning?"
@@ -431,6 +450,7 @@ questions:
     difficulty: foundation
     topics: [workload-domains, fleet-management]
     objective: "4.1"
+    objectiveItem: "4.1.3"
     lesson: troubleshooting-vcf-services
     section: concept
     stem: "In VCF 9.0, from which interface is a new VI workload domain deployed?"
@@ -451,6 +471,7 @@ questions:
     difficulty: intermediate
     topics: [esx-host, vcenter]
     objective: "2.2"
+    objectiveItem: "2.2.1"
     lesson: troubleshooting-vcf-services
     section: components
     context: |
@@ -474,6 +495,7 @@ questions:
     difficulty: intermediate
     topics: [esx-host, vcenter]
     objective: "2.2"
+    objectiveItem: "2.2.1"
     lesson: troubleshooting-vcf-services
     section: components
     stem: "According to Broadcom, how do ESX hosts prove liveness to vCenter, and when does vCenter mark a host Not Responding?"
@@ -494,6 +516,7 @@ questions:
     difficulty: intermediate
     topics: [logs-locations, esx-host]
     objective: "2.2"
+    objectiveItem: "2.2.1"
     lesson: troubleshooting-vcf-services
     section: deep-dive
     context: |
@@ -520,6 +543,7 @@ questions:
     difficulty: expert
     topics: [lcm-concepts, workload-domains, logs-locations]
     objective: "4.2"
+    objectiveItem: "4.2.7"
     lesson: troubleshooting-vcf-services
     section: deep-dive
     context: |
@@ -547,6 +571,7 @@ questions:
     difficulty: intermediate
     topics: [logs-locations]
     objective: "4.3"
+    objectiveItem: "4.3.7"
     lesson: troubleshooting-vcf-services
     section: deep-dive
     stem: "On a VCF 9.0.x SDDC Manager appliance (as root), type the command that collects SDDC Manager logs into a zip bundle using the SoS utility."
@@ -566,6 +591,7 @@ questions:
     difficulty: intermediate
     topics: [logs-locations]
     objective: "4.3"
+    objectiveItem: "4.3.7"
     lesson: troubleshooting-vcf-services
     section: components
     stem: "Match each log file with what you mainly find in it."
@@ -586,6 +612,7 @@ questions:
     difficulty: advanced
     topics: [troubleshooting-method, logs-locations]
     objective: "4.1"
+    objectiveItem: "4.1.3"
     lesson: troubleshooting-vcf-services
     section: how-it-works
     stem: "A VCF workflow (e.g. adding a cluster) failed. Order the actions as recommended."
@@ -608,6 +635,7 @@ questions:
     difficulty: intermediate
     topics: [certificates, passwords, fleet-management]
     objective: "4.2"
+    objectiveItem: "4.2.4"
     lesson: troubleshooting-vcf-services
     section: concept
     stem: "A password rotation and a certificate replacement for VCF 9.0 components must be investigated. Where are these workflows managed?"
@@ -627,6 +655,7 @@ questions:
     difficulty: expert
     topics: [host-commissioning, vcf-ops-architecture]
     objective: "4.2"
+    objectiveItem: "4.2.7"
     lesson: troubleshooting-vcf-services
     section: deep-dive
     context: |
@@ -652,6 +681,7 @@ questions:
     difficulty: intermediate
     topics: [mtu, vsan-health]
     objective: "2.4"
+    objectiveItem: "2.4.2"
     lesson: troubleshooting-network-nsx-vsan
     section: deep-dive
     stem: "From an ESX host, type the vmkping command that tests a 9000-byte MTU path without fragmentation from vmk2 to 10.10.30.102."
@@ -672,6 +702,7 @@ questions:
     difficulty: intermediate
     topics: [mtu, nsx-segments]
     objective: "2.4"
+    objectiveItem: "2.4.2"
     lesson: troubleshooting-network-nsx-vsan
     section: deep-dive
     context: |
@@ -696,6 +727,7 @@ questions:
     difficulty: advanced
     topics: [nsx-transport]
     objective: "2.4"
+    objectiveItem: "2.4.2"
     lesson: troubleshooting-network-nsx-vsan
     section: cli-api
     stem: "Why does an administrator use `++netstack=vxlan` when testing TEP-to-TEP connectivity with vmkping?"
@@ -715,6 +747,7 @@ questions:
     difficulty: advanced
     topics: [vsan-health, vsan-resilience]
     objective: "2.3"
+    objectiveItem: "2.3.5"
     lesson: troubleshooting-network-nsx-vsan
     section: deep-dive
     stem: "Match each vSAN condition with its meaning."
@@ -734,6 +767,7 @@ questions:
     difficulty: intermediate
     topics: [nsx-routing, nsx-edge]
     objective: "2.4"
+    objectiveItem: "2.4.3"
     lesson: troubleshooting-network-nsx-vsan
     section: how-it-works
     context: |
@@ -758,6 +792,7 @@ questions:
     difficulty: intermediate
     topics: [troubleshooting-method, mtu, l2-l3]
     objective: "2.4"
+    objectiveItem: "2.4.2"
     lesson: troubleshooting-network-nsx-vsan
     section: troubleshooting
     stem: "Order these data-path checks bottom-up for 'VMs on different hosts cannot communicate'."
@@ -779,6 +814,7 @@ questions:
     difficulty: expert
     topics: [mtu, vsan-health, nsx-transport]
     objective: "2.3"
+    objectiveItem: "2.3.5"
     lesson: troubleshooting-network-nsx-vsan
     section: real-world-scenario
     context: |
@@ -803,6 +839,7 @@ questions:
     difficulty: advanced
     topics: [vsan-health]
     objective: "2.3"
+    objectiveItem: "2.3.5"
     lesson: troubleshooting-network-nsx-vsan
     section: cli-api
     context: |
@@ -864,6 +901,7 @@ questions:
     difficulty: intermediate
     topics: [vcf-overview, vcf-terminology]
     objective: "4.1"
+    objectiveItem: "4.1.3"
     lesson: exam-strategy-2v0-17-25
     section: common-exam-traps
     context: |
