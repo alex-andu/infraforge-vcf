@@ -13,8 +13,8 @@ foundational Kubernetes knowledge. A learner can reach the existing lesson witho
 state, controllers, Pods, Deployments, Services, storage claims or the difference between Supervisor and VKS.
 
 This package adds one standalone foundation lesson before the advanced lesson. It teaches upstream concepts first,
-then maps them to Supervisor. It does not repeat the activation wizard and does not create a runnable guide for
-infrastructure that the sanitized inventory does not show.
+then maps them to Supervisor. It does not repeat the activation wizard. This bounded package does not include a
+practical guide; current lab availability is not a limit on curriculum coverage or future guide authoring.
 
 ## Scope
 
@@ -26,10 +26,12 @@ infrastructure that the sanitized inventory does not show.
 - Add five questions linked to the new lesson and objectives 4.1 / 4.4.
 - Keep the existing advanced Supervisor lesson and `lab-enable-supervisor` unchanged.
 
-## Practical-guide gate
+## Practical-guide status
 
 The supplied lab inventory lists a single-node management domain and no VI Workload Domain or active Supervisor.
-Therefore this package adds no practical guide and makes no runtime-health claim. A future guide requires confirmed:
+This package makes no runtime-health claim. A separate guide may still be written in full from verified official
+documentation before those components exist, provided it is labelled **PREPARED — NOT YET LAB-VALIDATED** and uses
+discovery variables until the following facts are confirmed:
 
 1. target Workload Domain and vCenter build;
 2. Supervisor activation state and topology;
@@ -38,9 +40,10 @@ Therefore this package adds no practical guide and makes no runtime-health claim
 5. VKS availability and a disposable namespace/cluster scope;
 6. approved rollback and resource budget.
 
-Once those prerequisites exist, the guide must follow the repository's UI-first runbook standard and record
-sanitized observed evidence. Conceptual `kubectl` examples in the theory lesson are read-only and are not represented
-as steps already validated in Alex's lab.
+The guide must follow the repository's UI-first runbook standard from its first draft. Once the prerequisites exist,
+Alex can replace discovery variables with sanitized environment values and record observed evidence. Conceptual
+`kubectl` examples in the theory lesson are read-only and are not represented as steps already validated in Alex's
+lab.
 
 ## Source and visual record
 
@@ -71,4 +74,4 @@ No generated product UI is used. No official figure is presented as a screenshot
 - Typecheck and production build: passed.
 - Browser smoke: 15 main routes plus `/learn/kubernetes-foundations-for-supervisor`; no console errors.
 - Visual review: curriculum order, title, metadata, all 17 headings and navigation rendered correctly at 1440 × 900.
-- Runtime guide: intentionally absent until the practical-guide gate above is satisfied.
+- Practical guide: outside this bounded theory package; it may be prepared before deployment and validated later.
