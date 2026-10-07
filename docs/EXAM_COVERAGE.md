@@ -4,9 +4,9 @@ Generated from `content/objectives.yaml` and the `objectiveItem` tags in `conten
 The item identifiers are repository ordinals attached to the official item text; they are not identifiers printed by Broadcom.
 The **5-question target is an internal content-quality threshold**, not an official exam weight or scoring rule.
 
-- Official items represented: **58/59**
-- Items meeting the internal target: **36/59**
-- Objective-tagged questions mapped to one primary item: **617/617**
+- Official items represented: **59/59**
+- Items meeting the internal target: **37/59**
+- Objective-tagged questions mapped to one primary item: **622/622**
 - Questions outside a testable objective: **3**
 
 ## 2.1 — Private Cloud Vision
@@ -102,7 +102,7 @@ The **5-question target is an internal content-quality threshold**, not an offic
 | 4.4.5 | Given a scenario, configure Provider Networking in VCF Automation | 3 | 1 | Needs 2 |
 | 4.4.6 | Given a scenario, configure a provider content library in VCF Automation | 1 | 1 | Needs 4 |
 | 4.4.7 | Given a scenario, complete tasks as an organizational administrator in VCF Automation | 4 | 1 | Needs 1 |
-| 4.4.8 | Given a scenario, configure organizational networks in VCF Automation | 0 | 0 | Missing |
+| 4.4.8 | Given a scenario, configure organizational networks in VCF Automation | 5 | 1 | Target met |
 | 4.4.9 | Given a scenario, create and manage content in VCF Automation | 1 | 1 | Needs 4 |
 | 4.4.10 | Given a scenario, use extensibility to automate business processes in VCF Automation | 12 | 2 | Target met |
 | 4.4.11 | Given a scenario, create and manage organizational governance policies in VCF Automation | 3 | 1 | Needs 2 |
@@ -118,7 +118,6 @@ The **5-question target is an internal content-quality threshold**, not an offic
 
 ## Priority queue from measured gaps
 
-- **4.4.8** — Given a scenario, configure organizational networks in VCF Automation: 0/5 questions.
 - **2.1.2** — Identify the use cases for Private Cloud: 1/5 questions.
 - **4.4.1** — Given a scenario, identify the use case for VCF Automation: 1/5 questions.
 - **4.4.6** — Given a scenario, configure a provider content library in VCF Automation: 1/5 questions.

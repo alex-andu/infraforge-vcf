@@ -2752,3 +2752,154 @@ questions:
   explanation:
     correct: Blocking subscriptions can include a recovery runnable that executes if the primary workflow fails.
     concept: Recovery runnable
+- id: vcfa-org-013
+  type: single
+  kind: concept
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - vcfa-org-admin
+  objective: '4.4'
+  objectiveItem: "4.4.8"
+  lesson: vcf-automation-org-admin
+  section: deep-dive
+  stem: Which VCF Automation address scope gives workloads direct IP reachability to other VPCs inside the same organization through the transit gateway?
+  options:
+  - id: a
+    text: A private TGW IPv4 block
+    why: It is advertised within the organization and its transit gateway.
+    correct: true
+  - id: b
+    text: A private VPC CIDR
+    why: It is local to one VPC and requires NAT outside that VPC.
+    confusedWith: nsx-vpc
+  - id: c
+    text: An ESX management subnet
+    why: It is infrastructure management networking, not tenant VPC addressing.
+  - id: d
+    text: A vSAN network
+    why: It carries storage traffic, not organization workload traffic.
+  explanation:
+    correct: Private TGW blocks are organization-managed space advertised through the organization's transit gateway for cross-VPC reachability.
+    concept: Organization address scopes
+    trap: Private VPC CIDRs are local and may overlap between VPCs.
+- id: vcfa-org-014
+  type: multi
+  kind: scenario
+  difficulty: advanced
+  version: vcf9
+  topics:
+  - vcfa-org-admin
+  objective: '4.4'
+  objectiveItem: "4.4.8"
+  lesson: vcf-automation-org-admin
+  section: deep-dive
+  stem: An organization administrator creates a new VPC. Which two inputs are part of the VPC configuration? (Choose two.)
+  options:
+  - id: a
+    text: A region allocated to the organization
+    why: Every VPC belongs to an allocated region.
+    correct: true
+  - id: b
+    text: A connectivity profile for that region
+    why: It supplies the VPC's northbound address-block configuration.
+    correct: true
+  - id: c
+    text: An SDDC Manager network pool
+    why: Network pools prepare hosts and workload domains, not organization VPCs.
+    confusedWith: vcf-network-design
+  - id: d
+    text: A vSphere HA admission control policy
+    why: HA capacity policy is unrelated to VPC creation.
+    confusedWith: vsphere-ha
+  select: 2
+  explanation:
+    correct: The org admin selects an allocated region and a connectivity profile, then provides private VPC CIDRs and optional IP quotas.
+    concept: VPC creation inputs
+- id: vcfa-org-015
+  type: ordering
+  kind: scenario
+  difficulty: advanced
+  version: vcf9
+  topics:
+  - vcfa-org-admin
+  objective: '4.4'
+  objectiveItem: "4.4.8"
+  lesson: vcf-automation-org-admin
+  section: deep-dive
+  stem: Order the organization-admin tasks for a new VPC that needs cross-VPC private addressing and controlled address consumption.
+  items:
+  - id: i1
+    text: Create a private TGW IPv4 block for the region
+  - id: i2
+    text: Create an IP quota with the required scope and limits
+  - id: i3
+    text: Create a connectivity profile using the region and required address blocks
+  - id: i4
+    text: Create the VPC with the connectivity profile, private CIDR and quota
+  - id: i5
+    text: Associate the VPC with the intended namespace or namespaces
+  explanation:
+    correct: Define organization address capacity and quota first, package northbound settings in the connectivity profile, create the VPC, then attach workload namespaces.
+    concept: Organization network workflow
+- id: vcfa-org-016
+  type: single
+  kind: troubleshooting
+  difficulty: advanced
+  version: vcf9
+  topics:
+  - vcfa-org-admin
+  objective: '4.4'
+  objectiveItem: "4.4.8"
+  lesson: vcf-automation-org-admin
+  section: failure-scenarios
+  stem: After an administrator removes an external IPv4 block from a connectivity profile, several previously healthy VPCs lose northbound connectivity. Why?
+  options:
+  - id: a
+    text: Connectivity profile changes affect every VPC that uses the profile
+    why: The profile is a reusable northbound configuration shared by its attached VPCs.
+    correct: true
+  - id: b
+    text: Each VPC automatically deleted its private CIDR
+    why: The private CIDR is a separate VPC setting.
+  - id: c
+    text: The organization region quota became zero
+    why: Compute and storage quota does not explain the shared networking change.
+    confusedWith: vcfa-tenancy
+  - id: d
+    text: The provider content library was unpublished
+    why: Content availability does not control VPC routing.
+  explanation:
+    correct: Broadcom documents that editing a connectivity profile changes northbound connectivity for all VPCs using that profile.
+    concept: Connectivity profile blast radius
+- id: vcfa-org-017
+  type: single
+  kind: design
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - vcfa-org-admin
+  objective: '4.4'
+  objectiveItem: "4.4.8"
+  lesson: vcf-automation-org-admin
+  section: deep-dive
+  stem: Three namespaces host one application and may share the same network security boundary. Which VPC design is valid and simplest?
+  options:
+  - id: a
+    text: Associate one VPC with all three namespaces
+    why: A VPC can be associated with one or more namespaces.
+    correct: true
+  - id: b
+    text: Create a separate organization for each namespace
+    why: This adds unnecessary tenant boundaries.
+    confusedWith: vcfa-tenancy
+  - id: c
+    text: Put every namespace directly on the provider gateway
+    why: Namespaces consume organization VPC networking rather than attaching directly to the provider gateway.
+  - id: d
+    text: Create one Tier-0 gateway per namespace
+    why: Tier-0/provider gateway design is provider-side, not the namespace association model.
+    confusedWith: nsx-routing
+  explanation:
+    correct: One VPC can be shared by multiple namespaces when separate network isolation is not required.
+    concept: VPC sharing boundary

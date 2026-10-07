@@ -56,7 +56,7 @@ for (const row of rows.filter((candidate) => candidate.questions.length < target
 
 lines.push('', 'Candidate-profile follow-up: foundational Kubernetes and DNS/NTP now have dedicated lessons; VCF Operations HCX remains a content gap.', '');
 
-const output = `${lines.join('\n')}\n`;
+const output = `${lines.join('\n').trimEnd()}\n`;
 if (process.argv.includes('--write')) {
   const destination = path.resolve(import.meta.dirname, '../docs/EXAM_COVERAGE.md');
   fs.writeFileSync(destination, output, 'utf8');

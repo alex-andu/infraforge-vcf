@@ -1,0 +1,38 @@
+id: d11-vcfa-org-networking
+title: "VCF Automation organization networking: address scopes and VPC connectivity"
+description: >
+  The provider assigns external address blocks and regional networking to an All Apps organization. Inside the
+  organization, the administrator selects external and private transit-gateway blocks in a connectivity profile,
+  then creates VPCs that use that profile. Private VPC CIDRs stay local to a VPC and use SNAT for outside access;
+  private TGW addresses are routed between VPCs in the organization through the transit gateway; external addresses
+  come from provider-managed blocks. A VPC can serve one or more namespaces.
+width: 1000
+height: 560
+groups:
+  - { id: g-provider, x: 20, y: 20, w: 960, h: 125, label: "Provider allocation", kind: mgmt }
+  - { id: g-org, x: 20, y: 170, w: 960, h: 370, label: "All Apps organization", kind: compute }
+nodes:
+  - { id: pgw, x: 55, y: 62, w: 210, h: 56, label: "Provider gateway", sublabel: "Tier-0 / VRF", kind: nsx, info: "Provider-owned north-south gateway selected when regional networking is assigned to the organization." }
+  - { id: ext, x: 315, y: 62, w: 220, h: 56, label: "External IPv4 blocks", sublabel: "provider-managed", kind: network, info: "Provider-managed addresses allocated to the organization. They support outbound SNAT and externally reachable allocations according to provider policy." }
+  - { id: region, x: 585, y: 62, w: 210, h: 56, label: "Region + TGW", sublabel: "regional networking", kind: mgmt, info: "The region allocated to the organization includes a transit gateway that connects organization VPCs to the provider gateway." }
+  - { id: profile, x: 360, y: 205, w: 280, h: 64, label: "Connectivity profile", sublabel: "region + address blocks", kind: network, info: "Organization-admin template for VPC northbound connectivity. Selects one region plus up to five external IPv4 blocks and five private TGW IPv4 blocks." }
+  - { id: tgwblock, x: 55, y: 210, w: 240, h: 56, label: "Private TGW IPv4 blocks", sublabel: "organization-managed", kind: network, info: "Address space advertised within the organization and its transit gateway, enabling direct reachability between VPCs that use it." }
+  - { id: vpc1, x: 175, y: 330, w: 230, h: 64, label: "VPC: payments", sublabel: "private VPC CIDR", kind: nsx, info: "An isolated network domain. Its private CIDRs do not need to be unique across VPCs and need NAT for resources outside the VPC." }
+  - { id: vpc2, x: 595, y: 330, w: 230, h: 64, label: "VPC: analytics", sublabel: "private VPC CIDR", kind: nsx, info: "A second VPC can use the same connectivity profile while keeping local address space isolated." }
+  - { id: ns1, x: 175, y: 455, w: 230, h: 56, label: "Namespace(s)", sublabel: "one VPC can be shared", kind: compute, info: "Associate a VPC with one or more namespaces when those workloads may share the network boundary." }
+  - { id: ns2, x: 595, y: 455, w: 230, h: 56, label: "Namespace(s)", sublabel: "dedicated when isolation matters", kind: compute, info: "Create a separate VPC per namespace when the workload needs its own network isolation boundary." }
+edges:
+  - { from: pgw, to: region, label: "north-south", kind: north-south }
+  - { from: ext, to: profile, label: "select", kind: dependency }
+  - { from: region, to: profile, label: "select", kind: dependency }
+  - { from: tgwblock, to: profile, label: "select", kind: dependency }
+  - { from: profile, to: vpc1, label: "apply", kind: control }
+  - { from: profile, to: vpc2, label: "apply", kind: control }
+  - { from: vpc1, to: vpc2, label: "TGW reachability", kind: data, dashed: true }
+  - { from: vpc1, to: ns1, label: "associate", kind: data }
+  - { from: vpc2, to: ns2, label: "associate", kind: data }
+steps:
+  - { title: "Provider allocation", text: "The provider assigns a region, regional networking and external address capacity to the organization.", highlight: [pgw, ext, region] }
+  - { title: "Organization address plan", text: "The org admin can add private TGW blocks and quotas, then selects address blocks in a connectivity profile.", highlight: [tgwblock, profile] }
+  - { title: "Create VPCs", text: "Each VPC selects a region and connectivity profile, defines private VPC CIDRs and optionally receives IP quotas.", highlight: [profile, vpc1, vpc2] }
+  - { title: "Attach namespaces", text: "Share a VPC across namespaces or dedicate one VPC per namespace when stronger network separation is required.", highlight: [vpc1, vpc2, ns1, ns2] }

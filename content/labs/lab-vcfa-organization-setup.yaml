@@ -38,6 +38,10 @@ startingState: |
   Automation has no regions or organizations.
 
   :::warning
+  **PREPARED — NOT YET LAB-VALIDATED.** VCF Automation and Supervisor are not currently present in Alex's lab. The
+  organization-networking paths below were verified against the official VCF 9.0 documentation on 2026-10-08; actual
+  field values, screenshots and observed results remain pending until the components are deployed.
+
   If your host cannot run a Supervisor next to the management domain, do steps 1-2 for real and the rest as a guided
   paper exercise using the lesson diagrams. The provider and tenant concepts are what the exam tests.
   :::
@@ -82,16 +86,40 @@ steps:
     validate: In a private browser window log in to the organization portal as `devadmin`.
     expected: Org portal opens; the provider library is visible but read-only.
   - id: org-admin
-    title: Project, namespace class, namespace and VPC
+    title: Project, namespace class, namespace and organization networking
     why: Exam items "complete tasks as an organizational administrator" and "configure organizational networks".
     instructions: |
-      1. As `devadmin` create a local user or import a group, and project `payments` with that user as member.
-      2. Create namespace class `small-app` (limits, VM class best-effort-small, storage class, content library).
-      3. Create namespace `payments-dev` from the class in project `payments`.
-      4. Create a VPC with a private subnet and a public subnet.
-      5. Try to create a namespace bigger than the quota and read the error.
-    validate: Namespace visible in the org portal and as a Supervisor namespace in vCenter.
-    expected: Namespace created within quota; oversize request refused.
+      1. Log in to the **VCF Automation organization portal** as `devadmin`.
+      2. Create or import the application-team identity, then create project `payments` and add that identity as a
+         member. Record the project ID or URL.
+      3. Create namespace class `small-app` with the approved limits, `best-effort-small` VM class, storage class and
+         content library. Create namespace `payments-dev` from that class in project `payments`.
+      4. Open **Manage & Govern > Networking > IP Management > IP Address Blocks**. Review the provider-assigned
+         external blocks. If cross-VPC private routing is required, select **New Private - TGW IP Block**, name it
+         `payments-tgw`, enter the approved non-overlapping CIDR, select `region-lab`, and select **Create**.
+      5. Open **IP Management > IP Quotas**, select **New IP Quota**, name it `payments-quota`, select `region-lab`,
+         choose **External** or **Private - Transit Gateway**, select the relevant block, enter the permitted counts of
+         individual IPs and CIDRs plus the maximum subnet size, select the VPCs when available, and select **Create**.
+      6. Open **Manage & Govern > Networking > Virtual Private Clouds > Connectivity Profiles** and select **New
+         Connectivity Profile**. Name it `payments-connectivity`, select `region-lab`, choose the approved external
+         IPv4 block and `payments-tgw`, then select **Create**. Do not edit the default profile during this exercise.
+      7. Return to **Virtual Private Clouds** and select **New VPC**. Enter `payments-vpc`, select `region-lab`, select
+         `payments-connectivity`, specify the approved private VPC IPv4 CIDR, apply `payments-quota`, and select
+         **Create**.
+      8. Associate `payments-vpc` with namespace `payments-dev`. Use a second test namespace only if you need to prove
+         that one VPC can be shared; otherwise keep one namespace per VPC for the clearest isolation boundary.
+      9. Deploy a small test workload. Validate same-VPC connectivity, cross-VPC reachability through private TGW space
+         if configured, and north-south connectivity through the provider-assigned external capacity as separate tests.
+      10. Try to create a namespace larger than the region quota and an allocation beyond `payments-quota`; record both
+          errors without changing the quotas.
+    validate: |
+      Confirm `payments-dev` is visible in the organization portal and as a Supervisor namespace in vCenter. Under
+      **Manage & Govern > Networking**, capture the VPC's region, connectivity profile, private CIDR, applied IP quota
+      and namespace association. Record the test workload's source/destination addresses for each reachability test.
+    expected: |
+      Namespace and VPC are created inside their quotas; the VPC is associated with `payments-dev`; permitted traffic
+      succeeds according to the selected address scope; oversize namespace and address requests are refused. Any
+      difference is evidence to record, not a reason to improvise changes outside this guide.
   - id: governance
     title: Policies and an event subscription
     why: Exam items "governance policies" and "extensibility".
@@ -130,6 +158,14 @@ sources:
     url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/provider-management.html
   - title: "VCF 9.0 - Organization Management"
     url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/organization-management.html
+  - title: "VCF 9.0 - Managing Networking in VCF Automation"
+    url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/organization-management/adding-and-managing-virtual-private-clouds.html
+  - title: "VCF 9.0 - Create a Connectivity Profile"
+    url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/organization-management/adding-and-managing-virtual-private-clouds/create-a-connectivity-profile.html
+  - title: "VCF 9.0 - Create a Virtual Private Cloud"
+    url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/organization-management/adding-and-managing-virtual-private-clouds/add-a-vpc.html
+  - title: "VCF 9.0 - Managing IP Address Blocks and IP Quotas"
+    url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/organization-management/adding-and-managing-virtual-private-clouds/ip-management.html
   - title: "William Lam - VCF 9.0 lab: configuring VCF Automation"
     url: https://williamlam.com/2025/08/ms-a2-vcf-9-0-lab-configuring-vcf-automation.html
   - title: "SDDC Manager API 9.0 - VcfAutomationSpec"
