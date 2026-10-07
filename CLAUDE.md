@@ -8,7 +8,29 @@ Read before working:
 - `docs/CONTENT_STATUS.md`: what content exists.
 - `docs/CONTENT_GUIDE.md`: how to add content.
 - `docs/ARCHITECTURE.md`: code layout.
+- 
+# Context Management
 
+- Do not scan the entire repository by default.
+- Start with files directly relevant to the current task.
+- Use targeted search before opening large files.
+- Treat completed modules as stable unless tests indicate otherwise.
+- Do not regenerate existing educational content.
+- Do not modify unrelated modules.
+- Keep implementation scope narrow.
+- Update docs/CURRENT_STATE.md after completing meaningful work.
+  # Project State
+
+The authoritative project status is in:
+docs/CURRENT_STATE.md
+
+Architecture decisions:
+docs/DECISIONS.md
+
+Curriculum/content completion:
+docs/CONTENT_STATUS.md
+
+Do not store transient project history in CLAUDE.md.
 ## Rules
 
 - Talk to Alex in **Romanian**. UI strings are Romanian; lessons, questions, labs and code comments are English.
