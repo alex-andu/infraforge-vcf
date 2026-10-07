@@ -8,13 +8,13 @@ Totals:
 
 | Item | Count |
 |---|---|
-| Lessons | 70 (151,034 words) |
-| Questions | 615 |
+| Lessons | 71 (154,175 words) |
+| Questions | 620 |
 | Practical guides (internal `lab` schema) | 24 |
 | Incidents | 10 |
 | Scenarios | 3 |
-| Diagrams | 105 |
-| Glossary terms | 256 |
+| Diagrams | 106 |
+| Glossary terms | 266 |
 | Commands / API entries | 116 |
 | Architecture components | 23 |
 | Badges | 18 |
@@ -31,7 +31,7 @@ Totals:
 | p05 | NSX | 7/7 | 15,226 | 64 | 3 |
 | p06 | VCF Architecture | 6/6 | 12,127 | 66 | 3 |
 | p07 | VCF Deployment | 4/4 | 8,769 | 35 | 4 |
-| p08 | Workload Domains | 4/4 | 7,959 | 36 | 2 |
+| p08 | Workload Domains | 5/5 | 11,100 | 41 | 2 |
 | p09 | Lifecycle Management | 4/4 | 8,892 | 40 | 1 |
 | p10 | VCF Operations | 5/5 | 10,066 | 49 | 2 |
 | p11 | Automation and APIs | 4/4 | 7,682 | 39 | 2 |
@@ -42,9 +42,9 @@ Totals:
 
 The lab counts are labs linked to that phase's lessons; one lab can be linked to several phases.
 
-- The standalone-theory template requires 17 sections, sources, at least one diagram and an inline quiz. The DNS/NTP pilot uses it; the other 69 lessons remain valid with their legacy `Lab` sections during incremental migration.
+- The standalone-theory template requires 17 sections, sources, at least one diagram and an inline quiz. The DNS/NTP pilot and Kubernetes foundations lesson use it; the other 69 lessons remain valid with their legacy `Lab` sections during incremental migration.
 - **Gaps:**
-  - VCF Operations HCX and foundational Kubernetes have no dedicated lessons. Both are named in the official candidate profile.
+  - VCF Operations HCX has no dedicated lesson. Foundational Kubernetes now has a dedicated theory lesson; its practical guide is gated on an available Workload Domain and Supervisor.
   - Coverage per objective *item* (for example "configure a provider content library") is not tracked.
 - **Unverified facts** are written as "check your version" rather than stated. The main areas:
   - ESX 9, vCenter and SDDC Manager log paths (only `domainmanager.log`, `hostd.log` and the sos output path are confirmed for VCF 9)
@@ -56,7 +56,7 @@ The lab counts are labs linked to that phase's lessons; one lab can be linked to
 
 ## Questions (`content/questions/*.yaml`)
 
-615 in total.
+620 in total.
 
 - **By objective:**
 
@@ -66,13 +66,13 @@ The lab counts are labs linked to that phase's lessons; one lab can be linked to
   | 2.2 | 75 |
   | 2.3 | 52 |
   | 2.4 | 89 |
-  | 4.1 | 155 |
+  | 4.1 | 159 |
   | 4.2 | 111 |
   | 4.3 | 59 |
-  | 4.4 | 42 |
+  | 4.4 | 43 |
   | none | 3 (exam-strategy items, excluded from mocks) |
 
-- **By type:** 443 single, 61 multi, 35 ordering, 33 matching, 26 true/false, 17 CLI.
+- **By type:** 447 single, 62 multi, 35 ordering, 33 matching, 26 true/false, 17 CLI.
 - **Diagnostic pool:** 58 questions across 8 areas (16 are drawn at onboarding).
 - **Kinds:** concept, architecture, troubleshooting, log, command, scenario and design are all present.
 - Every question has an explanation: correct answer, concept, architecture, trap. It also has a lesson + section link and a `why` on each option.

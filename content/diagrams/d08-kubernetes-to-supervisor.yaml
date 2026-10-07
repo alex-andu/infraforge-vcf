@@ -1,0 +1,46 @@
+id: d08-kubernetes-to-supervisor
+title: From Kubernetes concepts to vSphere Supervisor
+description: >
+  The Supervisor API reconciles infrastructure-facing resources in a vSphere Namespace, including VM Service VMs,
+  Supervisor Services and VKS clusters. A VKS cluster is a separate Kubernetes API boundary with its own control
+  plane, worker nodes, namespaces and application objects. Spherelet gives ESX hosts the Supervisor node role; it is
+  distinct from the kubelet running inside VKS node VMs.
+width: 1100
+height: 650
+groups:
+  - { id: g-supervisor, x: 20, y: 100, w: 500, h: 510, label: "Supervisor API boundary", kind: mgmt }
+  - { id: g-vks, x: 575, y: 100, w: 500, h: 510, label: "VKS cluster API boundary", kind: compute }
+  - { id: g-namespace, x: 45, y: 320, w: 450, h: 250, label: "vSphere Namespace: policy and tenancy", kind: zone }
+nodes:
+  - { id: admin, x: 40, y: 20, w: 220, h: 58, label: "Platform administrator", sublabel: "vCenter / Supervisor API", kind: external, info: "Defines infrastructure guardrails, Supervisor capabilities and vSphere Namespace policy." }
+  - { id: developer, x: 820, y: 20, w: 220, h: 58, label: "Application consumer", sublabel: "kubectl / VKS API", kind: external, info: "Creates application objects in the selected VKS cluster and namespace." }
+  - { id: supcp, x: 60, y: 145, w: 210, h: 64, label: "Supervisor control plane", sublabel: "1 or 3 VMs", kind: mgmt, component: supervisor, info: "Exposes the Supervisor Kubernetes API and reconciles vSphere-facing resources." }
+  - { id: spherelet, x: 295, y: 145, w: 200, h: 64, label: "ESX + Spherelet", sublabel: "Supervisor nodes", kind: compute, component: esx-host, info: "Spherelet performs the kubelet role on ESX for Supervisor-managed resources." }
+  - { id: vmsvc, x: 70, y: 375, w: 180, h: 62, label: "VM Service VM", sublabel: "declarative VM", kind: vm, info: "A Kubernetes-style VM resource reconciles to a vSphere virtual machine." }
+  - { id: supsvc, x: 270, y: 375, w: 180, h: 62, label: "Supervisor Service", sublabel: "platform extension", kind: ops, info: "An extension installed on Supervisor, such as VKS, Harbor or Contour." }
+  - { id: vksresource, x: 170, y: 480, w: 200, h: 62, label: "VKS cluster resource", sublabel: "desired cluster", kind: vm, info: "Supervisor controllers provision and manage the VMs and lifecycle of the VKS cluster." }
+  - { id: vkscp, x: 605, y: 145, w: 200, h: 64, label: "VKS control plane", sublabel: "separate Kubernetes API", kind: mgmt, info: "Stores and reconciles the application cluster's own objects." }
+  - { id: workers, x: 845, y: 145, w: 200, h: 64, label: "VKS worker VMs", sublabel: "kubelet + runtime", kind: compute, info: "Virtual machines that run the application Pods for this VKS cluster." }
+  - { id: deploy, x: 615, y: 330, w: 190, h: 62, label: "Deployment", sublabel: "desired replicas", kind: ops, info: "Controls ReplicaSets and replaceable Pods." }
+  - { id: pods, x: 845, y: 330, w: 190, h: 62, label: "Pods", sublabel: "running workloads", kind: vm, info: "Smallest deployable compute units; scheduled to VKS nodes." }
+  - { id: service, x: 615, y: 465, w: 190, h: 62, label: "Kubernetes Service", sublabel: "stable discovery", kind: network, info: "Selects ready Pods and provides a stable access point." }
+  - { id: pvc, x: 845, y: 465, w: 190, h: 62, label: "PVC → PV", sublabel: "persistent storage", kind: storage, info: "A claim requests storage; the vSphere-integrated provisioner supplies a matching volume." }
+edges:
+  - { from: admin, to: supcp, label: "desired platform state", kind: control }
+  - { from: supcp, to: spherelet, label: "schedule / reconcile", kind: control }
+  - { from: supcp, to: vmsvc, kind: control }
+  - { from: supcp, to: supsvc, kind: control }
+  - { from: supcp, to: vksresource, kind: control }
+  - { from: vksresource, to: vkscp, label: "provisions", kind: dependency }
+  - { from: vksresource, to: workers, kind: dependency }
+  - { from: developer, to: vkscp, label: "application desired state", kind: data }
+  - { from: vkscp, to: deploy, kind: control }
+  - { from: deploy, to: pods, label: "ReplicaSet", kind: control }
+  - { from: workers, to: pods, label: "runs", kind: data }
+  - { from: service, to: pods, label: "selects ready endpoints", kind: data }
+  - { from: pods, to: pvc, label: "mounts", kind: dependency }
+steps:
+  - { title: "Two APIs", text: "First identify the target: Supervisor manages infrastructure-facing objects; the VKS API manages application objects.", highlight: [supcp, vkscp] }
+  - { title: "Supervisor reconciliation", text: "Supervisor and Spherelet reconcile resources inside vSphere Namespace guardrails, including the desired VKS cluster.", highlight: [supcp, spherelet, vmsvc, supsvc, vksresource] }
+  - { title: "VKS reconciliation", text: "The VKS control plane turns a Deployment into running Pods on worker VMs.", highlight: [vkscp, workers, deploy, pods] }
+  - { title: "Application dependencies", text: "A Kubernetes Service provides stable discovery and a PVC requests persistent storage for Pods.", highlight: [service, pods, pvc] }

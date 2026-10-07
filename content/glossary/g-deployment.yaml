@@ -125,6 +125,112 @@ terms:
     version: vcf9
     related: [host-commissioning, vcenter-import]
     lessons: [cluster-host-expansion]
+  - id: kubernetes-control-plane
+    term: Kubernetes control plane
+    definition: >
+      The components that expose and reconcile the Kubernetes API: the API server, the cluster state store (usually
+      etcd), the scheduler and controllers. They decide and record desired/observed state; nodes run the workloads.
+    whyItMatters: >
+      Supervisor and each VKS cluster have separate control planes and API contexts. Troubleshooting starts by
+      identifying which control plane a client is addressing.
+    version: general
+    related: [kubernetes-node, desired-state, supervisor, vks]
+    lessons: [kubernetes-foundations-for-supervisor, supervisor-in-workload-domain]
+  - id: kubernetes-node
+    term: Kubernetes node
+    definition: >
+      A machine that runs Pods under control of the cluster. A conventional node runs kubelet and a container runtime;
+      ESX hosts participate in Supervisor through Spherelet, while VKS worker nodes are virtual machines.
+    whyItMatters: >
+      The Supervisor node layer and the VKS worker-node layer are different failure and lifecycle domains.
+    version: general
+    related: [kubernetes-control-plane, pod, supervisor, vks]
+    lessons: [kubernetes-foundations-for-supervisor]
+  - id: desired-state
+    term: Desired state
+    definition: >
+      The requested configuration stored in a Kubernetes object's spec. Controllers continually compare it with
+      observed state and take action until the two converge.
+    whyItMatters: >
+      An accepted API request is not proof of success. Status, conditions and events show whether reconciliation
+      reached the desired outcome.
+    version: general
+    related: [kubernetes-control-plane, deployment]
+    lessons: [kubernetes-foundations-for-supervisor]
+  - id: pod
+    term: Pod
+    definition: >
+      The smallest deployable Kubernetes compute object: one or more tightly coupled containers that share a network
+      identity and can share storage. Pods are normally replaceable instances managed by a controller.
+    whyItMatters: >
+      A Pod is not a durable server. Diagnose and change its owning Deployment or other controller when one exists.
+    version: general
+    related: [deployment, kubernetes-service, kubernetes-node]
+    lessons: [kubernetes-foundations-for-supervisor]
+  - id: deployment
+    term: Kubernetes Deployment
+    definition: >
+      A workload controller that declares a Pod template, replica count and rollout strategy. It manages ReplicaSets,
+      which create and replace Pods to maintain the requested state.
+    whyItMatters: >
+      Deployments provide declarative rollout and self-healing for interchangeable stateless application replicas.
+    version: general
+    related: [pod, desired-state, kubernetes-service]
+    lessons: [kubernetes-foundations-for-supervisor]
+  - id: kubernetes-service
+    term: Kubernetes Service
+    definition: >
+      A networking object that selects Pods, usually by labels, and presents a stable virtual address and DNS name to
+      clients while the selected Pod instances change.
+    whyItMatters: >
+      A Service can exist with no endpoints when selectors do not match or Pods are not ready. It is different from a
+      vSphere Supervisor Service.
+    version: general
+    related: [pod, deployment, supervisor-service]
+    lessons: [kubernetes-foundations-for-supervisor]
+  - id: kubernetes-namespace
+    term: Kubernetes Namespace
+    definition: >
+      A logical scope for names, access policy and quotas inside one Kubernetes cluster. The same object name can exist
+      in different namespaces.
+    whyItMatters: >
+      A Kubernetes Namespace inside a VKS cluster is distinct from the vSphere Namespace that governs infrastructure
+      resources on Supervisor.
+    version: general
+    related: [vsphere-namespace, vks]
+    lessons: [kubernetes-foundations-for-supervisor]
+  - id: container-image
+    term: Container image
+    definition: >
+      An immutable application filesystem and metadata package referenced by name and tag or digest, pulled from a
+      registry and started by a container runtime.
+    whyItMatters: >
+      Image name, registry reachability, trust and credentials are common causes of ImagePullBackOff failures.
+    version: general
+    related: [pod, kubernetes-node]
+    lessons: [kubernetes-foundations-for-supervisor]
+  - id: persistent-volume-claim
+    term: PersistentVolumeClaim (PVC)
+    definition: >
+      A Kubernetes request for persistent storage with capacity, access and optional StorageClass requirements. A
+      compatible PersistentVolume binds to the claim and can be mounted by a Pod.
+    whyItMatters: >
+      A pending claim usually points to a missing or incompatible class, policy, provisioner or capacity rather than
+      an application-process failure.
+    version: general
+    related: [storage-class, pod]
+    lessons: [kubernetes-foundations-for-supervisor]
+  - id: storage-class
+    term: Kubernetes StorageClass
+    definition: >
+      A named class of storage that tells a provisioner how to create volumes. On vSphere, storage policy and CSI
+      integration connect this request to the underlying datastore capabilities.
+    whyItMatters: >
+      StorageClass selection links application claims to infrastructure policy; a class name alone does not guarantee
+      that a compatible volume can be provisioned.
+    version: general
+    related: [persistent-volume-claim]
+    lessons: [kubernetes-foundations-for-supervisor]
   - id: supervisor
     term: vSphere Supervisor
     definition: >
