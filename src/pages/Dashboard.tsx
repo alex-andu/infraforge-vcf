@@ -148,11 +148,11 @@ export default function Dashboard() {
 
         <section className="panel" aria-labelledby="labs-h">
           <div className="row between">
-            <div className="section-label" id="labs-h">Laboratoare recente</div>
+            <div className="section-label" id="labs-h">Ghiduri practice recente</div>
             <Link className="small" to="/labs">Toate →</Link>
           </div>
           <div className="small muted" style={{ marginBottom: 8 }}>{Object.values(s.labs).filter((l) => l.status === 'completed').length} din {meta.labs.length} laboratoare finalizate</div>
-          {labEntries.length === 0 ? <p className="muted small">Niciun laborator început. Primul pas practic: <Link to="/labs">alege un laborator de început</Link>.</p> : (
+          {labEntries.length === 0 ? <p className="muted small">Niciun ghid început. Primul pas practic: <Link to="/labs">alege un ghid de început</Link>.</p> : (
             <ul className="list">
               {labEntries.map(([id, l]) => {
                 const lab = labsById.get(id);

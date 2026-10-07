@@ -157,7 +157,7 @@ export default function Architecture() {
                 <div><div className="section-label">Învață și exersează</div>
                   <ul className="list small">
                     {c.lessons.filter((l) => lessonsById.has(l)).map((l) => <li key={l}>Lecție: <Link to={`/learn/${l}`}>{lessonsById.get(l)!.title}</Link></li>)}
-                    {c.labs.filter((l) => labsById.has(l)).map((l) => <li key={l}>Lab: <Link to={`/labs/${l}`}>{labsById.get(l)!.title}</Link></li>)}
+                    {c.labs.filter((l) => labsById.has(l)).map((l) => <li key={l}>Ghid: <Link to={`/labs/${l}`}>{labsById.get(l)!.title}</Link></li>)}
                   </ul>
                 </div>
               )}

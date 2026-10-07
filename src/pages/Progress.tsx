@@ -110,7 +110,7 @@ export default function Progress() {
           ))}
         </section>
         <section className="panel">
-          <div className="section-label">Laboratoare și incidente</div>
+          <div className="section-label">Ghiduri practice și incidente</div>
           <ul className="list small">
             {meta.labs.map((l) => <li key={l.id} className="row between"><Link to={`/labs/${l.id}`}>{l.title}</Link><StatusDot state={s.labs[l.id]?.status === 'completed' ? 'completed' : s.labs[l.id] ? 'in-progress' : 'not-started'} /></li>)}
             {meta.incidents.map((i) => {

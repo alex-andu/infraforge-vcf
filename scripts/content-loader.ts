@@ -33,11 +33,11 @@ export interface ContentBundle {
   files: string[];
 }
 
-/** The 18-part lesson template; headings must appear in this order. */
+/** The standalone-theory template; headings must appear in this order. Practical guides live under /labs. */
 export const LESSON_SECTIONS = [
   'Why This Matters', 'Learning Objectives', 'Concept', 'Architecture', 'Components', 'How It Works',
   'Deep Dive', 'Configuration', 'CLI / API', 'Failure Scenarios', 'Troubleshooting', 'Real-World Scenario',
-  'Lab', 'Exam Focus', 'Common Exam Traps', 'Knowledge Check', 'Summary', 'Next Topic',
+  'Exam Focus', 'Common Exam Traps', 'Knowledge Check', 'Summary', 'Next Topic',
 ];
 
 export function slugify(s: string): string {

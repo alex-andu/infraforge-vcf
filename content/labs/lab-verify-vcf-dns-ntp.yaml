@@ -1,0 +1,248 @@
+id: lab-verify-vcf-dns-ntp
+title: Verify DNS and time across the existing VCF lab
+level: beginner
+complexity: 2
+minutes: 105
+version: vcf9
+technologies: [Windows NRPT, DNS, NTP, vCenter, ESX 9.0.2, VCF management appliances]
+topics: [dns, ntp, deployment-planning]
+lessons: [dns-ntp-dependencies]
+objectives:
+  - "Candidate profile: demonstrate foundational knowledge of DNS and NTP in an enterprise VCF environment."
+  - "Objective 4.1: connect DNS/time readiness to deployment and configuration of a VCF-based private cloud and its components."
+  - "Objective 4.2/4.3: collect read-only evidence needed to manage and troubleshoot VCF components without changing the running lab."
+prerequisites:
+  - "VPN access to the existing lab and permission to run read-only queries."
+  - "The documented NRPT rule for .vcf.home.arpa points to 10.100.80.10."
+  - "One trusted administration shell inside the lab and read-only shell/UI access to esx01.vcf.home.arpa."
+  - "Read-only access to the vSphere Client; VAMI access to the vCenter Time page if Alex's account policy permits it."
+  - "Lesson completed: DNS and NTP – Identity, Trust, and Time in VCF."
+topology:
+  logical: d-lab-verify-vcf-dns-ntp-logical
+requirements:
+  network:
+    - "VPN path to the VCF management networks."
+    - "Read-only DNS queries to internal resolver 10.100.80.10."
+    - "Read-only NTP queries to infra01 at 10.100.80.10."
+    - "No DNS, NTP, routing or firewall changes during this guide."
+  vms:
+    - "Existing vCenter at vcenter01.vcf.home.arpa (previously resolved to 10.100.10.21)."
+    - "Pilot host: esx01.vcf.home.arpa / 10.100.10.11, ESX 9.0.2."
+    - "Additional hosts for the repeat pass: esx02/esx03/esx04 at 10.100.10.12-.14."
+    - "One trusted internal administration host for direct resolver queries."
+  ip:
+    - "Internal DNS: 10.100.80.10."
+    - "vCenter: 10.100.10.21 / vcenter01.vcf.home.arpa."
+    - "DNS/NTP service: infra01 / 10.100.80.10."
+    - "SDDC Manager: 10.100.10.20 / vcf01.vcf.home.arpa; NSX VIP/node: 10.100.10.30-.31."
+    - "Operations/fleet/collector: 10.100.10.60-.62."
+startingState: |
+  The VCF 9.0.2 management environment is already built. From Alex's Windows workstation, a persistent NRPT rule
+  sends `.vcf.home.arpa` queries to `10.100.80.10`; a previous `Resolve-DnsName` check returned `10.100.10.21` for
+  `vcenter01.vcf.home.arpa`. The supplied sanitized inventory identifies `infra01` at `10.100.80.10` as both BIND DNS
+  and chrony NTP, and identifies `esx01.vcf.home.arpa` at `10.100.10.11` as the pilot ESX 9.0.2 host. Matching PTR
+  answers, saved component settings and live synchronization state still require a fresh run.
+
+  This is a **read-only verification guide**, not an installation or remediation runbook. It provides complete UI
+  navigation, but you must stop before **Save**, **OK**, **Start**, **Stop** or **Restart**. If a check fails, record the
+  result and stop before changing production-like services. The failure becomes evidence for a separate approved fix.
+steps:
+  - id: evidence-sheet
+    title: Create a sanitized evidence sheet
+    why: A compact, dated record prevents the same discovery work from being repeated in later guides.
+    instructions: |
+      Create a table with these columns: date/time (UTC), component, product/build, test location, configured DNS,
+      forward result, reverse result, configured NTP, synchronization evidence, status and evidence reference.
+
+      Pre-fill only the confirmed values:
+
+      | Component | FQDN | IP | DNS path |
+      |---|---|---|---|
+      | vCenter | `vcenter01.vcf.home.arpa` | `10.100.10.21` | `10.100.80.10` for the internal zone |
+      | NTP/DNS service | `infra01` | `10.100.80.10` | BIND DNS + chrony NTP |
+      | Pilot ESX | `esx01.vcf.home.arpa` | `10.100.10.11` | Verify saved resolver and NTP settings |
+
+      Do not record usernames, passwords, browser cookies, tokens or complete configuration exports.
+    validate: The sheet has the required columns and contains no secrets.
+    expected: One empty evidence row per system to check, with only the confirmed vCenter/DNS values pre-filled.
+  - id: workstation-split-dns
+    title: Prove the workstation split-DNS path
+    why: Client-side NRPT routing and internal DNS zone correctness are separate layers and should be tested separately.
+    instructions: |
+      In an elevated Windows PowerShell session while the VPN is connected, run:
+
+      ```powershell
+      Get-DnsClientNrptRule
+      Clear-DnsClientCache
+      Resolve-DnsName vcenter01.vcf.home.arpa
+      Resolve-DnsName google.com
+      ```
+
+      Record the NRPT namespace/name-server pair and only the returned names/IPs. Use `Resolve-DnsName` for this test;
+      an interactive `nslookup` session can query the adapter's default resolver directly and can therefore give a
+      misleading result about NRPT behavior.
+    hint: "The expected NRPT pair is .vcf.home.arpa → 10.100.80.10. A public name should continue to use the workstation's normal resolver."
+    validate: The internal name resolves through the NRPT policy and the public control query still resolves.
+    expected: "`vcenter01.vcf.home.arpa` returns `10.100.10.21`; public DNS remains functional."
+  - id: authoritative-pair
+    title: Verify the forward/reverse identity pair directly
+    why: VCF validation compares the FQDN-to-IP answer with the IP-to-FQDN answer; a successful forward lookup alone is incomplete evidence.
+    instructions: |
+      From the trusted internal administration host, query the documented resolver explicitly:
+
+      ```shell
+      nslookup vcenter01.vcf.home.arpa 10.100.80.10
+      nslookup 10.100.10.21 10.100.80.10
+      ```
+
+      If `dig` is available, collect the concise equivalents:
+
+      ```shell
+      dig @10.100.80.10 +short vcenter01.vcf.home.arpa A
+      dig @10.100.80.10 +short -x 10.100.10.21
+      ```
+
+      Record every answer. Do not edit the zone when an answer is missing or different.
+    hint: "The trailing dot in a PTR answer is normal DNS presentation. Compare the name itself, case-insensitively for this evidence sheet, while preserving the exact configured spelling."
+    validate: Forward returns one intended IP and reverse returns the intended vCenter FQDN.
+    expected: "`vcenter01.vcf.home.arpa` ↔ `10.100.10.21` is a consistent pair. A mismatch is recorded as an open finding."
+  - id: component-perspective
+    title: Inspect the selected ESX host DNS settings in vSphere Client
+    why: The workstation can resolve correctly while an appliance or host uses another DNS server or stale configuration.
+    instructions: |
+      **Verified UI path for vSphere/ESX 9.x:**
+
+      1. Open `https://vcenter01.vcf.home.arpa/ui` and sign in with an account that can view host configuration.
+      2. Open **Menu > Hosts and Clusters**.
+      3. In the inventory tree, select **esx01.vcf.home.arpa** (`10.100.10.11`, ESX 9.0.2).
+      4. Select **Configure**.
+      5. Under **Networking**, select **TCP/IP configuration**.
+      6. Select **Default TCP/IP stack** and record the displayed **Host name**, **Domain name**, **Primary DNS server**,
+         **Alternate DNS server** and **Search domains**.
+      7. If the page hides these fields, select **Edit** only to view **DNS Configuration**, take the sanitized evidence,
+         then select **Cancel**. Do **not** select **OK** in this read-only guide.
+      8. Compare the DNS server with the intended internal resolver `10.100.80.10`. Record differences; do not correct them.
+
+      Now open the already approved read-only shell for `esx01.vcf.home.arpa` and verify what the UI reported:
+
+      ```shell
+      esxcli system hostname get
+      esxcli network ip dns server list
+      esxcli network ip dns search list
+      ```
+
+      Do not install packages, edit the TCP/IP stack, modify `/etc/resolv.conf` or restart management services.
+    hint: "Broadcom KB 397246 documents the same vSphere Client path for ESXi and vCenter 7.x, 8.x and 9.x."
+    validate: The evidence sheet contains the esx01 host name/domain, DNS server(s) and search domains from both the vSphere Client and ESXCLI.
+    expected: The UI and ESXCLI show the same resolver configuration; the intended resolver is `10.100.80.10`, or the difference is recorded as an open finding.
+  - id: vcenter-time-ui
+    title: Inspect vCenter time synchronization through VAMI
+    why: vCenter's appliance time configuration is separate from the ESX host configuration and must be checked directly.
+    instructions: |
+      **Verified VAMI path for vCenter 7.x/8.x; verify labels on the deployed VCF 9 vCenter build:**
+
+      1. Open `https://vcenter01.vcf.home.arpa:5480` in a browser.
+      2. Sign in with the approved appliance-management account. Do not record the username, password or session data.
+      3. In the left navigation, select **Time**.
+      4. In **Time zone and time synchronization**, record the displayed time zone, synchronization mode and time server(s).
+         Compare the configured server with the documented lab NTP service `10.100.80.10`.
+      5. Do not select **Edit**. If the server list is visible only inside the dialog on this build, select **Edit**, record
+         the current values without changing them, then select **Cancel**.
+      6. Compare the displayed UTC time with the administration workstation and record the observed difference.
+
+      If VAMI access is unavailable, mark this step `NOT AVAILABLE`; do not substitute guessed values.
+    hint: "The configuration workflow is Time > Edit > Mode: NTP > Time servers > Save, but Save is outside this read-only guide."
+    validate: The evidence sheet records the vCenter build, synchronization mode, configured server(s) and observed clock difference, or an explicit access limitation.
+    expected: vCenter is configured for `10.100.80.10` and its clock closely agrees with the workstation; otherwise the row is an open finding.
+  - id: esx-time-health
+    title: Inspect ESX time configuration in the UI, then prove synchronization
+    why: A configured server proves intent; a selected peer/reachability/offset proves the host is actually synchronized.
+    instructions: |
+      **Primary vSphere Client path, documented for VCF 9.0.x:**
+
+      1. Return to `https://vcenter01.vcf.home.arpa/ui`.
+      2. Open **Menu > Hosts and Clusters** and select **esx01.vcf.home.arpa**.
+      3. Select **Configure > System > Time Configuration**.
+      4. In **Network Time Protocol**, record the current NTP server(s), service status, startup policy and host time.
+      5. Do not select **Edit**, **Start**, **Stop** or **Restart**.
+
+      **Direct ESXi Host Client alternative, verified for ESX 9.x:**
+
+      1. Open `https://esx01.vcf.home.arpa/ui` (or `https://10.100.10.11/ui` only if name resolution is the finding).
+      2. Select **Host > Manage > System > Time & date**.
+      3. Record **Current date and time**, **NTP service status** and **NTP servers**.
+      4. If you need to see the startup policy, select **Edit NTP Settings**, record the selected policy and server list,
+         then select **Cancel**. Do not select **Save**.
+
+      ::figure{src="https://api-broadcomcms-software.wolkenservicedesk.com/es/attachments/get_attachment_content?uniqueFileId=1913999764395" caption="Official Broadcom ESXi Host Client example: Time & date page and the Edit NTP Settings entry point. The image accompanies KB 403181, which includes ESX 9.x." source="https://knowledge.broadcom.com/external/article/403181"}
+
+      ::figure{src="https://api-broadcomcms-software.wolkenservicedesk.com/es/attachments/get_attachment_content?uniqueFileId=1914000326227" caption="Official Broadcom ESXi Host Client example: NTP client, startup-policy and NTP-server fields. In this verification guide, inspect the values and select Cancel." source="https://knowledge.broadcom.com/external/article/403181"}
+
+      Finally, use the approved read-only shell to distinguish saved configuration from live synchronization. Record the
+      exact build and run the commands supported by that build:
+
+      ```shell
+      esxcli system version get
+      esxcli system ntp get
+      ntpq -pn
+      esxcli system time get
+      ```
+
+      Record configured peers, whether NTP is enabled, the selected peer marker, reach and offset. Broadcom KB 443781
+      documents `ntpq` diagnostics for ESXi 7.x/8.x; this step intentionally records the observed ESX 9.0.2 behavior
+      before the course generalizes it. Do not restart NTP or edit its configuration.
+    hint: "In ntpq output, a selected peer normally has `*`; reach builds toward octal 377 after successful polls. A fresh service may need time before reach fills."
+    validate: The sheet contains both configuration and live synchronization evidence, or an explicit unsupported/missing-command result for this build.
+    expected: "`10.100.80.10` is configured and actively selected, with recent successful polling and a small offset. Otherwise record an open finding."
+  - id: correlate-and-close
+    title: Correlate name, time and exam tasks
+    why: The exam presents operational scenarios; the useful skill is connecting an indirect symptom to the dependency and the correct evidence.
+    instructions: |
+      Review the evidence and write one sentence for each scenario:
+
+      1. VCF Installer reports an IP/FQDN mismatch during deployment validation.
+      2. Host commissioning reaches the host but certificate/time validation fails.
+      3. The laptop resolves a component but SDDC Manager cannot.
+
+      For each, identify the first read-only check and map it to the official description: foundational DNS/NTP
+      knowledge supporting deployment/configuration (4.1) and management/operations (4.2–4.3). Mark every evidence
+      row `PASS`, `OPEN FINDING` or `NOT AVAILABLE`.
+    validate: Every row has a status and every scenario names the correct first evidence source.
+    expected: A compact reusable baseline that separates client split DNS, authoritative A/PTR consistency, component resolver configuration and live NTP synchronization.
+troubleshooting:
+  - symptom: "`Resolve-DnsName` works but direct query to 10.100.80.10 fails."
+    fix: Record a VPN/routing or resolver-reachability finding. Do not alter NRPT or the DNS server in this guide.
+  - symptom: Forward returns 10.100.10.21 but reverse is missing or returns another name.
+    fix: Record an A/PTR consistency finding tied to Broadcom KB 435717. Plan a separate DNS-zone correction and validation window.
+  - symptom: Workstation queries pass but a VCF component fails.
+    fix: Record that component's configured resolver and path. Treat this as component configuration/reachability, not proof that the authoritative zone is wrong.
+  - symptom: NTP is configured but no peer is selected or reach stays at 0.
+    fix: Record peer, reach, offset and build. A later approved troubleshooting task can test UDP 123 and service state; make no change here.
+challenge: |
+  Build a small monitoring checklist from the evidence sheet: one forward/reverse pair per management component and
+  one time-health signal per platform. Define what should alert, but do not deploy monitoring as part of this guide.
+
+  **Configuration rehearsal — read, do not execute in this verification guide:** after Alex approves a change, the ESXi
+  Host Client sequence is **Host > Manage > System > Time & date > Edit NTP Settings**, select **Use Network Time
+  Protocol**, choose **Start and stop with host**, enter `10.100.80.10`, then **Save**.
+  Next open **Host > Manage > Services**, select `ntpd`, and select **Start**. Re-run the UI and CLI validations above.
+  Broadcom KB 425914 documents this workflow for ESX 9.x. A future remediation guide must add a pre-change capture and
+  exact rollback to the values recorded in this guide.
+cleanup: |
+  No infrastructure cleanup is required because the guide is read-only. Remove any local evidence that accidentally
+  captured credentials or session data. Keep the sanitized results in the project evidence record after Alex reviews them.
+sources:
+  - title: "Broadcom KB 435717 – VCF Installer validation fails because forward and reverse DNS do not match"
+    url: https://knowledge.broadcom.com/external/article/435717
+  - title: "Broadcom KB 443781 – NTP synchronization issues on ESXi hosts"
+    url: https://knowledge.broadcom.com/external/article/443781
+  - title: "Broadcom KB 394448 – DNS and NTP server selection in VCF Operations 9.0"
+    url: https://knowledge.broadcom.com/external/article/394448
+  - title: "Broadcom KB 397246 – DNS server IP address update on a vSphere ESXi host"
+    url: https://knowledge.broadcom.com/external/article/397246
+  - title: "Broadcom KB 301589 – Manually update NTP servers on VCF 9.0.x components"
+    url: https://knowledge.broadcom.com/external/article/301589
+  - title: "Broadcom KB 403181 – ESXi Host Client Time & date controls for ESX 9.x"
+    url: https://knowledge.broadcom.com/external/article/403181
+  - title: "Broadcom KB 425914 – Configure and start NTP on ESX 9.x"
+    url: https://knowledge.broadcom.com/external/article/425914

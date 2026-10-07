@@ -102,7 +102,7 @@ function SegmentView({ s, quiz }: { s: Segment; quiz?: ReactNode }) {
             <div className="row"><strong>{lab.title}</strong><DifficultyChip d={lab.level} /></div>
             <div className="small muted">{lab.objectives[0]}</div>
           </div>
-          <Link className="btn sm" to={`/labs/${lab.id}`}>Deschide laboratorul</Link>
+          <Link className="btn sm" to={`/labs/${lab.id}`}>Deschide ghidul</Link>
         </div>
       );
     }
@@ -126,7 +126,7 @@ export function OfficialFigure({ src, caption, source }: { src: string; caption:
   return (
     <figure className="official">
       {failed ? (
-        <div className="img-fallback">Imaginea oficială nu s-a putut încărca (necesită acces la internet către techdocs.broadcom.com). <a href={source} target="_blank" rel="noopener noreferrer">Deschide pagina sursă</a>.</div>
+        <div className="img-fallback">Imaginea oficială nu s-a putut încărca (necesită acces la sursa Broadcom/VMware). <a href={source} target="_blank" rel="noopener noreferrer">Deschide pagina sursă</a>.</div>
       ) : (
         <img src={src} alt={caption || 'Diagramă din documentația oficială Broadcom'} loading="lazy" referrerPolicy="no-referrer" onError={() => setFailed(true)} />
       )}

@@ -190,7 +190,7 @@ export default function Lesson() {
           <>
             <div className="section-label" style={{ marginTop: 18 }}>Practică</div>
             <ul className="list small">
-              {lesson.labs.filter((l) => labsById.has(l)).map((l) => <li key={l}>Lab: <Link to={`/labs/${l}`}>{labsById.get(l)!.title}</Link></li>)}
+              {lesson.labs.filter((l) => labsById.has(l)).map((l) => <li key={l}>Ghid practic: <Link to={`/labs/${l}`}>{labsById.get(l)!.title}</Link></li>)}
               {lesson.incidents.filter((i) => incidentsById.has(i)).map((i) => <li key={i}>Incident: <Link to={`/troubleshoot/${i}`}>{incidentsById.get(i)!.title}</Link></li>)}
             </ul>
           </>

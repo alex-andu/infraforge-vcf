@@ -10,7 +10,7 @@ import { Loading } from './ui';
 const NAV = [
   { to: '/', label: 'Acasă', end: true },
   { to: '/learn', label: 'Învață' },
-  { to: '/labs', label: 'Laboratoare' },
+  { to: '/labs', label: 'Ghiduri practice' },
   { to: '/troubleshoot', label: 'Troubleshooting' },
   { to: '/exam', label: 'Examen' },
   { to: '/architecture', label: 'Arhitectură' },

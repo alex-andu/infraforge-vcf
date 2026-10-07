@@ -2,6 +2,32 @@
 
 These are settled. Don't reopen them unless Alex asks.
 
+## Operating-model update (Alex, 2026-10-08)
+
+ChatGPT is the primary end-to-end owner for the VCF platform. Claude is optional capacity for a bounded implementation handoff. Alex retains real-lab validation and milestone approval. Project memory lives in the repository: concise `CURRENT_STATE.md` checkpoints, per-package specs, source/visual manifests and lab evidence records. Sessions use targeted reads and one reviewable batch, avoiding routine full-repository rescans, repeated source retrieval and long chat-history dependence. Details are in `VCF_PARALLEL_WORKFLOW.md`.
+
+## Learning-structure update (Alex, 2026-10-08)
+
+Alex explicitly requested deeper, better explained and better structured standalone theory, with laboratories removed from the theory and presented as separate guides performed on the infrastructure already built together. Guides must correlate practical actions with the supplied official 2V0-17.25 blueprint (excerpt updated 2026-04-23).
+
+This supersedes the earlier requirement to include a `Lab` section in every lesson. Concept explanations, worked examples, diagrams and knowledge checks remain appropriate in theory; executable lab instructions/checklists and embedded lab cards belong in the existing Labs section. Guides link back to prerequisite theory and start from confirmed deployed state, rather than reinstalling a generic lab by assumption. Missing components remain explicit guide prerequisites.
+
+The approved `THEORY-LABS-01` pilot implements this decision. The validator now requires 17 theory headings and permits untouched lessons to retain an extra legacy `Lab` section, so migration can happen in bounded batches without changing IDs, bookmarks or persisted progress. The visible area is named **Ghiduri practice** while internal `lab` routes/schema/state remain stable. See `VCF_PARALLEL_WORKFLOW.md`, `VCF_MODULE_ROADMAP.md` and live status in `CURRENT_STATE.md`.
+
+### Practical guides are complete UI-first runbooks (2026-10-08)
+
+Alex requires step-by-step navigation, not task summaries. Every runnable guide names the exact product URL, menu path,
+button, field, lab value, save/finish action, validation and rollback. Paths are build-specific and backed by official
+documentation or a redacted real-lab capture. Unknown paths or values remain `VERIFY ON LAB`; they are not guessed.
+Read-only guides provide the same navigation precision and explicitly stop before saving. CLI/API methods supplement
+the main UI workflow unless the official task has no supported UI.
+
+## Visual-material update (Alex, 2026-10-08)
+
+Alex requested official VMware/Broadcom imagery, including product UI screenshots (vSphere/vCenter, NSX and other components), alongside original diagrams and generated illustrations. Use official embeds with source attribution as the default, reusing the existing figure renderer. Verify the actual image and applicable version. Local/offline delivery may use assets whose terms permit storage, or genuine redacted captures from Alex's lab. Generated illustrations are supplementary teaching material, never evidence of an actual product screen. Record provenance, caption, accessible text, placement and offline behavior in each spec package.
+
+This extends the original visual policy: data-based YAML/SVG remains the preferred form for precise interactive architecture diagrams, while generated illustrations are now expressly requested as a complement. Official-source embeds remain the default; no image download, content integration or UI change is performed in this documentation session.
+
 ## Product decisions (Alex, 2026-10-03)
 
 | Topic | Decision |

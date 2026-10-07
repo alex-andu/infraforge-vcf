@@ -71,13 +71,18 @@ sources:
 ...
 ```
 
-### Required sections (exact headings, this order)
+### Required theory sections (exact headings, this order)
 
 `## Why This Matters`, `## Learning Objectives` (3–6 bullets), `## Concept`, `## Architecture` (must contain a
 `::diagram[...]` and/or an official `::figure{...}`), `## Components`, `## How It Works` (numbered flow),
 `## Deep Dive`, `## Configuration`, `## CLI / API`, `## Failure Scenarios`, `## Troubleshooting`,
-`## Real-World Scenario`, `## Lab`, `## Exam Focus`, `## Common Exam Traps`, `## Knowledge Check`
+`## Real-World Scenario`, `## Exam Focus`, `## Common Exam Traps`, `## Knowledge Check`
 (body is just `::quiz` — the app renders the questions whose `lesson:` is this lesson), `## Summary`, `## Next Topic`.
+
+Theory must stand on its own. Do not add a `## Lab` section or `::lab[...]` card to a lesson. Explain commands and
+worked examples when they teach the mechanism, but keep executable step sequences in a separate guide under
+`content/labs/`. Link the guide to prerequisite lessons through its `lessons` field and the lesson's `labs` metadata;
+the UI shows that relationship in the context panel without interrupting the theory.
 
 If a section genuinely does not apply (e.g. CLI for a pure concept lesson), keep the heading and write one or two
 honest sentences (e.g. what the learner will use instead, and where it comes later). Use `###` subsections freely;
@@ -195,12 +200,35 @@ questions:
 - Mark 2–3 foundation questions per area with `diagnostic:` (areas: virtualization, esxi, vsphere, networking,
   storage, nsx, vcf, troubleshooting).
 
-## Labs (`content/labs/<lab-id>.yaml`)
+## Practical guides (`content/labs/<lab-id>.yaml`)
 
 Lab ids start with `lab-`. Labs run on the learner's real home lab (nested ESX on Proxmox, see homelab.yaml) or are
 explicitly marked conceptual. Steps describe how an engineer approaches the task: each step has `why`,
 `instructions`, optional `hint`, `validate` (how to check) and `expected` (what you should see). See schema `Lab`.
 Topology views reference diagram ids. Include `troubleshooting` (symptom → fix), `challenge`, `cleanup`.
+
+Treat the learner-facing artifact as a **practical guide** even though internal routes, schema and persisted state keep
+the stable `lab` name. Start from the confirmed real environment, map actions to exact official blueprint item text,
+separate read-only verification from remediation, and include an evidence record. If a required component is absent,
+mark the guide pending instead of simulating a successful infrastructure change.
+
+Every runnable guide is a complete UI-first runbook. Do not write shortcuts such as "configure NTP in vSphere" or
+"create the network". For every action, state:
+
+1. the entry URL/product and required role, without recording credentials;
+2. the exact click path using the English product labels for the verified build (for example **Menu > Hosts and
+   Clusters > host > Configure > System > Time Configuration**);
+3. the button or tab to select, every field to populate and the exact lab value or a clearly named discovery variable;
+4. the effect of clicking **Save/OK/Finish**, plus a checkpoint immediately before any disruptive action;
+5. how to verify the result in the UI and, when useful, with a verified CLI/API command;
+6. the expected visible result, a screenshot/evidence request, troubleshooting and rollback/cleanup.
+
+Label the path with the product/build it was verified against. If a menu path has not been confirmed for that build,
+mark it `VERIFY ON LAB` instead of guessing. Use genuine Broadcom/VMware figures or redacted lab captures beside the
+relevant step; captions must identify the product/version and any difference from Alex's screen. Configuration,
+deployment and remediation guides must include the full commit sequence and rollback. Read-only guides still provide
+the exact navigation path, but explicitly stop at **Cancel** before a dialog could save a change. Present CLI/API as an
+alternative or validation method after the normal UI path unless the official workflow is command-only.
 
 ## Incidents (`content/incidents/<incident-id>.yaml`)
 

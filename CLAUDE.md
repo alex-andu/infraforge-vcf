@@ -39,7 +39,10 @@ Do not store transient project history in CLAUDE.md.
 - No fake functionality. Simulators must say they are simulators. Unverified facts are written as "check your version", never stated as fact.
 - No backend, accounts or AI features. Desktop only.
 - Changing `PersistedState` (`src/state/types.ts`) needs a migration, so existing progress in IndexedDB survives.
-- Ask Alex before pushing, creating repos or opening PRs, and before any destructive change to his lab.
+- Alex authorized automatic pushes on 2026-10-08. After relevant checks and a credential/secret scan pass, commit and
+  push the current task's non-protected feature branch without asking again. Never push directly to `main`, force-push,
+  rewrite remote history, open/merge a PR, deploy, or make a destructive lab change without separate authorization.
+  Stop and report if the remote branch diverged or a check/secret scan fails.
 
 ## Before calling work done
 

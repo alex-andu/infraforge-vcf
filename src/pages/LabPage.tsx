@@ -19,10 +19,10 @@ export default function LabPage() {
   const bookmarked = useStore((s) => s.bookmarks.some((b) => b.key === `lab:${id}`));
   const [hints, setHints] = useState<Set<string>>(new Set());
   const [view, setView] = useState<keyof typeof VIEW_RO | null>(null);
-  useDocumentTitle(labsById.get(id)?.title ?? 'Laborator');
+  useDocumentTitle(labsById.get(id)?.title ?? 'Ghid practic');
 
-  if (loading) return <Loading what="laboratorul" />;
-  if (!lab) return <NotFound what="Laboratorul" />;
+  if (loading) return <Loading what="ghidul practic" />;
+  if (!lab) return <NotFound what="Ghidul practic" />;
   const views = (Object.keys(VIEW_RO) as (keyof typeof VIEW_RO)[]).filter((v) => lab.topology[v]);
   const curView = view && lab.topology[view] ? view : views[0];
   const done = new Set(st?.done ?? []);
@@ -30,7 +30,7 @@ export default function LabPage() {
 
   return (
     <div className="page" style={{ maxWidth: 1060 }}>
-      <div className="crumbs"><Link to="/labs">Laboratoare</Link><span>›</span><span>{lab.title}</span></div>
+      <div className="crumbs"><Link to="/labs">Ghiduri practice</Link><span>›</span><span>{lab.title}</span></div>
       <div className="page-head">
         <div>
           <h1>{lab.title}</h1>
@@ -38,13 +38,13 @@ export default function LabPage() {
         </div>
         <div className="row">
           <button className="btn sm" aria-pressed={bookmarked} onClick={() => toggleBookmark({ key: `lab:${id}`, kind: 'lab', ref: id, title: lab.title, url: `/labs/${id}` })}>{bookmarked ? '★ Salvat' : '☆ Salvează'}</button>
-          {st && <button className="btn sm danger" onClick={() => { if (confirm('Resetezi progresul acestui laborator?')) resetLab(id); }}>Resetează progresul</button>}
+          {st && <button className="btn sm danger" onClick={() => { if (confirm('Resetezi progresul acestui ghid?')) resetLab(id); }}>Resetează progresul</button>}
         </div>
       </div>
 
       <section className="panel" style={{ marginBottom: 14 }}>
         <div className="row between"><strong>Progres: {done.size}/{lab.steps.length} pași</strong>{st?.status === 'completed' && <span className="chip ok">Finalizat</span>}</div>
-        <div style={{ marginTop: 6 }}><Bar value={pct} tone={pct === 100 ? 'ok' : undefined} label="Progres laborator" /></div>
+        <div style={{ marginTop: 6 }}><Bar value={pct} tone={pct === 100 ? 'ok' : undefined} label="Progres ghid" /></div>
       </section>
 
       <div className="grid grid-2" style={{ marginBottom: 14 }}>
