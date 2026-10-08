@@ -35,9 +35,9 @@ sources:
 
 ## Why This Matters
 
-Every question on exam 2V0-17.25 assumes you can answer three things instantly: *what is in VCF*, *where does each piece run*, and *who manages it*. If you picture VCF as "vSphere with extra products bolted on", you will miss questions about where VCF Operations lives, why a workload domain's vCenter sits in the management domain, or why you cannot simply patch one ESX host by hand.
+Every question on exam 2V0-17.25 assumes you can answer three things instantly: *what is in VMware Cloud Foundation (VCF)*, *where does each piece run*, and *who manages it*. If you picture VCF as "vSphere with extra products bolted on", you will miss questions about where VCF Operations lives, why a workload domain's vCenter sits in the management domain, or why you cannot simply patch one ESX host by hand.
 
-This lesson gives you the map. Every later phase (vSphere, vSAN, NSX, deployment, lifecycle, operations) zooms into one part of it.
+This lesson gives you the map. Every later phase (VMware vSphere, VMware vSAN and VMware NSX, followed by deployment, lifecycle and operations) zooms into one part of it.
 
 ## Learning Objectives
 
@@ -49,19 +49,49 @@ This lesson gives you the map. Every later phase (vSphere, vSAN, NSX, deployment
 
 ## Concept
 
-Broadcom describes VMware Cloud Foundation as *"a private cloud platform that delivers public cloud scale and agility with on-premises security, resilience and performance, while lowering total cost of ownership."* Translated for a beginner: VCF is the complete software stack that turns a rack of ordinary x86 servers into a [[private-cloud]] that teams can consume on demand.
+Broadcom describes VMware Cloud Foundation (VCF) as *"a private cloud platform that delivers public cloud scale and agility with on-premises security, resilience and performance, while lowering total cost of ownership."* Translated for a beginner: VCF is the complete software stack that turns a rack of ordinary x86 servers into a [[private-cloud]] that teams can consume on demand.
 
 VCF is built from five pillars:
 
 | Pillar | What it virtualizes or provides | Plain-English role |
 |---|---|---|
-| **vSphere** (ESX + vCenter) | Compute | Runs VMs on hosts ([[esx]]) and pools hosts into clusters (vCenter). |
+| **vSphere** (ESX + vCenter) | Compute | Runs virtual machines (VMs) on hosts ([[esx]]) and pools hosts into clusters (vCenter). |
 | **vSAN** | Storage | Pools the hosts' local disks into a shared datastore. |
 | **NSX** | Networking and security | Virtual networks, routing and firewalling in software. |
 | **VCF Operations** | Operate | Monitoring, logs, licensing, certificates, passwords, lifecycle and fleet management. |
 | **VCF Automation** | Consume | Self-service provisioning (VMs, Kubernetes, networks) with tenancy and policy. |
 
-The first three make a [[sddc]] (software-defined data center). The last two make it a *cloud*: something operated centrally and consumed through self-service.
+The first three make a [[sddc]] (Software-Defined Data Center). The last two make it a *cloud*: something operated centrally and consumed through self-service.
+
+### Core terms before the architecture map
+
+**VCF** is the complete platform and compatibility boundary. It combines compute, storage, networking, security,
+operations and consumption services; coordinated workflows deploy and lifecycle-manage those products together.
+VCF does not replace the individual consoles for detailed element work, and direct changes can create drift from the
+state expected by VCF. Administrators start in VCF Operations for fleet workflows, then use vCenter or NSX Manager
+when a task belongs to that component.
+
+**vSphere** is the compute virtualization layer formed by ESX hosts and vCenter management. ESX runs VMs and the
+kernel data planes; vCenter groups hosts, clusters and inventory. vSphere alone does not provide the complete VCF
+private-cloud operating model, integrated NSX networking or VCF Automation self-service.
+
+**vSAN** is software-defined storage inside the ESX kernel. It pools eligible host devices into a shared datastore
+and applies availability and performance through storage policies. It depends on compatible devices, a correct
+network and sufficient fault-domain capacity; it does not turn an undersized nested lab into resilient production
+storage. Administrators configure and monitor it through vCenter.
+
+**NSX** is the network virtualization and security layer. It prepares host transport nodes, creates overlay segments,
+distributes firewall policy and uses Edge nodes for centralized or north-south services. NSX cannot repair a broken
+physical underlay, Virtual Local Area Network (VLAN) or Maximum Transmission Unit (MTU) path. Administrators use
+NSX Manager for element configuration while VCF coordinates deployment and supported lifecycle.
+
+**VCF Operations** is the fleet operations surface for health, capacity and VCF workflows. It integrates with each
+instance's SDDC Manager and with optional fleet products. Its outage removes central visibility and workflows but
+does not stop already-running VM data planes.
+
+**VCF Automation** provides policy-controlled self-service for infrastructure consumers. It exposes catalog items,
+organizations and projects backed by prepared infrastructure. It consumes capacity and services; it does not create
+missing physical capacity or replace vCenter and NSX as element managers.
 
 :::vcf9 Changed in VCF 9
 VCF 9.0 introduces new constructs (**fleet**, **instance**, **domain**) and makes **VCF Operations** a mandatory, central part of the platform. The hypervisor is called **ESX** again, the Aria products are renamed (VCF Operations, VCF Automation, VCF Operations for logs/networks), and the **VCF Installer** replaces Cloud Builder. Details in [VCF 9 Terminology](lesson:vcf9-terminology).
@@ -83,7 +113,7 @@ Broadcom's own taxonomy figure shows the same idea: VCF Operations managing VCF 
 |---|---|---|---|
 | **Fleet** | One set of fleet-level management components | 1..n VCF instances, optional standalone vCenters | VCF Operations, VCF Operations fleet management, VCF Automation |
 | **Instance** | Its own SDDC Manager | 1 management domain + 0..n workload domains | SDDC Manager, vCenter(s), NSX Manager(s), ESX hosts |
-| **Domain** | Its own vCenter | 1..n vSphere clusters (HA + DRS), storage, NSX | vCenter, ESX hosts, vSAN, NSX Edge (optional) |
+| **Domain** | Its own vCenter | 1..n vSphere clusters (High Availability (HA) + Distributed Resource Scheduler (DRS)), storage, NSX | vCenter, ESX hosts, vSAN, NSX Edge (optional) |
 
 ## Components
 
@@ -97,7 +127,7 @@ Broadcom's own taxonomy figure shows the same idea: VCF Operations managing VCF 
 | **VCF Operations** | One per fleet | Appliance(s) in the first instance's management domain | Itself (admin UI) | Fleet operations, licensing, workload domain creation |
 | **VCF Operations fleet management** | One per fleet | Appliance in the first management domain | VCF Operations | Lifecycle of fleet-level components |
 | **VCF Automation** | One per fleet | Appliance(s) in the first management domain | VCF Operations fleet management | Self-service consumption, tenants |
-| **VCF Installer** | Day 0 only | Appliance (same OVA as SDDC Manager) | You | Initial deployment of a fleet or a new instance |
+| **VCF Installer** | Day 0 only | Appliance (same Open Virtual Appliance (OVA) package as SDDC Manager) | You | Initial deployment of a fleet or a new instance |
 
 The Component Nodes page shows an example of how these appliances are distributed in a fleet:
 
@@ -107,10 +137,10 @@ The Component Nodes page shows an example of how these appliances are distribute
 
 How a VCF private cloud comes to life, at the level of detail you need now:
 
-1. **Prepare hardware and network.** Servers from the compatibility guide, VLANs, DNS forward and reverse records, NTP. (Phase 4 covers why DNS and NTP are hard dependencies.)
+1. **Prepare hardware and network.** Servers from the compatibility guide, Virtual Local Area Networks (VLANs), Domain Name System (DNS) forward and reverse records, and Network Time Protocol (NTP). (Phase 4 covers why DNS and NTP are hard dependencies.)
 2. **Install ESX** on the hosts that will form the management domain.
 3. **Deploy the VCF Installer** appliance and download the binaries through it.
-4. **Run the deployment** (wizard or JSON spec). The installer deploys vCenter, NSX, SDDC Manager, VCF Operations and VCF Automation and builds the management domain cluster. This creates the fleet and its first instance.
+4. **Run the deployment** (wizard or JavaScript Object Notation (JSON) specification). The installer deploys vCenter, NSX, SDDC Manager, VCF Operations and VCF Automation and builds the management domain cluster. This creates the fleet and its first instance.
 5. **Operate from VCF Operations.** Licensing, certificates, passwords, monitoring and fleet lifecycle live here.
 6. **Commission more hosts and create workload domains** from VCF Operations; SDDC Manager executes the workflows. Each new workload domain gets a vCenter (and NSX Manager unless shared) deployed into the management domain.
 7. **Consume** through VCF Automation: tenants request VMs, networks and Kubernetes from a catalog.
@@ -120,13 +150,13 @@ How a VCF private cloud comes to life, at the level of detail you need now:
 
 ### Why "one product" matters
 
-In a do-it-yourself vSphere estate you pick versions of vCenter, ESX, storage and networking separately, check interoperability yourself and upgrade each on its own schedule. VCF replaces that with a **validated bill of materials** (BOM) and automated workflows. The benefit is predictability. The cost is that you must work *through* VCF: if you upgrade a vCenter by hand outside the workflow, the platform's view of the BOM no longer matches reality and later upgrades or prechecks can fail.
+In a do-it-yourself vSphere estate you pick versions of vCenter, ESX, storage and networking separately, check interoperability yourself and upgrade each on its own schedule. VCF replaces that with a **validated Bill of Materials (BOM)** and automated workflows. The benefit is predictability. The cost is that you must work *through* VCF: if you upgrade a vCenter by hand outside the workflow, the platform's view of the BOM no longer matches reality and later upgrades or prechecks can fail.
 
 Starting with 9.0, all components also share a unified five-field version format (for example 9.0.1.0), so "VCF 9.0.1" means one consistent set of component versions.
 
 ### VCF vs vSphere Foundation
 
-The same installer can deploy **vSphere Foundation (VVF)**. VVF gets vCenter, ESX, vSAN and VCF Operations, but Broadcom states it *"does not include the cloud management and integrated automation capabilities"* of VCF. NSX networking and VCF Automation are VCF-only. More in [VCF vs vSphere](lesson:vcf-vs-vsphere).
+The same installer can deploy **VMware vSphere Foundation (VVF)**. VVF gets vCenter, ESX, vSAN and VCF Operations, but Broadcom states it *"does not include the cloud management and integrated automation capabilities"* of VCF. NSX networking and VCF Automation are VCF-only. More in [VCF vs vSphere](lesson:vcf-vs-vsphere).
 
 ### How small can VCF be?
 
@@ -136,17 +166,17 @@ For VCF 9.x, a simple (non-HA) deployment needs a minimum of **3 ESX hosts with 
 
 | Theme | Use cases |
 |---|---|
-| Infrastructure modernization | Private cloud on-premises or at the edge; automated IaaS; extend the data center to the cloud |
-| Unified cloud experience | Kubernetes and modern apps; Private AI; traditional VM workloads |
+| Infrastructure modernization | Private cloud on-premises or at the edge; automated Infrastructure as a Service (IaaS); extend the data center to the cloud |
+| Unified cloud experience | Kubernetes and modern apps; Private Artificial Intelligence (AI); traditional VM workloads |
 | Secure and resilient platform | Ransomware protection and recovery; disaster recovery; integrated security and compliance |
 
 ## Configuration
 
-There is nothing to configure in this lesson; it is the map. Configuration starts in Phase 1 with a single ESX host ([lab-esx-host-first-vm](lesson:hypervisors-and-esx#lab)) and grows into a full VCF deployment in the Deployment phase. What you should do now is start your own *component table* for your home lab: write down which appliances you will eventually run, which domain they live in, and their FQDNs.
+There is nothing to configure in this theory lesson; it is the map. The separate Practical Guides section starts with a single ESX host and grows into a full VCF deployment. For now, build a component table: record which appliances you will eventually run, which domain they belong to and their Fully Qualified Domain Names (FQDNs).
 
 ## CLI / API
 
-VCF is driven mainly through UIs (VCF Operations, vSphere Client) and REST APIs (SDDC Manager, VCF Operations, vCenter, NSX). You will meet the first CLI in Phase 1: on an ESX host, `esxcli system version get` tells you exactly which build the host runs, which is the first thing VCF checks when you commission a host.
+VCF is driven mainly through User Interfaces (UIs) such as VCF Operations and vSphere Client, and through Representational State Transfer Application Programming Interfaces (REST APIs) exposed by SDDC Manager, VCF Operations, vCenter and NSX. You will meet the first Command-Line Interface (CLI) in Phase 1: on an ESX host, `esxcli system version get` tells you exactly which build the host runs, which is the first thing VCF checks when you commission a host.
 
 ```shell
 esxcli system version get
@@ -175,20 +205,12 @@ Start every VCF problem by placing it on the map:
 
 1. **Which level?** Fleet (VCF Operations/Automation), instance (SDDC Manager), domain (vCenter/NSX), or host (ESX)?
 2. **Which component owns the action that failed?** For example, a workload domain creation is requested in VCF Operations but executed by SDDC Manager, which calls vCenter, NSX and ESX.
-3. **Check the shared dependencies first**: DNS forward and reverse, NTP, certificates, passwords. These break many components at once.
+3. **Check the shared dependencies first**: Domain Name System (DNS) forward and reverse resolution, Network Time Protocol (NTP), certificates and passwords. These break many components at once.
 4. **Then go to that component's logs and UI.** Later phases teach each component's evidence.
 
 ## Real-World Scenario
 
-A regional retailer runs 40 standalone vSphere clusters managed by four teams. Upgrades take months because every team validates its own versions, and nobody can answer "how many hosts are on a vulnerable build?" They adopt VCF: one fleet with VCF Operations for visibility, a management domain for the management appliances, and separate workload domains for production, test and a PCI-scoped payment zone. Upgrades now follow one BOM, and the PCI workload domain can be patched on its own schedule because domains are lifecycle units. Their existing vCenters that cannot be rebuilt yet are added to the fleet as standalone vCenters monitored by VCF Operations.
-
-## Lab
-
-You do not need VCF yet. Start with the foundation: a single nested ESX host on your Proxmox server.
-
-::lab[lab-esx-host-first-vm]
-
-Later, once you have VCF running, the "Explore a VCF fleet" lab in the VCF Architecture phase has you map every component of a live deployment onto this picture.
+A regional retailer runs 40 standalone vSphere clusters managed by four teams. Upgrades take months because every team validates its own versions, and nobody can answer "how many hosts are on a vulnerable build?" They adopt VCF: one fleet with VCF Operations for visibility, a management domain for the management appliances, and separate workload domains for production, test and a Payment Card Industry (PCI)-scoped payment zone. Upgrades now follow one BOM, and the PCI workload domain can be patched on its own schedule because domains are lifecycle units. Their existing vCenters that cannot be rebuilt yet are added to the fleet as standalone vCenters monitored by VCF Operations.
 
 ## Exam Focus
 
