@@ -3732,3 +3732,234 @@ questions:
   explanation:
     correct: Build, connect and test the widgets before sharing, then validate the recipient's separate object scope.
     concept: Dashboard creation and sharing workflow
+- id: ops-netmon-001
+  type: matching
+  kind: concept
+  difficulty: intermediate
+  version: vcf9
+  topics: [network-ops]
+  objective: '4.3'
+  objectiveItem: "4.3.9"
+  lesson: vcf-operations-logs-network-ops
+  section: how-it-works
+  stem: Match each Network Operations widget or action to the evidence it supplies.
+  pairs:
+  - id: p1
+    left: Networking Inventory
+    right: NSX instances, transport nodes and edge clusters
+  - id: p2
+    left: NSX Health
+    right: Managers, transport nodes and edge nodes experiencing issues
+  - id: p3
+    left: Business Applications with Flows
+    right: Application flow evidence with a link to the networks console
+  - id: p4
+    left: Traffic Summary
+    right: Flow traffic summarized for the last 24 hours
+  explanation:
+    correct: Inventory and health can use core NSX integration data; application-flow and traffic widgets depend on VCF Operations for networks.
+    concept: Network Operations page scope
+- id: ops-netmon-002
+  type: single
+  kind: troubleshooting
+  difficulty: intermediate
+  version: vcf9
+  topics: [network-ops]
+  objective: '4.3'
+  objectiveItem: "4.3.9"
+  lesson: vcf-operations-logs-network-ops
+  section: how-it-works
+  stem: An operator can see NSX inventory and transport-node health, but must identify communicating VM endpoints, ports and the firewall rule on their path. What is the correct next step?
+  options:
+  - id: a
+    text: Use Business Applications with Flows or Traffic Summary and launch VCF Operations for networks
+    why: Endpoint, port, path and rule evidence comes from the networks appliance and its flow data.
+    correct: true
+  - id: b
+    text: Treat the healthy NSX Manager as proof that the application path is healthy
+    why: Management-plane health does not prove an individual data path works.
+  - id: c
+    text: Run vSAN Performance Diagnostics
+    why: Storage diagnostics cannot identify a network path or firewall rule.
+    confusedWith: health-diagnostics
+  - id: d
+    text: Export a VCF Operations dashboard as JSON
+    why: Dashboard export does not create missing flow evidence.
+    confusedWith: dashboards-alerts
+  explanation:
+    correct: Use the flow widgets and networks console for endpoint, port, path and firewall-rule evidence; inventory health alone is insufficient.
+    concept: Flow-based network monitoring
+- id: ops-storage-001
+  type: single
+  kind: troubleshooting
+  difficulty: intermediate
+  version: vcf9
+  topics: [health-diagnostics]
+  objective: '4.3'
+  objectiveItem: "4.3.10"
+  lesson: vcf-operations-logs-network-ops
+  section: how-it-works
+  stem: Storage Operations shows no vSAN clusters even though the cluster is visible in vCenter. What should be checked first?
+  options:
+  - id: a
+    text: The vSAN-enabled vCenter account is connected and collecting data in VCF Operations
+    why: Storage Operations requires the vCenter integration and collection before it can display vSAN data.
+    correct: true
+  - id: b
+    text: The dashboard was shared with a user group
+    why: Sharing does not populate adapter data.
+    confusedWith: dashboards-alerts
+  - id: c
+    text: VCF Operations for networks has an Extra Large platform node
+    why: Network flow analytics is unrelated to vSAN collection.
+    confusedWith: network-ops
+  - id: d
+    text: A Benchmarking diagnostic report is already present
+    why: Diagnostics require the cluster data to be available first.
+  explanation:
+    correct: Verify the vSAN-enabled vCenter account and its collection state before interpreting an empty storage page as a health result.
+    concept: Storage Operations prerequisite
+- id: ops-storage-002
+  type: multi
+  kind: scenario
+  difficulty: intermediate
+  version: vcf9
+  topics: [health-diagnostics]
+  objective: '4.3'
+  objectiveItem: "4.3.10"
+  lesson: vcf-operations-logs-network-ops
+  section: read-the-storage-dashboard-in-the-right-order
+  stem: Which three observations belong to a sound first pass through Storage Operations for a vSAN latency incident? (Choose three.)
+  options:
+  - id: a
+    text: Confirm the target cluster is present and note its vSAN Cluster Health Score
+    why: Inventory and health establish scope before diagnosis.
+    correct: true
+  - id: b
+    text: Correlate IOPS, latency and throughput from the same incident window
+    why: Related performance measurements must be read together and in one time context.
+    correct: true
+  - id: c
+    text: Use Troubleshooting diagnostics because the cluster already runs workloads
+    why: Troubleshooting is the documented goal for a cluster in use.
+    correct: true
+  - id: d
+    text: Use Benchmarking and Optimizing because every latency incident is a benchmark problem
+    why: That goal is for a new cluster before adding workloads.
+  - id: e
+    text: Diagnose the storage fault solely from high IOPS
+    why: High workload alone is not proof of a fault; health, latency and throughput provide context.
+  select: 3
+  explanation:
+    correct: Establish inventory and health, correlate the related metrics in one window, then use the diagnostic goal that matches the workload state.
+    concept: vSAN monitoring sequence
+- id: ops-storage-003
+  type: ordering
+  kind: scenario
+  difficulty: intermediate
+  version: vcf9
+  topics: [health-diagnostics]
+  objective: '4.3'
+  objectiveItem: "4.3.10"
+  lesson: vcf-operations-logs-network-ops
+  section: how-it-works
+  stem: Order the workflow for running a vSAN performance diagnostic from Storage Operations.
+  items:
+  - id: i1
+    text: Open Infrastructure Operations > Storage Operations and confirm the target vSAN cluster is collected
+  - id: i2
+    text: Open the vSAN Cluster Performance widget and select View Diagnostics > Run New Diagnostics
+  - id: i3
+    text: Select the diagnostic goal that matches the cluster workload state
+  - id: i4
+    text: Select the target vSAN cluster and the incident time range
+  - id: i5
+    text: Run the diagnostic and review findings, remediation steps and suggestions
+  - id: i6
+    text: Record the result before it ages beyond the seven-day diagnostics window
+  explanation:
+    correct: Confirm collection before starting, choose goal, target and time range, then preserve the resulting evidence and remediation guidance.
+    concept: vSAN Performance Diagnostics workflow
+- id: ops-policy-001
+  type: single
+  kind: troubleshooting
+  difficulty: foundation
+  version: vcf9
+  topics: [dashboards-alerts]
+  objective: '4.3'
+  objectiveItem: "4.3.11"
+  lesson: dashboards-alerts-policies
+  section: policy-definition-versus-policy-assignment
+  stem: An administrator creates and saves a custom policy with a stricter alert threshold, but the policy appears inactive and no object changes. What is missing?
+  options:
+  - id: a
+    text: Assign the policy to at least one object or custom group
+    why: A policy is active only when it has an assignment.
+    correct: true
+  - id: b
+    text: Export the policy as JSON
+    why: Export does not activate a policy.
+  - id: c
+    text: Restart every collector
+    why: A saved but unassigned policy is a scope problem, not a collector restart problem.
+  - id: d
+    text: Deploy VCF Operations for logs
+    why: The optional logs product is unrelated to policy activation.
+    confusedWith: vcf-ops-logs
+  explanation:
+    correct: Assign the policy in Groups and Objects or Policy Assignment; unassigned policies remain inactive and objects use another effective policy.
+    concept: Policy activation
+- id: ops-policy-002
+  type: ordering
+  kind: scenario
+  difficulty: intermediate
+  version: vcf9
+  topics: [dashboards-alerts]
+  objective: '4.3'
+  objectiveItem: "4.3.11"
+  lesson: dashboards-alerts-policies
+  section: how-it-works
+  stem: Order the main steps for creating and proving a scoped VCF Operations policy.
+  items:
+  - id: i1
+    text: Open Policy Definition and select Add
+  - id: i2
+    text: Name the policy, choose its Inherit From baseline and create it
+  - id: i3
+    text: Override only the required workspace settings and save each workspace
+  - id: i4
+    text: Assign the intended custom group or objects and confirm the assignment
+  - id: i5
+    text: Inspect policy priority and any direct assignments that could change precedence
+  - id: i6
+    text: Open a target object and verify its effective policy and affected behavior
+  explanation:
+    correct: Define and inherit first, override deliberately, assign scope, inspect precedence and verify the effective result on an object.
+    concept: Policy creation and validation workflow
+- id: ops-policy-003
+  type: matching
+  kind: concept
+  difficulty: intermediate
+  version: vcf9
+  topics: [dashboards-alerts]
+  objective: '4.3'
+  objectiveItem: "4.3.11"
+  lesson: dashboards-alerts-policies
+  section: policy-definition-versus-policy-assignment
+  stem: Match each policy surface to the question it answers.
+  pairs:
+  - id: p1
+    left: Policy Definition
+    right: Which metrics, alerts, capacity, compliance or automation settings does the policy define or inherit?
+  - id: p2
+    left: Groups and Objects
+    right: Which objects or custom groups should receive the policy?
+  - id: p3
+    left: Policy Assignment
+    right: Which policies are active, what is their priority and where are they assigned?
+  - id: p4
+    left: Target object policy information
+    right: Which policy is actually effective on this object?
+  explanation:
+    correct: Definition describes settings, Groups and Objects supplies scope, Assignment exposes activation and precedence, and the target object proves the effective outcome.
+    concept: Policy workspaces

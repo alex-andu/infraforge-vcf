@@ -122,6 +122,9 @@ The dashboard time panel defaults to 6 hours and offers 1 h, 6 h, 24 h, 7 days o
 
 Menu: Infrastructure Operations > Configurations > **Policy Definition** tile.
 
+A policy is **active only when it is assigned** to at least one object or custom group. Saving a definition without an
+assignment changes no object. An object or group without an explicit assignment uses the **Default Policy**.
+
 ## How It Works
 
 Building an alert end to end:
@@ -141,11 +144,36 @@ Building an alert end to end:
 
 How a policy is chosen for an object:
 
-1. Policies are assigned to objects and [[custom-group|custom groups]] in the Policy Assignment workspace (drag and
-   drop; child objects can be included up to 10 levels).
-2. If several policies apply, **the policy with the highest priority is enforced**.
-3. Exception: "a lower-priority policy is enforced if it is assigned directly to the object."
-4. Settings not defined locally are **inherited from the base policy**.
+1. Open **Infrastructure Operations > Configurations > Policy Definition** and select **Add** (or select an existing
+   policy and **Edit Policy**).
+2. Give the policy a meaningful name and description, choose one or more baselines from **Inherit From**, and select
+   **Create Policy**. A setting left unchanged locally inherits from its base policy.
+3. Open each required workspace card, change only the intended controls, and select **Save** to return: **Metrics and
+   Properties**, **Alerts and Symptoms**, **Capacity**, **Compliance**, and **Workload Automation**. In Workload
+   Automation, unlock an option to override it locally; lock it again to inherit the parent setting.
+4. In **Groups and Objects**, select one or more targets and save. Without an assignment, the policy is inactive.
+5. In the Policy Assignment workspace, select a policy card. Under **All Objects**, open **Inventory** or **Custom
+   Groups**, select the target and drag it onto the policy card. For an object choose **Only this object** or **Include
+   child object**, enter a depth from 1 to 10 when needed, and select **Confirm**.
+6. If several group-assigned policies apply, **the policy with the highest priority is enforced**. Exception: a
+   lower-priority policy assigned **directly to the object** is enforced over a group assignment.
+7. Open the target object and verify the effective policy, then inspect a dashboard, alert or metric affected by the
+   override. A saved definition is not enough evidence that the policy is in force.
+
+### Policy Definition versus Policy Assignment
+
+| Workspace | Use it to answer | Evidence of success |
+|---|---|---|
+| Policy Definition | What does the policy collect, calculate or enforce? | Local overrides are visible; inherited controls remain inherited |
+| Groups and Objects in the create/edit workflow | Which scope should this policy apply to? | At least one group or object is selected before save |
+| Policy Assignment | Which policies are active, where are they assigned and what wins? | Policy card shows direct assignments, custom groups, affected objects, priority and hierarchy |
+| Target object | Which policy is actually effective here? | Effective-policy information matches the intended assignment and precedence rule |
+
+The assignment workspace can display active or inactive policies. Its policy cards expose priority, direct
+assignments, custom groups, affected objects, default assignment and hierarchy. Sort active policies by fixed layout,
+assignment count or affected-object count; use these views to detect a policy that is defined correctly but never
+reaches the intended objects. On the active-policy list, priority **1** is the highest priority and the default policy
+stays at the bottom.
 
 ## Deep Dive
 
@@ -155,6 +183,17 @@ TechDocs names three categories: the **default policy** ("a set of rules that ap
 **custom policies** that you build by inheriting from existing ones, and **policies provided with VCF Operations** that
 you can use as-is or as starting points. Best practice: never tune the default policy for one team; create a custom
 policy that inherits from it, override only what differs, and assign it to a custom group.
+
+### Inheritance, activation and precedence are separate decisions
+
+- **Inheritance** supplies values that the child policy does not define locally.
+- **Activation** requires an object or custom-group assignment.
+- **Priority** resolves overlapping group assignments.
+- **Direct assignment** is the exception: a policy assigned directly to an object wins even when its priority is lower.
+
+When an alert does not fire, verify these decisions in that order. A correct threshold in an inactive policy cannot
+affect anything; a correct group assignment can still lose to a higher-priority group policy or to a direct object
+assignment.
 
 ### Alert noise reduction
 
@@ -208,15 +247,20 @@ between instances or keep it in version control. Alerts can be read through the 
 | Email never arrives | Notification rule filter too narrow, or outbound plugin (SMTP) misconfigured |
 | Shared dashboard empty for a user | User's role/scope does not include the objects; the dashboard is shared, the data permissions are not |
 | Wrong thresholds on an object | Object directly assigned to a lower-priority policy, overriding the group policy |
+| Policy remains inactive | It was created and saved but no object or custom group was assigned |
+| Child objects do not change | The assignment used **Only this object**, or the selected child depth was too small |
 
 ## Troubleshooting
 
-1. On the object, check which policy is effective (object Summary / policy info) and whether the alert definition is
-   active there.
-2. Check the symptom: does the metric exist on the object and is it current?
-3. Check wait cycle and criticality settings in the definition.
-4. For notifications, test the outbound plugin and widen the rule temporarily.
-5. For dashboards, verify group sharing *and* the user's object permissions.
+1. In **Policy Definition**, confirm the intended local override and its inherited base.
+2. In **Policy Assignment**, expand the policy card and inspect active state, priority, direct assignments, custom
+   groups and affected-object count.
+3. On the object, check which policy is effective and whether the alert definition is active there.
+4. If child objects are missing, edit the assignment depth (maximum 10) or assign the child explicitly.
+5. Check the symptom: does the metric exist on the object and is it current?
+6. Check wait cycle and criticality settings in the definition.
+7. For notifications, test the outbound plugin and widen the rule temporarily.
+8. For dashboards, verify group sharing *and* the user's object permissions.
 
 ## Real-World Scenario
 

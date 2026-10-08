@@ -1,0 +1,45 @@
+id: d10-ops-network-storage-decision
+title: "VCF Operations evidence path: network, storage and logs"
+description: >
+  Start from the evidence the incident requires. The built-in Network Operations page uses the core NSX integration
+  for inventory, alerts and NSX health; flow-based application and traffic widgets require VCF Operations for
+  networks. Storage Operations uses a connected, collecting vSAN-enabled vCenter account for datastore inventory,
+  vSAN health scores and performance diagnostics. Logs explain messages and changes in the same time window. A missing
+  integration or optional appliance is a collection-scope finding, not proof that the underlying service is healthy.
+width: 1040
+height: 610
+groups:
+  - { id: g-question, x: 20, y: 20, w: 1000, h: 95, label: "Start with the evidence question", kind: zone }
+  - { id: g-network, x: 20, y: 145, w: 310, h: 430, label: "Network evidence", kind: network }
+  - { id: g-storage, x: 365, y: 145, w: 310, h: 430, label: "Storage evidence", kind: storage }
+  - { id: g-correlation, x: 710, y: 145, w: 310, h: 430, label: "Correlation and conclusion", kind: ops }
+nodes:
+  - { id: symptom, x: 340, y: 40, w: 360, h: 54, label: "Application or platform symptom", sublabel: "define object + time window", kind: external, info: "Name the affected object, required evidence and incident time before selecting a page." }
+  - { id: netnative, x: 45, y: 185, w: 260, h: 66, label: "Network Operations", sublabel: "inventory, alerts, NSX health", kind: network, component: vcf-operations, info: "Core NSX integration supplies networking inventory, network alerts, NSX Managers/VPCs and NSX Health." }
+  - { id: netflow, x: 45, y: 320, w: 260, h: 66, label: "Operations for networks", sublabel: "flows, paths, rules", kind: nsx, component: vcf-operations-networks, info: "Required for Business Applications with Flows, Traffic Summary, path analysis and recommended firewall rules." }
+  - { id: netgap, x: 45, y: 455, w: 260, h: 66, label: "Capability absent?", sublabel: "install or record limitation", kind: mgmt, info: "If flow widgets are empty while NSX health is populated, verify the Operations for networks appliance and its data collection." }
+  - { id: storagepage, x: 390, y: 185, w: 260, h: 66, label: "Storage Operations", sublabel: "inventory + alerts + usage", kind: storage, component: vsan, info: "Centralized dashboard for vSAN and non-vSAN datastores." }
+  - { id: vsanhealth, x: 390, y: 320, w: 260, h: 66, label: "vSAN health + performance", sublabel: "score, IOPS, latency, throughput", kind: storage, component: vsan, info: "Use the health score for scope, then correlate IOPS, latency and throughput for the incident window." }
+  - { id: vsandiag, x: 390, y: 455, w: 260, h: 66, label: "Performance diagnostics", sublabel: "goal + cluster + time range", kind: ops, info: "Troubleshooting fits a live workload; Benchmarking and Optimizing fits a new cluster before workloads." }
+  - { id: logs, x: 735, y: 185, w: 260, h: 66, label: "Logs in the same window", sublabel: "message and change evidence", kind: ops, component: vcf-operations-logs, info: "Search the affected object's messages and correlate them with network and storage timestamps." }
+  - { id: integrations, x: 735, y: 320, w: 260, h: 66, label: "Verify collection scope", sublabel: "connected + collecting", kind: mgmt, info: "Missing network flows or vSAN data first requires an integration and collection check." }
+  - { id: conclusion, x: 735, y: 455, w: 260, h: 66, label: "Evidence-backed conclusion", sublabel: "layer, cause, remediation", kind: security, info: "State which layer failed, which evidence proves it and how the proposed remediation will be validated." }
+edges:
+  - { from: symptom, to: netnative, label: "path / health", kind: dependency }
+  - { from: symptom, to: storagepage, label: "capacity / latency", kind: dependency }
+  - { from: symptom, to: logs, label: "message / change", kind: dependency }
+  - { from: netnative, to: netflow, label: "need flow evidence", kind: data }
+  - { from: netflow, to: netgap, label: "no data", kind: dependency, dashed: true }
+  - { from: storagepage, to: vsanhealth, label: "vSAN", kind: data }
+  - { from: vsanhealth, to: vsandiag, label: "diagnose", kind: data }
+  - { from: netgap, to: integrations, label: "check", kind: control }
+  - { from: storagepage, to: integrations, label: "missing inventory", kind: control, dashed: true }
+  - { from: logs, to: conclusion, label: "correlate", kind: data }
+  - { from: integrations, to: conclusion, label: "scope", kind: data }
+  - { from: vsandiag, to: conclusion, label: "findings", kind: data }
+steps:
+  - { title: "Define the evidence", text: "Name the affected object and time window. Select the page that can answer the evidence question.", highlight: [symptom] }
+  - { title: "Separate native network health from flows", text: "Use Network Operations for NSX inventory and health. Use Operations for networks when endpoints, ports, paths or firewall rules are required.", highlight: [netnative, netflow, netgap] }
+  - { title: "Read storage from scope to diagnosis", text: "Confirm the datastore is collected, read health and performance together, then choose the diagnostic goal that fits the cluster workload state.", highlight: [storagepage, vsanhealth, vsandiag] }
+  - { title: "Check collection gaps", text: "An empty widget can mean that an adapter, account or optional appliance is missing or not collecting. Verify scope before interpreting health.", highlight: [netgap, integrations, storagepage] }
+  - { title: "Correlate before remediating", text: "Align network, storage and log evidence in the same window and state how the change will be validated.", highlight: [logs, vsandiag, conclusion] }

@@ -16,6 +16,7 @@ objectives:
   - Build a symptom, an alert definition with a recommendation, and a notification, then trigger and clear the alert.
 prerequisites:
   - "A deployed VCF management domain including VCF Operations (lab-deploy-vcf-management-domain). VCF 9 binaries and licenses are required; until they are available, read the steps and do the challenge on paper."
+  - "VCF Operations URL in the documented lab: https://ops01.vcf.home.arpa. Use an account that can create policies and custom groups; discover the assigned role under access control rather than recording credentials."
   - "Lessons vcf-operations-architecture, metrics-properties-views-reports and dashboards-alerts-policies."
   - "A jump host on the lab management network with a browser."
   - "Optional: a lab SMTP receiver (any small mail-catcher container or VM) for notifications."
@@ -37,6 +38,11 @@ startingState: |
   custom content exists yet.
 
   :::warning
+  **PREPARED — NOT YET LAB-VALIDATED.** The lab inventory confirms VCF Operations, fleet management and a collector,
+  but these create/edit paths and their current collection state have not been executed against build 9.0.2. Capture
+  the displayed build and sanitized evidence during the run. Treat field labels that differ as evidence to update the
+  guide, not permission to guess.
+
   A nested VCF management domain on one Proxmox host (256 GB RAM) is tight. Keep VCF Operations at the Simple model,
   power off anything not needed during this lab, and expect slower UI and longer collection cycles than in production.
   Everything you configure is identical to a physical deployment.
@@ -105,13 +111,38 @@ steps:
     title: Create a custom group and a custom policy
     why: Policies decide which alerts are active and with which thresholds for each group of objects.
     instructions: |
-      1. Create a custom group `Lab test VMs` with membership criteria (for example VM name contains `test`).
-      2. **Infrastructure Operations > Configurations > Policy Definition**: Add a policy `Lab policy`, inherit from the
-         default policy.
-      3. In **Alerts and Symptoms**, make sure the alert you will create in the next step is active (you can return here).
-      4. In **Groups and Objects**, assign `Lab test VMs`. Set its priority above the default policy.
-    validate: Open a test VM and check which policy is effective.
-    expected: The test VMs show `Lab policy` as the effective policy; other VMs keep the default.
+      1. Browse to `https://ops01.vcf.home.arpa`, sign in and record the VCF Operations build. Identify two disposable
+         test VMs; store their names as `<TEST_VM_1>` and `<TEST_VM_2>` in the evidence sheet.
+      2. Open **Infrastructure Operations > Configurations > Custom Groups** and select **Add**. In **Custom Group**,
+         set name `Lab test VMs`, add a purpose description and select the group type used for environment objects.
+         Leave **Policy** blank for now so the group initially uses the default policy. Enable **Keep group membership
+         up to date**.
+      3. In **Define Membership Criteria**, select object type **Virtual Machine**, criterion **Object Name**, operator
+         **matches regular expression**, and enter `^(<TEST_VM_1>|<TEST_VM_2>)$` after replacing both placeholders with
+         the escaped exact VM names. Select
+         **Preview** and confirm the list contains exactly those two objects. Use **Previous** if the rule needs repair,
+         then **Next** through the remaining tabs and **Create**.
+      4. Open **Infrastructure Operations > Configurations > Policy Definition** and select **Add**. Set name
+         `Lab policy`, add a purpose/rollback description, select the **Default Policy** in **Inherit From**, then select
+         **Create Policy**.
+      5. Open **Metrics and Properties** and leave inherited collection unchanged. Open **Alerts and Symptoms** and
+         activate the `Lab - VM CPU saturated` definition after it is created in the next step; until then record this
+         as a return checkpoint. Select **Save** in each workspace card to return to the policy workflow.
+      6. Open **Groups and Objects**, select custom group `Lab test VMs`, then **Save** the policy. A policy with no
+         object or group assignment remains inactive.
+      7. In the **Policy Assignment** workspace select `Lab policy`. Under **All Objects > Custom Groups**, select
+         `Lab test VMs`, drag it onto the `Lab policy` card and select **Confirm**. Record the policy card's active state,
+         priority, custom group and affected-object count.
+      8. If another group policy overlaps, drag `Lab policy` toward priority **1** (the highest active-policy priority)
+         for this controlled test. Do
+         not assign it directly to a VM: direct assignment wins even when that policy has lower priority and would hide
+         the group-precedence behavior this step is testing.
+      9. Open `<TEST_VM_1>` and record its effective policy. Open one VM outside the group and record its effective
+         policy as the control. This is the commit checkpoint before building the alert.
+    validate: >-
+      `Lab policy` is active, the policy card lists `Lab test VMs`, both test VMs use it, and the control VM retains
+      its prior/default effective policy.
+    expected: The test group receives the inherited custom policy; objects outside its membership are unchanged.
   - id: alert
     title: Build, trigger and clear a custom alert
     why: Practise the whole pipeline - symptom, alert definition, recommendation, policy, notification.
@@ -142,8 +173,10 @@ challenge: |
   Explain which policy wins for a VM that is in both groups, and how a direct assignment would change it. Export the
   dashboard and alert definition so you could import them into another VCF Operations instance.
 cleanup: |
-  Stop load generators. Optionally delete the test alert definition, symptom definitions, custom group, policy and the
-  NOC user. Keep the view, report and dashboard if you want them for later labs.
+  Stop load generators. In **Policy Assignment**, remove `Lab test VMs` from `Lab policy` and confirm the test VMs
+  return to their prior effective policy. Then delete the test alert definition, symptom definitions, custom policy,
+  custom group and NOC user. Keep only the view, report and dashboard that you intentionally want for later guides,
+  plus sanitized exported evidence.
 sources:
   - title: "VCF 9.0 - Create and Configure Dashboards"
     url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/infrastructure-operations/dashboards-and-widgets/using-dashboards/create-and-configure-dashboards.html
@@ -153,3 +186,7 @@ sources:
     url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/infrastructure-operations/configuring-alerts-and-actions/alert-definitions.html
   - title: "VCF 9.0 - Using the Policy Workspace"
     url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/infrastructure-operations/configuring-policies/using-the-monitoring-policy-workspace.html
+  - title: "VCF 9.0 - Assigning Policies"
+    url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/infrastructure-operations/configuring-policies/assigning-policies.html
+  - title: "VCF 9.0 - Custom Object Groups Workspace to Create a New Group"
+    url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/infrastructure-operations/inventory-management/configuring-objects/object-discovery/managing-custom-object-groups/custom-groups-workspace/custom-groups-workspace-create-new-group.html

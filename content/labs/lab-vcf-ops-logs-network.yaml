@@ -15,6 +15,7 @@ objectives:
   - Configure a compliance benchmark and a configuration drift template, fixing the collector prerequisite.
 prerequisites:
   - "lab-vcf-ops-dashboards-alerts completed (VCF Operations running and collecting)."
+  - "VCF Operations 9.0 URL: https://ops01.vcf.home.arpa; sign in with an account permitted to view Infrastructure Operations and integrations. Discover the exact role in Administration > Control Panel > Access Control if access is denied."
   - "Free capacity on the Proxmox host for one VCF Operations for logs node; check the size options shown in the deployment wizard against your free RAM."
   - "DNS A/PTR records for the logs node and its VIP FQDN (required even in the Simple model)."
 topology:
@@ -33,6 +34,11 @@ startingState: |
   VCF Operations collects from the management domain. VCF Operations for logs and for networks are not deployed.
 
   :::warning
+  **PREPARED — NOT YET LAB-VALIDATED.** The documented lab contains VCF Operations at `ops01.vcf.home.arpa`, its
+  collector, NSX and a vSAN OSA management cluster, but current collection state and exact 9.0.2 screen labels have
+  not been observed. VCF Operations for networks is not in the supplied inventory. Record current screens and values
+  during the run; do not infer success from this guide.
+
   Be honest with your hardware: a nested VCF management domain plus VCF Operations for logs fits on 256 GB only if
   other optional appliances are powered off. VCF Operations for networks needs an Extra Large, fully reserved platform
   node - skip deployment and do the conceptual walk-through unless you have spare capacity.
@@ -72,25 +78,49 @@ steps:
     title: Network Operations page (and optional VCF Operations for networks)
     why: Exam item "monitor networks using VCF Network Operations".
     instructions: |
-      1. Open **Infrastructure Operations > Network Operations**.
-      2. Identify: NSX instances, transport nodes, edge clusters, the network alerts overview, NSX health.
-      3. If VCF Operations for networks is deployed: open Business Applications with Flows and the Traffic Summary
-         (last 24 hours), then launch into VCF Operations for networks and view a VM-to-VM path and recommended firewall rules.
-      4. If not deployed: write down which of these widgets would be empty and why (no flow data source).
-    validate: Explain the difference between what VCF Operations shows natively and what needs VCF Operations for networks.
-    expected: NSX inventory/health visible natively; flow-based widgets need VCF Operations for networks.
+      1. Browse to `https://ops01.vcf.home.arpa`, sign in and record the displayed VCF Operations build. Do not record
+         credentials in the evidence sheet.
+      2. Open **Infrastructure Operations > Network Operations**. If the page is absent, stop and record the role,
+         build and navigation shown; do not substitute an assumed path.
+      3. In **Networking Inventory**, record the count of NSX instances, transport nodes and edge clusters. Open the
+         NSX instance that represents `nsx.vcf.home.arpa` and confirm its last collection time/status.
+      4. In **Network Alerts**, record active alert count and highest criticality. In **NSX Health**, identify any
+         manager, transport node or edge node reporting an issue; open one object to preserve its name and evidence.
+      5. Review **NSX Managers and VPCs** and record whether VPC inventory exists. The current lab may legitimately
+         have no VPCs.
+      6. Inspect **Business Applications with Flows** and **Traffic Summary**. The supplied inventory has no VCF
+         Operations for networks appliance, so record them as `Unavailable — appliance not deployed` if they contain
+         no flow data. The top-right **Install Operations Network Appliance** action confirms this capability boundary;
+         do not select it during this guide.
+      7. If a future run has the appliance, open **Business Applications with Flows**, select a test application,
+         launch the networks console, set the incident time range, and inspect its VM-to-VM path, observed ports and
+         firewall-rule evidence. Save only a sanitized screenshot.
+      8. Complete a checkpoint table: widget, data source, observed state, timestamp, evidence reference. No change is
+         committed in this read-only step.
+    validate: The checkpoint distinguishes NSX inventory/health supplied by core integrations from flow/path evidence supplied by VCF Operations for networks.
+    expected: Native NSX inventory and health are populated if the NSX adapter is collecting; flow widgets are explicitly unavailable until the networks appliance is deployed.
   - id: health-storage
     title: VCF Health and Storage Operations
     why: Exam items on Health and Diagnostics and on vSAN Storage Operations.
     instructions: |
-      1. Open VCF Health: compare the **Component View** with the **VCF View** (drill from management domain to an ESX host).
-      2. Review Certificates Health and NTP and DNS Health.
-      3. Open **Infrastructure Operations > Storage Operations**, filter vSAN, read the vSAN Cluster Health Score and
-         hover the cluster for IOPS, latency and throughput.
-      4. Run a new vSAN performance diagnostic in **Troubleshooting** mode.
-      5. Open Diagnostics Findings and note any known issue matched.
-    validate: Record the health score, the latency figure and any finding.
-    expected: Health cards with drill-downs; a vSAN diagnostics run started (nested vSAN latency will be higher than physical).
+      1. In VCF Operations open **VCF Health**. Record the collection timestamp, compare **Component View** with **VCF
+         View**, and drill from `mgmt-domain` to one ESX host.
+      2. Open **Certificates Health** and **NTP and DNS Health**. Record status and evidence without changing settings.
+      3. Open **Infrastructure Operations > Storage Operations** and select the **vSAN** storage-type filter.
+      4. Confirm cluster `mgmt-domain-cl01` and datastore `mgmt-domain-cl01-ds-vsan01` appear. If they do not, open
+         **Administration > Integrations**, inspect the vCenter account for `vcenter01.vcf.home.arpa`, and verify it is
+         connected and collecting vSAN data. Do not edit the account in this step.
+      5. Record the **vSAN Cluster Health Score**. Hover the cluster pin and record IOPS, latency and throughput with
+         the same timestamp; avoid comparing readings from different windows.
+      6. In **vSAN Cluster Performance**, select **View Diagnostics > Run New Diagnostics**. Choose goal
+         **Troubleshooting**, target `mgmt-domain-cl01`, and a time range containing normal lab activity. Review the
+         summary before selecting **Run New Diagnostics**; this starts analysis but does not change the cluster.
+      7. On the results page record cluster, selected window, findings, remediation suggestions and report timestamp.
+         The diagnostics history covers only seven days.
+      8. Open **Diagnostics Findings** and note any known issue matched. Preserve a sanitized screenshot of the health
+         score and diagnostics result; this is the commit checkpoint for the step.
+    validate: Evidence contains the vSAN cluster and datastore, integration state, health score, IOPS/latency/throughput from one timestamp, diagnostic goal/window and any findings.
+    expected: The documented vSAN OSA management cluster is collected and a Troubleshooting diagnostics report is available; exact health and latency values remain observed results, not guide assumptions.
   - id: compliance
     title: Configure a compliance benchmark
     why: Exam item "monitor security hardening and compliance".
@@ -128,7 +158,8 @@ challenge: |
   drift checks you would run after the incident to prevent recurrence.
 cleanup: |
   Keep VCF Operations for logs if you have capacity (later labs use it); otherwise power it off or delete it through
-  fleet management. Remove test drift templates and revert any remediated setting you changed only for practice.
+  fleet management. The Network Operations and Storage Operations checkpoints are read-only and need no rollback.
+  Remove test drift templates and revert any remediated setting you changed only for practice.
 sources:
   - title: "VCF 9.0 Architectural Options - VCF Operations Models"
     url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/design/vmware-cloud-foundation-concepts/vcf-operations.html
@@ -137,6 +168,6 @@ sources:
   - title: "VCF 9.0 - Network Operations"
     url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/infrastructure-operations/network-operationss.html
   - title: "VCF 9.0 - Monitoring Storage Operations"
-    url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/infrastructure-operations/monitoring-storage-operations(1).html
+    url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/infrastructure-operations/connect-to-data-sources/vsan-overview/monitoring-storage-operations(1).html
   - title: "Broadcom KB 438361 - vCenter Servers not listed in Configuration Drift source list"
     url: https://knowledge.broadcom.com/external/article/438361/vcenter-servers-not-listed-in-vcf-operat.html
