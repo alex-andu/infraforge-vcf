@@ -79,7 +79,7 @@ export default function HomeLab() {
               <div className="fact"><div className="k">RAM</div><div className="v small">{p.ram}</div></div>
               <div className="fact"><div className="k">Disc</div><div className="v small">{p.disk}</div></div>
               <div className="fact"><div className="k">NIC-uri</div><div className="v small">{p.nics}</div></div>
-              <div className="fact"><div className="k">Consum estimat VM-uri</div><div className="v small">{totals.vcpu} vCPU · {totals.ram} GB RAM · {totals.disk} GB disc</div></div>
+              <div className="fact"><div className="k">{p.resourceTotalsComplete === false ? 'Subset cu sizing confirmat' : 'Consum estimat VM-uri'}</div><div className="v small">{totals.vcpu} vCPU · {totals.ram} GB RAM · {totals.disk} GB disc{p.resourceTotalsComplete === false ? ' · totalul lab-ului nu este documentat' : ''}</div></div>
             </div>
             <div className="grid grid-3">
               <div><div className="section-label">Layout storage</div><div className="small"><Md src={p.storageLayout} /></div></div>

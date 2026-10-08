@@ -325,6 +325,7 @@ export const HomeLabProfile = z.object({
   cpu: z.string(), ram: z.string(), disk: z.string(), nics: z.string(),
   storageLayout: md, nested: md, network: md,
   vms: z.array(z.object({ name: z.string(), role: z.string(), vcpu: z.number(), ramGb: z.number(), diskGb: z.number(), notes: z.string().optional() })),
+  resourceTotalsComplete: z.boolean().optional(),
   limitations: z.array(z.string()),
 });
 

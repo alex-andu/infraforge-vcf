@@ -159,7 +159,7 @@ They cover esxcli, vmkping, nsxcli, vecs-cli, openssl, PowerCLI (`VCF.PowerCLI`)
 | Incident simulator (6 stages, scored) | `src/pages/IncidentPage.tsx` | Done; an infinite-render bug was fixed 2026-10-03 |
 | Design scenarios | `src/pages/ScenarioPage.tsx` | Done |
 | Guided lab runner (step check-off, hints, topology) | `src/pages/LabPage.tsx` | Done |
-| Home Lab Builder (profiles, IP/VLAN/DNS, checklists) | `src/pages/HomeLab.tsx` | Done |
+| Home Lab Builder (4 profiles including sanitized real-lab topology, IP/VLAN/DNS, checklists) | `src/pages/HomeLab.tsx` | Done |
 | Global search (Ctrl K, grouped, highlighted) | `src/components/SearchPalette.tsx`, `search.ts` | Done |
 | Glossary tooltips, section bookmarks, notes, copy buttons | `src/components/RichContent.tsx` | Done |
 
