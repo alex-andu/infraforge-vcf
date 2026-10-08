@@ -255,18 +255,19 @@ questions:
     objectiveItem: "4.1.4"
     lesson: vcf-installer-workflow
     section: components
-    select: 2
+    select: 3
     context: |
       The VCF Installer reports success for a new VCF fleet deployed with the simple model.
-    stem: "Which two components must the administrator still deploy to complete the platform? (Choose two.)"
+    stem: "Which three top-level components must the administrator still deploy to complete the platform? (Choose three.)"
     options:
       - { id: a, text: "VCF Operations for logs", correct: true, why: "Deployed after the installer finishes." }
       - { id: b, text: "VCF Operations for networks", correct: true, why: "Deployed after the installer finishes (VCF only)." }
+      - { id: f, text: "VCF Operations orchestrator", correct: true, why: "The orchestrator appliance is a manual post-installer completion task." }
       - { id: c, text: "NSX Manager for the management domain", why: "The installer deploys it.", confusedWith: nsx-architecture }
       - { id: d, text: "The VCF Operations collector", why: "The installer deploys a collector." }
       - { id: e, text: "SDDC Manager", why: "Deployed by the installer (or the installer converts into it).", confusedWith: sddc-manager }
     explanation:
-      correct: "Logs, networks, the orchestrator and optionally a three-node identity broker are post-deployment components."
+      correct: "Logs, networks and the orchestrator are post-deployment components; a three-node identity broker is optional."
       concept: "Additional components required to complete deployment (objective 4.1)"
       architecture: "VCF Operations, fleet management and the collector come from the installer."
       trap: "Logs and networks are VCF Operations family members but are not deployed by the installer."
@@ -1649,3 +1650,49 @@ questions:
       correct: "UNASSIGNED_USEABLE = commissioned and usable."
       concept: "Host status values"
       trap: "UNASSIGNED_UNUSEABLE hosts need attention first."
+
+  - id: dep-post-001
+    type: matching
+    kind: concept
+    difficulty: advanced
+    version: vcf9
+    topics: [vcf-installer, vcf-ops-logs, network-ops]
+    objective: "4.1"
+    objectiveItem: "4.1.4"
+    lesson: vcf-installer-workflow
+    section: components
+    stem: "Match each post-installer component to its scope in the platform-completion matrix."
+    pairs:
+      - { id: p1, left: "VCF Operations for networks", right: "VCF only; one collector in Simple and two in HA" }
+      - { id: p2, left: "VCF Operations for logs", right: "VCF and vSphere Foundation; one primary in VCF Simple, primary plus two workers in HA models" }
+      - { id: p3, left: "VCF Operations orchestrator", right: "VCF and vSphere Foundation; manual appliance completion task" }
+      - { id: p4, left: "Dedicated VCF Identity Broker", right: "Optional three-node deployment for VCF HA requirements; otherwise use the function embedded in vCenter" }
+    explanation:
+      correct: "Platform type and deployment model determine which remaining appliances and node counts complete the platform."
+      concept: "Post-installer completion scope"
+      trap: "Installer success does not mean logs, networks and orchestrator are already deployed."
+
+  - id: dep-post-002
+    type: multi
+    kind: scenario
+    difficulty: intermediate
+    version: vcf9
+    topics: [vcf-installer, vcf-ops-logs, network-ops]
+    objective: "4.1"
+    objectiveItem: "4.1.4"
+    lesson: vcf-installer-workflow
+    section: components
+    context: "VCF Installer has completed a new VCF platform using the Simple model. No optional dedicated identity broker is required."
+    stem: "Which three top-level components still complete the platform? (Choose three.)"
+    select: 3
+    options:
+      - { id: a, text: "VCF Operations for logs", correct: true, why: "The Simple completion scope includes one logs primary node." }
+      - { id: b, text: "VCF Operations for networks", correct: true, why: "The Simple completion scope includes the networks appliance and one collector." }
+      - { id: c, text: "VCF Operations orchestrator", correct: true, why: "One orchestrator primary is a manual post-installer completion component." }
+      - { id: d, text: "A second SDDC Manager", why: "The installer already deploys the instance SDDC Manager; a second node is not a completion component." }
+      - { id: e, text: "A new NSX Manager cluster", why: "The installer deploys the NSX Manager required by the chosen model." }
+      - { id: f, text: "A dedicated three-node VCF Identity Broker", why: "It is optional and the scenario explicitly uses the embedded vCenter functionality." }
+    explanation:
+      correct: "For VCF Simple, complete the platform with logs, networks and orchestrator; dedicated Identity Broker remains optional."
+      concept: "Simple-model post-deployment components"
+      trap: "Do not confuse VCF Operations family branding with components already deployed by VCF Installer."

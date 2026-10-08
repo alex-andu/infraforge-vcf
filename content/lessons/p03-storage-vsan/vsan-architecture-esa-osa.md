@@ -137,6 +137,19 @@ The official decision chart from the VCF 9.0 design guide:
 6. vSAN creates the datastore and assigns the default storage policy.
 7. Verify: Skyline Health, `esxcli vsan cluster get`, and the datastore capacity view.
 
+Treat deployment as four gates rather than one “Enable vSAN” action:
+
+| Gate | Evidence before continuing | Typical failure if skipped |
+|---|---|---|
+| Compatibility | Every capacity device, driver and firmware combination is listed in the Broadcom Compatibility Guide; ESA hardware meets its profile | Unsupported or unclaimable devices, health warnings |
+| Cluster | Standard design has at least three capacity-contributing ESX hosts; each host belongs to only this cluster | Unsupported topology or insufficient fault placement |
+| Network | Every host has a vSAN-tagged VMkernel adapter with IP reachability and consistent MTU | Network partition and absent cluster membership |
+| Storage claim | ESA storage-pool devices or OSA cache/capacity tiers match the selected architecture | No datastore capacity or incorrect disk layout |
+
+After enabling the service, a datastore appearing is only an intermediate result. Close the deployment by checking
+membership, health, capacity and a policy-compliant test object. In VCF workflows the installer or domain/cluster
+workflow performs the enablement, but the same hardware, network and health gates still apply.
+
 ### In VCF 9
 
 VCF performs these steps for you when vSAN is the principal storage: the VCF Installer builds the management domain cluster, and workload domain / cluster creation workflows configure vSAN on new clusters, including device claiming. The hosts must already pass the vSAN compatibility checks; for ESA, VCF validates disks against the vSAN ESA hardware compatibility data.

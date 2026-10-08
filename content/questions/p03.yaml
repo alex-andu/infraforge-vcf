@@ -1137,3 +1137,25 @@ questions:
       correct: "Present the disks via an NVMe controller (on Proxmox, QEMU -device nvme) and, in labs, satisfy the ESA compatibility check with the unsupported mock VIB."
       concept: "ESA device eligibility."
       trap: "Marking disks as flash helps OSA, not ESA."
+
+  - id: p03-ar-010
+    type: ordering
+    kind: scenario
+    difficulty: intermediate
+    version: vcf9
+    topics: [vsan-architecture]
+    objective: "2.3"
+    objectiveItem: "2.3.3"
+    lesson: vsan-architecture-esa-osa
+    section: deploying-a-vsan-cluster-standalone-vsphere
+    stem: "Order the evidence gates for a new standard single-site vSAN cluster from readiness through acceptance."
+    items:
+      - { id: i1, text: "Verify certified devices, drivers and firmware and the requirements of the selected ESA or OSA architecture" }
+      - { id: i2, text: "Confirm at least three capacity-contributing hosts and valid single-cluster membership" }
+      - { id: i3, text: "Configure and test the vSAN-tagged VMkernel network with consistent MTU" }
+      - { id: i4, text: "Enable vSAN and claim devices as ESA storage pools or OSA disk groups" }
+      - { id: i5, text: "Validate membership, Skyline Health, datastore capacity and a policy-compliant test object" }
+    explanation:
+      correct: "Compatibility, cluster and network readiness precede service enablement and device claim; health and policy evidence close the deployment."
+      concept: "vSAN deployment gates"
+      trap: "A visible datastore alone does not prove healthy membership, networking or policy compliance."

@@ -1263,3 +1263,112 @@ questions:
       correct: "VM Monitoring watches VMware Tools heartbeats per VM; it requires Tools in the guest."
       concept: "HA host monitoring vs VM monitoring."
       trap: "Expecting HA host monitoring to catch guest OS hangs."
+
+  - id: fnd-pc-007
+    type: multi
+    kind: concept
+    difficulty: foundation
+    version: general
+    topics: [private-cloud]
+    objective: "2.1"
+    objectiveItem: "2.1.1"
+    lesson: private-cloud-and-sddc
+    section: concept
+    stem: "Which four capabilities demonstrate a private cloud operating model rather than server virtualization alone? (Choose four.)"
+    select: 4
+    options:
+      - { id: a, text: "On-demand self-service from a catalog or API", correct: true, why: "Consumers can request approved services without an administrator creating every VM." }
+      - { id: b, text: "Shared resource pools with policy-based allocation", correct: true, why: "Compute, storage and networking are abstracted and governed as pools." }
+      - { id: c, text: "Measured usage, capacity and cost visibility", correct: true, why: "Measured service supports accountability and planning." }
+      - { id: d, text: "Automated lifecycle and elastic expansion", correct: true, why: "Standardized automation scales and maintains the platform." }
+      - { id: e, text: "A hypervisor installed on every physical server", why: "Compute virtualization is a foundation but does not create the cloud consumption model by itself." }
+      - { id: f, text: "Every network and storage change implemented manually by specialist teams", why: "Manual ticket handoffs oppose software-defined automation and self-service." }
+    explanation:
+      correct: "Private cloud combines self-service, pooled resources, policy/measurement and automated elasticity/lifecycle."
+      concept: "Private cloud principles"
+      trap: "Virtualization supplies resources; the operating model makes them cloud services."
+
+  - id: fnd-pc-use-001
+    type: single
+    kind: scenario
+    difficulty: intermediate
+    version: vcf9
+    topics: [private-cloud]
+    objective: "2.1"
+    objectiveItem: "2.1.2"
+    lesson: private-cloud-and-sddc
+    section: select-the-use-case-theme-from-the-business-outcome
+    context: "A manufacturer wants a standard platform in factories and edge sites, plus automated IaaS so developers stop waiting for VM tickets."
+    stem: "Which VCF 9 use-case theme best matches the primary outcome?"
+    options:
+      - { id: a, text: "Infrastructure modernization", correct: true, why: "On-premises/edge private cloud and automated IaaS are named modernization use cases." }
+      - { id: b, text: "Unified cloud experience", why: "That theme focuses on common consumption for modern, AI and traditional workloads." }
+      - { id: c, text: "Secure and resilient platform", why: "No recovery, security or compliance outcome is stated." }
+      - { id: d, text: "Public-cloud brokerage", why: "This is not one of the three VCF 9 use-case themes." }
+    explanation:
+      correct: "Standardizing private cloud at sites and automating IaaS are infrastructure-modernization outcomes."
+      concept: "Infrastructure modernization use cases"
+
+  - id: fnd-pc-use-002
+    type: single
+    kind: scenario
+    difficulty: intermediate
+    version: vcf9
+    topics: [private-cloud, supervisor]
+    objective: "2.1"
+    objectiveItem: "2.1.2"
+    lesson: private-cloud-and-sddc
+    section: select-the-use-case-theme-from-the-business-outcome
+    context: "Application teams need one self-service platform for Kubernetes clusters, Private AI workloads and existing VM applications."
+    stem: "Which VCF 9 use-case theme is the best fit?"
+    options:
+      - { id: a, text: "Unified cloud experience", correct: true, why: "The theme covers Kubernetes and modern apps, Private AI and traditional workloads." }
+      - { id: b, text: "Infrastructure modernization", why: "Modernization may enable the platform, but the stated outcome is unified workload consumption." }
+      - { id: c, text: "Secure and resilient platform", why: "The scenario does not ask for recovery or compliance." }
+      - { id: d, text: "Hardware consolidation only", why: "Consolidation does not provide the requested self-service experience." }
+    explanation:
+      correct: "A common consumption experience across Kubernetes, AI and traditional VMs maps to unified cloud experience."
+      concept: "Unified cloud experience use cases"
+
+  - id: fnd-pc-use-003
+    type: single
+    kind: scenario
+    difficulty: intermediate
+    version: vcf9
+    topics: [private-cloud, compliance-drift]
+    objective: "2.1"
+    objectiveItem: "2.1.2"
+    lesson: private-cloud-and-sddc
+    section: select-the-use-case-theme-from-the-business-outcome
+    context: "A regulated enterprise prioritizes clean ransomware recovery, disaster recovery and continuous infrastructure compliance."
+    stem: "Which VCF 9 use-case theme directly groups these requirements?"
+    options:
+      - { id: a, text: "Secure and resilient platform", correct: true, why: "Ransomware recovery, disaster recovery and integrated security/compliance are the three named use cases." }
+      - { id: b, text: "Unified cloud experience", why: "That theme concerns how application teams consume workload services." }
+      - { id: c, text: "Infrastructure modernization", why: "Modernization does not directly classify the stated protection outcomes." }
+      - { id: d, text: "Desktop virtualization", why: "It is not a VCF 9 use-case theme." }
+    explanation:
+      correct: "The requested security, recovery and compliance outcomes map to secure and resilient platform."
+      concept: "Secure and resilient platform use cases"
+
+  - id: fnd-pc-use-004
+    type: matching
+    kind: concept
+    difficulty: advanced
+    version: vcf9
+    topics: [private-cloud]
+    objective: "2.1"
+    objectiveItem: "2.1.2"
+    lesson: private-cloud-and-sddc
+    section: select-the-use-case-theme-from-the-business-outcome
+    stem: "Match each business outcome to its primary VCF 9 use-case theme."
+    pairs:
+      - { id: p1, left: "Automated IaaS replaces manual VM tickets", right: "Infrastructure modernization" }
+      - { id: p2, left: "Developers consume Kubernetes and traditional VMs through one platform", right: "Unified cloud experience" }
+      - { id: p3, left: "Private AI keeps sensitive training data on-premises", right: "Unified cloud experience" }
+      - { id: p4, left: "Remote recovery after ransomware or site loss", right: "Secure and resilient platform" }
+      - { id: p5, left: "Continuous hardening and compliance visibility", right: "Secure and resilient platform" }
+    explanation:
+      correct: "Classify the dominant business outcome: modernize supply, unify consumption, or protect and recover."
+      concept: "VCF 9 use-case classification"
+      trap: "A component can support several themes; the scenario's success measure decides the primary one."

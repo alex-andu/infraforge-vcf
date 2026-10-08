@@ -324,3 +324,75 @@ terms:
     related: [sddc-manager-api-token]
     lessons: [vcf-apis-powercli]
     labs: [lab-vcf-api-powercli]
+  - id: vcf-operations-hcx
+    term: VCF Operations HCX
+    definition: The VCF workload-mobility capability that pairs supported source and destination environments, deploys encrypted interconnect services, extends selected networks and orchestrates vSphere or non-vSphere workload migration.
+    whyItMatters: It is named in the VCF 9 Administrator candidate profile and is the correct tool for migration waves and temporary IP-preserving network extension across sites.
+    version: vcf9
+    related: [hcx-site-pair, hcx-service-mesh, hcx-interconnect, hcx-network-extension]
+    lessons: [vcf-operations-hcx]
+    labs: [lab-vcf-operations-hcx]
+  - id: hcx-site-pair
+    term: HCX Site Pair
+    definition: The management, authentication and orchestration relationship from one HCX Manager to a remote HCX site; a Connected pair does not itself establish the migration data plane.
+    whyItMatters: Separates manager/control-plane troubleshooting from Service Mesh and tunnel troubleshooting.
+    version: vcf9
+    related: [vcf-operations-hcx, hcx-service-mesh]
+    lessons: [vcf-operations-hcx]
+    labs: [lab-vcf-operations-hcx]
+  - id: hcx-service-mesh
+    term: HCX Service Mesh
+    definition: The pairing of source and destination Compute Profiles that deploys and connects the selected HCX data-plane appliances and services.
+    whyItMatters: Creating profiles saves intent; creating the Service Mesh deploys HCX-IX, Network Extension and optional Sentinel appliances.
+    version: vcf9
+    related: [hcx-site-pair, hcx-compute-profile, hcx-interconnect]
+    lessons: [vcf-operations-hcx]
+    labs: [lab-vcf-operations-hcx]
+  - id: hcx-network-profile
+    term: HCX Network Profile
+    definition: An abstraction of a port group or NSX network plus IP pool, prefix, gateway, DNS and MTU used for HCX management, uplink, vMotion, replication or OSAM guest traffic.
+    whyItMatters: Incorrect IP pools, gateway or MTU commonly block Service Mesh validation or tunnels.
+    version: vcf9
+    related: [hcx-compute-profile, hcx-service-mesh]
+    lessons: [vcf-operations-hcx]
+    labs: [lab-vcf-operations-hcx]
+  - id: hcx-compute-profile
+    term: HCX Compute Profile
+    definition: Per-site HCX intent that selects services, service and deployment clusters, datastore, reservations, eligible network containers and Network Profiles.
+    whyItMatters: It defines scope and placement but does not deploy service appliances until a Service Mesh uses it.
+    version: vcf9
+    related: [hcx-network-profile, hcx-service-mesh]
+    lessons: [vcf-operations-hcx]
+    labs: [lab-vcf-operations-hcx]
+  - id: hcx-interconnect
+    term: HCX Interconnect (HCX-IX)
+    definition: The HCX data-plane appliance that provides replication and vMotion-based migration, encryption, traffic engineering and VM mobility between paired sites.
+    whyItMatters: Source HCX-IX initiates the tunnel and destination HCX-IX receives it; Site Pair success does not prove this path.
+    version: vcf9
+    related: [hcx-service-mesh, replication-assisted-vmotion]
+    lessons: [vcf-operations-hcx]
+    labs: [lab-vcf-operations-hcx]
+  - id: hcx-network-extension
+    term: HCX Network Extension (HCX-NET-EXT)
+    definition: Paired HCX appliances that bridge a selected source Layer 2 workload network to a destination network so migrated VMs can retain their IP and MAC addresses.
+    whyItMatters: It reduces application change during migration but extends the source broadcast/failure domain and should have an exit plan.
+    version: vcf9
+    related: [hcx-service-mesh, vcf-operations-hcx]
+    lessons: [vcf-operations-hcx]
+    labs: [lab-vcf-operations-hcx]
+  - id: replication-assisted-vmotion
+    term: Replication Assisted vMotion (RAV)
+    definition: An HCX migration method combining Bulk Migration parallelism, resilience and scheduling with a final zero-downtime vMotion state transfer.
+    whyItMatters: Fits migration waves that require both scale and service continuity.
+    version: vcf9
+    related: [hcx-interconnect, mobility-group]
+    lessons: [vcf-operations-hcx]
+    labs: [lab-vcf-operations-hcx]
+  - id: mobility-group
+    term: HCX Mobility Group
+    definition: A group of virtual machines prepared and migrated together as a wave with shared scheduling and migration settings.
+    whyItMatters: Migration planning is usually application- and dependency-based rather than one VM at a time.
+    version: vcf9
+    related: [vcf-operations-hcx, replication-assisted-vmotion]
+    lessons: [vcf-operations-hcx]
+    labs: [lab-vcf-operations-hcx]

@@ -1,0 +1,235 @@
+id: lab-vcf-operations-hcx
+title: "VCF Operations HCX: Pair Sites, Build a Service Mesh and Validate Mobility"
+level: advanced
+complexity: 5
+minutes: 300
+version: vcf9
+technologies: [VCF Operations HCX, vCenter, NSX, vSphere Replication, vMotion]
+topics: [hcx-workload-mobility, vm-management, network-ops]
+lessons: [vcf-operations-hcx]
+objectives:
+  - "Candidate profile: install, configure, manage and perform basic troubleshooting of VCF Operations HCX."
+  - Deploy and initialize HCX Managers at a source and a destination vSphere site without storing credentials in evidence.
+  - Create Site Pair, Network Profiles, Compute Profiles and a Service Mesh in dependency order.
+  - Validate the control plane and data plane before extending a test network or migrating a disposable VM.
+  - Compare Bulk, vMotion, Cold, RAV, Direct and OS Assisted Migration against downtime and scale requirements.
+prerequisites:
+  - "Two supported vSphere environments: <SOURCE_VCENTER> containing the disposable source VM and <DEST_VCENTER> as the migration target."
+  - "Destination NSX Local Manager <DEST_NSX> registered with <DEST_VCENTER>; source NSX is optional unless required by the selected source network extension."
+  - "Approved VCF Operations HCX OVA/build, licensing/activation entitlement, release notes and current interoperability matrix."
+  - "DNS A/PTR, NTP and trusted management access for <SOURCE_HCX_FQDN> and <DEST_HCX_FQDN>."
+  - "Reserved management/uplink IP pools and, where separate, vMotion and replication pools at both sites; record prefix, gateway, DNS and MTU."
+  - "TCP 443 manager path and required site-specific service paths, including UDP 4500 between source initiator and destination receiver/NAT addresses. Verify the complete current list in ports.broadcom.com."
+  - "A disposable test VM <HCX_TEST_VM>, approved maintenance window, application owner, backup/rollback plan and a test network that may be extended only with network-owner approval."
+topology:
+  logical: d10-hcx-service-mesh
+requirements:
+  network:
+    - "Management reachability from each HCX Manager to local vCenter, NSX where registered, DNS and NTP."
+    - "Uplink/WAN path between sites; TCP 443 for manager pairing and UDP 4500 for source-initiated service-appliance tunnels, plus ports exported by Compute Profile validation."
+    - "HCX-IX reachability to service-cluster management/replication and vMotion VMkernel networks."
+    - "If Network Extension is used, deployment-cluster access to the selected workload-network broadcast domain at both sites."
+  vms:
+    - "One HCX Manager appliance at each site."
+    - "HCX-IX pair deployed by the Service Mesh; HCX-NET-EXT pair only for the approved test network."
+    - "Disposable <HCX_TEST_VM>; no production workload is used for first validation."
+  ip:
+    - "Discover and record <SOURCE_HCX_FQDN/IP> and <DEST_HCX_FQDN/IP>."
+    - "Discover and record each management/uplink/vMotion/replication appliance IP pool; never invent ranges."
+startingState: |
+  The supplied lab inventory documents one VCF 9.0.2 management environment and does not list HCX, a second vCenter,
+  destination NSX capacity, HCX licenses, an approved OVA or service-appliance IP pools.
+
+  :::warning
+  **PREPARED — NOT YET LAB-VALIDATED.** Do not run this guide until the source and destination environments, current
+  HCX build, capacity, networks, firewall rules and change approvals exist. Values in angle brackets are mandatory
+  discovery variables. Record exact build labels and sanitized evidence during the first run; never store passwords,
+  VCF SSO client secrets, tokens or unredacted certificates.
+  :::
+steps:
+  - id: plan-hcx
+    title: Freeze the two-site design and evidence sheet
+    why: HCX deployment depends on source/destination roles, supported versions, network pools, resource containers and allowed downtime.
+    instructions: |
+      1. Record the HCX version/OVA checksum, source and destination vCenter/ESX/NSX versions, licensing state and the
+         interoperability result. Stop if the destination lacks supported vSphere or NSX.
+      2. Name the direction: `<SOURCE_VCENTER>` contains `<HCX_TEST_VM>`; `<DEST_VCENTER>` is the target. Record whether
+         a reverse Site Pair will be required later.
+      3. For each site record management, uplink, vMotion, replication and optional OSAM guest port group/segment,
+         appliance IP range, prefix, gateway, DNS and MTU. Identify which functions intentionally reuse a profile.
+      4. Record source/destination deployment cluster/resource pool, datastore, VM folder, service clusters and
+         distributed switches/transport zones eligible for extension.
+      5. Document firewall/NAT endpoints. Use the current port matrix plus the connection rules exported later; do not
+         treat TCP 443 and UDP 4500 as the complete list for every topology.
+      6. Define success: managers healthy, Site Pair Connected, Service Mesh Up/Healthy, data-plane diagnostics pass,
+         one approved network extended if required, one test VM migrated and application/network checks pass.
+    validate: Evidence sheet contains versions/support result, site roles, all profile inputs, capacity, ports, test VM, owner, window and rollback.
+    expected: Every deployment field has a verified value or an explicit blocker; no password, token or secret is recorded.
+  - id: deploy-destination-manager
+    title: Deploy and initialize the destination HCX Manager
+    why: The destination must exist before the source creates the Site Pair and initiates tunnels.
+    instructions: |
+      1. In the destination vSphere Client right-click the approved datacenter/cluster and select **Deploy OVF
+         Template**. Select the verified HCX OVA, review certificate/details, accept the license, and set VM name
+         `<DEST_HCX_VM>` and the approved folder.
+      2. Select the documented destination compute resource, datastore/storage policy and management network. Enter the
+         verified FQDN/IP, prefix, gateway, DNS and NTP values in the OVA properties; enter runtime passwords only in
+         the wizard. Review every field and select **Finish**.
+      3. Monitor **Recent Tasks** and power on the appliance. Resolve DNS and open `https://<DEST_HCX_FQDN>:9443`.
+      4. Sign in with the appliance admin account, set the destination location and system name, register
+         `<DEST_VCENTER>` and `<DEST_NSX>`, then restart HCX services when prompted.
+      5. Define **Role Mapping** for the approved SSO/VCF SSO group that will perform mobility operations. Record the
+         group name, not member identities or credentials.
+      6. Open `https://<DEST_HCX_FQDN>:443` and record HCX build, registered systems and health. This is the checkpoint.
+    validate: Destination manager resolves, loads :9443 and :443, reports the expected build and healthy services, and shows local vCenter/NSX plus the approved role-mapping group.
+    expected: A healthy destination HCX Manager is ready to receive pairing and Service Mesh appliances.
+  - id: destination-profiles
+    title: Create destination Network and Compute Profiles
+    why: Destination profiles define where Service Mesh receivers run and which interfaces and IPs they use.
+    instructions: |
+      1. In the destination HCX console open **Interconnect > Network Profiles > Create Network Profile**.
+      2. Select `<DEST_VCENTER>` and the verified backing port group/segment. Name the profile, then enter only its
+         reserved appliance IP range, prefix, gateway, DNS and MTU. Select the intended suggested traffic type and
+         select **Create**. Repeat for distinct Management, Uplink, vMotion and Replication networks as designed.
+      3. Open **Interconnect > Compute Profiles > Create Compute Profile**. Name it `<DEST_COMPUTE_PROFILE>` and select
+         the required services. Select destination service clusters, deployment resource pool/cluster, datastore and
+         folder. Set CPU and memory reservation to 100% unless the approved sizing/design explicitly says otherwise.
+      4. Map Management, Uplink, vMotion and optional Replication/Intrasite Control/OSAM Guest Network Profiles.
+      5. Select only the destination network containers eligible for Network Extension. Set the maximum extension
+         appliances from capacity planning; do not use Unlimited without recording the capacity rationale.
+      6. Run **Pre-Deployment Validation**, open **Review Connection Rules**, export a sanitized copy, resolve every
+         error, review the topology and select **Finish**.
+    validate: Profiles show the planned networks, free IPs, resources, services and successful validation; exported connection rules are attached without secrets.
+    expected: Destination intent exists, but no data-plane appliances are deployed until Service Mesh creation.
+  - id: deploy-source-manager
+    title: Deploy and initialize the source HCX Manager
+    why: The source manager initiates Site Pair, network-extension and migration operations.
+    instructions: |
+      1. Repeat the verified **Deploy OVF Template** workflow in `<SOURCE_VCENTER>` using source management values and
+         VM name `<SOURCE_HCX_VM>`.
+      2. Open `https://<SOURCE_HCX_FQDN>:9443`, set location/system name and register `<SOURCE_VCENTER>`, its SSO and
+         `<SOURCE_NSX>` only when present/required. Restart HCX services.
+      3. Configure the approved source Role Mapping group. Open `https://<SOURCE_HCX_FQDN>:443` and record build,
+         registration and health. Confirm both managers use compatible HCX versions before pairing.
+    validate: Source manager is healthy, resolves correctly and shows the intended local registrations and role mapping.
+    expected: Both control-plane endpoints are ready; no service mesh exists yet.
+  - id: pair-sites
+    title: Create and verify the source-to-destination Site Pair
+    why: Site Pair establishes management, authentication and orchestration, but not the migration data path.
+    instructions: |
+      1. In the source HCX console open **Infrastructure > Site Pairs > New Site Pair**.
+      2. Select site type **VMware**. Choose **vCenter/vCloud Director User** for approved destination local SSO or
+         **VCF SSO** only when the client ID/secret has been prepared through the approved identity workflow.
+      3. Enter `https://<DEST_HCX_FQDN>` and the runtime identity. If the destination uses a self-signed certificate,
+         complete the explicit trust workflow only after comparing its fingerprint through a trusted channel.
+      4. Select **Create** and wait for status **Connected**. Record direction arrow, destination URL, location,
+         vCenter and NSX shown by the UI.
+      5. If bidirectional operations are required, repeat from destination to source as a separate approved action.
+    validate: Source Site Pairs shows the destination as Connected with correct direction and registered-system details.
+    expected: Control-plane pairing works; this does not yet prove HCX-IX tunnel or VM migration readiness.
+  - id: source-profiles
+    title: Create source Network and Compute Profiles
+    why: The source Compute Profile scopes eligible VMs and creates the initiator-side service-appliance plan.
+    instructions: |
+      1. In source **Interconnect > Network Profiles**, create the planned Management, Uplink, vMotion and Replication
+         profiles using source networks and reserved IPs. Verify free-IP counts after each creation.
+      2. In **Interconnect > Compute Profiles > Create Compute Profile**, name `<SOURCE_COMPUTE_PROFILE>`, select the
+         required services, source service clusters and the deployment cluster/resource pool, datastore and folder.
+      3. Map the Network Profiles. Select only network containers that contain approved source VM networks for
+         extension. Confirm `<HCX_TEST_VM>` belongs to an included service cluster.
+      4. Run validation, export connection rules, resolve errors and select **Finish**. Compare source initiator rules
+         with destination firewall/NAT configuration before creating the mesh.
+    validate: Source profiles have valid IP pools/resources and include the test VM cluster/network; validation has no errors.
+    expected: Source and destination Compute Profiles are ready to instantiate one Service Mesh.
+  - id: create-service-mesh
+    title: Create the Service Mesh and validate the data plane
+    why: Service Mesh creation deploys HCX-IX and optional HCX-NET-EXT/Sentinel appliances and establishes tunnels.
+    instructions: |
+      1. In the source HCX console open **Interconnect > Service Mesh > Create Service Mesh**.
+      2. Select the Connected Site Pair, `<SOURCE_COMPUTE_PROFILE>` and `<DEST_COMPUTE_PROFILE>`. Review enabled
+         services, appliance counts, network mappings and traffic-engineering/encryption settings.
+      3. Run the wizard validation and resolve all errors. Select **Finish** only after the task/evidence sheet matches
+         the approved resources and IP pools.
+      4. Monitor deployment at both sites. Confirm source appliances are **Initiators**, destination appliances are
+         **Receivers**, and HCX-IX plus every selected service reports Up/Healthy.
+      5. Run HCX data-plane diagnostics/transport checks. Verify management and uplink tunnels, exported connection
+         rules, MTU and latency. Do not proceed with a VM while any service is degraded.
+    validate: Service Mesh and required appliances are healthy at both sites; tunnel/data-plane diagnostics pass and consume the expected IPs.
+    expected: The data plane is ready for an approved network extension and test migration.
+  - id: extend-test-network
+    title: Extend one approved test network only when IP preservation is required
+    why: Network Extension is useful during migration but extends the source Layer 2 and failure domain.
+    instructions: |
+      1. If `<HCX_TEST_VM>` can use a routed destination network and IP change, skip extension and document that design.
+      2. Otherwise open **Services > Network Extension > Create a Network Extension** (the label may appear under
+         Network Extension in the build). Select the source test network, destination site and destination network
+         container/segment. Confirm gateway, prefix and destination mapping from the network-owner plan.
+      3. Review extension-appliance capacity and select **Submit/Extend**. Wait for state **Extension complete/Up**.
+      4. From test endpoints verify L2/L3 reachability without creating duplicate gateway or DHCP services. Record MAC,
+         IP, gateway and path evidence. Define the date/event when the extension will be removed.
+    validate: Either routed mapping is documented, or one test network shows Up with approved gateway ownership and reachability evidence.
+    expected: The test VM can retain its source IP after migration only when the approved extension is healthy.
+  - id: migrate-test-vm
+    title: Migrate and validate the disposable test VM
+    why: One controlled VM proves selection, mapping, migration and rollback before any wave.
+    instructions: |
+      1. Open **Services > Migration** and select `<HCX_TEST_VM>`. Confirm no snapshots/devices/compatibility blockers and
+         record source host, datastore, network and application baseline.
+      2. Select the migration type from the requirement: **Bulk** for parallel scheduled moves with reboot-like cutover,
+         **vMotion** for one live VM, **Cold** for a powered-off move, or **RAV** for parallel/scheduled zero downtime.
+         Use **OSAM** only for an approved non-vSphere source and **Direct** only when native cross-vCenter vMotion
+         prerequisites are deliberately used.
+      3. Map destination compute, datastore/storage policy, folder and network. Configure schedule/cutover settings,
+         then run the product's validation. Resolve every warning/error rather than overriding it silently.
+      4. Submit the migration in the approved window. Monitor replication, switchover and completion. Record timestamps
+         and any observed interruption.
+      5. At destination validate VM power/Tools, IP/MAC/gateway, DNS, application transaction and monitoring. Have the
+         application owner accept the result. Reverse migrate or execute the documented recovery if validation fails.
+    validate: Migration reports completed and the destination VM passes infrastructure plus application checks, or rollback is completed and evidenced.
+    expected: One disposable VM demonstrates the selected method and network design; no production wave is inferred from this result.
+  - id: close-evidence
+    title: Record acceptance, capacity and next-wave gates
+    why: A successful test is useful only when its exact design and limits are preserved for the next controlled wave.
+    instructions: |
+      1. Export/sanitize HCX health, Site Pair, profile, Service Mesh, appliance/tunnel and migration result evidence.
+      2. Record actual CPU/RAM/datastore and IP consumption, bandwidth/latency, migration duration and downtime.
+      3. Record residual extension dependencies, alarms, certificate/backup/update ownership and monitoring checks.
+      4. Define wave entry criteria, concurrency from current Configuration Maximums, rollback trigger and the change
+         approval required for production. Mark this guide validated only after Alex reviews the evidence.
+    validate: Evidence package contains all checkpoints, actual values and remaining risks without credentials or sensitive unredacted captures.
+    expected: The first-run result can safely inform sizing and approval of a later migration wave.
+troubleshooting:
+  - symptom: Site Pair does not become Connected.
+    fix: Verify remote HCX URL/TCP 443, certificate trust, authentication type, approved identity and destination Role Mapping before checking the Service Mesh.
+  - symptom: Compute Profile validation reports insufficient IPs or unreachable resources.
+    fix: Correct the Network Profile pool/gateway/MTU and deployment-cluster access; do not widen or reuse a pool without network-owner approval.
+  - symptom: Site Pair is Connected but Service Mesh tunnel is down.
+    fix: Check HCX-IX health, source-initiated UDP 4500/NAT path, uplink profile, MTU and exported connection rules at both sites.
+  - symptom: Test VM is absent from migration inventory.
+    fix: Confirm its cluster is a source Service Cluster, profile changes were Re-Synced and VM/migration-method compatibility requirements pass.
+  - symptom: Migrated VM is running but unreachable.
+    fix: Check destination network mapping, extension state, gateway/DHCP ownership, routing/firewall and duplicate IP/MAC before reversing the move.
+challenge: |
+  Design two migration waves from the same inventory: one using Bulk Migration during a reboot window and one using
+  RAV for zero downtime. Justify network extension or routed cutover per application, estimate appliance/IP capacity,
+  list validation gates and define a reversible stop condition.
+cleanup: |
+  For a temporary proof of concept, reverse migrate or otherwise place `<HCX_TEST_VM>` at its approved final site,
+  validate the application, then remove the test Network Extension so the destination uses its final routed design.
+  Remove Service Mesh, profiles, Site Pair and managers only under the approved decommission plan and in dependency
+  order after exporting evidence and confirming no migrations/extensions depend on them. Deleting a Service Mesh or
+  manager is not part of the first-run validation. Preserve sanitized evidence and release unused IP reservations only
+  after network-owner confirmation.
+sources:
+  - title: "VCF 9.0 - Workload Mobility"
+    url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/workload-mobility.html
+  - title: "VCF 9.0 - HCX Installation Summary Steps"
+    url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/workload-mobility/getting-started-with-vmware-hcx-vcf-9-0/appendix-i-hcx-installation-sequence.html
+  - title: "VCF 9.0 - Add a Site Pair"
+    url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/workload-mobility/vmware-hcx-user-guide-vcf-9-0/creating-and-managing-site-pairs/add-a-site-pair.html
+  - title: "VCF 9.0 - Create a Network Profile"
+    url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/workload-mobility/vmware-hcx-user-guide-vcf-9-0/configuring-and-managing-the-hcx-interconnect/configuring-the-hcx-service-mesh/create-a-network-profile.html
+  - title: "VCF 9.0 - Create a Compute Profile"
+    url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/workload-mobility/vmware-hcx-user-guide-vcf-9-0/configuring-and-managing-the-hcx-interconnect/configuring-the-hcx-service-mesh/create-a-compute-profile.html
+  - title: "VCF 9.0 - Migration Types"
+    url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/workload-mobility/vmware-hcx-user-guide-vcf-9-0/migrating-virtual-machines-with-vmware-hcx/vmware-hcx-migration-types.html

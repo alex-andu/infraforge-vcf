@@ -57,7 +57,7 @@ Place architecture figures in theory where the concept is explained and UI scree
 The repository holds durable memory. A session should not reconstruct the project from chat history or rescan the whole repository.
 
 1. Start with `CLAUDE.md`, the top checkpoint in `CURRENT_STATE.md` and the active package `docs/specs/<package-id>/spec.md`. Open `DECISIONS.md`, `CONTENT_STATUS.md`, architecture docs or source files only when the current batch needs them.
-2. Use targeted searches for exact IDs, headings, schemas and references before opening files. Read only the relevant portions of large lesson, question and lab files. Do not repeatedly load all 71 lessons, all questions or the entire lab inventory.
+2. Use targeted searches for exact IDs, headings, schemas and references before opening files. Read only the relevant portions of large lesson, question and lab files. Do not repeatedly load every lesson, all questions or the entire lab inventory.
 3. Work in one reviewable batch: normally one lesson plus its visuals/questions, one practical guide, or one small shared-code change. Finish validation and a checkpoint before claiming the next batch.
 4. Each spec includes a compact context pack: objective/item text, affected IDs/files, existing content to reuse, decisions that apply, verified sources/claims, open questions, expected tests and real-lab evidence needed. Later sessions read this pack instead of repeating research.
 5. Maintain source and visual manifests per package. Record page title/URL, product/build applicability, verification date, supported claim or image, provenance and offline behavior. Do not fetch the same official page again unless the claim/version changed or the saved note is incomplete.

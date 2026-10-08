@@ -135,9 +135,9 @@ phases:
         summary: Architecture, metrics, views, reports, dashboards and alerts.
         lessons: [vcf-operations-architecture, metrics-properties-views-reports, dashboards-alerts-policies]
       - id: m10-ops-extended
-        title: Logs, Networks and Compliance
-        summary: Log events, network operations, health, compliance and drift.
-        lessons: [vcf-operations-logs-network-ops, compliance-drift-app-monitoring]
+        title: Logs, Networks, Compliance and Mobility
+        summary: Log events, network operations, health, compliance, drift and HCX workload mobility.
+        lessons: [vcf-operations-logs-network-ops, compliance-drift-app-monitoring, vcf-operations-hcx]
 
   - id: p11-automation
     number: 11

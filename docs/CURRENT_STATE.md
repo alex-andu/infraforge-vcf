@@ -8,14 +8,14 @@ Note: this repo has no RHCSA content. "InfraForge RHCSA" is a separate project.
 
 This section is the source of truth for work ownership and holds. Operating rules: [VCF_PARALLEL_WORKFLOW.md](VCF_PARALLEL_WORKFLOW.md). Proposed module batches: [VCF_MODULE_ROADMAP.md](VCF_MODULE_ROADMAP.md).
 
-- **Current milestone:** `OPS-APP-COMPLIANCE-DRIFT-01` closes the internal question target for application monitoring (`4.3.12`), security hardening/compliance (`4.3.13`) and Configuration Drift (`4.3.14`). It adds deeper exact-path theory, seven questions, a corrected decision diagram, one official Broadcom figure and complete UI-first guide slices marked unvalidated. The overall map is 54/59 at target with five isolated foundation/deployment items below; no VCF Operations item remains below target. `THEORY-LABS-01` remains waiting for Alex's read-only lab run.
-- **Authorized now:** Alex explicitly asked ChatGPT to preserve the curriculum-first strategy and continue, including after usage resets. A persistent goal carries the approved bounded-package workflow. Automatic feature-branch pushes remain authorized. Current branch: `content/vcf-operations-app-compliance-drift`, based on pushed network/storage/policy commit `799f372521c33d8576e4e941bdadf582a2112be0`. Push only after checks and a secret scan; no direct push to `main`, force-push, PR, merge, deployment or infrastructure mutation is authorized.
-- **Implementation hold:** Alex's latest instruction resumes curriculum-driven bounded content work. Batch A (objective-item coverage) is complete; Batch B may proceed one measured gap package at a time. The HCX slice of task #4 and tasks #5–#10 remain queued until selected as a bounded package or dependent real-lab evidence is available.
+- **Current milestone:** `OPS-HCX-FOUNDATIONS-01` completes the remaining candidate-profile theory gap with a dedicated HCX lesson, control/data-plane diagram, verified official figure, glossary, Architecture Explorer component, six scenario questions and a separate ten-step UI-first guide. The guide is **PREPARED — NOT YET LAB-VALIDATED** because the documented environment has no second supported site or HCX deployment. The official map remains **59/59 at target**. `THEORY-LABS-01` remains waiting for Alex's read-only lab run.
+- **Authorized now:** Alex explicitly asked ChatGPT to preserve the curriculum-first strategy and continue, including after usage resets. A persistent goal carries the approved bounded-package workflow. Automatic feature-branch pushes remain authorized. Current branch: `content/vcf-operations-hcx-foundations`, based on pushed foundation/deployment commit `fa7cc913d50065be7b6b597455a159511bab2cb7`. Push only after checks and a secret scan; no direct push to `main`, force-push, PR, merge, deployment or infrastructure mutation is authorized.
+- **Implementation hold:** Alex's latest instruction resumes curriculum-driven bounded content work. Batch A (measurement), Batch B (measured gap closure) and the HCX content slice of Batch C are complete. The Kubernetes practical guide and tasks #5–#10 remain queued until selected as a bounded package or dependent real-lab evidence is available.
 - **Privacy:** verified on 2026-10-08: the unauthenticated GitHub API returns 404 while authenticated Git remote read succeeds, so the repository is private and this workstation retains access. The pilot stores only sanitized topology values and no credentials, tokens or unredacted captures. Task #1 is complete.
 - **Exam baseline:** Alex supplied the official-description excerpt updated 2026-04-23. Its 8 objectives / 59 items match `content/objectives.yaml`; Kubernetes/HCX and DNS/NTP/certificates are candidate-profile prerequisites. Ordinal item IDs are repository conventions; mock allocation/scoring remain practice estimates, not official weights or a raw passing percentage.
 - **Curriculum priority (Alex, 2026-10-08):** the official exam objectives and candidate profile determine theory, questions, visuals and the practical-guide roadmap. The current lab inventory does not limit curriculum scope. Missing products may be added later; until then their guides can be fully prepared from verified official documentation but must be labelled **PREPARED — NOT YET LAB-VALIDATED**, with environment-specific values and observed evidence left pending.
-- **New learning direction (Alex, 2026-10-08):** develop clearer, deeper standalone theory and keep practical work as separate guides based on the existing infrastructure and mapped to the official exam description. The validator accepts the 17-section standalone-theory template; two lessons use it and the other 69 lesson bodies remain compatible for bounded migration.
-- **Visual requirement (Alex, 2026-10-08):** combine original diagrams/generated illustrations with verified official VMware/Broadcom figures and genuine product screenshots. Default to official-source embeds with attribution; plan offline alternatives separately. Screenshots belong beside relevant guide steps, architecture visuals beside theory explanations. Track provenance/version and never present generated UI as official. Documented only; assets are not yet integrated.
+- **New learning direction (Alex, 2026-10-08):** develop clearer, deeper standalone theory and keep practical work as separate guides based on the existing infrastructure and mapped to the official exam description. The validator accepts the 17-section standalone-theory template; three lessons use it and the other 69 lesson bodies remain compatible for bounded migration.
+- **Visual requirement (Alex, 2026-10-08):** combine original diagrams/generated illustrations with verified official VMware/Broadcom figures and genuine product screenshots. Default to official-source embeds with attribution; plan offline alternatives separately. Screenshots belong beside relevant guide steps, architecture visuals beside theory explanations. Track provenance/version and never present generated UI as official. The bounded content packages now demonstrate attributed official figures alongside original interactive diagrams.
 - **Operating model and context budget (Alex, 2026-10-08):** ChatGPT is the primary end-to-end owner; Claude is optional for a bounded batch. Repository checkpoints/specs hold durable memory. Sessions use targeted reads, one small batch, reusable source/evidence manifests and compact handoffs; no routine full-repository rescans or repeated research. See `VCF_PARALLEL_WORKFLOW.md`.
 - **Practical-guide standard (Alex, 2026-10-08):** every runnable guide is a complete UI-first runbook: product URL, required role, exact versioned click path, button, field, real lab value or discovery variable, commit action, validation, expected screen/evidence and rollback. The DNS/NTP pilot now demonstrates this with vSphere Client, ESXi Host Client and VAMI paths plus official ESX 9.x figures. The remaining legacy guides require incremental migration; they must not be represented as meeting this standard yet.
 - **Sanitized real-lab inventory (Alex, 2026-10-08):** `docs/LAB_ENVIRONMENT.md` now records the supplied VCF 9.0.2 topology without credentials. It confirms `infra01` / `10.100.80.10` as BIND DNS + chrony NTP, ESX hosts `esx01`–`esx04` / `10.100.10.11-.14`, and the deployed management components. The DNS/NTP guide now uses `esx01` and the actual NTP address. PTR and live sync state still require the guide run.
@@ -31,13 +31,15 @@ This section is the source of truth for work ownership and holds. Operating rule
 | VCFA-GOV-01 / #3 provider onboarding and governance | ChatGPT | COMPLETE; PUSHED `ad3f9ff` | Close `4.4.3`, `4.4.4`, `4.4.5`, `4.4.7` and `4.4.11` with exact theory/runbook workflows, one diagram and nine questions | Superseded by the next bounded package |
 | OPS-OBSERVE-01 / #3 VCF Operations observability | ChatGPT | COMPLETE; PUSHED `3305596` | Reinforce `4.3.1`, `4.3.3` and `4.3.5` with seven scenario-driven questions tied to developed lessons | Superseded by the next bounded package |
 | OPS-NET-STORAGE-POLICY-01 / #3 VCF Operations network, storage and policy | ChatGPT | COMPLETE; PUSHED `799f372` | Close `4.3.9`, `4.3.10` and `4.3.11` with deeper theory, one original diagram, eight questions and prepared UI-first guide slices | Superseded by the next bounded package |
-| OPS-APP-COMPLIANCE-DRIFT-01 / #3 VCF Operations application monitoring, compliance and drift | ChatGPT | COMPLETE; FEATURE BRANCH | Close `4.3.12`, `4.3.13` and `4.3.14` with verified UI workflows, corrected drift policy semantics, an official figure, seven questions and prepared guide slices | Continue with one bounded package for the five isolated foundation/deployment gaps, or select HCX from Batch C |
+| OPS-APP-COMPLIANCE-DRIFT-01 / #3 VCF Operations application monitoring, compliance and drift | ChatGPT | COMPLETE; PUSHED `b3a2b97` | Close `4.3.12`, `4.3.13` and `4.3.14` with verified UI workflows, corrected drift policy semantics, an official figure, seven questions and prepared guide slices | Superseded by the final measured-gap package |
+| VCF-FOUNDATION-DEPLOYMENT-GAPS-01 / #3 measured coverage closure | ChatGPT | COMPLETE; PUSHED `fa7cc91` | Close `2.1.1`, `2.1.2`, `2.2.4`, `2.3.3` and `4.1.4` with deeper theory, one corrected question and nine new questions | Batch B complete |
+| OPS-HCX-FOUNDATIONS-01 / #4 candidate-profile HCX | ChatGPT | COMPLETE; FEATURE BRANCH | Dedicated theory, original and official visuals, glossary, architecture component, six questions and a prepared ten-step guide | Validate only after HCX and a second supported site exist |
 | #4–#10 remaining implementation | ChatGPT (Claude optional) | QUEUED | Existing task order retained; shared-file edits serialized and environment-dependent guides remain visibly unvalidated | Select one bounded package at a time |
 | Real-lab validation and acceptance | Alex | NOT STARTED for new batches | Build/component/RAM evidence and approved lab steps; privacy confirmation before lab-specific content | Record observed results and milestone approval |
 
 The completed pilot spec and evidence sheet are in `docs/specs/theory-labs-separation/spec.md`. The hold still applies to the older tasks #2–#10; it does not roll back this explicitly approved pilot. The feature branch may be committed and pushed automatically under `CLAUDE.md`; PR, merge and deployment remain separate.
 
-Fresh local checks after `OPS-APP-COMPLIANCE-DRIFT-01`: strict content validation **0 errors / 0 warnings**, **665/665 objective-tagged questions mapped**, **23/23 unit tests passed**, typecheck passed, production build passed and browser smoke passed on **15 main routes plus the updated lesson, guide and three representative questions** with no console errors. The corrected diagram, official application-monitoring figure, prepared-status warning and application/drift guide steps were visually reviewed. Inventory is 71 lessons / 159,006 words, 668 questions, 24 guides, 110 diagrams and 270 glossary terms. Docker deployment and real-lab behavior were not revalidated.
+Fresh local checks after `OPS-HCX-FOUNDATIONS-01`: strict content validation **0 errors / 0 warnings**, **674/674 objective-tagged questions mapped**, **59/59 items at target**, **23/23 unit tests passed**, typecheck passed and production build passed. Browser smoke passed on **15 main routes plus the HCX lesson, guide, Architecture Explorer, Exam Prep and three representative questions** with no console errors. The original diagram, official figure, prepared-state warning, representative guide steps and Architecture Explorer component were visually reviewed. Inventory is 72 lessons / 161,862 words, 683 questions, 25 guides, 111 diagrams and 279 glossary terms. Nine questions remain intentionally outside the numbered objective map: three exam-strategy questions and six HCX candidate-profile questions. Docker deployment and real-lab behavior were not revalidated.
 
 Windows checkout note: the initial strict check reported 70 missing-frontmatter errors and 1,312 cascading warnings because Git converted lesson files to CRLF while `scripts/content-loader.ts:101` expects LF. Setting this clone's `core.autocrlf=input` and normalizing only unchanged lesson working-copy line endings to LF restored passing checks. Git reports no tracked content changes. A portable parser or repository line-ending policy is a separate proposed maintenance fix, not implemented here.
 
@@ -53,7 +55,7 @@ Windows checkout note: the initial strict check reported 70 missing-frontmatter 
   - YAML/Markdown in `content/`, validated by zod (`scripts/content-loader.ts`).
   - Exposed through virtual modules (`scripts/vite-plugin-content.ts`).
   - The production build fails on any content error.
-- Learn mode: 16 phases and 71 lessons. The standalone-theory contract has 17 required sections; 69 untouched lessons may retain their legacy `Lab` section until migrated. See `docs/CONTENT_STATUS.md`.
+- Learn mode: 16 phases and 72 lessons. The standalone-theory contract has 17 required sections; 69 untouched lessons may retain their legacy `Lab` section until migrated. See `docs/CONTENT_STATUS.md`.
 - Lesson page:
   - TOC with section tracking.
   - Callouts (vcf9 / legacy / exam / trap …).
@@ -64,14 +66,14 @@ Windows checkout note: the initial strict check reported 70 missing-frontmatter 
   - Mock exam: 60 questions in 135 minutes, distributed by the number of items per objective, with timer, navigator, flags and result page.
   - Per-question page.
 - Review: spaced-repetition (Leitner) queue and review session.
-- Practical guides: 24 records in the existing lab schema, with step checklists, hints, validation and expected results.
+- Practical guides: 25 records in the existing lab schema, with step checklists, hints, validation and expected results.
 - Troubleshooting: 10 incidents in a 6-stage simulator (evidence → cause → next step → remediation → validation → debrief), scored with LCS.
 - Scenarios: 3 design scenarios.
 - Architecture Explorer:
   - Component tree, full map, focus graph per component.
   - Failure simulation ("what breaks if X fails").
 - Home Lab Builder: platforms, 3 profiles, IP/VLAN/DNS plan, checklists, guides.
-- Reference pages: glossary (256 terms) and command/API reference (116 entries).
+- Reference pages: glossary (279 terms) and command/API reference (116 entries).
 - Adaptive features:
   - Onboarding with a 16-question diagnostic.
   - Topic mastery engine and an 8-signal readiness score.
@@ -96,8 +98,8 @@ Windows checkout note: the initial strict check reported 70 missing-frontmatter 
 
 - **Blueprint depth.**
   - `content/objectives.yaml` lists every 2.1–4.4 item verbatim from the official exam guide.
-  - Questions are tagged per objective, not per objective item, so coverage of each item is not measured or guaranteed.
-  - Topics named in the guide's "Minimally Qualified Candidate" profile remain thin in VCF Operations HCX and VCF Operations for Networks. Foundational Kubernetes now has a dedicated lesson; its practical guide can be authored independently of current lab availability and validated after Supervisor prerequisites exist.
+  - All 674 objective-tagged questions carry a primary objective-item mapping; the generated report measures every one of the 59 official items and all currently meet the internal target.
+  - Candidate-profile foundations for Kubernetes, DNS/NTP/certificates and VCF Operations HCX now have dedicated lessons. Practical-guide validation and deeper VCF Operations for Networks deployment coverage remain separate work.
 - **Fact verification.**
   - Content authors hit the shared WebFetch budget. Unverified details are written as "check your version", not stated as fact. Examples: some UI menu paths, ESX 9 / SDDC Manager log paths, sample command outputs, precheck contents.
 - **Labs vs the real lab.**
@@ -109,8 +111,8 @@ Windows checkout note: the initial strict check reported 70 missing-frontmatter 
 ## Not started
 
 - Rebuilding labs on Alex's real lab (see the task list below).
-- Closing the remaining 5 measured objective-item question gaps. Objectives 4.3 and 4.4 now meet the internal target throughout; the remaining items are isolated foundation/deployment gaps.
-- HCX lesson and Kubernetes practical guide.
+- Measured objective-item gap closure is complete: all 59 official items meet the internal five-question target. Content depth, practical-guide migration and real-lab validation remain separate quality tracks.
+- Kubernetes practical guide; the HCX lesson and prepared guide are complete.
 - Install labs for components not yet in Alex's lab: VCF Automation, Operations for Logs, Operations for Networks, HCX, a workload domain.
 - CI: no GitHub Actions workflow.
 - Browser-level accessibility audit beyond the basics already built in (skip link, ARIA labels, focus states).
@@ -121,7 +123,7 @@ Windows checkout note: the initial strict check reported 70 missing-frontmatter 
 2. Initial JS chunk is ~1 MB (234 KB gzip) and the search chunk ~2 MB (505 KB gzip), because content metadata and the search index are bundled. The warning limit is raised to 2500 KB in `vite.config.ts`. Acceptable on a LAN; slow on a remote link.
 3. Official figures are hotlinked from techdocs.broadcom.com. With no internet they don't render, but captions and source links still show.
 4. Mock-exam questions left unanswered are not recorded as attempts, so they don't affect mastery. Intentional, but readiness may then show "answer at least 20 questions" right after a mostly blank mock.
-5. Three questions (`ex-strat-001/002/004`) have no objective and are never picked for mock exams. Intentional.
+5. Nine questions have no numbered objective and are never picked for mock exams: three exam-strategy questions and six HCX candidate-profile questions. Intentional.
 6. There is no "exam-prep" topic. The exam-strategy lesson borrows `vcf-overview`, `vcf-terminology` and `troubleshooting-method`.
 7. Progress lives only in the browser's IndexedDB. Clearing site data loses it; back up with Settings → Export.
 
@@ -163,13 +165,13 @@ INFRAFORGE_PORT=80 docker compose up -d    # change port
 
 ## Next 10 tasks (priority order)
 
-Tasks 2–10 were requested on 2026-10-07. Alex explicitly resumed the bounded Kubernetes foundations slice of task #4; tasks #2–#3, the HCX slice of #4 and tasks #5–#10 remain **on hold until Alex says his separate "InfraForge RHCSA" project is finished or explicitly resumes another bounded package**.
+Tasks 2–10 were requested on 2026-10-07. Alex later resumed curriculum-driven bounded packages and asked work to continue across usage resets. Tasks #2–#3 and both theory slices of #4 are complete; the Kubernetes practical guide and tasks #5–#10 remain queued for one bounded package at a time.
 
 1. **Make the GitHub repo private.** Only Alex can do this: Settings → General → Danger Zone. Confirm before adding any lab-specific content.
 2. **Tag every question with its objective item. COMPLETE in `EXAM-COVERAGE-01`.** The schema, all 617 mappings, validation, repeatable report and learner-facing item coverage are implemented.
-3. **Fill the coverage gaps the report shows. ACTIVE in bounded batches.** Objectives 4.3 and 4.4 are developed to the internal target across all items. Continue toward dedicated lesson sections and at least 5 questions for the five isolated foundation/deployment items listed in `docs/EXAM_COVERAGE.md`.
+3. **Fill the coverage gaps the report shows. COMPLETE in bounded batches.** All 59 official items have dedicated lesson coverage and at least five mapped questions. Continue to review depth and accuracy during later topic packages rather than inflating question counts.
 4. **Add the topics named in the candidate profile:**
-   - VCF Operations HCX (lesson, questions, glossary)
+   - VCF Operations HCX (lesson, questions, glossary and prepared guide) — COMPLETE in `OPS-HCX-FOUNDATIONS-01`
    - foundational Kubernetes for vSphere Supervisor
    - a DNS / NTP / certificates refresher
 5. **Add a "real lab" profile to `content/homelab/homelab.yaml`** describing Alex's deployed lab: vcf-lab-01, single-node mgmt-domain, 4 nested ESX 9.0.2, vSAN OSA FTT0, VDS MTU 1700, VLANs 110/120/130/140/180. Topology only, no passwords.

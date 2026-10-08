@@ -92,6 +92,17 @@ Where the installer sits:
 
 Deployed **after** the installer finishes (TechDocs "Completing the Deployment of Your Platform"): VCF Operations orchestrator, VCF Operations for logs, VCF Operations for networks (VCF only) and, optionally, a three-node VCF Identity Broker (otherwise the identity broker function is embedded in vCenter).
 
+| Post-installer component | VCF Simple | VCF HA | vSphere Foundation | Deployment meaning |
+|---|---:|---:|---:|---|
+| Operations for networks | 1 appliance + 1 collector | 1 appliance + 2 collectors | Not included | Deployed with automation from VCF Operations |
+| Operations for logs | 1 primary | 1 primary + 2 workers | 1 primary + 2 workers | VCF uses Operations automation; vSphere Foundation deploys it manually |
+| Operations orchestrator | 1 primary | 1 primary + 2 secondary nodes | 1 primary + 2 secondary nodes | Appliance deployment remains a manual completion task for both platforms |
+| VCF Identity Broker | Embedded vCenter function by default | Optional dedicated three-node deployment | Embedded function | Choose dedicated nodes only when organizational requirements justify them |
+
+“Installer succeeded” therefore proves the automated core stack completed; it does not prove the entire platform is
+complete. Read the platform and model columns before choosing appliances or node counts. VCF Operations for networks
+is a VCF-only completion component, while logs and orchestrator also complete a vSphere Foundation platform.
+
 ## How It Works
 
 ### Phase 1 – Prepare
