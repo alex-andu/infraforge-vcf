@@ -3534,3 +3534,201 @@ questions:
   explanation:
     correct: Definition stores rules, Assignments shows effective application, and Enforcement supplies the dated audit trail.
     concept: Policy operations
+- id: ops-logs-014
+  type: matching
+  kind: concept
+  difficulty: intermediate
+  version: vcf9
+  topics: [vcf-ops-logs, network-ops]
+  objective: '4.3'
+  objectiveItem: "4.3.1"
+  lesson: vcf-operations-logs-network-ops
+  section: concept
+  stem: Match each investigation to the VCF Operations capability that supplies the primary evidence.
+  pairs:
+  - id: p1
+    left: Find which host emitted an All Paths Down message at a precise time
+    right: VCF Operations for logs
+  - id: p2
+    left: Discover which VMs communicate with a database port and through which firewall rule
+    right: VCF Operations for networks
+  - id: p3
+    left: Check certificates, DNS, NTP and vMotion health across the fleet
+    right: VCF Health
+  - id: p4
+    left: Compare vSAN health score with latency and throughput
+    right: Storage Operations
+  explanation:
+    correct: Logs answers message questions, networks answers path/flow questions, VCF Health checks stack dependencies and Storage Operations analyzes storage.
+    concept: Operations tool selection
+- id: ops-logs-015
+  type: multi
+  kind: scenario
+  difficulty: intermediate
+  version: vcf9
+  topics: [vcf-ops-logs, network-ops]
+  objective: '4.3'
+  objectiveItem: "4.3.1"
+  lesson: vcf-operations-logs-network-ops
+  section: concept
+  stem: Which two requirements select VCF Operations for networks rather than VCF Operations for logs? (Choose two.)
+  options:
+  - id: a
+    text: Build a micro-segmentation plan from observed application flows
+    why: Flow analytics and recommended firewall rules are network-analysis capabilities.
+    correct: true
+  - id: b
+    text: Trace a VM-to-VM network path and identify a blocking rule
+    why: Path visibility and firewall-rule correlation belong to network operations.
+    correct: true
+  - id: c
+    text: Search unstructured ESX messages for an APD signature
+    why: Central log search is a logs use case.
+    confusedWith: vcf-ops-logs
+  - id: d
+    text: Create an alert from a recurring text pattern
+    why: Log-based symptoms and alerts are a logs use case.
+    confusedWith: vcf-ops-logs
+  select: 2
+  explanation:
+    correct: VCF Operations for networks models flows, paths and firewall relationships; logs indexes and alerts on message content.
+    concept: Network Operations use cases
+- id: ops-logs-016
+  type: single
+  kind: troubleshooting
+  difficulty: advanced
+  version: vcf9
+  topics: [vcf-ops-logs, network-ops]
+  objective: '4.3'
+  objectiveItem: "4.3.1"
+  lesson: vcf-operations-logs-network-ops
+  section: deep-dive
+  stem: An operator deploys the three-node VCF Operations for networks platform cluster solely to survive a platform-node failure. What is wrong with the design assumption?
+  options:
+  - id: a
+    text: The three-node platform model provides performance and scale, not product-level high availability
+    why: TechDocs explicitly distinguishes the model name from its actual availability behavior.
+    correct: true
+  - id: b
+    text: The platform cluster stores only logs
+    why: It performs network analytics and search.
+  - id: c
+    text: Collector nodes are forbidden in the three-node model
+    why: A collector remains part of the design.
+  - id: d
+    text: The model supports no flow collection
+    why: Scale for network objects and flows is its purpose.
+  explanation:
+    correct: Size out for scale; use vSphere HA and recovery planning for node failure rather than treating the platform cluster as application HA.
+    concept: Network Operations deployment model
+- id: ops-data-009
+  type: single
+  kind: scenario
+  difficulty: foundation
+  version: vcf9
+  topics: [metrics-properties]
+  objective: '4.3'
+  objectiveItem: "4.3.3"
+  lesson: metrics-properties-views-reports
+  section: concept
+  stem: An auditor asks which ESX hosts run build 9.0.2. Is the build value a metric or a property?
+  options:
+  - id: a
+    text: A property, because it describes configuration state rather than a sampled time series
+    why: Version/build is an object attribute.
+    correct: true
+  - id: b
+    text: A metric, because the build contains numbers
+    why: Numeric appearance does not make an attribute a time-series measurement.
+  - id: c
+    text: A super metric, because it applies to several hosts
+    why: Super metrics are calculated formulas, not shared attributes.
+  - id: d
+    text: An alert definition
+    why: An alert can evaluate data but is not the data type itself.
+  explanation:
+    correct: Properties describe identity or configuration; metrics are sampled numeric measurements over time.
+    concept: Metric versus property
+- id: ops-data-010
+  type: matching
+  kind: concept
+  difficulty: intermediate
+  version: vcf9
+  topics: [metrics-properties]
+  objective: '4.3'
+  objectiveItem: "4.3.3"
+  lesson: metrics-properties-views-reports
+  section: concept
+  stem: Classify each VCF Operations value by data type.
+  pairs:
+  - id: p1
+    left: VM CPU usage sampled every collection cycle
+    right: Metric
+  - id: p2
+    left: ESX version and build
+    right: Property
+  - id: p3
+    left: Formula calculating the maximum CPU ready value across child VMs
+    right: Super metric
+  - id: p4
+    left: Guest operating-system name
+    right: Property
+  explanation:
+    correct: Metrics vary over time, properties describe objects, and super metrics derive a new time series from a formula.
+    concept: Operations data model
+- id: ops-alrt-013
+  type: single
+  kind: troubleshooting
+  difficulty: intermediate
+  version: vcf9
+  topics: [dashboards-alerts]
+  objective: '4.3'
+  objectiveItem: "4.3.5"
+  lesson: dashboards-alerts-policies
+  section: failure-scenarios
+  stem: A dashboard is shared with the NOC group, but its VM widgets are empty for those users. What should the administrator check first?
+  options:
+  - id: a
+    text: Whether the NOC role and scope grant access to the displayed VM objects
+    why: Dashboard sharing does not grant object permissions.
+    correct: true
+  - id: b
+    text: Whether every alert definition is Critical
+    why: Criticality does not control object visibility.
+  - id: c
+    text: Whether the dashboard was exported as JSON
+    why: Export is unrelated to live permissions.
+  - id: d
+    text: Whether VCF Automation has a provider gateway
+    why: Tenant networking does not control VCF Operations dashboard scope.
+    confusedWith: vcfa-tenancy
+  explanation:
+    correct: Share the dashboard and grant the users object scope separately; both are required for visible data.
+    concept: Dashboard sharing and permissions
+- id: ops-alrt-014
+  type: ordering
+  kind: scenario
+  difficulty: intermediate
+  version: vcf9
+  topics: [dashboards-alerts]
+  objective: '4.3'
+  objectiveItem: "4.3.5"
+  lesson: dashboards-alerts-policies
+  section: components
+  stem: Order the main tasks for building and sharing a dashboard that filters detail widgets from a selected object.
+  items:
+  - id: i1
+    text: Open Infrastructure Operations > Dashboards & Reports > Dashboards and select Create
+  - id: i2
+    text: Name the dashboard and add the object-list and detail widgets or views
+  - id: i3
+    text: Configure widget and view interactions so selection drives the detail widgets
+  - id: i4
+    text: Save and test the dashboard with objects in the intended scope
+  - id: i5
+    text: Open Manage and share it with the required user group, optionally allowing editing
+  - id: i6
+    text: Validate that a group member can see both the dashboard and the permitted objects
+  explanation:
+    correct: Build, connect and test the widgets before sharing, then validate the recipient's separate object scope.
+    concept: Dashboard creation and sharing workflow

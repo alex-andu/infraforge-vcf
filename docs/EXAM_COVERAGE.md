@@ -5,8 +5,8 @@ The item identifiers are repository ordinals attached to the official item text;
 The **5-question target is an internal content-quality threshold**, not an official exam weight or scoring rule.
 
 - Official items represented: **59/59**
-- Items meeting the internal target: **45/59**
-- Objective-tagged questions mapped to one primary item: **643/643**
+- Items meeting the internal target: **48/59**
+- Objective-tagged questions mapped to one primary item: **650/650**
 - Questions outside a testable objective: **3**
 
 ## 2.1 — Private Cloud Vision
@@ -76,11 +76,11 @@ The **5-question target is an internal content-quality threshold**, not an offic
 
 | Item | Official exam-guide text | Questions | Question-linked lessons | Status |
 |---|---|---:|---:|---|
-| 4.3.1 | Given a scenario, identify the use case for VCF Network Operations and VCF Operations (Logs) | 2 | 1 | Needs 3 |
+| 4.3.1 | Given a scenario, identify the use case for VCF Network Operations and VCF Operations (Logs) | 5 | 1 | Target met |
 | 4.3.2 | Given a scenario, describe the cluster components and deployment options of VCF Operations | 9 | 2 | Target met |
-| 4.3.3 | Given a scenario, differentiate between metrics and properties | 3 | 1 | Needs 2 |
+| 4.3.3 | Given a scenario, differentiate between metrics and properties | 5 | 1 | Target met |
 | 4.3.4 | Given a scenario, create custom Views and Reports in VCF Operations | 5 | 1 | Target met |
-| 4.3.5 | Given a scenario, create and share dashboards in VCF Operations | 3 | 1 | Needs 2 |
+| 4.3.5 | Given a scenario, create and share dashboards in VCF Operations | 5 | 1 | Target met |
 | 4.3.6 | Given a scenario, configure Alerting in VCF Operations | 7 | 1 | Target met |
 | 4.3.7 | Given a scenario, monitor log events in VCF Operations | 7 | 3 | Target met |
 | 4.3.8 | Given a scenario, monitor VMware Cloud Foundation components using VCF Health and Diagnostics | 8 | 2 | Target met |
@@ -119,13 +119,10 @@ The **5-question target is an internal content-quality threshold**, not an offic
 ## Priority queue from measured gaps
 
 - **2.1.2** — Identify the use cases for Private Cloud: 1/5 questions.
-- **4.3.1** — Given a scenario, identify the use case for VCF Network Operations and VCF Operations (Logs): 2/5 questions.
 - **4.3.10** — Given a scenario, monitor vSAN storage using VCF Storage Operations: 2/5 questions.
 - **4.3.11** — Given a scenario, configure VCF Operations policies: 2/5 questions.
 - **4.3.12** — Given a scenario, monitor application using VCF Operations: 2/5 questions.
 - **4.1.4** — Given a scenario, identify the additional components required to complete the deployment of a VMware Cloud Foundation-based private cloud: 3/5 questions.
-- **4.3.3** — Given a scenario, differentiate between metrics and properties: 3/5 questions.
-- **4.3.5** — Given a scenario, create and share dashboards in VCF Operations: 3/5 questions.
 - **4.3.9** — Given a scenario, monitor networks using VCF Network Operations: 3/5 questions.
 - **4.3.13** — Given a scenario, monitor security hardening and compliance using VCF Operations: 3/5 questions.
 - **4.3.14** — Given a scenario, configure configuration drift in VCF Operations: 3/5 questions.
