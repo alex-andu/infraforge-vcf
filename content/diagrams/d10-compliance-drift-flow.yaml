@@ -4,10 +4,10 @@ description: >
   Three "is it still right?" capabilities in VCF Operations. Compliance: benchmarks (VMware SDDC / VCF configuration
   standards, regulatory benchmarks, or custom benchmarks built from alert definitions) are activated in the policy and
   evaluated against inventory objects, producing a compliance score and violations under Security > Compliance.
-  Configuration drift: under Fleet Management > Configuration Drifts you build a template from a source vCenter's
-  configuration and compare other vCenter instances against it; this requires the vCenter adapters to run on a cloud
-  proxy (collector), not the default collector group. Application monitoring: Telegraf agents (product-managed or open
-  source) and the service discovery adapter send OS and application service metrics through a cloud proxy.
+  Configuration drift: under Fleet Management > Configuration Drifts you select a schema from a source vCenter,
+  create a template, activate it in policies applied to vCenter targets, and run or schedule detection; the vCenter
+  account must use a cloud proxy or cloud proxy group. Application monitoring: Telegraf agents (product-managed or
+  open source) and the service discovery adapter send OS and application service metrics through a cloud proxy.
 width: 1000
 height: 580
 groups:
@@ -19,10 +19,10 @@ nodes:
   - { id: cpolicy, x: 40, y: 200, w: 260, h: 56, label: "Activate in policy", sublabel: "compliance alert definitions", kind: security, info: "Configuring a benchmark activates its compliance alert definitions in the active policy; the policy's Compliance section sets the threshold." }
   - { id: score, x: 40, y: 310, w: 260, h: 56, label: "Compliance score", sublabel: "Security > Compliance", kind: security, info: "Each object gets a compliance score; violations show which rule failed and on which object." }
   - { id: fix, x: 40, y: 420, w: 260, h: 56, label: "Remediate + re-check", kind: ops, info: "Fix the setting (for example ESX advanced settings, SSH service) and let the next collection re-evaluate." }
-  - { id: source, x: 370, y: 90, w: 260, h: 56, label: "Source vCenter", sublabel: "known-good config", kind: mgmt, component: vcenter, info: "Configuration Source: a vCenter whose configuration you treat as the desired state." }
-  - { id: tmpl, x: 370, y: 200, w: 260, h: 56, label: "Configuration template", sublabel: "Fleet Mgmt > Config Drifts", kind: mgmt, info: "Captured desired-state configuration that targets are compared against." }
-  - { id: targets, x: 370, y: 310, w: 260, h: 56, label: "Target vCenters", kind: mgmt, info: "vCenter instances assigned to the template; differences are reported as drift." }
-  - { id: proxyreq, x: 370, y: 420, w: 260, h: 56, label: "Requirement", sublabel: "vCenter adapter on cloud proxy", kind: ops, info: "Broadcom KB 438361: if vCenter adapters stay on the Default Collector Group (analytics nodes), vCenters do not appear as configuration sources and drift shows Unavailable / Not Collecting." }
+  - { id: source, x: 370, y: 90, w: 260, h: 56, label: "Source vCenter", sublabel: "9.0+; registered to cloud proxy", kind: mgmt, component: vcenter, info: "The source vCenter supplies current values. Configuration Drift requires the account on a cloud proxy or cloud proxy group." }
+  - { id: tmpl, x: 370, y: 200, w: 260, h: 56, label: "Schema + template", sublabel: "selected desired settings", kind: mgmt, info: "Select only settings to standardize, then create the named desired-state configuration template." }
+  - { id: dpolicy, x: 370, y: 310, w: 260, h: 56, label: "Activate in policy", sublabel: "Configuration Templates", kind: security, info: "Assign during template creation or edit Policy Definition > Configuration Templates and set the template to Activated." }
+  - { id: targets, x: 370, y: 420, w: 260, h: 56, label: "Detect drift", sublabel: "current value vs template value", kind: ops, info: "Run Detect Drift or schedule detection. Results cover enabled vCenter instances and eligible vSphere clusters and can be downloaded as a status report." }
   - { id: tele, x: 700, y: 90, w: 260, h: 56, label: "Telegraf agent", sublabel: "product-managed or open source", kind: compute, info: "Product-managed Telegraf is deployed and managed from VCF Operations; open-source Telegraf is configured on the endpoint to post metrics to the cloud proxy." }
   - { id: sd, x: 700, y: 200, w: 260, h: 56, label: "Service discovery", sublabel: "adapter", kind: compute, info: "Discovers services running in VMs and their relationships." }
   - { id: cp, x: 700, y: 310, w: 260, h: 56, label: "Cloud proxy", sublabel: "collector", kind: ops, info: "Receives agent data and forwards it to the analytics cluster." }
@@ -32,13 +32,13 @@ edges:
   - { from: cpolicy, to: score, label: "2. evaluate", kind: data }
   - { from: score, to: fix, label: "3", kind: mgmt }
   - { from: source, to: tmpl, label: "capture", kind: mgmt }
-  - { from: tmpl, to: targets, label: "compare", kind: data }
-  - { from: proxyreq, to: targets, kind: dependency, dashed: true }
+  - { from: tmpl, to: dpolicy, label: "activate", kind: control }
+  - { from: dpolicy, to: targets, label: "compare", kind: data }
   - { from: tele, to: cp, label: "metrics", kind: data }
   - { from: sd, to: cp, kind: data }
   - { from: cp, to: bizapp, label: "model", kind: data }
 steps:
   - { title: "Compliance", text: "Pick a benchmark, activate it in the policy, read the compliance score and violations, remediate.", highlight: [bench, cpolicy, score, fix] }
-  - { title: "Configuration drift", text: "Capture a template from a source vCenter and compare target vCenters against it.", highlight: [source, tmpl, targets] }
-  - { title: "Drift prerequisite", text: "vCenter adapters must run on a cloud proxy (collector) for drift to discover vCenters.", highlight: [proxyreq, targets] }
+  - { title: "Configuration drift desired state", text: "Use a 9.0+ source vCenter on a cloud proxy, select the intended schema and create a template.", highlight: [source, tmpl] }
+  - { title: "Activate and execute", text: "Activate the template in a policy applied to targets, then run or schedule drift detection and compare current values with template values.", highlight: [tmpl, dpolicy, targets] }
   - { title: "Application monitoring", text: "Telegraf and service discovery send OS and application data through the cloud proxy; business applications group them.", highlight: [tele, sd, cp, bizapp] }

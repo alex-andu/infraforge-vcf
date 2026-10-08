@@ -1,10 +1,10 @@
 id: lab-vcf-ops-logs-network
-title: "VCF Operations: Logs, Network Operations, Health, Storage, Compliance and Drift"
+title: "VCF Operations: Logs, Network, Storage, Application Monitoring, Compliance and Drift"
 level: intermediate
 complexity: 4
-minutes: 180
+minutes: 240
 version: vcf9
-technologies: [VCF Operations 9.0, VCF Operations for logs, VCF Operations for networks, vSAN, ESX 9.0]
+technologies: [VCF Operations 9.0, VCF Operations for logs, VCF Operations for networks, Telegraf, vSAN, ESX 9.0]
 topics: [vcf-ops-logs, network-ops, health-diagnostics, compliance-drift]
 lessons: [vcf-operations-logs-network-ops, compliance-drift-app-monitoring]
 objectives:
@@ -12,10 +12,13 @@ objectives:
   - Search log events, use extracted fields and create a log-based alert.
   - Use the Network Operations page and, if capacity allows, VCF Operations for networks.
   - Check the platform with VCF Health and vSAN with Storage Operations.
+  - Install product-managed Telegraf on a disposable vCenter-managed VM, activate a service and model a Business Application.
   - Configure a compliance benchmark and a configuration drift template, fixing the collector prerequisite.
 prerequisites:
   - "lab-vcf-ops-dashboards-alerts completed (VCF Operations running and collecting)."
   - "VCF Operations 9.0 URL: https://ops01.vcf.home.arpa; sign in with an account permitted to view Infrastructure Operations and integrations. Discover the exact role in Administration > Control Panel > Access Control if access is denied."
+  - "For application monitoring: one disposable Linux VM managed by vcenter01, reachable from collector01, with supported guest tools and a temporary OS account that meets the product-managed Telegraf prerequisites. Credentials stay in the runtime wizard and never in evidence."
+  - "For Configuration Drift: Configuration Drifts Manage privilege (or View for observation only) and the vcenter01 account registered to collector01/cloud proxy group."
   - "Free capacity on the Proxmox host for one VCF Operations for logs node; check the size options shown in the deployment wizard against your free RAM."
   - "DNS A/PTR records for the logs node and its VIP FQDN (required even in the Simple model)."
 topology:
@@ -24,14 +27,18 @@ requirements:
   network:
     - "Management VLAN with DNS and NTP."
     - "Path from ESX, vCenter and NSX to the logs VIP."
+    - "Path from the disposable application VM to collector01.vcf.home.arpa for OS/application metrics."
   vms:
     - "VCF Operations for logs: 1 node (Simple), deployed from VCF Operations fleet management."
     - "VCF Operations for networks: optional - platform must be Extra Large with 100% CPU and RAM reservation plus a collector; usually not possible on a single home-lab host next to VCF. Treat its steps as conceptual if so."
+    - "One disposable vCenter-managed Linux VM for product-managed Telegraf; discover its exact name as <APP_VM>."
   ip:
     - "Logs node IP + VIP IP, both with A/PTR records."
     - "Networks platform and collector IPs only if you deploy it."
 startingState: |
-  VCF Operations collects from the management domain. VCF Operations for logs and for networks are not deployed.
+  VCF Operations collects from the management domain. VCF Operations for logs and for networks are not deployed. No
+  application-monitoring agent, custom compliance activation or configuration template has been validated for this
+  guide.
 
   :::warning
   **PREPARED — NOT YET LAB-VALIDATED.** The documented lab contains VCF Operations at `ops01.vcf.home.arpa`, its
@@ -121,28 +128,83 @@ steps:
          score and diagnostics result; this is the commit checkpoint for the step.
     validate: Evidence contains the vSAN cluster and datastore, integration state, health score, IOPS/latency/throughput from one timestamp, diagnostic goal/window and any findings.
     expected: The documented vSAN OSA management cluster is collected and a Troubleshooting diagnostics report is available; exact health and latency values remain observed results, not guide assumptions.
+  - id: application-monitoring
+    title: Monitor a service with product-managed Telegraf and a Business Application
+    why: The exam asks how VCF Operations monitors an application inside the guest, not only the VM resource object.
+    instructions: |
+      1. Choose one disposable Linux VM managed by `vcenter01.vcf.home.arpa`; record its exact name as `<APP_VM>`, OS,
+         IP, vCenter and owner. Confirm `collector01.vcf.home.arpa` is reachable from the guest. Do not store the OS
+         password in the evidence sheet.
+      2. In VCF Operations open **Workload Operations > Applications > Manage Telegraf Agents**. Confirm `<APP_VM>` is
+         listed as a **Virtual Machine** object. A physical or unmanaged **Endpoint** does not support installation from
+         this UI; it requires the product-managed helper script.
+      3. Select `<APP_VM>`, then **Agent Actions > Install**. If the Application Monitoring Adapter does not exist for
+         this vCenter, select **Cloud Proxies** and choose `collector01` (or select an HA-enabled collector group when
+         one is actually configured), then select **Done**.
+      4. In **How do you want to provide VM Credentials**, choose **Common username and password** for this single VM.
+         Leave restore-from-backup disabled for a first install. Select **Next**, enter the temporary runtime account in
+         **Provide Credentials**, keep Linux runtime-user creation enabled only if it matches your prerequisite plan,
+         then select **Next**.
+      5. On **Summary**, verify only `<APP_VM>` is listed, then select **Install Agent**. Refresh the page until **Agent
+         Status** is `Agent Running` and **Last Operation Status** is `Install Success`. If it fails, hover the red
+         exclamation icon and record the message without credentials.
+      6. Expand `<APP_VM>`, select one discovered supported service and activate its application-service plugin. Wait
+         for collection, open **Go to Details > Metrics**, expand the object relationship and select the OS/service
+         object. Record one OS metric and one service metric with timestamp.
+      7. Open **Workload Operations > Business Applications > Add Business Application > Define Manually**. Name it
+         `Lab monitored service`, set description, application tag `lab`, business criticality **Low** and environment
+         **Test**.
+      8. Add tiers `Web or service` and `Infrastructure`. From **Select Members > Inventory**, drag the discovered
+         application/service object into the first tier and `<APP_VM>` into the second. Select **Save**, open the new
+         Business Application and record its health and member preview. This is the commit checkpoint.
+    validate: Evidence shows Agent Running/Install Success, one current OS metric, one service metric and the Business Application with the expected two tiers and members.
+    expected: VCF Operations monitors guest OS and service data through collector01 and aggregates the selected objects into `Lab monitored service`; values remain runtime observations.
   - id: compliance
-    title: Configure a compliance benchmark
-    why: Exam item "monitor security hardening and compliance".
+    title: Enable a VCF compliance benchmark for the lab policy
+    why: The exam item requires monitoring security hardening and compliance through scorecards and policy scope.
     instructions: |
-      1. **Security > Compliance**: configure the VMware SDDC / VCF security configuration benchmark for the policy that
-         covers your hosts.
-      2. After the next collection read the compliance score of an ESX host and the failed rules.
-      3. Pick one harmless rule (for example a shell warning or timeout setting), check it with PowerCLI
-         `Get-AdvancedSetting`, remediate one host and wait for re-evaluation.
-    validate: Compare the score before and after the fix.
-    expected: Score improves for the remediated host only.
+      1. Open **Security > Compliance** and select **VMware Cloud Foundation** in the data-source carousel. If the card
+         is absent, record the configured data sources and stop; do not substitute a different benchmark silently.
+      2. In **VCF Benchmarks**, locate **VCF Compliance based on the VCF Audit Guides** and select **Enable**.
+      3. In the policy selector choose the active policy covering `esx01.vcf.home.arpa`. Record the policy name and
+         current effective policy on `esx01`; avoid selecting a parent policy if a child policy should own this scope.
+      4. Select **Enable** to confirm. Wait for assessment, then open the scorecard and record score, evaluated-object
+         count, non-compliant-object count and collection timestamp.
+      5. Filter/drill into `esx01.vcf.home.arpa`, open one failed rule and record rule name, severity, current evidence
+         and recommendation. Do not change the host solely to force a better score.
+      6. If the recommendation is safe in the nested lab, capture the current value with read-only PowerCLI
+         `Get-AdvancedSetting`, obtain Alex's change approval during the lab run, apply the one change, and wait for
+         re-evaluation. Otherwise keep this as a read-only finding. Preserve before/after evidence when a change occurs.
+    validate: The scorecard is enabled in the intended effective policy and evidence links one ESX object to a specific failed rule and timestamp; any remediation has separate approval and before/after proof.
+    expected: A percentage score and object/rule details are visible after assessment; this guide does not assume a particular score or that remediation is safe.
   - id: drift
-    title: Configuration drift template
-    why: Exam item "configure configuration drift"; also teaches the collector prerequisite.
+    title: Create, activate and run a vCenter configuration template
+    why: Configuration Drift requires desired state, policy activation and a successful detection run; the collector is a prerequisite.
     instructions: |
-      1. **Fleet Management > Configuration Drifts**: start a template and open the Configuration Source list.
-      2. If your vCenter is missing, go to **Administration > Integrations**, edit the vCenter adapter, set Collector/Group
-         to the cloud proxy, **Validate Connection**, **Save** (KB 438361). Wait several minutes.
-      3. Create the template from the vCenter, assign it as target (or a second vCenter if you have a workload domain).
-      4. Change a harmless vCenter setting and check drift after the next collection; revert it.
-    validate: The drift view lists the changed setting.
-    expected: Drift detected for the changed setting and cleared after revert.
+      1. Open **Administration > Integrations**, locate the vCenter account for `vcenter01.vcf.home.arpa` and record its
+         status and **Collector/Group**. It must use `collector01` or its cloud proxy group. If it uses the Default
+         Collector Group, edit only after Alex approves the lab change: select the cloud proxy/group, **Validate
+         Connection**, then **Save** and wait for collection (KB 438361).
+      2. Open **Fleet Management > Configuration Drifts > Configuration Templates** and select **Create Config
+         Template**. Set name `Lab vCenter desired state` and describe the exact lab scope and rollback owner.
+      3. In **Template Setup**, choose `vcenter01.vcf.home.arpa` as **Configuration Source** and select **Next**.
+      4. In **Configuration Schema**, select a small, documented set of non-secret settings that you intend to keep
+         stable; record every selected schema path. Select **Next**.
+      5. In **Assign vCenters using Policy (Optional)**, select the active policy applied to `vcenter01`, then **Next**.
+         On **Review**, compare source, schema and policy with the evidence sheet and select **Create**.
+      6. If no policy was selected in the wizard, open **Infrastructure Operations > Configurations > Policy
+         Definition**, edit the effective policy, open **Configuration Templates**, select `Lab vCenter desired state`,
+         set it to **Activated**, and **Save**.
+      7. Return to **Fleet Management > Configuration Drifts**, expand **VCF Instances**, select the lab VCF instance,
+         and open **Drifts**. Select `vcenter01` and **Detect Drift**. Open the vCenter result, select the template and
+         record status plus any **Current vCenter Value** versus **Config Template Value** differences.
+      8. Select `vcenter01` and **Download Drift Status Report**. Confirm date, resource, template and drift status are
+         present. Do not alter a production-sensitive vCenter setting merely to manufacture drift.
+      9. Optional controlled proof: after Alex approves a harmless setting and rollback, record the old value, change
+         it, run **Detect Drift**, preserve the detected row, restore the old value, run again and confirm **Not
+         Drifted**. This is the commit checkpoint.
+    validate: The vCenter uses a cloud proxy, the template lists the intended source/schema/policy, Detect Drift completes, and the report records the current status; an optional change has approval, rollback and both results.
+    expected: The template is active through the vCenter's effective policy and the current configuration returns Not Drifted or an evidence-backed difference; no drift is invented.
 troubleshooting:
   - symptom: Logs deployment fails validation.
     fix: Create both A and PTR records for the node and the VIP; check NTP and free capacity.
@@ -152,14 +214,24 @@ troubleshooting:
     fix: Move the vCenter adapter to a cloud proxy (Administration > Integrations), validate, save, wait (KB 438361).
   - symptom: Compliance shows no data for some hosts.
     fix: The benchmark is configured for a different policy than the hosts' effective policy.
+  - symptom: "<APP_VM> does not appear on Manage Telegraf Agents."
+    fix: Confirm it is a VM in the configured vCenter cloud account. Endpoint objects use the helper script and cannot be selected for UI installation.
+  - symptom: Agent install shows Install Failed.
+    fix: Hover the red exclamation icon, then verify guest credentials/prerequisites and reachability to collector01; do not retry before recording the specific error.
+  - symptom: "Template exists but vCenter is not configuration-enabled."
+    fix: Activate the template under Policy Definition > Configuration Templates in the effective policy assigned to the vCenter, then run Detect Drift.
 challenge: |
   Write a one-page runbook: "Users report slow app X". Show which page you open first (alert, VCF Health, Network
-  Operations, Storage Operations, logs), what each would prove or exclude, and in which order. Add the compliance and
-  drift checks you would run after the incident to prevent recurrence.
+  Operations, Storage Operations, Telegraf/service metrics, Business Application, logs), what each would prove or
+  exclude, and in which order. Add the compliance and drift checks you would run after the incident to prevent recurrence.
 cleanup: |
   Keep VCF Operations for logs if you have capacity (later labs use it); otherwise power it off or delete it through
   fleet management. The Network Operations and Storage Operations checkpoints are read-only and need no rollback.
-  Remove test drift templates and revert any remediated setting you changed only for practice.
+  Under **Workload Operations > Applications > Manage Telegraf Agents**, select `<APP_VM>` and uninstall the test agent
+  if it is not needed; delete `Lab monitored service`. Disable the lab compliance scorecard only if this guide enabled
+  it in a policy that should not retain it. Deactivate and delete `Lab vCenter desired state`, and revert every approved
+  setting change using the recorded old value. Preserve sanitized evidence and confirm the vCenter's collector
+  assignment remains the intended operational configuration.
 sources:
   - title: "VCF 9.0 Architectural Options - VCF Operations Models"
     url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/design/vmware-cloud-foundation-concepts/vcf-operations.html
@@ -169,5 +241,15 @@ sources:
     url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/infrastructure-operations/network-operationss.html
   - title: "VCF 9.0 - Monitoring Storage Operations"
     url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/infrastructure-operations/connect-to-data-sources/vsan-overview/monitoring-storage-operations(1).html
+  - title: "VCF 9.0 - Install an Agent from the UI"
+    url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/workload-monitoring-and-observability/os-and-application-monitoring/steps-to-monitor-your-applications/install-and-uninstall-an-agent/install-an-agent-from-the-ui.html
+  - title: "VCF 9.0 - Add Business Application"
+    url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/workload-monitoring-and-observability/configuring-business-applications/add-business-application.html
+  - title: "VCF 9.0 - Activate VCF Benchmarks"
+    url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/security-and-compliance/viewing-and-configuring-compliance/how-to-configure-compliance-benchmarks/activate-vcf-cloud-account-benchmarks.html
+  - title: "VCF 9.0 - Managing Configuration Templates"
+    url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/fleet-management/what-is-configuration-management/creating-a-configuration-template.html
+  - title: "VCF 9.0 - Viewing Drifts and Downloading Reports"
+    url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/fleet-management/what-is-configuration-management/using-the-configuration-management-dashboard/viewing-drifts-for-the-vcenter-instance.html
   - title: "Broadcom KB 438361 - vCenter Servers not listed in Configuration Drift source list"
     url: https://knowledge.broadcom.com/external/article/438361/vcenter-servers-not-listed-in-vcf-operat.html

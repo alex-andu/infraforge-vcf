@@ -1315,15 +1315,15 @@ questions:
   stem: Order the steps to start tracking configuration drift for three vCenter instances against a reference vCenter.
   items:
   - id: i1
-    text: Ensure the vCenter adapters run on a cloud proxy (Administration > Integrations)
+    text: Ensure the vCenter accounts use a cloud proxy or cloud proxy group
   - id: i2
-    text: In Fleet Management > Configuration Drifts create a template from the reference vCenter (configuration source)
+    text: Create a template from the source vCenter and select the intended configuration schema
   - id: i3
-    text: Assign the three target vCenter instances to the template
+    text: Activate the template in the policies applied to the three target vCenter instances
   - id: i4
-    text: Review the drift results and decide whether to fix targets or update the template
+    text: Run Detect Drift and compare current values with template values
   explanation:
-    correct: Collector prerequisite, template from source, assign targets, review.
+    correct: Establish collection, create the desired state, activate it through policy, then execute and review detection.
     concept: Drift workflow
 - id: ops-comp-004
   type: single
@@ -1489,8 +1489,216 @@ questions:
     text: The VCF Bill of Materials
     why: Lifecycle concept.
   explanation:
-    correct: A configuration template captured from a source vCenter (your own known-good configuration).
+    correct: A configuration template contains selected settings from a source vCenter; a policy activates that desired state for targets.
     concept: Drift vs compliance
+- id: ops-appmon-001
+  type: ordering
+  kind: scenario
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - compliance-drift
+  objective: '4.3'
+  objectiveItem: "4.3.12"
+  lesson: compliance-drift-app-monitoring
+  section: how-it-works
+  stem: Order the main steps for centrally managed guest and service monitoring on a vCenter-managed VM.
+  items:
+  - id: i1
+    text: Configure a reachable cloud proxy with the OS and Application adapter and the vCenter cloud account
+  - id: i2
+    text: In Manage Telegraf Agents select the VM and install product-managed Telegraf with runtime credentials
+  - id: i3
+    text: Confirm Agent Running and Install Success, then activate the required application-service plugin
+  - id: i4
+    text: Validate OS and service metrics and add the objects to a Business Application if a service model is required
+  explanation:
+    correct: Collection prerequisites come first, followed by managed-agent installation, service activation and metric/application-model validation.
+    concept: Product-managed application monitoring workflow
+- id: ops-appmon-002
+  type: matching
+  kind: concept
+  difficulty: advanced
+  version: vcf9
+  topics:
+  - compliance-drift
+  objective: '4.3'
+  objectiveItem: "4.3.12"
+  lesson: compliance-drift-app-monitoring
+  section: components
+  stem: Match each application-monitoring requirement to the correct VCF Operations mechanism.
+  pairs:
+  - id: p1
+    left: Centrally install and lifecycle an agent on a vCenter-managed VM
+    right: Product-managed Telegraf from Manage Telegraf Agents
+  - id: p2
+    left: Install a product-managed agent on a physical or unmanaged Endpoint
+    right: Product-managed helper script
+  - id: p3
+    left: Send OS metrics from an independently managed EC2 or Azure VM
+    right: Open-source Telegraf configured to post to the cloud proxy
+  - id: p4
+    left: Discover and monitor a supported database or web service inside the guest
+    right: Application-service plugin and service discovery
+  - id: p5
+    left: Group service, VM and tier objects into one monitored business service
+    right: Business Application
+  explanation:
+    correct: Target ownership and object type determine the agent path; service plugins collect service data and Business Applications model the service.
+    concept: Application monitoring components
+- id: ops-appmon-003
+  type: single
+  kind: troubleshooting
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - compliance-drift
+  objective: '4.3'
+  objectiveItem: "4.3.12"
+  lesson: compliance-drift-app-monitoring
+  section: troubleshooting
+  context: A physical Linux server appears as an Endpoint in VCF Operations, but it is absent from the VM selection list under Manage Telegraf Agents.
+  stem: How should the administrator install the centrally managed monitoring agent?
+  options:
+  - id: a
+    text: Run the product-managed helper script on the Endpoint
+    why: UI installation is for vCenter-managed VM objects; Endpoint installation uses the helper script.
+    correct: true
+  - id: b
+    text: Add the server to a configuration drift template
+    why: Drift evaluates vCenter and eligible cluster configuration, not guest monitoring.
+    confusedWith: compliance-drift
+  - id: c
+    text: Deploy VCF Operations for logs on the server
+    why: Log analytics does not install the application-monitoring agent.
+    confusedWith: vcf-ops-logs
+  - id: d
+    text: Create a Business Application first
+    why: A Business Application models monitored objects but does not install agents.
+  explanation:
+    correct: Use the product-managed helper script for physical or unmanaged Endpoint objects, then manage their lifecycle from VCF Operations.
+    concept: Endpoint installation path
+- id: ops-compliance-001
+  type: ordering
+  kind: scenario
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - compliance-drift
+  objective: '4.3'
+  objectiveItem: "4.3.13"
+  lesson: compliance-drift-app-monitoring
+  section: how-it-works
+  stem: Order the steps to begin assessing VCF components against the VCF Audit Guides.
+  items:
+  - id: i1
+    text: Configure and verify the required VCF data sources
+  - id: i2
+    text: Open Security > Compliance and select the VMware Cloud Foundation data-source entry
+  - id: i3
+    text: Enable VCF Compliance based on the VCF Audit Guides in the intended active policy
+  - id: i4
+    text: Review the percentage score, non-compliant objects and violated rules after assessment
+  explanation:
+    correct: The scorecard needs collected source data and policy activation before it can calculate and display findings.
+    concept: VCF compliance scorecard workflow
+- id: ops-compliance-002
+  type: multi
+  kind: troubleshooting
+  difficulty: advanced
+  version: vcf9
+  topics:
+  - compliance-drift
+  objective: '4.3'
+  objectiveItem: "4.3.13"
+  lesson: compliance-drift-app-monitoring
+  section: troubleshooting
+  stem: A VCF compliance scorecard is blank for one host group. Which three checks are most relevant? (Choose three.)
+  options:
+  - id: a
+    text: Verify the required data source is configured and collecting the objects
+    why: Compliance needs collected properties and metrics from the relevant source.
+    correct: true
+  - id: b
+    text: Verify the scorecard is enabled in the objects' effective policy
+    why: Enabling the scorecard activates its compliance alert definitions in the selected policy.
+    correct: true
+  - id: c
+    text: Verify the alert definitions have subtype Compliance
+    why: Only Compliance-subtype alert definitions contribute to compliance standards and scores.
+    correct: true
+  - id: d
+    text: Verify product-managed Telegraf is installed on every ESX host
+    why: Telegraf guest monitoring is unrelated to ESX compliance assessment.
+    confusedWith: compliance-drift
+  - id: e
+    text: Verify Configuration Drift has a source template
+    why: Configuration Drift is a separate desired-state feature.
+    confusedWith: compliance-drift
+  select: 3
+  explanation:
+    correct: Validate source collection, effective-policy activation and the compliance alert-definition subtype.
+    concept: Compliance data and policy troubleshooting
+- id: ops-drift-001
+  type: single
+  kind: troubleshooting
+  difficulty: advanced
+  version: vcf9
+  topics:
+  - compliance-drift
+  objective: '4.3'
+  objectiveItem: "4.3.14"
+  lesson: compliance-drift-app-monitoring
+  section: configuration-drift-is-template-plus-policy-plus-execution
+  context: A configuration template exists and a manual drift run works for vCenter A. vCenter B uses a different effective policy and does not appear as configuration-enabled.
+  stem: What should the administrator do first for vCenter B?
+  options:
+  - id: a
+    text: Activate the configuration template in vCenter B's effective policy
+    why: Policy activation connects the stored desired state to target vCenter objects.
+    correct: true
+  - id: b
+    text: Enable the VCF compliance scorecard
+    why: Compliance scorecards do not activate drift templates.
+    confusedWith: compliance-drift
+  - id: c
+    text: Install Telegraf on vCenter B
+    why: Guest monitoring is unrelated to configuration drift.
+    confusedWith: compliance-drift
+  - id: d
+    text: Add vCenter B as a member of the source template itself
+    why: Targets are enabled by policy activation, not direct template membership.
+  explanation:
+    correct: Activate the template under Policy Definition > Configuration Templates in the effective policy used by vCenter B.
+    concept: Drift policy activation
+- id: ops-drift-002
+  type: matching
+  kind: concept
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - compliance-drift
+  objective: '4.3'
+  objectiveItem: "4.3.14"
+  lesson: compliance-drift-app-monitoring
+  section: how-it-works
+  stem: Match each Configuration Drift status to its meaning.
+  pairs:
+  - id: p1
+    left: Not Drifted
+    right: The current values match the active desired-state template
+  - id: p2
+    left: Drift Detected
+    right: One or more current values differ from template values
+  - id: p3
+    left: Drift Check Failed
+    right: The comparison is unavailable, in progress or has not been computed successfully
+  - id: p4
+    left: Unavailable
+    right: The resource can include a pre-9.0 vCenter or one not registered with a cloud proxy
+  explanation:
+    correct: Read status before remediation; a failed or unavailable check is not proof of configuration deviation.
+    concept: Configuration Drift result states
 - id: vcfa-arch-001
   type: single
   kind: scenario
