@@ -3,13 +3,36 @@
 components:
   - id: vcf-fleet
     name: VCF Fleet
+    fullName: VMware Cloud Foundation Fleet
     category: fleet
     summary: Everything managed by one set of fleet-level components (VCF Operations and VCF Automation); contains one or more VCF instances.
+    purpose: |
+      Establishes the top operational scope for shared monitoring, lifecycle of fleet products, identity, licensing
+      and self-service across one or more otherwise independent VCF instances.
     function: |
       The top operational container introduced in VCF 9.0. A fleet groups one or more VCF instances (and optionally
       standalone vCenter instances) under a single VCF Operations, VCF Operations fleet management appliance and
       VCF Automation. Fleet-wide services: monitoring, licensing, fleet management (lifecycle of management components,
       certificates, passwords, identity/SSO, configuration drift, tags, backup).
+    capabilities:
+      - Group VCF instances and supported standalone vCenter environments under fleet services.
+      - Provide shared Operations, Automation, identity, licensing and fleet-product lifecycle.
+      - Present cross-instance inventory and governance without merging the instances' core control planes.
+    limitations:
+      - A fleet is a logical/operational scope, not a workload cluster or packet-forwarding component.
+      - Instances retain their own SDDC Manager, management domain and core lifecycle boundaries.
+      - Shared fleet services can create a broad management impact without stopping existing workload data planes.
+    managementSurfaces:
+      - VCF Operations fleet inventory and administration.
+      - Fleet Management for lifecycle, identity, certificates, passwords and supported configuration workflows.
+      - VCF Automation provider administration for shared consumption services.
+    commonMistakes:
+      - Using fleet, instance and domain as interchangeable terms.
+      - Assuming one SDDC Manager orchestrates every instance in the fleet.
+      - Treating a fleet-service outage as proof that every instance's workloads are down.
+    examFocus: |
+      Understand the hierarchy fleet > instance > domain and identify which services are fleet-wide versus owned by
+      one instance or one domain.
     runsOn: Logical construct; its fleet-level components run in the management domain of the first VCF instance.
     managedBy: VCF Operations (Fleet Management)
     dependsOn: [vcf-operations, vcf-operations-fleet-management, vcf-instance]
@@ -25,13 +48,37 @@ components:
 
   - id: vcf-instance
     name: VCF Instance
+    fullName: VMware Cloud Foundation Instance
     category: fleet
     parent: vcf-fleet
     summary: One VCF deployment (typically one site) - a management domain plus optional workload domains, with its own SDDC Manager.
+    purpose: |
+      Defines an independently orchestrated VCF infrastructure boundary with its own management domain, host
+      inventory, core-component lifecycle and optional VI workload domains.
     function: |
       "Compute, storage, networking virtual infrastructure that runs business workloads". Consists of exactly one
       management domain and optional VI workload domains. Each instance has one SDDC Manager, one VCF Operations
       collector (at least) and its own core-component binaries and host inventory.
+    capabilities:
+      - Contain one management domain and multiple VI workload domains.
+      - Maintain an independent SDDC Manager and core-component lifecycle boundary.
+      - Register into a fleet for shared operations and management services.
+      - Isolate site or administrative failures from other instances where dependencies are not shared.
+    limitations:
+      - It is not synonymous with a single vCenter, cluster or workload domain.
+      - It cannot exist without exactly one management domain.
+      - Fleet membership does not merge its host inventory or SDDC Manager with another instance.
+    managementSurfaces:
+      - VCF Operations instance inventory and fleet views.
+      - The instance's SDDC Manager API and workflows.
+      - The component consoles belonging to its domains.
+    commonMistakes:
+      - Calling every workload domain a separate VCF instance.
+      - Assuming the first instance's fleet services replace other instances' SDDC Managers.
+      - Ignoring first-instance dependencies when planning fleet-service recovery.
+    examFocus: |
+      Distinguish instance scope from fleet and domain scope, and know which components exist once per instance versus
+      once per domain or once per fleet.
     runsOn: Its management domain and workload domain clusters.
     managedBy: SDDC Manager (orchestration), driven from VCF Operations
     dependsOn: [management-domain, sddc-manager, dns-service, ntp-service, physical-network]
@@ -47,14 +94,38 @@ components:
 
   - id: management-domain
     name: Management Domain
+    fullName: VMware Cloud Foundation Management Domain
     category: management
     parent: vcf-instance
     summary: The first domain of every VCF instance; hosts instance management, workload-domain management appliances and (first instance) fleet services.
+    purpose: |
+      Provides the resilient infrastructure foundation for the appliances that create, operate and lifecycle the VCF
+      instance and, for the first instance, the shared fleet services.
     function: |
       Created during deployment or convergence. Hosts vCenter, a dedicated NSX Manager and SDDC Manager of the
       instance, the vCenter/NSX Manager appliances of all workload domains of the instance, VCF Operations collectors
       and, in the first instance, VCF Operations, the fleet management appliance and VCF Automation. May also run NSX
       Edge nodes and business workloads (use resource pools).
+    capabilities:
+      - Host management vCenter, dedicated management NSX and SDDC Manager.
+      - Host workload-domain vCenter and NSX Manager appliances for the same instance.
+      - Host collectors and, in the first instance, the fleet-level management products.
+      - Use supported principal-storage and availability models appropriate to the deployment design.
+    limitations:
+      - It is not merely a folder for management VMs; it is the mandatory first VCF domain and a failure boundary.
+      - Running business workloads there requires deliberate resource separation and does not create a new domain.
+      - Management-domain availability cannot exceed its physical compute, storage and network failure domains.
+    managementSurfaces:
+      - Management-domain vCenter for cluster and appliance infrastructure.
+      - VCF Operations for health and fleet workflows.
+      - SDDC Manager for the instance's core lifecycle and topology workflows.
+    commonMistakes:
+      - Placing workload-domain ESX hosts in the management-domain cluster.
+      - Assuming workload-domain vCenter/NSX appliances run on the workload hosts they manage.
+      - Treating a nested single-host or FTT=0 design as production resilience.
+    examFocus: |
+      Know what the management domain contains, where workload-domain management appliances run, which products own
+      its lifecycle and how management-plane failure differs from workload data-plane continuity.
     runsOn: Default management cluster - minimum 3 ESX hosts (simple) or 4 (highly available); principal storage vSAN ESA/OSA, FC or NFS v3.
     managedBy: Management vCenter; SDDC Manager; VCF Operations
     dependsOn: [esx-host, vsan, vds, vcenter, nsx-manager, dns-service, ntp-service, physical-network]
@@ -70,13 +141,37 @@ components:
 
   - id: workload-domain
     name: VI Workload Domain
+    fullName: Virtual Infrastructure Workload Domain
     category: compute
     parent: vcf-instance
     summary: An isolated unit of application-ready infrastructure with its own vCenter and SSO domain and a dedicated or shared NSX instance.
+    purpose: |
+      Creates an application-ready infrastructure boundary for business workloads with dedicated compute inventory,
+      domain management and independently scalable clusters.
     function: |
       Created from VCF Operations (executed by SDDC Manager) on commissioned hosts. Gets a dedicated vCenter and
       dedicated vCenter SSO domain; NSX is dedicated or shared with other workload domains. Runs business workloads,
       NSX Edge nodes and optionally vSphere Supervisor. Up to 24 per instance per the workload domain models page.
+    capabilities:
+      - Contain one or more workload clusters built from commissioned ESX hosts.
+      - Use a dedicated vCenter and SSO domain with dedicated or supported shared NSX management.
+      - Support multiple principal-storage models, Edge clusters and vSphere Supervisor.
+      - Scale hosts and clusters through coordinated VCF workflows.
+    limitations:
+      - It cannot reuse the management-domain vCenter as its own domain manager.
+      - Sharing NSX or Edge resources also shares capacity and failure-impact considerations.
+      - Adding a host directly in vCenter does not commission or reconcile it into VCF inventory.
+    managementSurfaces:
+      - VCF Operations for domain creation and fleet-level workflows.
+      - The workload domain's vCenter and NSX Manager for element operations.
+      - SDDC Manager for execution, lifecycle and host/domain inventory.
+    commonMistakes:
+      - Confusing a workload domain with a vSphere cluster or VCF Automation organization.
+      - Assuming its vCenter and NSX Manager appliances run inside its workload clusters.
+      - Sharing NSX without evaluating the wider blast radius and Edge compatibility.
+    examFocus: |
+      Know prerequisites, creation flow, component placement, dedicated-versus-shared NSX choices, scaling and the
+      operational boundary between a workload domain, its clusters and its management domain.
     runsOn: Its own vSphere clusters (minimum 3 hosts each); its vCenter and NSX Manager appliances run in the management domain.
     managedBy: Its vCenter and NSX Manager; SDDC Manager for lifecycle; VCF Operations as console
     dependsOn: [management-domain, vcenter, nsx-manager, esx-host, sddc-manager]
