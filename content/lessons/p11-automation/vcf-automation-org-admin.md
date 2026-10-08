@@ -34,6 +34,14 @@ sources:
     url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/organization-management/adding-and-managing-content-libraries/creating-vm-images.html
   - title: "VCF 9.0 - Creating Policies for All Apps Organizations"
     url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/organization-management/creating-policies-for-all-apps-orgs.html
+  - title: "VCF 9.0 - Configure Approval Policies"
+    url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/organization-management/creating-policies-for-all-apps-orgs/vcfa-approval-policies-all-apps.html
+  - title: "VCF 9.0 - Configure Day 2 Action Policies"
+    url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/organization-management/creating-policies-for-all-apps-orgs/vcfa-all-apps-day-2-policies.html
+  - title: "VCF 9.0 - Configure Lease Policies"
+    url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/organization-management/creating-policies-for-all-apps-orgs/vcfa-all-apps-lease-policies.html
+  - title: "VCF 9.0 - Configure IaaS Resource Policies"
+    url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/organization-management/creating-policies-for-all-apps-orgs/vcfa-iaas-policy.html
   - title: "VCF 9.0 - Event Subscriptions in VCF Automation for All Apps"
     url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/organization-management/event-subcriptions-in-vcf-automation-for-all-apps.html
   - title: "VCF 9.0 - Managing Organizations (provider view)"
@@ -98,6 +106,28 @@ Scope: the whole **organization** or specific **projects**, refined with deploym
 namespace names or namespace classes. Multiple policies are merged by evaluation and ranking. Three views: **Policy
 Definition**, **Policy Assignments** (effective application) and **Policy Enforcement** (audit history).
 
+### Exact policy workflow and lifecycle
+
+In the organization portal open **Manage & Govern > Policies**. On **Policy Definition**, select **New Policy** and the
+required type. Define the rule, choose organization-wide or selected-project scope, add deployment criteria when the
+rule should match only a project, namespace or namespace class, and save it. The policy applies to current deployments
+as well as new ones, so examine its effective scope before activation rather than treating it as request-time only.
+
+Use the three tabs for different questions:
+
+| View | Question it answers |
+|---|---|
+| Policy Definition | What rules has the organization administrator created? |
+| Policy Assignments | Which policies are effectively assigned to this resource, namespace or project after criteria evaluation? |
+| Policy Enforcement | When was a policy enforced, with what policy name and status? |
+
+For an approval policy, select the catalog item/resource criteria, designate approvers and verify pending work in
+**Inbox**. A Day 2 Action policy selects the user group and allowed or denied actions on deployed resources. A lease
+policy sets the maximum deployment lifetime; expiration destroys the deployment and reclaims its resources. An IaaS
+Resource policy constrains VM or Kubernetes Cluster service requests and uses CEL when the built-in templates are not
+sufficient. When several policies match, VCF Automation evaluates, ranks and, where supported, merges them into the
+effective policy shown in **Policy Assignments**.
+
 ### Extensibility
 
 | Mechanism | Use |
@@ -127,6 +157,11 @@ Org admin onboarding of a new team:
 8. **Governance**: lease policy 30 days for `payments-dev`, approval policy for anything requesting more than the
    small class, day-2 policy forbidding "delete" for non-admins.
 9. **Test** as a team member: request the blueprint, approve it from the Inbox, verify the CMDB entry and the lease.
+
+The organization administrator owns both setup and continuous control. After onboarding, review project membership,
+namespace consumption versus provider allocation, VPC and content visibility, policy assignments and enforcement
+history. Escalate only provider-owned limits—region allocation, provider gateways, external IP capacity and provider
+libraries—to the provider administrator.
 
 ## Deep Dive
 
@@ -323,6 +358,8 @@ an owner and an IP record.
   not ISO.
 - Project = users + infrastructure; namespace = resource envelope; namespace class = template.
 - Policies: **approval, day 2 action, lease** (catalog) and **IaaS resource** (CEL); scope org or project.
+- Policies affect current and future deployments; use **Assignments** for the effective result and **Enforcement** for
+  the dated audit trail.
 - Event subscriptions: **blocking** (sync, priority 0 highest, recovery runnable) vs **non-blocking** (async).
 - Extensibility runs **VCF Operations Orchestrator** workflows.
 

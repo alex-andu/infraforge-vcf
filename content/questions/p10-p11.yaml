@@ -3264,3 +3264,273 @@ questions:
   explanation:
     correct: OVF images can be published directly; ISO images cannot. The org admin selects the owning project and optional cross-project sharing.
     concept: Publishing VM images to catalog
+- id: vcfa-ten-016
+  type: ordering
+  kind: scenario
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - vcfa-tenancy
+  objective: '4.4'
+  objectiveItem: "4.4.3"
+  lesson: vcf-automation-tenancy-regions
+  section: how-it-works
+  stem: Order the provider-portal actions for creating a VCF Automation region after prerequisite homogeneity is verified.
+  items:
+  - id: i1
+    text: Open Infrastructure > Regions and select New
+  - id: i2
+    text: Enter the region name and description
+  - id: i3
+    text: Select the NSX Manager shared by the participating vCenter instances
+  - id: i4
+    text: Select one or more Supervisors
+  - id: i5
+    text: Select the storage classes to expose and submit
+  - id: i6
+    text: Inspect the region status, zones, classes and capacity
+  explanation:
+    correct: A region binds the shared NSX instance, eligible Supervisors and offered storage classes; verification follows submission.
+    concept: Region creation workflow
+- id: vcfa-ten-017
+  type: multi
+  kind: troubleshooting
+  difficulty: advanced
+  version: vcf9
+  topics:
+  - vcfa-tenancy
+  - supervisor
+  objective: '4.4'
+  objectiveItem: "4.4.3"
+  lesson: vcf-automation-tenancy-regions
+  section: how-it-works
+  stem: Which two provider checks are required because VCF Automation does not perform them fully when a region spans vCenter instances? (Choose two.)
+  options:
+  - id: a
+    text: Verify every selected storage class exists with the same name and backing configuration on each vCenter
+    why: The product lists classes but does not prove consistency on every backing vCenter.
+    correct: true
+  - id: b
+    text: Verify every selected VM class exists with consistent CPU, memory and reservation configuration
+    why: VM-class presence and consistency remain a provider responsibility.
+    correct: true
+  - id: c
+    text: Verify every organization uses the same project name
+    why: Projects are organization-scoped and need not share names.
+    confusedWith: vcfa-org-admin
+  - id: d
+    text: Verify every region uses a different NSX instance
+    why: All Supervisors inside one region must share one NSX instance.
+  select: 2
+  explanation:
+    correct: The provider must validate storage and VM class presence and consistency across all backing vCenter instances.
+    concept: Region homogeneity validation
+- id: vcfa-ten-018
+  type: ordering
+  kind: scenario
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - vcfa-tenancy
+  objective: '4.4'
+  objectiveItem: "4.4.4"
+  lesson: vcf-automation-tenancy-regions
+  section: how-it-works
+  stem: Order the main wizard stages for creating an Organization for All Apps.
+  items:
+  - id: i1
+    text: Open Infrastructure > Organizations > Create Organization and choose Organization for All Apps
+  - id: i2
+    text: Enter the unique URL-forming name and select Create and Continue
+  - id: i3
+    text: Select a region and Supervisor and allocate zones with CPU/memory limits and reservations
+  - id: i4
+    text: Assign the permitted VM classes and storage classes
+  - id: i5
+    text: Add the single first user with an organization-management role
+  - id: i6
+    text: Complete regional networking and validate the organization login
+  explanation:
+    correct: The tenant boundary is created first, then receives provider capacity/classes, its first administrator and network access.
+    concept: All Apps organization onboarding
+- id: vcfa-ten-019
+  type: single
+  kind: troubleshooting
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - vcfa-tenancy
+  objective: '4.4'
+  objectiveItem: "4.4.4"
+  lesson: vcf-automation-tenancy-regions
+  section: how-it-works
+  stem: A provider created an All Apps organization with the wrong URL-forming name and now wants to remove it. What prerequisite applies before deletion?
+  options:
+  - id: a
+    text: Disable the organization, then delete it after its dependencies are handled
+    why: Broadcom documents that the organization must be disabled before deletion.
+    correct: true
+  - id: b
+    text: Set every project lease to zero
+    why: Lease policies do not make an organization deletable.
+    confusedWith: vcfa-org-admin
+  - id: c
+    text: Remove the NSX Manager from the region
+    why: This would disrupt the region and is not the deletion prerequisite.
+  - id: d
+    text: Convert it to a VM Apps organization
+    why: Organization type conversion is not the documented removal workflow.
+  explanation:
+    correct: Create and Continue is a committed checkpoint; an organization must be disabled before it can be deleted.
+    concept: Organization lifecycle
+- id: vcfa-ten-020
+  type: single
+  kind: design
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - vcfa-tenancy
+  - nsx-routing
+  objective: '4.4'
+  objectiveItem: "4.4.5"
+  lesson: vcf-automation-tenancy-regions
+  section: how-it-works
+  stem: Which NSX gateway design is supported as the backing for a VCF Automation 9.0 provider gateway?
+  options:
+  - id: a
+    text: An Active Standby Tier-0, or a Tier-0 VRF linked to that Tier-0
+    why: VCF Automation 9.0 requires active-standby mode for the backing Tier-0.
+    correct: true
+  - id: b
+    text: An Active Active Tier-0 only
+    why: Active-active mode is not supported for this VCF Automation 9.0 use.
+    confusedWith: nsx-routing
+  - id: c
+    text: A standalone Tier-1 with no Tier-0
+    why: Provider gateways register Tier-0 or linked Tier-0 VRF resources.
+  - id: d
+    text: A vSphere Distributed Switch port group
+    why: A port group is not a provider gateway.
+    confusedWith: vds
+  explanation:
+    correct: Create or select an active-standby Tier-0; a VRF option must link to that Tier-0.
+    concept: Provider gateway prerequisite
+- id: vcfa-ten-021
+  type: multi
+  kind: concept
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - vcfa-tenancy
+  objective: '4.4'
+  objectiveItem: "4.4.5"
+  lesson: vcf-automation-tenancy-regions
+  section: how-it-works
+  stem: Which two statements about provider-managed IP spaces in VCF Automation 9.0 are correct? (Choose two.)
+  options:
+  - id: a
+    text: An IP space is IPv4 and can define default limits for IPs, CIDRs and maximum subnet size
+    why: These are documented IP-space properties and quota controls.
+    correct: true
+  - id: b
+    text: An IP space can be associated with a provider gateway and consumed by multiple organizations
+    why: The provider controls shared address consumption through quotas.
+    correct: true
+  - id: c
+    text: Every organization must receive the entire address block without a quota
+    why: Default and organization-specific quotas control consumption.
+  - id: d
+    text: An IP space replaces the Tier-0 and Edge cluster
+    why: It supplies address scope; the NSX gateways and Edge nodes provide routing capacity.
+    confusedWith: nsx-routing
+  select: 2
+  explanation:
+    correct: IP spaces are IPv4 address-allocation objects associated with provider gateways and governed by quotas across organizations.
+    concept: Provider IP spaces
+- id: vcfa-org-022
+  type: multi
+  kind: scenario
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - vcfa-org-admin
+  objective: '4.4'
+  objectiveItem: "4.4.7"
+  lesson: vcf-automation-org-admin
+  section: how-it-works
+  stem: Which two tasks belong to an All Apps organization administrator rather than the provider administrator? (Choose two.)
+  options:
+  - id: a
+    text: Create projects and add application-team identities
+    why: Projects and their membership are organization-scoped administration.
+    correct: true
+  - id: b
+    text: Create namespace classes and namespaces inside the allocated region quota
+    why: The org admin subdivides provider allocation for application teams.
+    correct: true
+  - id: c
+    text: Create the region from Supervisors
+    why: Region construction is a provider task.
+    confusedWith: vcfa-tenancy
+  - id: d
+    text: Register the NSX Tier-0 as a provider gateway
+    why: Provider networking is controlled in the Provider Management Portal.
+    confusedWith: vcfa-tenancy
+  select: 2
+  explanation:
+    correct: Organization administrators manage tenant identities, projects, namespaces, VPCs, content and policies within provider allocations.
+    concept: Organization administrator boundary
+- id: vcfa-org-023
+  type: single
+  kind: troubleshooting
+  difficulty: advanced
+  version: vcf9
+  topics:
+  - vcfa-org-admin
+  objective: '4.4'
+  objectiveItem: "4.4.11"
+  lesson: vcf-automation-org-admin
+  section: components
+  stem: An org admin saves a new day-2 action policy and expects it to affect only future deployments. What actually happens?
+  options:
+  - id: a
+    text: The policy applies to matching current deployments and new deployments
+    why: Broadcom documents that added policies apply to both current and new deployments.
+    correct: true
+  - id: b
+    text: The policy is ignored until every current deployment is deleted
+    why: There is no such activation condition.
+  - id: c
+    text: The policy applies only after VCF Automation is restarted
+    why: A restart is not required.
+  - id: d
+    text: The policy can affect only provider-owned resources
+    why: Organization policies govern matching organization projects and resources.
+  explanation:
+    correct: Review effective scope before saving because governance changes can affect existing matching deployments immediately.
+    concept: Policy lifecycle
+- id: vcfa-org-024
+  type: matching
+  kind: concept
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - vcfa-org-admin
+  objective: '4.4'
+  objectiveItem: "4.4.11"
+  lesson: vcf-automation-org-admin
+  section: components
+  stem: Match each Policies page view to the question it answers.
+  pairs:
+  - id: p1
+    left: Which rules has the organization administrator created?
+    right: Policy Definition
+  - id: p2
+    left: Which policies are effectively applied after scope and criteria evaluation?
+    right: Policy Assignments
+  - id: p3
+    left: When was a policy applied, and with what status?
+    right: Policy Enforcement
+  explanation:
+    correct: Definition stores rules, Assignments shows effective application, and Enforcement supplies the dated audit trail.
+    concept: Policy operations
