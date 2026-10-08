@@ -9,6 +9,7 @@ questions:
     version: vcf9
     topics: [esx-host]
     objective: "2.2"
+    objectiveItem: "2.2.1"
     lesson: esx-architecture-host-management
     section: concept
     stem: "Which ESX component receives the actions that vCenter sends to a managed host and relays them to the host agent?"
@@ -30,6 +31,7 @@ questions:
     version: vcf9
     topics: [esx-host]
     objective: "2.2"
+    objectiveItem: "2.2.1"
     lesson: esx-architecture-host-management
     section: failure-scenarios
     context: |
@@ -54,6 +56,7 @@ questions:
     version: vcf9
     topics: [esx-host]
     objective: "2.2"
+    objectiveItem: "2.2.1"
     lesson: esx-architecture-host-management
     section: access-paths-and-lockdown-mode
     stem: "A security team enables strict lockdown mode on all hosts. vCenter later becomes unavailable. Which users can still log in to a host's DCUI?"
@@ -74,6 +77,7 @@ questions:
     version: vcf9
     topics: [esx-host]
     objective: "2.2"
+    objectiveItem: "2.2.1"
     lesson: esx-architecture-host-management
     section: access-paths-and-lockdown-mode
     stem: "Which statements about lockdown mode on ESX 9 are correct? (Choose two.)"
@@ -94,6 +98,7 @@ questions:
     version: vcf9
     topics: [esx-host, host-commissioning]
     objective: "2.2"
+    objectiveItem: "2.2.1"
     lesson: esx-architecture-host-management
     section: how-vcf-changes-this
     stem: "An administrator wants to add a new server to an existing cluster that was created by a VCF workload domain workflow. What is the correct approach?"
@@ -114,6 +119,7 @@ questions:
     version: vcf9
     topics: [esx-host]
     objective: "2.2"
+    objectiveItem: "2.2.1"
     lesson: esx-architecture-host-management
     section: cli-api
     stem: "From an ESX Shell session, which esxcli command lists all VMkernel interfaces (vmk0, vmk1, ...) with their port group and MTU?"
@@ -130,6 +136,7 @@ questions:
     version: vcf9
     topics: [esx-host]
     objective: "2.2"
+    objectiveItem: "2.2.1"
     lesson: esx-architecture-host-management
     section: components
     stem: "Match each ESX log file to the component that writes it."
@@ -149,6 +156,7 @@ questions:
     version: vcf9
     topics: [esx-host, drs]
     objective: "2.2"
+    objectiveItem: "2.2.1"
     lesson: esx-architecture-host-management
     section: cli-api
     stem: "An engineer runs `esxcli system maintenanceMode set --enable true` on a host in a DRS cluster that still runs 12 VMs. What happens?"
@@ -171,6 +179,7 @@ questions:
     version: vcf9
     topics: [vcenter, workload-domains]
     objective: "2.2"
+    objectiveItem: "2.2.1"
     lesson: vcenter-architecture-inventory
     section: architecture
     stem: "In a VCF 9 instance with a management domain and one VI workload domain, where does the workload domain's vCenter appliance run?"
@@ -192,6 +201,7 @@ questions:
     version: vcf9
     topics: [vcenter, identity-sso]
     objective: "2.2"
+    objectiveItem: "2.2.1"
     lesson: vcenter-architecture-inventory
     section: sso-domains-enhanced-linked-mode-and-vcf-9
     stem: "A new VI workload domain is deployed in a freshly installed VCF 9 instance. How is its vCenter Single Sign-On configured?"
@@ -211,6 +221,7 @@ questions:
     version: vcf9
     topics: [vcenter, vsphere-ha, drs]
     objective: "2.2"
+    objectiveItem: "2.2.1"
     lesson: vcenter-architecture-inventory
     section: what-still-works-when-vcenter-is-down
     stem: "A workload domain vCenter is powered off for 30 minutes. During that window, which functions still work? (Choose two.)"
@@ -233,6 +244,7 @@ questions:
     version: vcf9
     topics: [vcenter]
     objective: "2.2"
+    objectiveItem: "2.2.1"
     lesson: vcenter-architecture-inventory
     section: concept
     stem: "An administrator needs to check vCenter appliance health, restart services and configure file-based backup. Which interface should they use?"
@@ -252,6 +264,7 @@ questions:
     version: vcf9
     topics: [vcenter]
     objective: "2.2"
+    objectiveItem: "2.2.1"
     lesson: vcenter-architecture-inventory
     section: components
     stem: "Match each vCenter appliance service to its function."
@@ -272,6 +285,7 @@ questions:
     version: vcf9
     topics: [vcenter, vsphere-cluster]
     objective: "2.2"
+    objectiveItem: "2.2.1"
     lesson: vcenter-architecture-inventory
     section: inventory-objects
     stem: "Which vCenter inventory object can NOT be renamed?"
@@ -291,6 +305,7 @@ questions:
     version: vcf9
     topics: [vcenter, drs]
     objective: "2.2"
+    objectiveItem: "2.2.1"
     lesson: vcenter-architecture-inventory
     section: vsphere-cluster-services-vcls
     context: |
@@ -313,6 +328,7 @@ questions:
     version: vcf9
     topics: [vcenter, identity-sso]
     objective: "2.2"
+    objectiveItem: "2.2.1"
     lesson: vcenter-architecture-inventory
     section: sso-domains-enhanced-linked-mode-and-vcf-9
     stem: "True or false: vCenter Enhanced Linked Mode is deprecated as of vCenter 9.0."
@@ -333,6 +349,7 @@ questions:
     version: vcf9
     topics: [vsphere-permissions]
     objective: "4.2"
+    objectiveItem: "4.2.2"
     lesson: vsphere-permissions
     section: worked-examples
     context: |
@@ -355,6 +372,7 @@ questions:
     version: vcf9
     topics: [vsphere-permissions]
     objective: "4.2"
+    objectiveItem: "4.2.2"
     lesson: vsphere-permissions
     section: worked-examples
     stem: "Bob belongs to groups *Ops* (role Virtual Machine Power User on folder Web, propagate) and *Audit* (role Read-only on folder Web, propagate). He has no user-level permission. What does Bob get on VMs in Web?"
@@ -374,6 +392,7 @@ questions:
     version: vcf9
     topics: [vsphere-permissions, identity-sso]
     objective: "4.2"
+    objectiveItem: "4.2.2"
     lesson: vsphere-permissions
     section: global-permissions
     stem: "An administrator adds a global permission giving group *ContentAdmins* a content-library role but leaves Propagate unchecked. Members can log in but cannot see any inventory objects. Why?"
@@ -393,6 +412,7 @@ questions:
     version: vcf9
     topics: [vsphere-permissions]
     objective: "4.2"
+    objectiveItem: "4.2.2"
     lesson: vsphere-permissions
     section: system-roles
     stem: "Which are vCenter system roles that cannot be edited or deleted? (Choose three.)"
@@ -414,6 +434,7 @@ questions:
     version: vcf9
     topics: [vsphere-permissions]
     objective: "4.2"
+    objectiveItem: "4.2.2"
     lesson: vsphere-permissions
     section: how-it-works
     context: |
@@ -436,6 +457,7 @@ questions:
     version: vcf9
     topics: [vsphere-permissions, rbac]
     objective: "4.2"
+    objectiveItem: "4.2.2"
     lesson: vsphere-permissions
     section: configuration
     stem: "Put the steps to give an AD group least-privilege control of the VMs in one folder in the correct order."
@@ -456,6 +478,7 @@ questions:
     version: vcf9
     topics: [vsphere-permissions, identity-sso, rbac]
     objective: "4.2"
+    objectiveItem: "4.2.2"
     lesson: vsphere-permissions
     section: global-permissions
     stem: "A VCF 9 customer has two VI workload domains. The app team needs the same VM operator rights in both. A global permission was added in wld01's vCenter, but the team sees nothing in wld02. What is the best fix?"
@@ -476,6 +499,7 @@ questions:
     version: vcf9
     topics: [vsphere-permissions]
     objective: "4.2"
+    objectiveItem: "4.2.2"
     lesson: vsphere-permissions
     section: how-it-works
     stem: "True or false: a permission assigned directly on a child object overrides a permission propagated from its parent."
@@ -496,6 +520,7 @@ questions:
     version: vcf9
     topics: [vsphere-ha]
     objective: "2.2"
+    objectiveItem: "2.2.2"
     lesson: vsphere-ha-deep-dive
     section: detecting-what-happened-to-a-silent-host
     stem: "The HA primary stops receiving network heartbeats from a secondary host. The host is still updating its heartbeat datastores. How does HA classify the host?"
@@ -516,6 +541,7 @@ questions:
     version: vcf9
     topics: [vsphere-ha, vsan-architecture]
     objective: "2.2"
+    objectiveItem: "2.2.2"
     lesson: vsphere-ha-deep-dive
     section: ha-with-vsan-typical-in-vcf
     stem: "In a VCF management domain cluster that uses vSAN as principal storage, which network carries vSphere HA inter-agent heartbeat traffic?"
@@ -535,6 +561,7 @@ questions:
     version: vcf9
     topics: [vsphere-ha, vsan-architecture]
     objective: "2.2"
+    objectiveItem: "2.2.2"
     lesson: vsphere-ha-deep-dive
     section: datastore-heartbeating
     stem: "An all-vSAN cluster shows the HA warning that the number of heartbeat datastores is less than required. What is the reason?"
@@ -554,6 +581,7 @@ questions:
     version: vcf9
     topics: [vsphere-ha]
     objective: "2.2"
+    objectiveItem: "2.2.2"
     lesson: vsphere-ha-deep-dive
     section: admission-control
     stem: "With vSphere HA admission control enabled, which operation can be refused because it would violate the failover capacity?"
@@ -573,6 +601,7 @@ questions:
     version: vcf9
     topics: [vsphere-ha]
     objective: "2.2"
+    objectiveItem: "2.2.2"
     lesson: vsphere-ha-deep-dive
     section: admission-control
     context: |
@@ -595,6 +624,7 @@ questions:
     version: vcf9
     topics: [vsphere-ha]
     objective: "2.2"
+    objectiveItem: "2.2.2"
     lesson: vsphere-ha-deep-dive
     section: responses-you-configure-failures-and-responses-tab
     stem: "What is the default vSphere HA host isolation response for a new cluster?"
@@ -614,6 +644,7 @@ questions:
     version: vcf9
     topics: [vsphere-ha]
     objective: "2.2"
+    objectiveItem: "2.2.2"
     lesson: vsphere-ha-deep-dive
     section: restart-sequence-after-a-host-failure
     diagram: d02-ha-failure-restart
@@ -635,6 +666,7 @@ questions:
     version: vcf9
     topics: [vsphere-ha]
     objective: "2.2"
+    objectiveItem: "2.2.2"
     lesson: vsphere-ha-deep-dive
     section: admission-control
     stem: "Which are valid vSphere HA admission control policies? (Choose three.)"
@@ -656,6 +688,7 @@ questions:
     version: vcf9
     topics: [vsphere-ha, vsan-architecture]
     objective: "2.2"
+    objectiveItem: "2.2.2"
     lesson: vsphere-ha-deep-dive
     section: ha-with-vsan-typical-in-vcf
     stem: "An administrator must change the vSAN VMkernel network configuration on a cluster that runs vSphere HA. What should be done to avoid unexpected HA behaviour?"
@@ -675,6 +708,7 @@ questions:
     version: vcf9
     topics: [vsphere-ha, drs]
     objective: "2.2"
+    objectiveItem: "2.2.2"
     lesson: vsphere-ha-deep-dive
     section: proactive-ha-and-vm-dependencies
     stem: "A customer wants VMs moved off a host automatically when the server's vendor tools report a failed redundant power supply, before the host actually fails. What is required?"
@@ -697,6 +731,7 @@ questions:
     version: vcf9
     topics: [drs]
     objective: "2.2"
+    objectiveItem: "2.2.2"
     lesson: drs-resource-management
     section: automation-levels
     stem: "Which DRS automation level automatically places VMs at power-on but only recommends load-balancing migrations?"
@@ -717,6 +752,7 @@ questions:
     version: vcf9
     topics: [drs, cpu-memory-virt]
     objective: "2.2"
+    objectiveItem: "2.2.2"
     lesson: drs-resource-management
     section: worked-contention-example
     context: |
@@ -739,6 +775,7 @@ questions:
     version: vcf9
     topics: [drs]
     objective: "2.2"
+    objectiveItem: "2.2.2"
     lesson: drs-resource-management
     section: failure-scenarios
     stem: "A VM is consistently slow even at night when its host is almost idle. Which setting is the most likely cause?"
@@ -758,6 +795,7 @@ questions:
     version: vcf9
     topics: [drs]
     objective: "2.2"
+    objectiveItem: "2.2.2"
     lesson: drs-resource-management
     section: resource-pools
     context: |
@@ -780,6 +818,7 @@ questions:
     version: vcf9
     topics: [drs, vsphere-ha]
     objective: "2.2"
+    objectiveItem: "2.2.2"
     lesson: drs-resource-management
     section: affinity-rules
     stem: "A licensing contract requires that a database VM runs only on hosts 1 and 2 of a four-host cluster. The admin also wants HA to restart it if host 1 fails. Which rule type meets both requirements, and what is the risk?"
@@ -799,6 +838,7 @@ questions:
     version: vcf9
     topics: [drs]
     objective: "2.2"
+    objectiveItem: "2.2.2"
     lesson: drs-resource-management
     section: resource-controls-on-a-vm-or-pool
     stem: "Match each resource control to its behaviour."
@@ -818,6 +858,7 @@ questions:
     version: vcf9
     topics: [drs, vsphere-ha, vlcm]
     objective: "2.2"
+    objectiveItem: "2.2.2"
     lesson: drs-resource-management
     section: ha-and-drs-together
     context: |
@@ -841,6 +882,7 @@ questions:
     version: vcf9
     topics: [drs, vsphere-cluster]
     objective: "2.2"
+    objectiveItem: "2.2.2"
     lesson: drs-resource-management
     section: concept
     stem: "Which are prerequisites or dependencies for DRS load balancing to work in a vSphere 9 cluster? (Choose three.)"
@@ -862,6 +904,7 @@ questions:
     version: vcf9
     topics: [drs, design-sizing]
     objective: "2.2"
+    objectiveItem: "2.2.2"
     lesson: drs-resource-management
     section: resource-pools
     context: |
@@ -887,6 +930,7 @@ questions:
     version: vcf9
     topics: [vm-management]
     objective: "2.2"
+    objectiveItem: "2.2.3"
     lesson: vm-lifecycle-templates
     section: content-libraries
     stem: "An administrator tries to import an ISO into a content library and the Import item action is unavailable. What type of library is it most likely?"
@@ -906,6 +950,7 @@ questions:
     version: vcf9
     topics: [vm-management]
     objective: "2.2"
+    objectiveItem: "2.2.3"
     lesson: vm-lifecycle-templates
     section: how-it-works
     stem: "VMs deployed from a Linux template all boot with the template's hostname even though a customization specification was selected. What is the most likely cause?"
@@ -925,6 +970,7 @@ questions:
     version: vcf9
     topics: [vm-management]
     objective: "2.2"
+    objectiveItem: "2.2.4"
     lesson: vm-lifecycle-templates
     section: migration-types-vsphere-9-0
     stem: "A running VM must move from a host's local datastore on esx01 to esx02, which cannot see that datastore. No shared storage exists between them. Which migration achieves this without downtime?"
@@ -944,6 +990,7 @@ questions:
     version: vcf9
     topics: [vm-management, vsphere-cluster]
     objective: "2.2"
+    objectiveItem: "2.2.4"
     lesson: vm-lifecycle-templates
     section: evc
     stem: "A cluster of Intel Ice Lake hosts is being expanded with Intel Sapphire Rapids hosts. vMotion between old and new hosts must keep working. What should be configured?"
@@ -963,6 +1010,7 @@ questions:
     version: vcf9
     topics: [vm-management]
     objective: "2.2"
+    objectiveItem: "2.2.3"
     lesson: vm-lifecycle-templates
     section: content-libraries
     stem: "Which item types can be stored in a vSphere 9 content library? (Choose three.)"
@@ -984,6 +1032,7 @@ questions:
     version: vcf9
     topics: [vm-management, vcfa-tenancy]
     objective: "2.2"
+    objectiveItem: "2.2.3"
     lesson: vm-lifecycle-templates
     section: real-world-scenario
     stem: "In VCF 9, two VI workload domains have separate vCenters and SSO domains (not linked). The platform team wants one set of golden images shared to both, with storage used at the subscriber only for images actually deployed. What is the best design?"
@@ -1003,6 +1052,7 @@ questions:
     version: vcf9
     topics: [vm-management]
     objective: "2.2"
+    objectiveItem: "2.2.4"
     lesson: vm-lifecycle-templates
     section: snapshots
     stem: "True or false: a VM snapshot is a suitable backup because it captures the VM's disk state."
@@ -1020,6 +1070,7 @@ questions:
     version: vcf9
     topics: [vm-management, vds]
     objective: "2.2"
+    objectiveItem: "2.2.4"
     lesson: vm-lifecycle-templates
     section: troubleshooting
     context: |
@@ -1042,6 +1093,7 @@ questions:
     version: vcf9
     topics: [vm-management]
     objective: "2.2"
+    objectiveItem: "2.2.3"
     lesson: vm-lifecycle-templates
     section: how-it-works
     stem: "Order the steps to produce consistent, uniquely named VMs from a golden image."

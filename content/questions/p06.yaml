@@ -8,6 +8,7 @@ questions:
   topics:
   - vcf-fleet
   objective: '4.1'
+  objectiveItem: "4.1.1"
   lesson: vcf9-architecture-overview
   section: the-hierarchy-in-one-table
   stem: In VCF 9.0, what defines a VCF fleet?
@@ -45,6 +46,7 @@ questions:
   - vcf-fleet
   - management-domain
   objective: '4.1'
+  objectiveItem: "4.1.1"
   lesson: vcf9-architecture-overview
   section: the-hierarchy-in-one-table
   stem: What does a VCF instance consist of?
@@ -80,6 +82,7 @@ questions:
   - vcf-fleet
   - fleet-management
   objective: '4.1'
+  objectiveItem: "4.1.1"
   lesson: vcf9-architecture-overview
   section: fleet-level-vs-instance-level-components
   stem: Which components are fleet-level management components in VCF 9.0? (Choose three.)
@@ -124,6 +127,7 @@ questions:
   - vcf-fleet
   - deployment-models
   objective: '4.1'
+  objectiveItem: "4.1.1"
   lesson: vcf9-architecture-overview
   section: how-it-works
   stem: A company with a VCF 9 fleet in its Bucharest data center wants a second data center in Cluj, managed from the same
@@ -160,6 +164,7 @@ questions:
   - vcf-fleet
   - fleet-management
   objective: '4.1'
+  objectiveItem: "4.1.1"
   lesson: vcf9-architecture-overview
   section: deep-dive
   stem: Match each VCF 5.x product or appliance to its VCF 9.0 equivalent.
@@ -193,6 +198,7 @@ questions:
   topics:
   - sddc-manager
   objective: '4.2'
+  objectiveItem: "4.2.7"
   lesson: vcf9-architecture-overview
   section: common-exam-traps
   stem: 'True or false: SDDC Manager no longer exists in VCF 9.0 because VCF Operations replaced it.'
@@ -219,6 +225,7 @@ questions:
   topics:
   - vcf-fleet
   objective: '4.1'
+  objectiveItem: "4.1.1"
   lesson: vcf9-architecture-overview
   section: the-hierarchy-in-one-table
   stem: Order the VCF 9 constructs from the largest to the smallest.
@@ -250,6 +257,7 @@ questions:
   - vcf-fleet
   - fleet-management
   objective: '4.1'
+  objectiveItem: "4.1.1"
   lesson: vcf9-architecture-overview
   section: architecture
   diagram: d06-fleet-hierarchy
@@ -285,6 +293,7 @@ questions:
   - vcf-fleet
   - component-communication
   objective: '4.1'
+  objectiveItem: "4.1.1"
   lesson: vcf9-architecture-overview
   section: failure-scenarios
   stem: The VCF Operations analytics node of a simple-model fleet is down for two hours. What is the impact?
@@ -321,6 +330,7 @@ questions:
   - workload-domains
   - management-domain
   objective: '4.1'
+  objectiveItem: "4.1.1"
   lesson: vcf9-architecture-overview
   section: where-things-physically-run
   diagram: d06-fleet-hierarchy
@@ -354,6 +364,7 @@ questions:
   topics:
   - management-domain
   objective: '4.1'
+  objectiveItem: "4.1.1"
   lesson: management-domain
   section: minimum-hosts-and-storage
   stem: What is the minimum number of ESX hosts in the management domain default cluster for a VCF 9.0 simple install?
@@ -388,6 +399,7 @@ questions:
   - deployment-models
   - vsan-resilience
   objective: '4.1'
+  objectiveItem: "4.1.1"
   lesson: management-domain
   section: minimum-hosts-and-storage
   stem: Why does the highly available install require four hosts in the management default cluster on vSAN rather than three?
@@ -422,6 +434,7 @@ questions:
   - management-domain
   - wld-storage
   objective: '4.1'
+  objectiveItem: "4.1.1"
   lesson: management-domain
   section: minimum-hosts-and-storage
   stem: Which storage types can be principal storage for the management domain default cluster in VCF 9.0? (Choose three.)
@@ -466,6 +479,7 @@ questions:
   - management-domain
   - design-availability
   objective: '4.1'
+  objectiveItem: "4.1.1"
   lesson: management-domain
   section: cluster-models
   stem: An architect wants the management domain default cluster spread across four racks with a separate L2 broadcast domain
@@ -500,6 +514,7 @@ questions:
   topics:
   - management-domain
   objective: '4.1'
+  objectiveItem: "4.1.1"
   lesson: management-domain
   section: running-business-workloads-in-the-management-domain
   stem: A small company wants to run a few business VMs in the management domain to save hardware. What does VCF 9.0 guidance
@@ -536,6 +551,7 @@ questions:
   - management-domain
   - vcf-fleet
   objective: '4.1'
+  objectiveItem: "4.1.1"
   lesson: management-domain
   section: what-it-hosts
   diagram: d06-management-domain-components
@@ -571,6 +587,7 @@ questions:
   - management-domain
   - vcf-fleet
   objective: '4.1'
+  objectiveItem: "4.1.1"
   lesson: management-domain
   section: what-it-hosts
   stem: A second VCF instance is deployed into an existing fleet. Which appliances are deployed in its management domain?
@@ -620,6 +637,7 @@ questions:
   - design-sizing
   - workload-domains
   objective: '4.1'
+  objectiveItem: "4.1.1"
   lesson: management-domain
   section: why-workload-domain-management-lives-here
   stem: 'One VCF instance uses the HA model everywhere (3-node NSX Manager clusters). It has three workload domains: "pci"
@@ -656,6 +674,7 @@ questions:
   - management-domain
   - design-availability
   objective: '4.1'
+  objectiveItem: "4.1.1"
   lesson: management-domain
   section: cluster-models
   stem: 'True or false: the management domain default cluster can be deployed as a stretched cluster directly by the VCF Installer
@@ -685,6 +704,7 @@ questions:
   - vcf-installer
   - sddc-manager
   objective: '4.1'
+  objectiveItem: "4.1.1"
   lesson: management-domain
   section: components
   stem: An administrator deploys the VCF Installer appliance on one of the hosts that will form the new management domain.
@@ -719,6 +739,7 @@ questions:
   topics:
   - workload-domains
   objective: '4.1'
+  objectiveItem: "4.1.7"
   lesson: workload-domains-architecture
   section: attributes-of-the-workload-domain-model
   stem: Which component is always dedicated to each VI workload domain in VCF 9.0?
@@ -754,6 +775,7 @@ questions:
   - workload-domains
   - identity-sso
   objective: '4.1'
+  objectiveItem: "4.1.7"
   lesson: workload-domains-architecture
   section: attributes-of-the-workload-domain-model
   stem: A new VI workload domain is created in a greenfield VCF 9.0 instance. How is its vCenter Single Sign-On configured?
@@ -788,6 +810,7 @@ questions:
   - workload-domains
   - nsx-edge
   objective: '4.1'
+  objectiveItem: "4.1.7"
   lesson: workload-domains-architecture
   section: shared-vs-dedicated-nsx
   stem: Two workload domains must use the same NSX Edge cluster for north-south traffic. What is the prerequisite?
@@ -822,6 +845,7 @@ questions:
   - workload-domains
   - design-tradeoffs
   objective: '4.1'
+  objectiveItem: "4.1.7"
   lesson: workload-domains-architecture
   section: shared-vs-dedicated-nsx
   stem: A PCI environment requires separate administration, separate network policy and an upgrade schedule independent from
@@ -857,6 +881,7 @@ questions:
   - workload-domains
   - cluster-expansion
   objective: '4.1'
+  objectiveItem: "4.1.7"
   lesson: workload-domains-architecture
   section: domain-vs-cluster
   stem: The production team needs 8 more hosts with a different CPU generation. Same admins, same upgrade schedule. What should
@@ -891,6 +916,7 @@ questions:
   - workload-domains
   - management-domain
   objective: '4.1'
+  objectiveItem: "4.1.7"
   lesson: workload-domains-architecture
   section: management-plane-vs-data-plane-placement
   stem: Which appliances of a VI workload domain with dedicated NSX run in the management domain? (Choose two.)
@@ -930,6 +956,7 @@ questions:
   - workload-domains
   - lcm-concepts
   objective: '4.1'
+  objectiveItem: "4.1.7"
   lesson: workload-domains-architecture
   section: troubleshooting
   context: |-
@@ -971,6 +998,7 @@ questions:
   topics:
   - workload-domains
   objective: '4.1'
+  objectiveItem: "4.1.7"
   lesson: workload-domains-architecture
   section: attributes-of-the-workload-domain-model
   stem: What is the minimum number of hosts in a VI workload domain cluster in VCF 9.0?
@@ -1003,6 +1031,7 @@ questions:
   - workload-domains
   - nsx-architecture
   objective: '4.1'
+  objectiveItem: "4.1.7"
   lesson: workload-domains-architecture
   section: shared-vs-dedicated-nsx
   diagram: d06-workload-domain-layout
@@ -1036,6 +1065,7 @@ questions:
   - wld-storage
   - workload-domains
   objective: '4.1'
+  objectiveItem: "4.1.7"
   lesson: workload-domains-architecture
   section: components
   stem: A design uses a vSAN compute cluster that mounts the datastore of a vSAN storage cluster. Which constraint applies
@@ -1071,6 +1101,7 @@ questions:
   - workload-domains
   - cluster-expansion
   objective: '4.1'
+  objectiveItem: "4.1.7"
   lesson: workload-domains-architecture
   section: how-it-works
   stem: An administrator wants to add a new host to a workload domain cluster in VCF 9.x and looks for "Add Host" in the workload
@@ -1107,6 +1138,7 @@ questions:
   topics:
   - fleet-management
   objective: '4.2'
+  objectiveItem: "4.2.1"
   lesson: vcf-operations-fleet-management
   section: concept
   stem: In VCF 9.0, which console is used to manage certificates, passwords and lifecycle across the fleet?
@@ -1141,6 +1173,7 @@ questions:
   topics:
   - fleet-management
   objective: '4.2'
+  objectiveItem: "4.2.1"
   lesson: vcf-operations-fleet-management
   section: capabilities-of-fleet-management
   stem: Which tasks are fleet management capabilities of VCF Operations? (Choose three.)
@@ -1185,6 +1218,7 @@ questions:
   - fleet-management
   - lcm-workflow
   objective: '4.2'
+  objectiveItem: "4.2.1"
   lesson: vcf-operations-fleet-management
   section: upgrade-order
   stem: Put the management components in the documented order for a maintenance release update.
@@ -1210,6 +1244,7 @@ questions:
   - lcm-workflow
   - sddc-manager
   objective: '4.2'
+  objectiveItem: "4.2.1"
   lesson: vcf-operations-fleet-management
   section: upgrade-order
   stem: Put the core components of a domain in the documented update order for a maintenance release.
@@ -1238,6 +1273,7 @@ questions:
   - fleet-management
   - vcf-automation
   objective: '4.2'
+  objectiveItem: "4.2.1"
   lesson: vcf-operations-fleet-management
   section: two-engines-behind-one-console
   stem: An administrator starts an upgrade of VCF Automation from VCF Operations. Which appliance performs the upgrade?
@@ -1272,6 +1308,7 @@ questions:
   - fleet-management
   - sddc-manager
   objective: '4.2'
+  objectiveItem: "4.2.1"
   lesson: vcf-operations-fleet-management
   section: two-engines-behind-one-console
   stem: NSX in a workload domain of instance 2 is updated from VCF Operations. Which component orchestrates the NSX update?
@@ -1306,6 +1343,7 @@ questions:
   - lcm-concepts
   - fleet-management
   objective: '4.2'
+  objectiveItem: "4.2.1"
   lesson: vcf-operations-fleet-management
   section: two-engines-behind-one-console
   stem: Where are binaries for ESX, vCenter and NSX downloaded in VCF 9.0?
@@ -1341,6 +1379,7 @@ questions:
   - sddc-manager
   - lcm-workflow
   objective: '4.2'
+  objectiveItem: "4.2.1"
   lesson: vcf-operations-fleet-management
   section: upgrade-order
   stem: During a weekend core-component upgrade of the management domain, a request to create a new workload domain in the
@@ -1376,6 +1415,7 @@ questions:
   - identity-sso
   - fleet-management
   objective: '4.2'
+  objectiveItem: "4.2.1"
   lesson: vcf-operations-fleet-management
   section: vcf-sso-scope
   stem: Which components are NOT covered by VCF Single Sign-On in VCF 9.0? (Choose two.)
@@ -1414,6 +1454,7 @@ questions:
   - passwords
   - fleet-management
   objective: '4.2'
+  objectiveItem: "4.2.1"
   lesson: vcf-operations-fleet-management
   section: what-sddc-manager-ui-deprecated-means
   stem: On VCF 9.0.0, Fleet Management → Passwords → VCF Instances is empty while the VCF Management tab works. vCenter uses
@@ -1450,6 +1491,7 @@ questions:
   - fleet-management
   - sddc-manager
   objective: '4.2'
+  objectiveItem: "4.2.1"
   lesson: vcf-operations-fleet-management
   section: two-engines-behind-one-console
   stem: Match each task to the engine that executes it behind VCF Operations.
@@ -1482,6 +1524,7 @@ questions:
   topics:
   - sddc-manager
   objective: '4.2'
+  objectiveItem: "4.2.1"
   lesson: vcf-operations-fleet-management
   section: what-sddc-manager-ui-deprecated-means
   stem: 'True or false: the SDDC Manager UI is deprecated in VCF 9.0 and slated for removal in a future major release.'
@@ -1508,6 +1551,7 @@ questions:
   - component-communication
   - esx-host
   objective: '4.1'
+  objectiveItem: "4.1.1"
   lesson: component-communication
   section: flow-table
   stem: ESX hosts send heartbeats to vCenter. Which protocol and port are used by default?
@@ -1541,6 +1585,7 @@ questions:
   - nsx-architecture
   - component-communication
   objective: '4.1'
+  objectiveItem: "4.1.1"
   lesson: component-communication
   section: flow-table
   stem: Which port does an ESX transport node use for its control channel (nsx-proxy) to the NSX Manager / controller?
@@ -1574,6 +1619,7 @@ questions:
   topics:
   - component-communication
   objective: '4.1'
+  objectiveItem: "4.1.1"
   lesson: component-communication
   section: flow-table
   stem: Match each port to its purpose in a VCF environment.
@@ -1607,6 +1653,7 @@ questions:
   - component-communication
   - vcf-ops-architecture
   objective: '4.1'
+  objectiveItem: "4.1.1"
   lesson: component-communication
   section: flow-1-monitoring
   stem: After a firewall change, VCF Operations shows instance B objects with metrics frozen since Saturday. vCenter B works
@@ -1643,6 +1690,7 @@ questions:
   - ntp
   - component-communication
   objective: '4.1'
+  objectiveItem: "4.1.1"
   lesson: component-communication
   section: why-dns-and-ntp-break-everything
   stem: After a hypervisor maintenance, SDDC Manager API token requests fail intermittently and VCF Operations reports authentication
@@ -1678,6 +1726,7 @@ questions:
   - component-communication
   - lcm-concepts
   objective: '4.2'
+  objectiveItem: "4.2.7"
   lesson: component-communication
   section: flow-table
   diagram: d06-component-communication
@@ -1713,6 +1762,7 @@ questions:
   - nsx-architecture
   - component-communication
   objective: '4.1'
+  objectiveItem: "4.1.1"
   lesson: component-communication
   section: management-vs-data-plane-failures
   stem: All three NSX Manager nodes of a workload domain are powered off for 20 minutes. What happens to existing east-west
@@ -1748,6 +1798,7 @@ questions:
   - ntp
   - component-communication
   objective: '4.1'
+  objectiveItem: "4.1.1"
   lesson: component-communication
   section: concept
   stem: Which external services are dependencies of essentially every VCF communication flow? (Choose two.)
@@ -1787,6 +1838,7 @@ questions:
   - nsx-architecture
   - component-communication
   objective: '4.1'
+  objectiveItem: "4.1.1"
   lesson: component-communication
   section: cli-api
   stem: You are in nsxcli on an ESX transport node. Type the command that shows the connection status to the NSX controllers
@@ -1807,6 +1859,7 @@ questions:
   - component-communication
   - nsx-segments
   objective: '4.1'
+  objectiveItem: "4.1.1"
   lesson: component-communication
   section: concept
   stem: Which communication carries actual workload (VM) traffic between hosts in an NSX overlay?
@@ -1840,6 +1893,7 @@ questions:
   topics:
   - deployment-models
   objective: '4.1'
+  objectiveItem: "4.1.2"
   lesson: vcf-deployment-models
   section: simple-vs-high-availability-vcf-installer
   stem: How many management appliances does the VCF Installer deploy in the high availability model?
@@ -1871,6 +1925,7 @@ questions:
   topics:
   - deployment-models
   objective: '4.1'
+  objectiveItem: "4.1.2"
   lesson: vcf-deployment-models
   section: simple-vs-high-availability-vcf-installer
   stem: Which components are deployed as three-node clusters in the VCF Installer high availability model? (Choose three.)
@@ -1914,6 +1969,7 @@ questions:
   - deployment-models
   - design-availability
   objective: '4.1'
+  objectiveItem: "4.1.2"
   lesson: vcf-deployment-models
   section: fleet-deployment-designs
   stem: A customer has two data center rooms on one campus with low-latency links and needs to survive the loss of one room
@@ -1948,6 +2004,7 @@ questions:
   - deployment-models
   - design-availability
   objective: '4.1'
+  objectiveItem: "4.1.2"
   lesson: vcf-deployment-models
   section: stretched-vs-dr
   stem: A bank must recover from a regional disaster at a site 400 km away. Some data loss according to an agreed RPO is acceptable.
@@ -1982,6 +2039,7 @@ questions:
   - deployment-models
   - design-availability
   objective: '4.1'
+  objectiveItem: "4.1.2"
   lesson: vcf-deployment-models
   section: fleet-deployment-designs
   stem: A hospital needs automatic recovery from the loss of one of two nearby buildings AND recovery from a regional disaster.
@@ -2014,6 +2072,7 @@ questions:
   - deployment-models
   - network-ops
   objective: '4.1'
+  objectiveItem: "4.1.2"
   lesson: vcf-deployment-models
   section: component-models
   stem: What is the purpose of the three-node VCF Operations for networks cluster model?
@@ -2046,6 +2105,7 @@ questions:
   - deployment-models
   - design-availability
   objective: '4.1'
+  objectiveItem: "4.1.2"
   lesson: vcf-deployment-models
   section: vsphere-cluster-models
   stem: Which vSphere cluster model cannot be stretched across availability zones?
@@ -2078,6 +2138,7 @@ questions:
   - identity-sso
   - deployment-models
   objective: '4.2'
+  objectiveItem: "4.2.2"
   lesson: vcf-deployment-models
   section: component-models
   stem: Where does the VCF Identity Broker run in its embedded deployment model?
@@ -2112,6 +2173,7 @@ questions:
   - identity-sso
   - deployment-models
   objective: '4.2'
+  objectiveItem: "4.2.2"
   lesson: vcf-deployment-models
   section: component-models
   stem: Match each VCF SSO model to its scope.
@@ -2139,6 +2201,7 @@ questions:
   - deployment-models
   - fleet-management
   objective: '4.1'
+  objectiveItem: "4.1.2"
   lesson: vcf-deployment-models
   section: simple-vs-high-availability-vcf-installer
   diagram: d06-deployment-models
@@ -2174,6 +2237,7 @@ questions:
   - vcf-ops-architecture
   - deployment-models
   objective: '4.3'
+  objectiveItem: "4.3.2"
   lesson: vcf-deployment-models
   section: component-models
   stem: What is the maximum supported latency between availability zones for the continuous availability VCF Operations model?
@@ -2206,6 +2270,7 @@ questions:
   - deployment-models
   - vcf-installer
   objective: '4.1'
+  objectiveItem: "4.1.2"
   lesson: vcf-deployment-models
   section: deployment-pathways
   stem: A customer has an existing standalone vSphere 9 environment (vCenter and hosts) and wants it to become the management
@@ -2240,6 +2305,7 @@ questions:
   topics:
   - deployment-models
   objective: '4.1'
+  objectiveItem: "4.1.2"
   lesson: vcf-deployment-models
   section: what-simple-really-costs
   stem: For a proof of concept with minimal hardware, which component model should be chosen and what is its main trade-off?

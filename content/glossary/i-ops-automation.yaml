@@ -222,11 +222,28 @@ terms:
     labs: [lab-vcfa-organization-setup]
   - id: provider-content-library
     term: Provider content library
-    definition: A content library created by the provider in VCF Automation and shared with organizations, read-only to their users.
-    whyItMatters: Distributes golden images to every tenant without letting tenants change them.
+    definition: A VCF Automation abstraction created by the provider over synchronized backing vCenter content libraries in selected regions; automatically available read-only to organizations with quota in those regions.
+    whyItMatters: Distributes centrally governed golden images across regions without letting organization users change them.
     version: vcf9
-    related: [vcfa-organization]
+    related: [vcfa-organization, organization-content-library]
     lessons: [vcf-automation-tenancy-regions]
+    labs: [lab-vcfa-organization-setup]
+  - id: organization-content-library
+    term: Organization content library
+    definition: A content library created and managed inside one VCF Automation organization, scoped to selected regions and to all namespaces or namespaces created from selected namespace classes; its storage counts against organization quota.
+    whyItMatters: Lets an organization curate private VM images without changing the provider's read-only library.
+    version: vcf9
+    related: [provider-content-library, namespace-class, vm-image-identifier]
+    lessons: [vcf-automation-org-admin]
+    labs: [lab-vcfa-organization-setup]
+  - id: vm-image-identifier
+    term: VM image identifier
+    expansion: VMI
+    definition: The unique identifier assigned to every VM image uploaded to VCF Automation, used to reference that exact image in blueprints.
+    whyItMatters: Separates a stable automation reference from the image's display name.
+    version: vcf9
+    related: [organization-content-library]
+    lessons: [vcf-automation-org-admin]
     labs: [lab-vcfa-organization-setup]
   - id: vcfa-project
     term: Project (VCF Automation)
@@ -251,6 +268,22 @@ terms:
     version: vcf9
     related: [vcfa-namespace]
     lessons: [vcf-automation-org-admin]
+  - id: vcfa-connectivity-profile
+    term: Connectivity profile (VCF Automation)
+    definition: A region-specific organization template that selects the external IPv4 blocks and private transit-gateway IPv4 blocks used by VPCs. A profile can select up to five blocks of each type.
+    whyItMatters: Reuses northbound configuration across VPCs; editing it affects every VPC that uses the profile.
+    version: vcf9
+    related: [vcfa-ip-quota, vcfa-organization, transit-gateway, nsx-vpc]
+    lessons: [vcf-automation-org-admin]
+    labs: [lab-vcfa-organization-setup]
+  - id: vcfa-ip-quota
+    term: IP quota (VCF Automation)
+    definition: An organization-defined limit on address consumption from external or private transit-gateway IPv4 blocks, including individual IPs, CIDRs and maximum subnet size, assigned to selected VPCs.
+    whyItMatters: Gives the organization administrator quota-based control of address usage across VPCs.
+    version: vcf9
+    related: [vcfa-connectivity-profile, ip-space, nsx-vpc]
+    lessons: [vcf-automation-org-admin]
+    labs: [lab-vcfa-organization-setup]
   - id: event-subscription
     term: Event subscription
     definition: A project-specific rule in VCF Automation that runs a VCF Operations Orchestrator workflow when an event occurs. Blocking subscriptions run synchronously by priority (0 highest) and can have a recovery runnable; non-blocking run asynchronously.

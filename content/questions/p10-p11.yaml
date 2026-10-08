@@ -8,6 +8,7 @@ questions:
   topics:
   - vcf-ops-architecture
   objective: '4.3'
+  objectiveItem: "4.3.2"
   lesson: vcf-operations-architecture
   section: components
   stem: Which three node roles make up the analytics cluster in the VCF Operations High Availability model?
@@ -41,6 +42,7 @@ questions:
   topics:
   - vcf-ops-architecture
   objective: '4.3'
+  objectiveItem: "4.3.2"
   lesson: vcf-operations-architecture
   section: deep-dive
   stem: An administrator must increase the number of objects a VCF Operations HA cluster can analyse without changing node
@@ -74,6 +76,7 @@ questions:
   topics:
   - vcf-ops-architecture
   objective: '4.3'
+  objectiveItem: "4.3.2"
   lesson: vcf-operations-architecture
   section: components
   stem: A customer runs two VCF instances in two availability zones about 5 ms apart and requires that monitoring has no service
@@ -107,6 +110,7 @@ questions:
   - vcf-ops-architecture
   - fleet-management
   objective: '4.3'
+  objectiveItem: "4.3.2"
   lesson: vcf-operations-architecture
   section: components
   stem: Which two appliances are deployed alongside VCF Operations in every VCF Operations model (Simple, High Availability,
@@ -144,6 +148,7 @@ questions:
   - vcf-ops-architecture
   - certificates
   objective: '4.3'
+  objectiveItem: "4.3.2"
   lesson: vcf-operations-architecture
   section: components
   stem: You deploy VCF Operations in the HA model behind an external load balancer. Which certificate requirement applies?
@@ -175,6 +180,7 @@ questions:
   topics:
   - vcf-ops-architecture
   objective: '4.3'
+  objectiveItem: "4.3.2"
   lesson: vcf-operations-architecture
   section: deep-dive
   stem: In a multi-node VCF Operations cluster you may mix Medium and Large nodes as long as the primary is the largest.
@@ -198,6 +204,7 @@ questions:
   topics:
   - vcf-ops-architecture
   objective: '4.3'
+  objectiveItem: "4.3.2"
   lesson: vcf-operations-architecture
   section: failure-scenarios
   stem: In a Simple VCF Operations deployment the only collector VM crashes. What do operators observe?
@@ -228,6 +235,7 @@ questions:
   topics:
   - metrics-properties
   objective: '4.3'
+  objectiveItem: "4.3.3"
   lesson: metrics-properties-views-reports
   section: concept
   stem: Which item is a property, not a metric, of a VM in VCF Operations?
@@ -259,6 +267,7 @@ questions:
   topics:
   - metrics-properties
   objective: '4.3'
+  objectiveItem: "4.3.4"
   lesson: metrics-properties-views-reports
   section: concept
   stem: An auditor wants a monthly list of every ESX host and its exact build number. Which data and view type should you
@@ -291,6 +300,7 @@ questions:
   topics:
   - metrics-properties
   objective: '4.3'
+  objectiveItem: "4.3.4"
   lesson: metrics-properties-views-reports
   section: components
   stem: Match each requirement to the VCF Operations view type that fits best.
@@ -320,6 +330,7 @@ questions:
   topics:
   - metrics-properties
   objective: '4.3'
+  objectiveItem: "4.3.4"
   lesson: metrics-properties-views-reports
   section: how-it-works
   stem: Which two statements about reports in VCF Operations are correct? (Choose two.)
@@ -352,6 +363,7 @@ questions:
   topics:
   - metrics-properties
   objective: '4.3'
+  objectiveItem: "4.3.4"
   lesson: metrics-properties-views-reports
   section: how-it-works
   stem: Put the steps to deliver a new weekly capacity table to managers in order.
@@ -377,6 +389,7 @@ questions:
   - metrics-properties
   - dashboards-alerts
   objective: '4.3'
+  objectiveItem: "4.3.3"
   lesson: metrics-properties-views-reports
   section: failure-scenarios
   stem: A super metric you created shows "no data" on a cluster, although the metrics in its formula exist on the cluster
@@ -409,6 +422,7 @@ questions:
   topics:
   - metrics-properties
   objective: '4.3'
+  objectiveItem: "4.3.3"
   lesson: metrics-properties-views-reports
   section: concept
   stem: According to TechDocs, where are properties typically used in VCF Operations besides views and reports?
@@ -438,6 +452,7 @@ questions:
   topics:
   - metrics-properties
   objective: '4.3'
+  objectiveItem: "4.3.4"
   lesson: metrics-properties-views-reports
   section: components
   stem: You want a dashboard panel that shows the same table as your custom List view. Which widget do you use?
@@ -466,6 +481,7 @@ questions:
   topics:
   - dashboards-alerts
   objective: '4.3'
+  objectiveItem: "4.3.6"
   lesson: dashboards-alerts-policies
   section: concept
   stem: What does an alert definition in VCF Operations combine?
@@ -497,6 +513,7 @@ questions:
   topics:
   - dashboards-alerts
   objective: '4.3'
+  objectiveItem: "4.3.6"
   lesson: dashboards-alerts-policies
   section: components
   stem: Which three are symptom definition types in VCF Operations 9.0? (Choose three.)
@@ -531,6 +548,7 @@ questions:
   topics:
   - dashboards-alerts
   objective: '4.3'
+  objectiveItem: "4.3.5"
   lesson: dashboards-alerts-policies
   section: components
   stem: A NOC team must see a dashboard you built, but must not change it. How do you share it?
@@ -560,6 +578,7 @@ questions:
   topics:
   - dashboards-alerts
   objective: '4.3'
+  objectiveItem: "4.3.5"
   lesson: dashboards-alerts-policies
   section: components
   stem: Which file formats can you import as a dashboard in VCF Operations 9.0?
@@ -589,6 +608,7 @@ questions:
   topics:
   - dashboards-alerts
   objective: '4.3'
+  objectiveItem: "4.3.11"
   lesson: dashboards-alerts-policies
   section: how-it-works
   stem: VM web01 belongs to custom group "Prod" (policy Prod, priority 1 - highest) and to custom group "Web" (policy Web,
@@ -620,6 +640,7 @@ questions:
   topics:
   - dashboards-alerts
   objective: '4.3'
+  objectiveItem: "4.3.6"
   lesson: dashboards-alerts-policies
   section: how-it-works
   stem: Order the alert pipeline from data to notification.
@@ -644,6 +665,7 @@ questions:
   topics:
   - dashboards-alerts
   objective: '4.3'
+  objectiveItem: "4.3.6"
   lesson: dashboards-alerts-policies
   section: troubleshooting
   stem: You created a correct alert definition for datastores, but no datastore ever raises it, even while low on space. What
@@ -675,6 +697,7 @@ questions:
   topics:
   - dashboards-alerts
   objective: '4.3'
+  objectiveItem: "4.3.6"
   lesson: dashboards-alerts-policies
   section: architecture
   stem: An alert indicates that a cluster will run out of memory in about two weeks if growth continues. Which alert impact
@@ -705,6 +728,7 @@ questions:
   topics:
   - dashboards-alerts
   objective: '4.3'
+  objectiveItem: "4.3.11"
   lesson: dashboards-alerts-policies
   section: deep-dive
   stem: A dev cluster is intentionally overcommitted and floods the team with CPU contention alerts, while production must
@@ -739,6 +763,7 @@ questions:
   topics:
   - dashboards-alerts
   objective: '4.3'
+  objectiveItem: "4.3.5"
   lesson: dashboards-alerts-policies
   section: components
   stem: Where do you create a new dashboard in VCF Operations 9.0?
@@ -768,6 +793,7 @@ questions:
   topics:
   - dashboards-alerts
   objective: '4.3'
+  objectiveItem: "4.3.6"
   lesson: dashboards-alerts-policies
   section: how-it-works
   stem: An alert should fire only when BOTH high datastore latency AND high VM CPU ready are present on a host. How should
@@ -798,6 +824,7 @@ questions:
   topics:
   - dashboards-alerts
   objective: '4.3'
+  objectiveItem: "4.3.6"
   lesson: dashboards-alerts-policies
   section: concept
   stem: An alert must email the on-call team. Which two objects provide this in VCF Operations?
@@ -829,6 +856,7 @@ questions:
   - vcf-ops-logs
   - network-ops
   objective: '4.3'
+  objectiveItem: "4.3.1"
   lesson: vcf-operations-logs-network-ops
   section: concept
   stem: An application owner asks which VMs communicate with the database on TCP 3306 and which firewall rules allow it. Which
@@ -863,6 +891,7 @@ questions:
   topics:
   - vcf-ops-logs
   objective: '4.3'
+  objectiveItem: "4.3.1"
   lesson: vcf-operations-logs-network-ops
   section: concept
   stem: After a host disconnect at 02:13, you need the vmkernel messages of all hosts in that window in one place. Which component
@@ -895,6 +924,7 @@ questions:
   topics:
   - network-ops
   objective: '4.3'
+  objectiveItem: "4.3.9"
   lesson: vcf-operations-logs-network-ops
   section: deep-dive
   stem: A customer wants VCF Operations for networks to survive the loss of one platform node, and proposes a three-node platform
@@ -927,6 +957,7 @@ questions:
   topics:
   - network-ops
   objective: '4.3'
+  objectiveItem: "4.3.9"
   lesson: vcf-operations-logs-network-ops
   section: components
   stem: Which two statements about the Simple VCF Operations for networks model are true? (Choose two.)
@@ -959,6 +990,7 @@ questions:
   topics:
   - vcf-ops-logs
   objective: '4.3'
+  objectiveItem: "4.3.7"
   lesson: vcf-operations-logs-network-ops
   section: components
   stem: What makes up the High Availability VCF Operations for logs model?
@@ -990,6 +1022,7 @@ questions:
   topics:
   - vcf-ops-logs
   objective: '4.3'
+  objectiveItem: "4.3.7"
   lesson: vcf-operations-logs-network-ops
   section: components
   stem: When deploying the Simple (single-node) VCF Operations for logs model, no VIP IP or FQDN is needed.
@@ -1013,6 +1046,7 @@ questions:
   - vcf-ops-logs
   - dashboards-alerts
   objective: '4.3'
+  objectiveItem: "4.3.7"
   lesson: vcf-operations-logs-network-ops
   section: how-it-works
   stem: Security wants an alert whenever an ESX host logs repeated failed root logins. What is the VCF 9.0 way to do this?
@@ -1045,6 +1079,7 @@ questions:
   topics:
   - health-diagnostics
   objective: '4.3'
+  objectiveItem: "4.3.8"
   lesson: vcf-operations-logs-network-ops
   section: components
   stem: Which health areas does VCF Health in VCF Operations cover?
@@ -1075,6 +1110,7 @@ questions:
   topics:
   - health-diagnostics
   objective: '4.3'
+  objectiveItem: "4.3.8"
   lesson: vcf-operations-logs-network-ops
   section: components
   stem: Before opening a support case, you want VCF Operations to check whether your environment matches known issues and
@@ -1108,6 +1144,7 @@ questions:
   topics:
   - health-diagnostics
   objective: '4.3'
+  objectiveItem: "4.3.10"
   lesson: vcf-operations-logs-network-ops
   section: how-it-works
   stem: A new vSAN cluster must be checked for performance before production workloads move in. Which Storage Operations diagnostics
@@ -1139,6 +1176,7 @@ questions:
   topics:
   - health-diagnostics
   objective: '4.3'
+  objectiveItem: "4.3.10"
   lesson: vcf-operations-logs-network-ops
   section: concept
   stem: Which statement about Storage Operations in VCF Operations 9.0 is correct?
@@ -1170,6 +1208,7 @@ questions:
   topics:
   - network-ops
   objective: '4.3'
+  objectiveItem: "4.3.9"
   lesson: vcf-operations-logs-network-ops
   section: how-it-works
   stem: On the Network Operations page, the "Business Applications with Flows" and "Traffic Summary" widgets are empty, while
@@ -1201,6 +1240,7 @@ questions:
   topics:
   - compliance-drift
   objective: '4.3'
+  objectiveItem: "4.3.13"
   lesson: compliance-drift-app-monitoring
   section: concept
   stem: Security must prove that ESX hosts follow VMware security configuration (hardening) guidance. Where do you configure
@@ -1233,6 +1273,7 @@ questions:
   topics:
   - compliance-drift
   objective: '4.3'
+  objectiveItem: "4.3.14"
   lesson: compliance-drift-app-monitoring
   section: failure-scenarios
   context: 'Administration > Integrations shows: vCenter vc-mgmt - Collector/Group: Default Collector Group.'
@@ -1268,6 +1309,7 @@ questions:
   topics:
   - compliance-drift
   objective: '4.3'
+  objectiveItem: "4.3.14"
   lesson: compliance-drift-app-monitoring
   section: how-it-works
   stem: Order the steps to start tracking configuration drift for three vCenter instances against a reference vCenter.
@@ -1291,6 +1333,7 @@ questions:
   topics:
   - compliance-drift
   objective: '4.3'
+  objectiveItem: "4.3.12"
   lesson: compliance-drift-app-monitoring
   section: components
   stem: An EC2 instance in a public cloud must send OS metrics to VCF Operations. Which option fits?
@@ -1323,6 +1366,7 @@ questions:
   - compliance-drift
   - dashboards-alerts
   objective: '4.3'
+  objectiveItem: "4.3.13"
   lesson: compliance-drift-app-monitoring
   section: deep-dive
   stem: A compliance benchmark shows scores for cluster A hosts but nothing for cluster B hosts. Cluster B hosts belong to
@@ -1354,6 +1398,7 @@ questions:
   topics:
   - compliance-drift
   objective: '4.3'
+  objectiveItem: "4.3.13"
   lesson: compliance-drift-app-monitoring
   section: components
   stem: Which three are compliance benchmark categories in VCF Operations? (Choose three.)
@@ -1390,6 +1435,7 @@ questions:
   topics:
   - compliance-drift
   objective: '4.3'
+  objectiveItem: "4.3.12"
   lesson: compliance-drift-app-monitoring
   section: components
   stem: The DBA team wants their SQL Server service (not just the VM) monitored, with the agent installed and lifecycled from
@@ -1423,6 +1469,7 @@ questions:
   topics:
   - compliance-drift
   objective: '4.3'
+  objectiveItem: "4.3.14"
   lesson: compliance-drift-app-monitoring
   section: deep-dive
   stem: What is the reference that configuration drift compares a vCenter against?
@@ -1452,6 +1499,7 @@ questions:
   topics:
   - vcf-automation
   objective: '4.4'
+  objectiveItem: "4.4.1"
   lesson: vcf-automation-architecture
   section: concept
   stem: Several lines of business need self-service VMs and Kubernetes clusters with quotas, isolation and approvals. Which
@@ -1484,6 +1532,7 @@ questions:
   topics:
   - vcf-automation
   objective: '4.4'
+  objectiveItem: "4.4.2"
   lesson: vcf-automation-architecture
   section: components
   stem: How many IP addresses does the VcfAutomationSpec ipPool require for the High Availability VCF Automation deployment?
@@ -1513,6 +1562,7 @@ questions:
   topics:
   - vcf-automation
   objective: '4.4'
+  objectiveItem: "4.4.2"
   lesson: vcf-automation-architecture
   section: components
   stem: A production self-service portal must remain available if one VCF Automation node fails. Which deployment do you choose?
@@ -1542,6 +1592,7 @@ questions:
   topics:
   - vcf-automation
   objective: '4.4'
+  objectiveItem: "4.4.2"
   lesson: vcf-automation-architecture
   section: architecture
   stem: How is VCF Automation itself built and where does it run?
@@ -1573,6 +1624,7 @@ questions:
   topics:
   - vcf-automation
   objective: '4.4'
+  objectiveItem: "4.4.2"
   lesson: vcf-automation-architecture
   section: deep-dive
   stem: If the single VCF Automation node of a Simple deployment fails, VMs and VKS clusters already deployed through it stop
@@ -1598,6 +1650,7 @@ questions:
   - vcf-automation
   - vcfa-tenancy
   objective: '4.4'
+  objectiveItem: "4.4.2"
   lesson: vcf-automation-architecture
   section: concept
   stem: A team only needs VM self-service on vSphere clusters that do not have Supervisor enabled. Which organization type
@@ -1629,6 +1682,7 @@ questions:
   topics:
   - vcf-automation
   objective: '4.4'
+  objectiveItem: "4.4.2"
   lesson: vcf-automation-architecture
   section: components
   stem: Which value is valid for internalClusterCidr when deploying VCF Automation?
@@ -1658,6 +1712,7 @@ questions:
   - vcf-automation
   - fleet-management
   objective: '4.4'
+  objectiveItem: "4.4.2"
   lesson: vcf-automation-architecture
   section: how-it-works
   stem: VCF Automation was not deployed during the initial VCF deployment. How is it added and later upgraded?
@@ -1688,6 +1743,7 @@ questions:
   topics:
   - vcfa-tenancy
   objective: '4.4'
+  objectiveItem: "4.4.3"
   lesson: vcf-automation-tenancy-regions
   section: concept
   stem: What is a region in VCF Automation?
@@ -1720,6 +1776,7 @@ questions:
   - vcfa-tenancy
   - supervisor
   objective: '4.4'
+  objectiveItem: "4.4.3"
   lesson: vcf-automation-tenancy-regions
   section: components
   stem: A provider cannot combine two Supervisors into one region. Which two conditions would prevent it? (Choose two.)
@@ -1752,6 +1809,7 @@ questions:
   topics:
   - vcfa-tenancy
   objective: '4.4'
+  objectiveItem: "4.4.5"
   lesson: vcf-automation-tenancy-regions
   section: components
   stem: Which object does a VCF Automation provider gateway use?
@@ -1782,6 +1840,7 @@ questions:
   topics:
   - vcfa-tenancy
   objective: '4.4'
+  objectiveItem: "4.4.5"
   lesson: vcf-automation-tenancy-regions
   section: failure-scenarios
   stem: Tenant VMs on a VPC public subnet receive IPs from the provider IP space 172.31.0.0/24 but cannot be reached from
@@ -1812,6 +1871,7 @@ questions:
   topics:
   - vcfa-tenancy
   objective: '4.4'
+  objectiveItem: "4.4.6"
   lesson: vcf-automation-tenancy-regions
   section: concept
   stem: A provider publishes golden images in a provider content library shared with all organizations. What can organization
@@ -1841,6 +1901,7 @@ questions:
   topics:
   - vcfa-tenancy
   objective: '4.4'
+  objectiveItem: "4.4.4"
   lesson: vcf-automation-tenancy-regions
   section: components
   stem: A business unit is being sold. The provider must immediately stop all its users from using VCF Automation without
@@ -1870,6 +1931,7 @@ questions:
   topics:
   - vcfa-tenancy
   objective: '4.4'
+  objectiveItem: "4.4.4"
   lesson: vcf-automation-tenancy-regions
   section: concept
   stem: Region quotas in VCF Automation apply to which organizations?
@@ -1899,6 +1961,7 @@ questions:
   topics:
   - vcfa-tenancy
   objective: '4.4'
+  objectiveItem: "4.4.5"
   lesson: vcf-automation-tenancy-regions
   section: how-it-works
   stem: Order the provider tasks to give a new All Apps organization working north-south networking.
@@ -1925,6 +1988,7 @@ questions:
   - vcfa-tenancy
   - supervisor
   objective: '4.4'
+  objectiveItem: "4.4.12"
   lesson: vcf-automation-tenancy-regions
   section: deep-dive
   stem: Inside an All Apps organization namespace, which Supervisor-based services do users consume to deploy VMs and Kubernetes
@@ -1957,6 +2021,7 @@ questions:
   topics:
   - vcfa-tenancy
   objective: '4.4'
+  objectiveItem: "4.4.4"
   lesson: vcf-automation-tenancy-regions
   section: how-it-works
   stem: Which organization does the provider administrator log in to for provider tasks?
@@ -1986,6 +2051,7 @@ questions:
   topics:
   - vcfa-org-admin
   objective: '4.4'
+  objectiveItem: "4.4.7"
   lesson: vcf-automation-org-admin
   section: components
   stem: In VCF Automation, what is a namespace?
@@ -2016,6 +2082,7 @@ questions:
   topics:
   - vcfa-org-admin
   objective: '4.4'
+  objectiveItem: "4.4.11"
   lesson: vcf-automation-org-admin
   section: components
   stem: Match each requirement to the governance policy type.
@@ -2043,6 +2110,7 @@ questions:
   topics:
   - vcfa-org-admin
   objective: '4.4'
+  objectiveItem: "4.4.10"
   lesson: vcf-automation-org-admin
   section: deep-dive
   stem: After provisioning, an IPAM workflow must return the IP address before the next workflow uses it. How should the event
@@ -2074,6 +2142,7 @@ questions:
   topics:
   - vcfa-org-admin
   objective: '4.4'
+  objectiveItem: "4.4.10"
   lesson: vcf-automation-org-admin
   section: components
   stem: For blocking event subscriptions in VCF Automation, priority 0 is the highest priority.
@@ -2096,6 +2165,7 @@ questions:
   topics:
   - vcfa-org-admin
   objective: '4.4'
+  objectiveItem: "4.4.7"
   lesson: vcf-automation-org-admin
   section: components
   stem: Two development teams in the same organization must never see each other's deployments. What should the org admin
@@ -2127,6 +2197,7 @@ questions:
   topics:
   - vcfa-org-admin
   objective: '4.4'
+  objectiveItem: "4.4.7"
   lesson: vcf-automation-org-admin
   section: failure-scenarios
   stem: An org admin cannot create a namespace with 64 GB of memory, although the Supervisor cluster has plenty of free memory.
@@ -2158,6 +2229,7 @@ questions:
   topics:
   - vcfa-org-admin
   objective: '4.4'
+  objectiveItem: "4.4.7"
   lesson: vcf-automation-org-admin
   section: components
   stem: What does a namespace class provide?
@@ -2187,6 +2259,7 @@ questions:
   topics:
   - vcfa-org-admin
   objective: '4.4'
+  objectiveItem: "4.4.10"
   lesson: vcf-automation-org-admin
   section: components
   stem: Users must be able to request "Open a firewall change" from the self-service catalog, which runs an existing automated
@@ -2218,6 +2291,7 @@ questions:
   topics:
   - vcfa-org-admin
   objective: '4.4'
+  objectiveItem: "4.4.11"
   lesson: vcf-automation-org-admin
   section: components
   stem: Which two statements about governance policies for All Apps organizations are correct? (Choose two.)
@@ -2249,6 +2323,7 @@ questions:
   topics:
   - vcfa-org-admin
   objective: '4.4'
+  objectiveItem: "4.4.11"
   lesson: vcf-automation-org-admin
   section: troubleshooting
   stem: Several requests completed but behaved unexpectedly (some needed approval, some did not). Where does the org admin
@@ -2280,6 +2355,7 @@ questions:
   topics:
   - vcfa-org-admin
   objective: '4.4'
+  objectiveItem: "4.4.9"
   lesson: vcf-automation-org-admin
   section: components
   stem: Where does an org admin give teams their own hardened VM images to deploy, in addition to the provider images?
@@ -2311,6 +2387,7 @@ questions:
   topics:
   - apis-powercli
   objective: '4.4'
+  objectiveItem: "4.4.10"
   lesson: vcf-apis-powercli
   section: concept
   stem: Which header carries the session after POST /api/session on the vCenter REST API?
@@ -2342,6 +2419,7 @@ questions:
   topics:
   - apis-powercli
   objective: '4.4'
+  objectiveItem: "4.4.10"
   lesson: vcf-apis-powercli
   section: failure-scenarios
   stem: A script calling the SDDC Manager API worked for an hour and now returns HTTP 401 on every call. The refresh token
@@ -2372,6 +2450,7 @@ questions:
   topics:
   - apis-powercli
   objective: '4.4'
+  objectiveItem: "4.4.10"
   lesson: vcf-apis-powercli
   section: how-it-works
   stem: Type the PowerShell command to install the VCF 9 PowerCLI module from the PowerShell Gallery (module name only, no
@@ -2392,6 +2471,7 @@ questions:
   topics:
   - apis-powercli
   objective: '4.4'
+  objectiveItem: "4.4.10"
   lesson: vcf-apis-powercli
   section: components
   stem: Which cmdlet, new in VCF.PowerCLI 9.0, connects to SDDC Manager?
@@ -2421,6 +2501,7 @@ questions:
   topics:
   - apis-powercli
   objective: '4.4'
+  objectiveItem: "4.4.10"
   lesson: vcf-apis-powercli
   section: concept
   stem: Match each component with its API authentication pattern.
@@ -2448,6 +2529,7 @@ questions:
   topics:
   - apis-powercli
   objective: '4.4'
+  objectiveItem: "4.4.10"
   lesson: vcf-apis-powercli
   section: failure-scenarios
   stem: An SDDC Manager API call returns HTTP 403 with a valid access token. What does it indicate?
@@ -2478,6 +2560,7 @@ questions:
   topics:
   - apis-powercli
   objective: '4.4'
+  objectiveItem: "4.4.10"
   lesson: vcf-apis-powercli
   section: deep-dive
   stem: You need a PowerCLI cmdlet for an NSX API path that has no hand-written cmdlet. How do you find it?
@@ -2509,6 +2592,7 @@ questions:
   - apis-powercli
   - certificates
   objective: '4.4'
+  objectiveItem: "4.4.10"
   lesson: vcf-apis-powercli
   section: real-world-scenario
   stem: After the vCenter certificates were replaced with CA-signed ones, a scheduled PowerCLI report fails with TLS errors,
@@ -2543,6 +2627,7 @@ questions:
   - vcf-ops-architecture
   - certificates
   objective: '4.3'
+  objectiveItem: "4.3.2"
   lesson: vcf-operations-architecture
   section: troubleshooting
   stem: Metrics stopped only for objects of the wld01 vCenter at 02:10. Integrations shows "Collection failed - certificate
@@ -2579,6 +2664,7 @@ questions:
   - vcf-ops-logs
   - vcf-ops-architecture
   objective: '4.3'
+  objectiveItem: "4.3.7"
   lesson: vcf-operations-logs-network-ops
   section: components
   stem: A remote site has VCF components behind a firewall that blocks direct connections to the central VCF Operations for
@@ -2612,6 +2698,7 @@ questions:
   - vcfa-tenancy
   - supervisor
   objective: '4.4'
+  objectiveItem: "4.4.3"
   lesson: vcf-automation-tenancy-regions
   section: real-world-scenario
   stem: A provider has two Supervisors on one NSX instance; Supervisor A offers storage class "gold" and B offers "Gold-vSAN"
@@ -2642,6 +2729,7 @@ questions:
   topics:
   - vcfa-org-admin
   objective: '4.4'
+  objectiveItem: "4.4.10"
   lesson: vcf-automation-org-admin
   section: deep-dive
   stem: A blocking subscription calls an external CMDB that sometimes times out, failing provisioning. Business wants provisioning
@@ -2664,3 +2752,1214 @@ questions:
   explanation:
     correct: Blocking subscriptions can include a recovery runnable that executes if the primary workflow fails.
     concept: Recovery runnable
+- id: vcfa-org-013
+  type: single
+  kind: concept
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - vcfa-org-admin
+  objective: '4.4'
+  objectiveItem: "4.4.8"
+  lesson: vcf-automation-org-admin
+  section: deep-dive
+  stem: Which VCF Automation address scope gives workloads direct IP reachability to other VPCs inside the same organization through the transit gateway?
+  options:
+  - id: a
+    text: A private TGW IPv4 block
+    why: It is advertised within the organization and its transit gateway.
+    correct: true
+  - id: b
+    text: A private VPC CIDR
+    why: It is local to one VPC and requires NAT outside that VPC.
+    confusedWith: nsx-vpc
+  - id: c
+    text: An ESX management subnet
+    why: It is infrastructure management networking, not tenant VPC addressing.
+  - id: d
+    text: A vSAN network
+    why: It carries storage traffic, not organization workload traffic.
+  explanation:
+    correct: Private TGW blocks are organization-managed space advertised through the organization's transit gateway for cross-VPC reachability.
+    concept: Organization address scopes
+    trap: Private VPC CIDRs are local and may overlap between VPCs.
+- id: vcfa-org-014
+  type: multi
+  kind: scenario
+  difficulty: advanced
+  version: vcf9
+  topics:
+  - vcfa-org-admin
+  objective: '4.4'
+  objectiveItem: "4.4.8"
+  lesson: vcf-automation-org-admin
+  section: deep-dive
+  stem: An organization administrator creates a new VPC. Which two inputs are part of the VPC configuration? (Choose two.)
+  options:
+  - id: a
+    text: A region allocated to the organization
+    why: Every VPC belongs to an allocated region.
+    correct: true
+  - id: b
+    text: A connectivity profile for that region
+    why: It supplies the VPC's northbound address-block configuration.
+    correct: true
+  - id: c
+    text: An SDDC Manager network pool
+    why: Network pools prepare hosts and workload domains, not organization VPCs.
+    confusedWith: vcf-network-design
+  - id: d
+    text: A vSphere HA admission control policy
+    why: HA capacity policy is unrelated to VPC creation.
+    confusedWith: vsphere-ha
+  select: 2
+  explanation:
+    correct: The org admin selects an allocated region and a connectivity profile, then provides private VPC CIDRs and optional IP quotas.
+    concept: VPC creation inputs
+- id: vcfa-org-015
+  type: ordering
+  kind: scenario
+  difficulty: advanced
+  version: vcf9
+  topics:
+  - vcfa-org-admin
+  objective: '4.4'
+  objectiveItem: "4.4.8"
+  lesson: vcf-automation-org-admin
+  section: deep-dive
+  stem: Order the organization-admin tasks for a new VPC that needs cross-VPC private addressing and controlled address consumption.
+  items:
+  - id: i1
+    text: Create a private TGW IPv4 block for the region
+  - id: i2
+    text: Create an IP quota with the required scope and limits
+  - id: i3
+    text: Create a connectivity profile using the region and required address blocks
+  - id: i4
+    text: Create the VPC with the connectivity profile, private CIDR and quota
+  - id: i5
+    text: Associate the VPC with the intended namespace or namespaces
+  explanation:
+    correct: Define organization address capacity and quota first, package northbound settings in the connectivity profile, create the VPC, then attach workload namespaces.
+    concept: Organization network workflow
+- id: vcfa-org-016
+  type: single
+  kind: troubleshooting
+  difficulty: advanced
+  version: vcf9
+  topics:
+  - vcfa-org-admin
+  objective: '4.4'
+  objectiveItem: "4.4.8"
+  lesson: vcf-automation-org-admin
+  section: failure-scenarios
+  stem: After an administrator removes an external IPv4 block from a connectivity profile, several previously healthy VPCs lose northbound connectivity. Why?
+  options:
+  - id: a
+    text: Connectivity profile changes affect every VPC that uses the profile
+    why: The profile is a reusable northbound configuration shared by its attached VPCs.
+    correct: true
+  - id: b
+    text: Each VPC automatically deleted its private CIDR
+    why: The private CIDR is a separate VPC setting.
+  - id: c
+    text: The organization region quota became zero
+    why: Compute and storage quota does not explain the shared networking change.
+    confusedWith: vcfa-tenancy
+  - id: d
+    text: The provider content library was unpublished
+    why: Content availability does not control VPC routing.
+  explanation:
+    correct: Broadcom documents that editing a connectivity profile changes northbound connectivity for all VPCs using that profile.
+    concept: Connectivity profile blast radius
+- id: vcfa-org-017
+  type: single
+  kind: design
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - vcfa-org-admin
+  objective: '4.4'
+  objectiveItem: "4.4.8"
+  lesson: vcf-automation-org-admin
+  section: deep-dive
+  stem: Three namespaces host one application and may share the same network security boundary. Which VPC design is valid and simplest?
+  options:
+  - id: a
+    text: Associate one VPC with all three namespaces
+    why: A VPC can be associated with one or more namespaces.
+    correct: true
+  - id: b
+    text: Create a separate organization for each namespace
+    why: This adds unnecessary tenant boundaries.
+    confusedWith: vcfa-tenancy
+  - id: c
+    text: Put every namespace directly on the provider gateway
+    why: Namespaces consume organization VPC networking rather than attaching directly to the provider gateway.
+  - id: d
+    text: Create one Tier-0 gateway per namespace
+    why: Tier-0/provider gateway design is provider-side, not the namespace association model.
+    confusedWith: nsx-routing
+  explanation:
+    correct: One VPC can be shared by multiple namespaces when separate network isolation is not required.
+    concept: VPC sharing boundary
+- id: vcfa-arch-009
+  type: single
+  kind: scenario
+  difficulty: foundation
+  version: vcf9
+  topics:
+  - vcf-automation
+  objective: '4.4'
+  objectiveItem: "4.4.1"
+  lesson: vcf-automation-architecture
+  section: concept
+  stem: A private cloud team wants developers to request approved VM and VKS patterns without vCenter access, while quotas and approvals remain enforced. Which product provides that consumption service?
+  options:
+  - id: a
+    text: VCF Automation
+    why: It provides self-service, catalog, tenancy, quotas and governance.
+    correct: true
+  - id: b
+    text: VCF Operations
+    why: It monitors and analyzes environments rather than providing the tenant catalog.
+    confusedWith: vcf-ops-architecture
+  - id: c
+    text: vSphere Lifecycle Manager
+    why: It remediates host and cluster desired state.
+    confusedWith: vlcm
+  - id: d
+    text: VCF Operations for networks
+    why: It provides network visibility and analytics.
+    confusedWith: network-ops
+  explanation:
+    correct: VCF Automation turns shared VCF capacity into a governed self-service consumption platform.
+    concept: VCF Automation use case
+- id: vcfa-arch-010
+  type: multi
+  kind: concept
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - vcf-automation
+  objective: '4.4'
+  objectiveItem: "4.4.1"
+  lesson: vcf-automation-architecture
+  section: concept
+  stem: Which two requirements are strong signals to select VCF Automation? (Choose two.)
+  options:
+  - id: a
+    text: Multiple business units need isolated self-service with separate quotas
+    why: Organizations, projects and quotas address this requirement.
+    correct: true
+  - id: b
+    text: Provisioning must call an approval and CMDB workflow automatically
+    why: Policies, event subscriptions and Orchestrator address this requirement.
+    correct: true
+  - id: c
+    text: An administrator must patch ESX hosts against a desired image
+    why: This is a vSphere/VCF lifecycle task.
+    confusedWith: vlcm
+  - id: d
+    text: An operator must investigate cluster CPU contention
+    why: This is a VCF Operations monitoring use case.
+    confusedWith: metrics-properties
+  select: 2
+  explanation:
+    correct: Delegated multi-tenant consumption and workflow-governed provisioning are core VCF Automation use cases.
+    concept: Product selection signals
+- id: vcfa-arch-011
+  type: matching
+  kind: concept
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - vcf-automation
+  objective: '4.4'
+  objectiveItem: "4.4.1"
+  lesson: vcf-automation-architecture
+  section: concept
+  stem: Match each private-cloud requirement to the primary VCF product or interface.
+  pairs:
+  - id: p1
+    left: Governed self-service catalog for tenant teams
+    right: VCF Automation
+  - id: p2
+    left: Performance and capacity monitoring
+    right: VCF Operations
+  - id: p3
+    left: ESX and VCF component lifecycle
+    right: SDDC Manager / fleet management
+  - id: p4
+    left: Direct VM inventory administration
+    right: vSphere Client
+  explanation:
+    correct: Automation governs consumption; Operations observes; lifecycle tools update; vSphere Client administers inventory directly.
+    concept: VCF control-plane boundaries
+- id: vcfa-arch-012
+  type: single
+  kind: troubleshooting
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - vcf-automation
+  objective: '4.4'
+  objectiveItem: "4.4.1"
+  lesson: vcf-automation-architecture
+  section: deep-dive
+  stem: The single VCF Automation appliance node is unavailable. What is the expected impact?
+  options:
+  - id: a
+    text: Existing tenant workloads continue, but self-service catalog and Automation day-2 actions are unavailable
+    why: Workloads run on vSphere/Supervisor; Automation is their control plane, not data path.
+    correct: true
+  - id: b
+    text: Every tenant VM is powered off immediately
+    why: VCF Automation is not in the workload execution path.
+  - id: c
+    text: NSX removes all VPC routes
+    why: NSX maintains the network data path independently.
+    confusedWith: nsx-routing
+  - id: d
+    text: SDDC Manager rolls back the management domain
+    why: No such automatic rollback occurs.
+  explanation:
+    correct: VCF Automation provides provisioning and governance; existing vSphere/Supervisor workloads keep running during its outage.
+    concept: Automation control-plane outage
+- id: vcfa-ten-012
+  type: multi
+  kind: concept
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - vcfa-tenancy
+  objective: '4.4'
+  objectiveItem: "4.4.6"
+  lesson: vcf-automation-tenancy-regions
+  section: deep-dive
+  stem: Which two statements describe a VCF Automation provider content library? (Choose two.)
+  options:
+  - id: a
+    text: It is automatically read-only to organizations that have quota in its selected regions
+    why: Availability follows region selection and organization quota.
+    correct: true
+  - id: b
+    text: It creates synchronized backing content libraries in participating vCenter instances
+    why: VCF Automation selects one publisher and the remaining backing libraries subscribe.
+    correct: true
+  - id: c
+    text: Every organization administrator can edit its images
+    why: Provider libraries are read-only to organization users.
+  - id: d
+    text: It must be assigned to each project manually
+    why: Provider-library visibility is not project-by-project assignment.
+    confusedWith: vcfa-org-admin
+  select: 2
+  explanation:
+    correct: A provider library is a regional VCF Automation abstraction backed by synchronized vCenter libraries and exposed read-only to eligible organizations.
+    concept: Provider content distribution
+- id: vcfa-ten-013
+  type: single
+  kind: troubleshooting
+  difficulty: advanced
+  version: vcf9
+  topics:
+  - vcfa-tenancy
+  objective: '4.4'
+  objectiveItem: "4.4.6"
+  lesson: vcf-automation-tenancy-regions
+  section: troubleshooting
+  stem: An image was added directly to the vCenter library that backs a provider content library, but VCF Automation does not list it. What should the provider do?
+  options:
+  - id: a
+    text: Refresh the provider content library in VCF Automation
+    why: Refresh reconciles direct additions and deletions in backing vCenter libraries.
+    correct: true
+  - id: b
+    text: Increase every organization's region quota
+    why: Quota does not reconcile library inventory.
+  - id: c
+    text: Recreate the provider gateway
+    why: Provider networking is unrelated to content inventory.
+    confusedWith: vcfa-tenancy
+  - id: d
+    text: Restart all ESX hosts in the region
+    why: Host restart is unnecessary and disruptive.
+  explanation:
+    correct: The provider library's Refresh action imports direct backing-library additions and removes directly deleted items from VCF Automation.
+    concept: Provider library reconciliation
+- id: vcfa-ten-014
+  type: single
+  kind: design
+  difficulty: expert
+  version: vcf9
+  topics:
+  - vcfa-tenancy
+  objective: '4.4'
+  objectiveItem: "4.4.6"
+  lesson: vcf-automation-tenancy-regions
+  section: deep-dive
+  stem: A provider library spans a region backed by three vCenter instances. Which dependency is essential for distributing new images to every backing library?
+  options:
+  - id: a
+    text: Network connectivity between the participating vCenter instances
+    why: One backing library becomes publisher and the others subscribe to it.
+    correct: true
+  - id: b
+    text: One Tier-0 gateway per content library
+    why: Provider gateway design does not implement vCenter content synchronization.
+    confusedWith: nsx-routing
+  - id: c
+    text: A separate VCF Automation organization per vCenter
+    why: The library abstraction can span the selected region.
+  - id: d
+    text: A writable provider library for every tenant
+    why: Provider libraries remain read-only to organizations.
+  explanation:
+    correct: Backing vCenter libraries use publisher/subscriber synchronization, so the vCenter instances must communicate.
+    concept: Provider library backing architecture
+- id: vcfa-ten-015
+  type: ordering
+  kind: scenario
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - vcfa-tenancy
+  objective: '4.4'
+  objectiveItem: "4.4.6"
+  lesson: vcf-automation-tenancy-regions
+  section: deep-dive
+  stem: Order the main provider-portal actions to create a local provider content library.
+  items:
+  - id: i1
+    text: Open Infrastructure > Content Libraries and select New
+  - id: i2
+    text: Enter the name and description and leave external subscription disabled
+  - id: i3
+    text: Select one or more regions and a storage class for each region
+  - id: i4
+    text: Review the configuration and select Confirm
+  - id: i5
+    text: Verify the read-only library is available to organizations with quota in those regions
+  explanation:
+    correct: Define the library, scope it to regions/storage classes, confirm creation, then verify organization visibility.
+    concept: Provider content library workflow
+- id: vcfa-org-018
+  type: single
+  kind: concept
+  difficulty: foundation
+  version: vcf9
+  topics:
+  - vcfa-org-admin
+  objective: '4.4'
+  objectiveItem: "4.4.9"
+  lesson: vcf-automation-org-admin
+  section: deep-dive
+  stem: What identifier should a blueprint use to reference one exact VM image uploaded to VCF Automation?
+  options:
+  - id: a
+    text: The image's VMI identifier
+    why: Every uploaded VM image receives a unique VMI for blueprint references.
+    correct: true
+  - id: b
+    text: The provider gateway ID
+    why: It identifies networking, not content.
+    confusedWith: vcfa-tenancy
+  - id: c
+    text: The vCenter cluster name
+    why: It is not the image identifier.
+  - id: d
+    text: The namespace quota
+    why: It limits resources rather than selecting content.
+  explanation:
+    correct: The unique VMI identifier is the stable reference for a specific VM image in blueprints.
+    concept: VM image identifier
+- id: vcfa-org-019
+  type: single
+  kind: scenario
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - vcfa-org-admin
+  objective: '4.4'
+  objectiveItem: "4.4.9"
+  lesson: vcf-automation-org-admin
+  section: deep-dive
+  stem: A security image library must be visible only to namespaces created from one hardened namespace class. What should the org admin do when creating the library?
+  options:
+  - id: a
+    text: Disable Assign to all current and future namespaces, then add the library to the hardened namespace class
+    why: This preserves selective namespace visibility.
+    correct: true
+  - id: b
+    text: Enable the all-namespaces option and change it later
+    why: The option cannot be changed after creation.
+  - id: c
+    text: Put the images in a provider library and grant write access
+    why: Provider libraries are read-only to organizations.
+    confusedWith: vcfa-tenancy
+  - id: d
+    text: Create a new region for the library
+    why: Region creation is unnecessary for namespace-level content scope.
+  explanation:
+    correct: Library-wide namespace assignment is fixed at creation; selective access uses namespace-class assignment.
+    concept: Organization library namespace scope
+- id: vcfa-org-020
+  type: multi
+  kind: troubleshooting
+  difficulty: advanced
+  version: vcf9
+  topics:
+  - vcfa-org-admin
+  objective: '4.4'
+  objectiveItem: "4.4.9"
+  lesson: vcf-automation-org-admin
+  section: failure-scenarios
+  stem: Which two conditions can make organization content consume more storage than the image sizes initially suggest? (Choose two.)
+  options:
+  - id: a
+    text: A subscribed external library downloads and stores remote images locally
+    why: The local copies count against organization storage quota.
+    correct: true
+  - id: b
+    text: A region backed by multiple vCenter instances replicates the library in each vCenter
+    why: Multiple backing copies can increase physical use.
+    correct: true
+  - id: c
+    text: The catalog item has a long display name
+    why: Metadata length does not explain material storage growth.
+  - id: d
+    text: The project contains several user groups
+    why: Membership does not replicate image bytes.
+  select: 2
+  explanation:
+    correct: External subscriptions create local copies, and multi-vCenter regions can replicate libraries across vCenter instances.
+    concept: Organization content storage accounting
+- id: vcfa-org-021
+  type: single
+  kind: scenario
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - vcfa-org-admin
+  objective: '4.4'
+  objectiveItem: "4.4.9"
+  lesson: vcf-automation-org-admin
+  section: deep-dive
+  stem: An org admin uploads an ISO and an OVF image. Which item can be published directly as a project catalog item?
+  options:
+  - id: a
+    text: The OVF image
+    why: VCF Automation supports direct OVF publishing to the catalog.
+    correct: true
+  - id: b
+    text: The ISO image
+    why: Direct ISO publishing to the catalog is not supported.
+  - id: c
+    text: Both, with identical publish actions
+    why: The file types have different catalog behavior.
+  - id: d
+    text: Neither; only the provider can publish content
+    why: Organization administrators can publish organization content to project catalogs.
+  explanation:
+    correct: OVF images can be published directly; ISO images cannot. The org admin selects the owning project and optional cross-project sharing.
+    concept: Publishing VM images to catalog
+- id: vcfa-ten-016
+  type: ordering
+  kind: scenario
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - vcfa-tenancy
+  objective: '4.4'
+  objectiveItem: "4.4.3"
+  lesson: vcf-automation-tenancy-regions
+  section: how-it-works
+  stem: Order the provider-portal actions for creating a VCF Automation region after prerequisite homogeneity is verified.
+  items:
+  - id: i1
+    text: Open Infrastructure > Regions and select New
+  - id: i2
+    text: Enter the region name and description
+  - id: i3
+    text: Select the NSX Manager shared by the participating vCenter instances
+  - id: i4
+    text: Select one or more Supervisors
+  - id: i5
+    text: Select the storage classes to expose and submit
+  - id: i6
+    text: Inspect the region status, zones, classes and capacity
+  explanation:
+    correct: A region binds the shared NSX instance, eligible Supervisors and offered storage classes; verification follows submission.
+    concept: Region creation workflow
+- id: vcfa-ten-017
+  type: multi
+  kind: troubleshooting
+  difficulty: advanced
+  version: vcf9
+  topics:
+  - vcfa-tenancy
+  - supervisor
+  objective: '4.4'
+  objectiveItem: "4.4.3"
+  lesson: vcf-automation-tenancy-regions
+  section: how-it-works
+  stem: Which two provider checks are required because VCF Automation does not perform them fully when a region spans vCenter instances? (Choose two.)
+  options:
+  - id: a
+    text: Verify every selected storage class exists with the same name and backing configuration on each vCenter
+    why: The product lists classes but does not prove consistency on every backing vCenter.
+    correct: true
+  - id: b
+    text: Verify every selected VM class exists with consistent CPU, memory and reservation configuration
+    why: VM-class presence and consistency remain a provider responsibility.
+    correct: true
+  - id: c
+    text: Verify every organization uses the same project name
+    why: Projects are organization-scoped and need not share names.
+    confusedWith: vcfa-org-admin
+  - id: d
+    text: Verify every region uses a different NSX instance
+    why: All Supervisors inside one region must share one NSX instance.
+  select: 2
+  explanation:
+    correct: The provider must validate storage and VM class presence and consistency across all backing vCenter instances.
+    concept: Region homogeneity validation
+- id: vcfa-ten-018
+  type: ordering
+  kind: scenario
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - vcfa-tenancy
+  objective: '4.4'
+  objectiveItem: "4.4.4"
+  lesson: vcf-automation-tenancy-regions
+  section: how-it-works
+  stem: Order the main wizard stages for creating an Organization for All Apps.
+  items:
+  - id: i1
+    text: Open Infrastructure > Organizations > Create Organization and choose Organization for All Apps
+  - id: i2
+    text: Enter the unique URL-forming name and select Create and Continue
+  - id: i3
+    text: Select a region and Supervisor and allocate zones with CPU/memory limits and reservations
+  - id: i4
+    text: Assign the permitted VM classes and storage classes
+  - id: i5
+    text: Add the single first user with an organization-management role
+  - id: i6
+    text: Complete regional networking and validate the organization login
+  explanation:
+    correct: The tenant boundary is created first, then receives provider capacity/classes, its first administrator and network access.
+    concept: All Apps organization onboarding
+- id: vcfa-ten-019
+  type: single
+  kind: troubleshooting
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - vcfa-tenancy
+  objective: '4.4'
+  objectiveItem: "4.4.4"
+  lesson: vcf-automation-tenancy-regions
+  section: how-it-works
+  stem: A provider created an All Apps organization with the wrong URL-forming name and now wants to remove it. What prerequisite applies before deletion?
+  options:
+  - id: a
+    text: Disable the organization, then delete it after its dependencies are handled
+    why: Broadcom documents that the organization must be disabled before deletion.
+    correct: true
+  - id: b
+    text: Set every project lease to zero
+    why: Lease policies do not make an organization deletable.
+    confusedWith: vcfa-org-admin
+  - id: c
+    text: Remove the NSX Manager from the region
+    why: This would disrupt the region and is not the deletion prerequisite.
+  - id: d
+    text: Convert it to a VM Apps organization
+    why: Organization type conversion is not the documented removal workflow.
+  explanation:
+    correct: Create and Continue is a committed checkpoint; an organization must be disabled before it can be deleted.
+    concept: Organization lifecycle
+- id: vcfa-ten-020
+  type: single
+  kind: design
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - vcfa-tenancy
+  - nsx-routing
+  objective: '4.4'
+  objectiveItem: "4.4.5"
+  lesson: vcf-automation-tenancy-regions
+  section: how-it-works
+  stem: Which NSX gateway design is supported as the backing for a VCF Automation 9.0 provider gateway?
+  options:
+  - id: a
+    text: An Active Standby Tier-0, or a Tier-0 VRF linked to that Tier-0
+    why: VCF Automation 9.0 requires active-standby mode for the backing Tier-0.
+    correct: true
+  - id: b
+    text: An Active Active Tier-0 only
+    why: Active-active mode is not supported for this VCF Automation 9.0 use.
+    confusedWith: nsx-routing
+  - id: c
+    text: A standalone Tier-1 with no Tier-0
+    why: Provider gateways register Tier-0 or linked Tier-0 VRF resources.
+  - id: d
+    text: A vSphere Distributed Switch port group
+    why: A port group is not a provider gateway.
+    confusedWith: vds
+  explanation:
+    correct: Create or select an active-standby Tier-0; a VRF option must link to that Tier-0.
+    concept: Provider gateway prerequisite
+- id: vcfa-ten-021
+  type: multi
+  kind: concept
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - vcfa-tenancy
+  objective: '4.4'
+  objectiveItem: "4.4.5"
+  lesson: vcf-automation-tenancy-regions
+  section: how-it-works
+  stem: Which two statements about provider-managed IP spaces in VCF Automation 9.0 are correct? (Choose two.)
+  options:
+  - id: a
+    text: An IP space is IPv4 and can define default limits for IPs, CIDRs and maximum subnet size
+    why: These are documented IP-space properties and quota controls.
+    correct: true
+  - id: b
+    text: An IP space can be associated with a provider gateway and consumed by multiple organizations
+    why: The provider controls shared address consumption through quotas.
+    correct: true
+  - id: c
+    text: Every organization must receive the entire address block without a quota
+    why: Default and organization-specific quotas control consumption.
+  - id: d
+    text: An IP space replaces the Tier-0 and Edge cluster
+    why: It supplies address scope; the NSX gateways and Edge nodes provide routing capacity.
+    confusedWith: nsx-routing
+  select: 2
+  explanation:
+    correct: IP spaces are IPv4 address-allocation objects associated with provider gateways and governed by quotas across organizations.
+    concept: Provider IP spaces
+- id: vcfa-org-022
+  type: multi
+  kind: scenario
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - vcfa-org-admin
+  objective: '4.4'
+  objectiveItem: "4.4.7"
+  lesson: vcf-automation-org-admin
+  section: how-it-works
+  stem: Which two tasks belong to an All Apps organization administrator rather than the provider administrator? (Choose two.)
+  options:
+  - id: a
+    text: Create projects and add application-team identities
+    why: Projects and their membership are organization-scoped administration.
+    correct: true
+  - id: b
+    text: Create namespace classes and namespaces inside the allocated region quota
+    why: The org admin subdivides provider allocation for application teams.
+    correct: true
+  - id: c
+    text: Create the region from Supervisors
+    why: Region construction is a provider task.
+    confusedWith: vcfa-tenancy
+  - id: d
+    text: Register the NSX Tier-0 as a provider gateway
+    why: Provider networking is controlled in the Provider Management Portal.
+    confusedWith: vcfa-tenancy
+  select: 2
+  explanation:
+    correct: Organization administrators manage tenant identities, projects, namespaces, VPCs, content and policies within provider allocations.
+    concept: Organization administrator boundary
+- id: vcfa-org-023
+  type: single
+  kind: troubleshooting
+  difficulty: advanced
+  version: vcf9
+  topics:
+  - vcfa-org-admin
+  objective: '4.4'
+  objectiveItem: "4.4.11"
+  lesson: vcf-automation-org-admin
+  section: components
+  stem: An org admin saves a new day-2 action policy and expects it to affect only future deployments. What actually happens?
+  options:
+  - id: a
+    text: The policy applies to matching current deployments and new deployments
+    why: Broadcom documents that added policies apply to both current and new deployments.
+    correct: true
+  - id: b
+    text: The policy is ignored until every current deployment is deleted
+    why: There is no such activation condition.
+  - id: c
+    text: The policy applies only after VCF Automation is restarted
+    why: A restart is not required.
+  - id: d
+    text: The policy can affect only provider-owned resources
+    why: Organization policies govern matching organization projects and resources.
+  explanation:
+    correct: Review effective scope before saving because governance changes can affect existing matching deployments immediately.
+    concept: Policy lifecycle
+- id: vcfa-org-024
+  type: matching
+  kind: concept
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - vcfa-org-admin
+  objective: '4.4'
+  objectiveItem: "4.4.11"
+  lesson: vcf-automation-org-admin
+  section: components
+  stem: Match each Policies page view to the question it answers.
+  pairs:
+  - id: p1
+    left: Which rules has the organization administrator created?
+    right: Policy Definition
+  - id: p2
+    left: Which policies are effectively applied after scope and criteria evaluation?
+    right: Policy Assignments
+  - id: p3
+    left: When was a policy applied, and with what status?
+    right: Policy Enforcement
+  explanation:
+    correct: Definition stores rules, Assignments shows effective application, and Enforcement supplies the dated audit trail.
+    concept: Policy operations
+- id: ops-logs-014
+  type: matching
+  kind: concept
+  difficulty: intermediate
+  version: vcf9
+  topics: [vcf-ops-logs, network-ops]
+  objective: '4.3'
+  objectiveItem: "4.3.1"
+  lesson: vcf-operations-logs-network-ops
+  section: concept
+  stem: Match each investigation to the VCF Operations capability that supplies the primary evidence.
+  pairs:
+  - id: p1
+    left: Find which host emitted an All Paths Down message at a precise time
+    right: VCF Operations for logs
+  - id: p2
+    left: Discover which VMs communicate with a database port and through which firewall rule
+    right: VCF Operations for networks
+  - id: p3
+    left: Check certificates, DNS, NTP and vMotion health across the fleet
+    right: VCF Health
+  - id: p4
+    left: Compare vSAN health score with latency and throughput
+    right: Storage Operations
+  explanation:
+    correct: Logs answers message questions, networks answers path/flow questions, VCF Health checks stack dependencies and Storage Operations analyzes storage.
+    concept: Operations tool selection
+- id: ops-logs-015
+  type: multi
+  kind: scenario
+  difficulty: intermediate
+  version: vcf9
+  topics: [vcf-ops-logs, network-ops]
+  objective: '4.3'
+  objectiveItem: "4.3.1"
+  lesson: vcf-operations-logs-network-ops
+  section: concept
+  stem: Which two requirements select VCF Operations for networks rather than VCF Operations for logs? (Choose two.)
+  options:
+  - id: a
+    text: Build a micro-segmentation plan from observed application flows
+    why: Flow analytics and recommended firewall rules are network-analysis capabilities.
+    correct: true
+  - id: b
+    text: Trace a VM-to-VM network path and identify a blocking rule
+    why: Path visibility and firewall-rule correlation belong to network operations.
+    correct: true
+  - id: c
+    text: Search unstructured ESX messages for an APD signature
+    why: Central log search is a logs use case.
+    confusedWith: vcf-ops-logs
+  - id: d
+    text: Create an alert from a recurring text pattern
+    why: Log-based symptoms and alerts are a logs use case.
+    confusedWith: vcf-ops-logs
+  select: 2
+  explanation:
+    correct: VCF Operations for networks models flows, paths and firewall relationships; logs indexes and alerts on message content.
+    concept: Network Operations use cases
+- id: ops-logs-016
+  type: single
+  kind: troubleshooting
+  difficulty: advanced
+  version: vcf9
+  topics: [vcf-ops-logs, network-ops]
+  objective: '4.3'
+  objectiveItem: "4.3.1"
+  lesson: vcf-operations-logs-network-ops
+  section: deep-dive
+  stem: An operator deploys the three-node VCF Operations for networks platform cluster solely to survive a platform-node failure. What is wrong with the design assumption?
+  options:
+  - id: a
+    text: The three-node platform model provides performance and scale, not product-level high availability
+    why: TechDocs explicitly distinguishes the model name from its actual availability behavior.
+    correct: true
+  - id: b
+    text: The platform cluster stores only logs
+    why: It performs network analytics and search.
+  - id: c
+    text: Collector nodes are forbidden in the three-node model
+    why: A collector remains part of the design.
+  - id: d
+    text: The model supports no flow collection
+    why: Scale for network objects and flows is its purpose.
+  explanation:
+    correct: Size out for scale; use vSphere HA and recovery planning for node failure rather than treating the platform cluster as application HA.
+    concept: Network Operations deployment model
+- id: ops-data-009
+  type: single
+  kind: scenario
+  difficulty: foundation
+  version: vcf9
+  topics: [metrics-properties]
+  objective: '4.3'
+  objectiveItem: "4.3.3"
+  lesson: metrics-properties-views-reports
+  section: concept
+  stem: An auditor asks which ESX hosts run build 9.0.2. Is the build value a metric or a property?
+  options:
+  - id: a
+    text: A property, because it describes configuration state rather than a sampled time series
+    why: Version/build is an object attribute.
+    correct: true
+  - id: b
+    text: A metric, because the build contains numbers
+    why: Numeric appearance does not make an attribute a time-series measurement.
+  - id: c
+    text: A super metric, because it applies to several hosts
+    why: Super metrics are calculated formulas, not shared attributes.
+  - id: d
+    text: An alert definition
+    why: An alert can evaluate data but is not the data type itself.
+  explanation:
+    correct: Properties describe identity or configuration; metrics are sampled numeric measurements over time.
+    concept: Metric versus property
+- id: ops-data-010
+  type: matching
+  kind: concept
+  difficulty: intermediate
+  version: vcf9
+  topics: [metrics-properties]
+  objective: '4.3'
+  objectiveItem: "4.3.3"
+  lesson: metrics-properties-views-reports
+  section: concept
+  stem: Classify each VCF Operations value by data type.
+  pairs:
+  - id: p1
+    left: VM CPU usage sampled every collection cycle
+    right: Metric
+  - id: p2
+    left: ESX version and build
+    right: Property
+  - id: p3
+    left: Formula calculating the maximum CPU ready value across child VMs
+    right: Super metric
+  - id: p4
+    left: Guest operating-system name
+    right: Property
+  explanation:
+    correct: Metrics vary over time, properties describe objects, and super metrics derive a new time series from a formula.
+    concept: Operations data model
+- id: ops-alrt-013
+  type: single
+  kind: troubleshooting
+  difficulty: intermediate
+  version: vcf9
+  topics: [dashboards-alerts]
+  objective: '4.3'
+  objectiveItem: "4.3.5"
+  lesson: dashboards-alerts-policies
+  section: failure-scenarios
+  stem: A dashboard is shared with the NOC group, but its VM widgets are empty for those users. What should the administrator check first?
+  options:
+  - id: a
+    text: Whether the NOC role and scope grant access to the displayed VM objects
+    why: Dashboard sharing does not grant object permissions.
+    correct: true
+  - id: b
+    text: Whether every alert definition is Critical
+    why: Criticality does not control object visibility.
+  - id: c
+    text: Whether the dashboard was exported as JSON
+    why: Export is unrelated to live permissions.
+  - id: d
+    text: Whether VCF Automation has a provider gateway
+    why: Tenant networking does not control VCF Operations dashboard scope.
+    confusedWith: vcfa-tenancy
+  explanation:
+    correct: Share the dashboard and grant the users object scope separately; both are required for visible data.
+    concept: Dashboard sharing and permissions
+- id: ops-alrt-014
+  type: ordering
+  kind: scenario
+  difficulty: intermediate
+  version: vcf9
+  topics: [dashboards-alerts]
+  objective: '4.3'
+  objectiveItem: "4.3.5"
+  lesson: dashboards-alerts-policies
+  section: components
+  stem: Order the main tasks for building and sharing a dashboard that filters detail widgets from a selected object.
+  items:
+  - id: i1
+    text: Open Infrastructure Operations > Dashboards & Reports > Dashboards and select Create
+  - id: i2
+    text: Name the dashboard and add the object-list and detail widgets or views
+  - id: i3
+    text: Configure widget and view interactions so selection drives the detail widgets
+  - id: i4
+    text: Save and test the dashboard with objects in the intended scope
+  - id: i5
+    text: Open Manage and share it with the required user group, optionally allowing editing
+  - id: i6
+    text: Validate that a group member can see both the dashboard and the permitted objects
+  explanation:
+    correct: Build, connect and test the widgets before sharing, then validate the recipient's separate object scope.
+    concept: Dashboard creation and sharing workflow
+- id: ops-netmon-001
+  type: matching
+  kind: concept
+  difficulty: intermediate
+  version: vcf9
+  topics: [network-ops]
+  objective: '4.3'
+  objectiveItem: "4.3.9"
+  lesson: vcf-operations-logs-network-ops
+  section: how-it-works
+  stem: Match each Network Operations widget or action to the evidence it supplies.
+  pairs:
+  - id: p1
+    left: Networking Inventory
+    right: NSX instances, transport nodes and edge clusters
+  - id: p2
+    left: NSX Health
+    right: Managers, transport nodes and edge nodes experiencing issues
+  - id: p3
+    left: Business Applications with Flows
+    right: Application flow evidence with a link to the networks console
+  - id: p4
+    left: Traffic Summary
+    right: Flow traffic summarized for the last 24 hours
+  explanation:
+    correct: Inventory and health can use core NSX integration data; application-flow and traffic widgets depend on VCF Operations for networks.
+    concept: Network Operations page scope
+- id: ops-netmon-002
+  type: single
+  kind: troubleshooting
+  difficulty: intermediate
+  version: vcf9
+  topics: [network-ops]
+  objective: '4.3'
+  objectiveItem: "4.3.9"
+  lesson: vcf-operations-logs-network-ops
+  section: how-it-works
+  stem: An operator can see NSX inventory and transport-node health, but must identify communicating VM endpoints, ports and the firewall rule on their path. What is the correct next step?
+  options:
+  - id: a
+    text: Use Business Applications with Flows or Traffic Summary and launch VCF Operations for networks
+    why: Endpoint, port, path and rule evidence comes from the networks appliance and its flow data.
+    correct: true
+  - id: b
+    text: Treat the healthy NSX Manager as proof that the application path is healthy
+    why: Management-plane health does not prove an individual data path works.
+  - id: c
+    text: Run vSAN Performance Diagnostics
+    why: Storage diagnostics cannot identify a network path or firewall rule.
+    confusedWith: health-diagnostics
+  - id: d
+    text: Export a VCF Operations dashboard as JSON
+    why: Dashboard export does not create missing flow evidence.
+    confusedWith: dashboards-alerts
+  explanation:
+    correct: Use the flow widgets and networks console for endpoint, port, path and firewall-rule evidence; inventory health alone is insufficient.
+    concept: Flow-based network monitoring
+- id: ops-storage-001
+  type: single
+  kind: troubleshooting
+  difficulty: intermediate
+  version: vcf9
+  topics: [health-diagnostics]
+  objective: '4.3'
+  objectiveItem: "4.3.10"
+  lesson: vcf-operations-logs-network-ops
+  section: how-it-works
+  stem: Storage Operations shows no vSAN clusters even though the cluster is visible in vCenter. What should be checked first?
+  options:
+  - id: a
+    text: The vSAN-enabled vCenter account is connected and collecting data in VCF Operations
+    why: Storage Operations requires the vCenter integration and collection before it can display vSAN data.
+    correct: true
+  - id: b
+    text: The dashboard was shared with a user group
+    why: Sharing does not populate adapter data.
+    confusedWith: dashboards-alerts
+  - id: c
+    text: VCF Operations for networks has an Extra Large platform node
+    why: Network flow analytics is unrelated to vSAN collection.
+    confusedWith: network-ops
+  - id: d
+    text: A Benchmarking diagnostic report is already present
+    why: Diagnostics require the cluster data to be available first.
+  explanation:
+    correct: Verify the vSAN-enabled vCenter account and its collection state before interpreting an empty storage page as a health result.
+    concept: Storage Operations prerequisite
+- id: ops-storage-002
+  type: multi
+  kind: scenario
+  difficulty: intermediate
+  version: vcf9
+  topics: [health-diagnostics]
+  objective: '4.3'
+  objectiveItem: "4.3.10"
+  lesson: vcf-operations-logs-network-ops
+  section: read-the-storage-dashboard-in-the-right-order
+  stem: Which three observations belong to a sound first pass through Storage Operations for a vSAN latency incident? (Choose three.)
+  options:
+  - id: a
+    text: Confirm the target cluster is present and note its vSAN Cluster Health Score
+    why: Inventory and health establish scope before diagnosis.
+    correct: true
+  - id: b
+    text: Correlate IOPS, latency and throughput from the same incident window
+    why: Related performance measurements must be read together and in one time context.
+    correct: true
+  - id: c
+    text: Use Troubleshooting diagnostics because the cluster already runs workloads
+    why: Troubleshooting is the documented goal for a cluster in use.
+    correct: true
+  - id: d
+    text: Use Benchmarking and Optimizing because every latency incident is a benchmark problem
+    why: That goal is for a new cluster before adding workloads.
+  - id: e
+    text: Diagnose the storage fault solely from high IOPS
+    why: High workload alone is not proof of a fault; health, latency and throughput provide context.
+  select: 3
+  explanation:
+    correct: Establish inventory and health, correlate the related metrics in one window, then use the diagnostic goal that matches the workload state.
+    concept: vSAN monitoring sequence
+- id: ops-storage-003
+  type: ordering
+  kind: scenario
+  difficulty: intermediate
+  version: vcf9
+  topics: [health-diagnostics]
+  objective: '4.3'
+  objectiveItem: "4.3.10"
+  lesson: vcf-operations-logs-network-ops
+  section: how-it-works
+  stem: Order the workflow for running a vSAN performance diagnostic from Storage Operations.
+  items:
+  - id: i1
+    text: Open Infrastructure Operations > Storage Operations and confirm the target vSAN cluster is collected
+  - id: i2
+    text: Open the vSAN Cluster Performance widget and select View Diagnostics > Run New Diagnostics
+  - id: i3
+    text: Select the diagnostic goal that matches the cluster workload state
+  - id: i4
+    text: Select the target vSAN cluster and the incident time range
+  - id: i5
+    text: Run the diagnostic and review findings, remediation steps and suggestions
+  - id: i6
+    text: Record the result before it ages beyond the seven-day diagnostics window
+  explanation:
+    correct: Confirm collection before starting, choose goal, target and time range, then preserve the resulting evidence and remediation guidance.
+    concept: vSAN Performance Diagnostics workflow
+- id: ops-policy-001
+  type: single
+  kind: troubleshooting
+  difficulty: foundation
+  version: vcf9
+  topics: [dashboards-alerts]
+  objective: '4.3'
+  objectiveItem: "4.3.11"
+  lesson: dashboards-alerts-policies
+  section: policy-definition-versus-policy-assignment
+  stem: An administrator creates and saves a custom policy with a stricter alert threshold, but the policy appears inactive and no object changes. What is missing?
+  options:
+  - id: a
+    text: Assign the policy to at least one object or custom group
+    why: A policy is active only when it has an assignment.
+    correct: true
+  - id: b
+    text: Export the policy as JSON
+    why: Export does not activate a policy.
+  - id: c
+    text: Restart every collector
+    why: A saved but unassigned policy is a scope problem, not a collector restart problem.
+  - id: d
+    text: Deploy VCF Operations for logs
+    why: The optional logs product is unrelated to policy activation.
+    confusedWith: vcf-ops-logs
+  explanation:
+    correct: Assign the policy in Groups and Objects or Policy Assignment; unassigned policies remain inactive and objects use another effective policy.
+    concept: Policy activation
+- id: ops-policy-002
+  type: ordering
+  kind: scenario
+  difficulty: intermediate
+  version: vcf9
+  topics: [dashboards-alerts]
+  objective: '4.3'
+  objectiveItem: "4.3.11"
+  lesson: dashboards-alerts-policies
+  section: how-it-works
+  stem: Order the main steps for creating and proving a scoped VCF Operations policy.
+  items:
+  - id: i1
+    text: Open Policy Definition and select Add
+  - id: i2
+    text: Name the policy, choose its Inherit From baseline and create it
+  - id: i3
+    text: Override only the required workspace settings and save each workspace
+  - id: i4
+    text: Assign the intended custom group or objects and confirm the assignment
+  - id: i5
+    text: Inspect policy priority and any direct assignments that could change precedence
+  - id: i6
+    text: Open a target object and verify its effective policy and affected behavior
+  explanation:
+    correct: Define and inherit first, override deliberately, assign scope, inspect precedence and verify the effective result on an object.
+    concept: Policy creation and validation workflow
+- id: ops-policy-003
+  type: matching
+  kind: concept
+  difficulty: intermediate
+  version: vcf9
+  topics: [dashboards-alerts]
+  objective: '4.3'
+  objectiveItem: "4.3.11"
+  lesson: dashboards-alerts-policies
+  section: policy-definition-versus-policy-assignment
+  stem: Match each policy surface to the question it answers.
+  pairs:
+  - id: p1
+    left: Policy Definition
+    right: Which metrics, alerts, capacity, compliance or automation settings does the policy define or inherit?
+  - id: p2
+    left: Groups and Objects
+    right: Which objects or custom groups should receive the policy?
+  - id: p3
+    left: Policy Assignment
+    right: Which policies are active, what is their priority and where are they assigned?
+  - id: p4
+    left: Target object policy information
+    right: Which policy is actually effective on this object?
+  explanation:
+    correct: Definition describes settings, Groups and Objects supplies scope, Assignment exposes activation and precedence, and the target object proves the effective outcome.
+    concept: Policy workspaces

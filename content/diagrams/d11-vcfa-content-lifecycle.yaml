@@ -1,0 +1,41 @@
+id: d11-vcfa-content-lifecycle
+title: "VCF Automation content lifecycle: provider library, organization library and catalog"
+description: >
+  Provider administrators create provider content libraries across selected regions and storage classes. VCF
+  Automation creates backing libraries in each participating vCenter and synchronizes them; organizations with quota
+  in a selected region receive read-only access. Organization administrators create their own libraries, whose storage
+  counts against organization quota, choose region and namespace scope, upload supported VM images, and publish OVF
+  images as project-scoped catalog items. Provider and organization content remain separate ownership layers.
+width: 1000
+height: 590
+groups:
+  - { id: g-provider, x: 20, y: 20, w: 960, h: 185, label: "Provider-owned content", kind: mgmt }
+  - { id: g-org, x: 20, y: 230, w: 960, h: 340, label: "Organization-owned content and consumption", kind: compute }
+nodes:
+  - { id: provider, x: 45, y: 70, w: 180, h: 56, label: "Provider admin", sublabel: "Provider Management", kind: external, info: "Creates a provider content library, selects regions and a storage class per region, and uploads or reconciles items." }
+  - { id: pcl, x: 285, y: 70, w: 220, h: 64, label: "Provider content library", sublabel: "read-only to organizations", kind: storage, info: "One VCF Automation abstraction shared with every organization that has quota in the selected regions." }
+  - { id: vca, x: 570, y: 55, w: 180, h: 56, label: "vCenter A library", sublabel: "publisher", kind: storage, info: "VCF Automation randomly selects one backing vCenter library as publisher." }
+  - { id: vcb, x: 790, y: 55, w: 180, h: 56, label: "vCenter B library", sublabel: "subscriber", kind: storage, info: "Other backing libraries subscribe to the publisher, so vCenter-to-vCenter connectivity is required." }
+  - { id: quota, x: 570, y: 130, w: 400, h: 48, label: "Selected region(s) + storage class per region", kind: mgmt, info: "Storage class names must exist consistently across the vCenter instances in a region. Storage clusters are not supported for content libraries." }
+  - { id: orgadmin, x: 45, y: 280, w: 180, h: 56, label: "Organization admin", sublabel: "Build & Deploy", kind: external, info: "Creates organization-specific libraries and controls their region and namespace availability." }
+  - { id: ocl, x: 285, y: 270, w: 220, h: 72, label: "Organization content library", sublabel: "quota-consuming, private to org", kind: storage, info: "Not visible to other organizations. Can optionally subscribe to an external library if the provider enables that option." }
+  - { id: image, x: 285, y: 390, w: 220, h: 64, label: "VM image", sublabel: "OVA / OVF / ISO + VMI", kind: vm, info: "Each uploaded image receives a unique VMI identifier for blueprint references. ISO cannot be published directly to the catalog." }
+  - { id: catalog, x: 570, y: 390, w: 190, h: 64, label: "Catalog item", sublabel: "OVF image", kind: storage, info: "Published for one project and optionally shared with other projects in the organization; cloud-init can be enabled for supported images." }
+  - { id: project, x: 790, y: 390, w: 180, h: 64, label: "Project users", sublabel: "self-service request", kind: external, info: "Project members consume the approved catalog item rather than modifying the underlying provider or organization library." }
+  - { id: namespaces, x: 570, y: 280, w: 400, h: 56, label: "Namespace availability", sublabel: "all current/future or namespace-class scoped", kind: compute, info: "The all-current-and-future-namespaces setting is selected at library creation and cannot be changed later. Otherwise assign through a namespace class." }
+edges:
+  - { from: provider, to: pcl, label: "create/manage", kind: mgmt }
+  - { from: pcl, to: vca, label: "backing library", kind: storage }
+  - { from: vca, to: vcb, label: "sync", kind: storage }
+  - { from: quota, to: pcl, label: "scope", kind: dependency }
+  - { from: pcl, to: orgadmin, label: "read-only use", kind: dependency, dashed: true }
+  - { from: orgadmin, to: ocl, label: "create/manage", kind: mgmt }
+  - { from: ocl, to: namespaces, label: "assign", kind: control }
+  - { from: ocl, to: image, label: "upload", kind: storage }
+  - { from: image, to: catalog, label: "publish OVF", kind: mgmt }
+  - { from: catalog, to: project, label: "request", kind: control }
+steps:
+  - { title: "Provider distribution", text: "Create one provider library over selected regions and storage classes; VCF Automation builds and synchronizes backing vCenter libraries.", highlight: [provider, pcl, vca, vcb, quota] }
+  - { title: "Organization scope", text: "The org admin creates a private library, chooses regions and fixes namespace availability at creation.", highlight: [orgadmin, ocl, namespaces] }
+  - { title: "Image lifecycle", text: "Upload OVA, OVF or ISO content; each image gets a VMI identifier.", highlight: [ocl, image] }
+  - { title: "Catalog consumption", text: "Publish an OVF image for a project, optionally share it to other projects, then let members request it from the catalog.", highlight: [image, catalog, project] }

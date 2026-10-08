@@ -72,7 +72,7 @@ export default function contentPlugin(): Plugin {
               ({ id, title, difficulty, version, topics, lessons, summary, symptoms })),
             scenarios: c.scenarios.map(({ id, title, topics, lessons, brief }) => ({ id, title, topics, lessons, brief })),
             diagramIds: c.diagrams.map((d) => d.id),
-            questionIndex: c.questions.map((q) => ({ id: q.id, lesson: q.lesson, topics: q.topics, difficulty: q.difficulty, objective: q.objective ?? null, kind: q.kind, type: q.type, diagnostic: q.diagnostic ?? null })),
+            questionIndex: c.questions.map((q) => ({ id: q.id, lesson: q.lesson, topics: q.topics, difficulty: q.difficulty, objective: q.objective ?? null, objectiveItem: q.objectiveItem ?? null, kind: q.kind, type: q.type, diagnostic: q.diagnostic ?? null })),
             hasHomelab: !!c.homelab,
           })};`,
           `export const lessonLoaders = ${loaders('lesson', c.lessons.map((l) => l.meta.id))};`,

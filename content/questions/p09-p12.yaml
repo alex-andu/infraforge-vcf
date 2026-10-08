@@ -7,6 +7,7 @@ questions:
     version: vcf9
     topics: [lcm-concepts, fleet-management]
     objective: "4.2"
+    objectiveItem: "4.2.1"
     lesson: lifecycle-concepts
     section: what-gets-lifecycle-managed
     stem: "In VCF 9.0, where does an administrator plan and start upgrades of both management components and core components?"
@@ -29,6 +30,7 @@ questions:
     version: vcf9
     topics: [lcm-concepts]
     objective: "4.2"
+    objectiveItem: "4.2.7"
     lesson: lifecycle-concepts
     section: what-gets-lifecycle-managed
     stem: "Binaries for which components are downloaded to the VCF Operations fleet management appliance?"
@@ -52,6 +54,7 @@ questions:
     version: vcf9
     topics: [lcm-concepts]
     objective: "4.2"
+    objectiveItem: "4.2.7"
     lesson: lifecycle-concepts
     section: what-gets-lifecycle-managed
     stem: "Which three of these are VCF **core components** whose lifecycle is orchestrated by SDDC Manager? (Choose three.)"
@@ -74,6 +77,7 @@ questions:
     version: vcf9
     topics: [lcm-concepts]
     objective: "4.2"
+    objectiveItem: "4.2.7"
     lesson: lifecycle-concepts
     section: how-it-works
     context: |
@@ -98,6 +102,7 @@ questions:
     version: vcf9
     topics: [lcm-concepts, lcm-workflow]
     objective: "4.2"
+    objectiveItem: "4.2.7"
     lesson: lifecycle-concepts
     section: release-types
     stem: "True or false: according to Broadcom's VCF 9.0 update sequence guidance, patches can be applied in any order, while the documented order matters for major and minor releases."
@@ -116,6 +121,7 @@ questions:
     version: vcf9
     topics: [lcm-concepts]
     objective: "4.2"
+    objectiveItem: "4.2.7"
     lesson: lifecycle-concepts
     section: release-types
     stem: "Moving a domain from VCF 9.0.0.0 to 9.0.1.0 is which type of release according to TechDocs?"
@@ -136,6 +142,7 @@ questions:
     version: vcf9
     topics: [lcm-concepts, lcm-recovery]
     objective: "4.2"
+    objectiveItem: "4.2.7"
     lesson: lifecycle-concepts
     section: depot-structure
     context: |
@@ -160,6 +167,7 @@ questions:
     version: vcf9
     topics: [lcm-concepts, certificates]
     objective: "4.2"
+    objectiveItem: "4.2.4"
     lesson: lifecycle-concepts
     section: troubleshooting
     context: |
@@ -184,6 +192,7 @@ questions:
     version: vcf9
     topics: [lcm-concepts]
     objective: "4.2"
+    objectiveItem: "4.2.7"
     lesson: lifecycle-concepts
     section: release-types
     stem: "Match each VCF release type with its description."
@@ -204,6 +213,7 @@ questions:
     version: vcf9
     topics: [lcm-concepts]
     objective: "4.2"
+    objectiveItem: "4.2.7"
     lesson: lifecycle-concepts
     section: release-types
     context: |
@@ -228,6 +238,7 @@ questions:
     version: vcf9
     topics: [lcm-concepts]
     objective: "4.2"
+    objectiveItem: "4.2.7"
     lesson: lifecycle-concepts
     section: cli-api
     context: |
@@ -250,6 +261,7 @@ questions:
     version: vcf9
     topics: [lcm-concepts, lcm-workflow]
     objective: "4.2"
+    objectiveItem: "4.2.7"
     lesson: lifecycle-concepts
     section: the-bill-of-materials-bom
     stem: "What does the flexible BOM option (Customize Upgrade) in the VCF 9.0 upgrade planner allow?"
@@ -271,6 +283,7 @@ questions:
     version: vcf9
     topics: [lcm-workflow]
     objective: "4.2"
+    objectiveItem: "4.2.7"
     lesson: lifecycle-upgrade-workflow
     section: the-order-and-the-reason-for-it
     stem: "Put the VCF 9.0 maintenance update in the documented order for a fleet with one instance (management domain only)."
@@ -296,6 +309,7 @@ questions:
     version: vcf9
     topics: [lcm-workflow]
     objective: "4.2"
+    objectiveItem: "4.2.7"
     lesson: lifecycle-upgrade-workflow
     section: the-order-and-the-reason-for-it
     stem: "Order the core components of the management domain for a maintenance update."
@@ -318,6 +332,7 @@ questions:
     version: vcf9
     topics: [lcm-workflow]
     objective: "4.2"
+    objectiveItem: "4.2.7"
     lesson: lifecycle-upgrade-workflow
     section: core-components-vcf-instances-tab-per-domain
     stem: "Binaries are downloaded. Order the steps to upgrade a domain's core components in VCF Operations."
@@ -340,6 +355,7 @@ questions:
     version: vcf9
     topics: [lcm-workflow, fleet-management]
     objective: "4.2"
+    objectiveItem: "4.2.1"
     lesson: lifecycle-upgrade-workflow
     section: management-components-vcf-management-tab
     stem: "Which component must be upgraded or patched before any other VCF management component?"
@@ -360,6 +376,7 @@ questions:
     version: vcf9
     topics: [lcm-workflow, lcm-concepts]
     objective: "4.2"
+    objectiveItem: "4.2.7"
     lesson: lifecycle-upgrade-workflow
     section: multiple-instances-and-shared-nsx
     context: |
@@ -383,6 +400,7 @@ questions:
     version: vcf9
     topics: [lcm-workflow]
     objective: "4.2"
+    objectiveItem: "4.2.7"
     lesson: lifecycle-upgrade-workflow
     section: resource-locks
     context: |
@@ -407,6 +425,7 @@ questions:
     version: vcf9
     topics: [lcm-workflow]
     objective: "4.2"
+    objectiveItem: "4.2.7"
     lesson: lifecycle-upgrade-workflow
     section: resource-locks
     stem: "Which three operations does TechDocs list as blocked in all core component upgrade scenarios? (Choose three.)"
@@ -428,6 +447,7 @@ questions:
     version: vcf9
     topics: [lcm-workflow]
     objective: "4.2"
+    objectiveItem: "4.2.7"
     lesson: lifecycle-upgrade-workflow
     section: prechecks
     context: |
@@ -450,6 +470,7 @@ questions:
     version: vcf9
     topics: [lcm-workflow]
     objective: "4.2"
+    objectiveItem: "4.2.7"
     lesson: lifecycle-upgrade-workflow
     section: the-order-and-the-reason-for-it
     context: |
@@ -472,6 +493,7 @@ questions:
     version: vcf9
     topics: [lcm-workflow, lcm-recovery]
     objective: "4.2"
+    objectiveItem: "4.2.7"
     lesson: lifecycle-upgrade-workflow
     section: how-vcenter-is-upgraded
     context: |
@@ -497,6 +519,7 @@ questions:
     version: vcf9
     topics: [lcm-workflow]
     objective: "4.2"
+    objectiveItem: "4.2.7"
     lesson: lifecycle-upgrade-workflow
     section: resource-locks
     stem: "Match each SDDC Manager resource lock type with its scope."
@@ -517,6 +540,7 @@ questions:
     version: vcf9
     topics: [vlcm]
     objective: "4.2"
+    objectiveItem: "4.2.7"
     lesson: vlcm-images-host-remediation
     section: image-building-blocks
     stem: "Which element of a vSphere Lifecycle Manager image is mandatory?"
@@ -538,6 +562,7 @@ questions:
     version: vcf9
     topics: [vlcm]
     objective: "4.2"
+    objectiveItem: "4.2.7"
     lesson: vlcm-images-host-remediation
     section: hardware-support-manager-and-firmware
     stem: "An administrator wants vLCM to update BIOS and NIC firmware as part of cluster remediation. What is required?"
@@ -558,6 +583,7 @@ questions:
     version: vcf9
     topics: [vlcm, lcm-workflow]
     objective: "4.2"
+    objectiveItem: "4.2.7"
     lesson: vlcm-images-host-remediation
     section: desired-state-instead-of-patch-lists
     stem: "A cluster is managed with vLCM baselines (VUM-style). What does this mean for vSphere 9 / VCF 9.0?"
@@ -578,6 +604,7 @@ questions:
     version: vcf9
     topics: [vlcm]
     objective: "4.2"
+    objectiveItem: "4.2.7"
     lesson: vlcm-images-host-remediation
     section: creating-and-importing-an-image-for-vcf
     context: |
@@ -601,6 +628,7 @@ questions:
     version: vcf9
     topics: [vlcm, vsan-resilience]
     objective: "4.2"
+    objectiveItem: "4.2.7"
     lesson: vlcm-images-host-remediation
     section: parallel-versus-sequential-remediation
     stem: "A 6-host vSAN cluster must be remediated. The team wants to remediate three hosts at once to save time. What applies?"
@@ -621,6 +649,7 @@ questions:
     version: vcf9
     topics: [vlcm]
     objective: "4.2"
+    objectiveItem: "4.2.7"
     lesson: vlcm-images-host-remediation
     section: multi-image-clusters
     stem: "True or false: in vSphere 9, each of the additional image definitions in a cluster can use a different ESX base version."
@@ -639,6 +668,7 @@ questions:
     version: vcf9
     topics: [vlcm]
     objective: "4.2"
+    objectiveItem: "4.2.7"
     lesson: vlcm-images-host-remediation
     section: remediating-a-cluster
     stem: "Order the steps vLCM performs to bring a non-compliant host in line with the cluster image."
@@ -661,6 +691,7 @@ questions:
     version: vcf9
     topics: [vlcm]
     objective: "4.2"
+    objectiveItem: "4.2.7"
     lesson: vlcm-images-host-remediation
     section: desired-state-instead-of-patch-lists
     stem: "In vCenter 9.0 vSphere Lifecycle Manager, which import options are supported?"
@@ -681,6 +712,7 @@ questions:
     version: vcf9
     topics: [vlcm]
     objective: "4.2"
+    objectiveItem: "4.2.7"
     lesson: vlcm-images-host-remediation
     section: compliance-states-in-practice
     stem: "Match each vLCM compliance state with the typical action."
@@ -702,6 +734,7 @@ questions:
     version: vcf9
     topics: [lcm-recovery, logs-locations]
     objective: "4.2"
+    objectiveItem: "4.2.7"
     lesson: lifecycle-failures-recovery
     section: real-examples-decoded
     context: |
@@ -729,6 +762,7 @@ questions:
     version: vcf9
     topics: [lcm-recovery, logs-locations]
     objective: "4.2"
+    objectiveItem: "4.2.7"
     lesson: lifecycle-failures-recovery
     section: two-engines-two-log-trails
     stem: "An NSX upgrade task launched from VCF Operations failed. Which log do you read first for the orchestration error?"
@@ -749,6 +783,7 @@ questions:
     version: vcf9
     topics: [lcm-recovery, logs-locations]
     objective: "4.2"
+    objectiveItem: "4.2.7"
     lesson: lifecycle-failures-recovery
     section: two-engines-two-log-trails
     stem: "An upgrade of VCF Operations from 9.0.1 to 9.0.2 fails with error code LCMVROPSYSTEM25008 in Fleet Management. Which log is the primary lifecycle log for this task?"
@@ -769,6 +804,7 @@ questions:
     version: vcf9
     topics: [lcm-recovery]
     objective: "4.2"
+    objectiveItem: "4.2.7"
     lesson: lifecycle-failures-recovery
     section: real-examples-decoded
     context: |
@@ -791,6 +827,7 @@ questions:
     version: vcf9
     topics: [lcm-recovery, lcm-workflow]
     objective: "4.2"
+    objectiveItem: "4.2.7"
     lesson: lifecycle-failures-recovery
     section: retry-first-restore-last
     context: |
@@ -816,6 +853,7 @@ questions:
     version: vcf9
     topics: [lcm-recovery]
     objective: "4.2"
+    objectiveItem: "4.2.7"
     lesson: lifecycle-failures-recovery
     section: preparing-to-recover
     stem: "Which three preparations make recovery from a failed core upgrade realistic? (Choose three.)"
@@ -837,6 +875,7 @@ questions:
     version: vcf9
     topics: [lcm-recovery]
     objective: "4.2"
+    objectiveItem: "4.2.7"
     lesson: lifecycle-failures-recovery
     section: real-examples-decoded
     context: |
@@ -863,6 +902,7 @@ questions:
     version: vcf9
     topics: [lcm-recovery, identity-sso]
     objective: "4.2"
+    objectiveItem: "4.2.2"
     lesson: lifecycle-failures-recovery
     section: real-examples-decoded
     context: |
@@ -887,6 +927,7 @@ questions:
     version: vcf9
     topics: [identity-sso]
     objective: "4.2"
+    objectiveItem: "4.2.2"
     lesson: vcf-identity-sso-rbac
     section: who-participates
     stem: "After VCF Single Sign-On is configured, which interface still requires a local account (for example an @vsphere.local user) to log in?"
@@ -908,6 +949,7 @@ questions:
     version: vcf9
     topics: [identity-sso]
     objective: "4.2"
+    objectiveItem: "4.2.2"
     lesson: vcf-identity-sso-rbac
     section: broker-models
     context: |
@@ -931,6 +973,7 @@ questions:
     version: vcf9
     topics: [identity-sso]
     objective: "4.2"
+    objectiveItem: "4.2.2"
     lesson: vcf-identity-sso-rbac
     section: broker-models
     context: |
@@ -954,6 +997,7 @@ questions:
     version: vcf9
     topics: [identity-sso]
     objective: "4.2"
+    objectiveItem: "4.2.2"
     lesson: vcf-identity-sso-rbac
     section: broker-models
     stem: "An organisation started with an embedded Identity Broker and now wants to move to the appliance model. What does TechDocs say this requires?"
@@ -975,6 +1019,7 @@ questions:
     version: vcf9
     topics: [identity-sso]
     objective: "4.2"
+    objectiveItem: "4.2.2"
     lesson: vcf-identity-sso-rbac
     section: configuration-workflow-vcf-operations
     stem: "Which three are prerequisites or considerations before configuring VCF SSO? (Choose three.)"
@@ -996,6 +1041,7 @@ questions:
     version: vcf9
     topics: [rbac, identity-sso]
     objective: "4.2"
+    objectiveItem: "4.2.2"
     lesson: vcf-identity-sso-rbac
     section: rbac-authentication-is-central-authorisation-is-local
     context: |
@@ -1019,6 +1065,7 @@ questions:
     version: vcf9
     topics: [identity-sso]
     objective: "4.2"
+    objectiveItem: "4.2.2"
     lesson: vcf-identity-sso-rbac
     section: provisioning-methods
     stem: "Match each user/group provisioning method with its behaviour in VCF SSO."
@@ -1039,6 +1086,7 @@ questions:
     version: vcf9
     topics: [identity-sso, fleet-management]
     objective: "4.2"
+    objectiveItem: "4.2.1"
     lesson: vcf-identity-sso-rbac
     section: configuration-workflow-vcf-operations
     stem: "Where do you configure VCF Single Sign-On for a VCF instance in 9.0?"
@@ -1059,6 +1107,7 @@ questions:
     version: vcf9
     topics: [identity-sso]
     objective: "4.2"
+    objectiveItem: "4.2.2"
     lesson: vcf-identity-sso-rbac
     section: what-changes-in-vcenter
     stem: "True or false: when a vCenter joins VCF SSO, its existing identity sources, users and group permissions are migrated automatically."
@@ -1078,6 +1127,7 @@ questions:
     version: vcf9
     topics: [certificates]
     objective: "4.2"
+    objectiveItem: "4.2.4"
     lesson: certificate-management
     section: who-issues-certificates-in-vcf
     stem: "In VCF Operations certificate management, for which components can the OpenSSL certificate authority be configured?"
@@ -1099,6 +1149,7 @@ questions:
     version: vcf9
     topics: [certificates]
     objective: "4.2"
+    objectiveItem: "4.2.4"
     lesson: certificate-management
     section: flow-2-external-ca-csr-sign-import
     stem: "Order the steps to replace an NSX Manager certificate with one signed by an external CA in VCF Operations."
@@ -1120,6 +1171,7 @@ questions:
     version: vcf9
     topics: [certificates]
     objective: "4.2"
+    objectiveItem: "4.2.4"
     lesson: certificate-management
     section: reading-a-chain-problem
     context: |
@@ -1151,6 +1203,7 @@ questions:
     version: vcf9
     topics: [certificates]
     objective: "4.2"
+    objectiveItem: "4.2.4"
     lesson: certificate-management
     section: flow-3-automatic-renewal
     stem: "When auto-renewal is activated in VCF Operations, when are eligible certificates renewed?"
@@ -1171,6 +1224,7 @@ questions:
     version: vcf9
     topics: [certificates]
     objective: "4.2"
+    objectiveItem: "4.2.4"
     lesson: certificate-management
     section: csr-fields-that-matter
     stem: "Security policy demands 4096-bit keys for all certificates. Generating CSRs in VCF Operations works for vCenter and NSX, but what about ESX hosts?"
@@ -1191,6 +1245,7 @@ questions:
     version: vcf9
     topics: [certificates, lcm-recovery]
     objective: "4.2"
+    objectiveItem: "4.2.4"
     lesson: certificate-management
     section: troubleshooting
     context: |
@@ -1215,6 +1270,7 @@ questions:
     version: general
     topics: [certificates]
     objective: "4.2"
+    objectiveItem: "4.2.4"
     lesson: certificate-management
     section: cli-api
     stem: "Type the OpenSSL command that connects to nsx-mgmt.lab.local on port 443 and prints the full certificate chain the server sends (without SNI options)."
@@ -1234,6 +1290,7 @@ questions:
     version: general
     topics: [certificates, vcenter]
     objective: "4.2"
+    objectiveItem: "4.2.4"
     lesson: certificate-management
     section: vecs-where-vcenter-keeps-certificates
     stem: "Which VECS store on vCenter holds the certificate presented by the reverse proxy on port 443?"
@@ -1254,6 +1311,7 @@ questions:
     version: vcf9
     topics: [certificates]
     objective: "4.2"
+    objectiveItem: "4.2.4"
     lesson: certificate-management
     section: flow-2-external-ca-csr-sign-import
     stem: "What format and order does VCF Operations expect when importing a CA-signed certificate chain?"
@@ -1275,6 +1333,7 @@ questions:
     version: vcf9
     topics: [passwords]
     objective: "4.2"
+    objectiveItem: "4.2.5"
     lesson: password-management
     section: server-side-and-client-side
     context: |
@@ -1299,6 +1358,7 @@ questions:
     version: vcf9
     topics: [passwords]
     objective: "4.2"
+    objectiveItem: "4.2.5"
     lesson: password-management
     section: server-side-and-client-side
     stem: "Match each password action to what it does."
@@ -1318,6 +1378,7 @@ questions:
     version: vcf9
     topics: [passwords]
     objective: "4.2"
+    objectiveItem: "4.2.5"
     lesson: password-management
     section: rotate-a-password-sddc-manager
     stem: "An auditor requires automatic scheduled rotation for all root accounts, including ESX hosts. What must you tell them about VCF 9.0?"
@@ -1338,6 +1399,7 @@ questions:
     version: vcf9
     topics: [passwords]
     objective: "4.2"
+    objectiveItem: "4.2.5"
     lesson: password-management
     section: freshness-of-status
     stem: "You remediated a vCenter root password successfully, but VCF Operations still shows the old connection status an hour later. What is the best explanation and check?"
@@ -1358,6 +1420,7 @@ questions:
     version: vcf9
     topics: [passwords]
     objective: "4.2"
+    objectiveItem: "4.2.5"
     lesson: password-management
     section: looking-up-stored-credentials
     stem: "Which statement about the lookup_passwords command on SDDC Manager is correct?"
@@ -1378,6 +1441,7 @@ questions:
     version: vcf9
     topics: [passwords]
     objective: "4.2"
+    objectiveItem: "4.2.5"
     lesson: password-management
     section: known-9-0-gaps
     stem: "In VCF 9.0, in Fleet Management > Passwords you see only Update and Remediate for VCF Operations and VCF Automation accounts, but no Rotate. What is the correct interpretation?"
@@ -1399,6 +1463,7 @@ questions:
     version: vcf9
     topics: [licensing]
     objective: "4.2"
+    objectiveItem: "4.2.3"
     lesson: license-management
     section: from-keys-to-files
     stem: "In VCF 9.0, to which objects do you assign licenses in VCF Operations?"
@@ -1420,6 +1485,7 @@ questions:
     version: vcf9
     topics: [licensing]
     objective: "4.2"
+    objectiveItem: "4.2.3"
     lesson: license-management
     section: reporting-obligation
     stem: "How often must license usage be reported to maintain VCF 9 licenses?"
@@ -1440,6 +1506,7 @@ questions:
     version: vcf9
     topics: [licensing]
     objective: "4.2"
+    objectiveItem: "4.2.3"
     lesson: license-management
     section: expiry-timeline
     stem: "A VCF 9 license expired and nobody updated it for more than 90 days afterwards. What impact does TechDocs describe?"
@@ -1460,6 +1527,7 @@ questions:
     version: vcf9
     topics: [licensing]
     objective: "4.2"
+    objectiveItem: "4.2.3"
     lesson: license-management
     section: connected-vs-disconnected
     context: |
@@ -1483,6 +1551,7 @@ questions:
     version: vcf9
     topics: [licensing]
     objective: "4.2"
+    objectiveItem: "4.2.3"
     lesson: license-management
     section: primary-and-add-on-licenses
     stem: "Which two statements about VCF 9 licenses are correct? (Choose two.)"
@@ -1503,6 +1572,7 @@ questions:
     version: vcf9
     topics: [licensing]
     objective: "4.2"
+    objectiveItem: "4.2.3"
     lesson: license-management
     section: how-it-works
     stem: "You just integrated a new workload vCenter with VCF Operations, but it does not appear under License Management > Licenses. What is the likely explanation?"

@@ -38,6 +38,11 @@ startingState: |
   Automation has no regions or organizations.
 
   :::warning
+  **PREPARED — NOT YET LAB-VALIDATED.** VCF Automation and Supervisor are not currently present in Alex's lab. The
+  provider-region, provider-networking, organization, content and governance paths below were verified against the
+  official VCF 9.0 documentation on 2026-10-08; actual field values, screenshots and observed results remain pending
+  until the components are deployed.
+
   If your host cannot run a Supervisor next to the management domain, do steps 1-2 for real and the rest as a guided
   paper exercise using the lesson diagrams. The provider and tenant concepts are what the exam tests.
   :::
@@ -55,56 +60,155 @@ steps:
     title: Create a region
     why: A region is the provider's capacity unit and the base for every All Apps organization.
     instructions: |
-      1. In the provider portal open Regions and create `region-lab`.
-      2. Select your Supervisor and the storage class(es) to offer.
-      3. Note that the name and NSX Manager cannot be changed later.
+      1. Before opening the wizard, compare every participating Supervisor: the same NSX Manager, identical storage-
+         class names/configuration and VM-class names/configuration, matching Kubernetes versions and the same enabled
+         IaaS services. Record the evidence; VCF Automation does not verify class consistency across every vCenter.
+      2. In the **VCF Automation Provider Management Portal**, open **Infrastructure > Regions** and select **New**.
+      3. Enter `region-lab` and a description, then select the NSX Manager integrated with the target vCenter instance.
+      4. Select the target Supervisor(s). Select the approved storage classes offered across all selected Supervisors.
+      5. Review the selection and select **Submit**.
+      6. Expand `region-lab` to verify status, NSX Manager, Supervisors and CPU/memory utilization. Open its detail page
+         and inspect **Supervisors**, **Classes**, **Storage Classes**, **Zones** and **Reserved VM Classes**.
+      7. Record that deleting the region later requires all region quotas to be removed first.
     hint: If the Supervisor is not offered, check that it is healthy and that all Supervisors you select share one NSX instance.
-    validate: The region shows the Supervisor and storage class.
-    expected: Region created and healthy.
+    validate: Capture the region detail showing the selected NSX Manager, Supervisor(s), classes, zones and healthy capacity.
+    expected: Region created and healthy; every offered class is confirmed on each backing vCenter.
   - id: provider-networking
     title: IP space, provider gateway and edge cluster sync
     why: Organizations reach the outside world only through the provider's networking.
     instructions: |
-      1. Networking > IP Spaces: create `lab-external` with the block 172.31.0.0/24 (or your plan).
-      2. Networking > Provider Gateways: create `pgw-lab` on your Tier-0, associate `lab-external`.
-      3. Networking > Edge Clusters: **Sync** and confirm your edge cluster appears.
-      4. On the lab router add a static route for 172.31.0.0/24 to the Tier-0 uplink IP (unless BGP advertises it).
-    validate: From the NSX API list Tier-0s (`GET /policy/api/v1/infra/tier-0s`) and compare with the provider gateway.
-    expected: Provider gateway active on the correct Tier-0; edge cluster synced; router has the route.
+      1. In the provider portal open **Infrastructure > Networking > IP Spaces** and select **New**. Enter
+         `lab-external`, select `region-lab` and select **Next**.
+      2. Enter the approved internal scope with up to five IPv4 ranges/prefixes, including 172.31.0.0/24 only if it is
+         reserved for this lab. Add external scope `0.0.0.0/0` only when Internet reachability is intended, then select
+         **Next**.
+      3. Set conservative default per-organization limits for individual IPs, CIDRs and maximum subnet size. Review and
+         select **Create**. Record any later organization-specific quota override separately.
+      4. In **NSX Manager > Networking > Tier-0 Gateways**, verify the backing Tier-0 uses **Active Standby** mode (the
+         VCF Automation 9.0 requirement) and the approved Edge cluster. If using a VRF, verify it links to that Tier-0.
+      5. Return to **Infrastructure > Networking > Provider Gateways**, select **New**, enter `pgw-lab`, select
+         `region-lab` and **Next**, select the Tier-0/VRF and **Next**, associate `lab-external`, then review and select
+         **Create**.
+      6. Open **Infrastructure > Networking > Edge Clusters**. Select **Sync**, confirm the NSX cluster appears, select
+         it and inspect **Node Health** for every Edge node.
+      7. On the lab router add a static route for 172.31.0.0/24 to the Tier-0 uplink IP only when BGP does not advertise
+         the block. Record the route rather than changing an unrelated production path.
+    validate: Compare the provider gateway's region, Tier-0/VRF and IP-space associations with NSX and the router route; capture Edge **Node Health**.
+    expected: IPv4 IP space and default quotas exist; provider gateway uses the correct active-standby Tier-0; edge cluster is synchronized and healthy; the external block has a return route.
   - id: organization
     title: Create an All Apps organization
     why: The organization is the tenant boundary (exam item "configure multi-organizational tenancy").
     instructions: |
-      1. Organizations: create `org-dev` as an **organization for All Apps**; define the first user `devadmin`.
-      2. Set the **region quota** for `region-lab` (CPU, memory, storage, VM classes such as best-effort-small/medium).
-      3. Configure **regional networking**: name `org-dev-net`, region `region-lab`, provider gateway `pgw-lab`, edge cluster.
-      4. Create a provider content library `golden-images`, add a small OVA/ISO, and share it with `org-dev`.
-    validate: In a private browser window log in to the organization portal as `devadmin`.
-    expected: Org portal opens; the provider library is visible but read-only.
+      1. Open **Infrastructure > Organizations > Create Organization**, choose **Organization for All Apps** and select
+         **Next**. Enter `org-dev` and a description; the name becomes the organization URL identifier.
+      2. Select **Create and Continue** only after reviewing the name. The wizard cannot be cancelled after this point;
+         an organization must be disabled before it can later be deleted.
+      3. Select `region-lab` and the target Supervisor. Add one or more zones and enter the approved CPU and memory
+         limits and reservations, then select **Assign and continue**.
+      4. Select `best-effort-small` (and only other approved VM classes) plus the approved storage classes. Select
+         **Assign and continue**.
+      5. Add the single first user `devadmin` and assign **Organization Administrator** (or an equivalent custom role
+         with organization, user and IdP management rights). Use a unique temporary credential through the live UI;
+         never record it in this guide or repository. Select **Add User and Finish**.
+      6. Configure the organization's **regional networking** as `org-dev-net`, using `region-lab`, provider gateway
+         `pgw-lab` and the synchronized Edge cluster.
+      7. In a private browser window sign in as `devadmin`, connect the organization to its approved identity provider,
+         and confirm that another organization cannot see its users, projects or resources.
+    validate: Capture the organization type/status, allocated region/zones/classes, regional-network binding and successful first-user login without recording credentials.
+    expected: All Apps organization opens at its unique URL; provider allocation and networking are visible; tenant resources remain isolated from other organizations.
   - id: org-admin
-    title: Project, namespace class, namespace and VPC
+    title: Project, namespace class, namespace and organization networking
     why: Exam items "complete tasks as an organizational administrator" and "configure organizational networks".
     instructions: |
-      1. As `devadmin` create a local user or import a group, and project `payments` with that user as member.
-      2. Create namespace class `small-app` (limits, VM class best-effort-small, storage class, content library).
-      3. Create namespace `payments-dev` from the class in project `payments`.
-      4. Create a VPC with a private subnet and a public subnet.
-      5. Try to create a namespace bigger than the quota and read the error.
-    validate: Namespace visible in the org portal and as a Supervisor namespace in vCenter.
-    expected: Namespace created within quota; oversize request refused.
+      1. Log in to the **VCF Automation organization portal** as `devadmin`.
+      2. Create or import the application-team identity, then create project `payments` and add that identity as a
+         member. Record the project ID or URL.
+      3. Create namespace class `small-app` with the approved limits, `best-effort-small` VM class, storage class and
+         content library. Create namespace `payments-dev` from that class in project `payments`.
+      4. Open **Manage & Govern > Networking > IP Management > IP Address Blocks**. Review the provider-assigned
+         external blocks. If cross-VPC private routing is required, select **New Private - TGW IP Block**, name it
+         `payments-tgw`, enter the approved non-overlapping CIDR, select `region-lab`, and select **Create**.
+      5. Open **IP Management > IP Quotas**, select **New IP Quota**, name it `payments-quota`, select `region-lab`,
+         choose **External** or **Private - Transit Gateway**, select the relevant block, enter the permitted counts of
+         individual IPs and CIDRs plus the maximum subnet size, select the VPCs when available, and select **Create**.
+      6. Open **Manage & Govern > Networking > Virtual Private Clouds > Connectivity Profiles** and select **New
+         Connectivity Profile**. Name it `payments-connectivity`, select `region-lab`, choose the approved external
+         IPv4 block and `payments-tgw`, then select **Create**. Do not edit the default profile during this exercise.
+      7. Return to **Virtual Private Clouds** and select **New VPC**. Enter `payments-vpc`, select `region-lab`, select
+         `payments-connectivity`, specify the approved private VPC IPv4 CIDR, apply `payments-quota`, and select
+         **Create**.
+      8. Associate `payments-vpc` with namespace `payments-dev`. Use a second test namespace only if you need to prove
+         that one VPC can be shared; otherwise keep one namespace per VPC for the clearest isolation boundary.
+      9. Deploy a small test workload. Validate same-VPC connectivity, cross-VPC reachability through private TGW space
+         if configured, and north-south connectivity through the provider-assigned external capacity as separate tests.
+      10. Try to create a namespace larger than the region quota and an allocation beyond `payments-quota`; record both
+          errors without changing the quotas.
+    validate: |
+      Confirm `payments-dev` is visible in the organization portal and as a Supervisor namespace in vCenter. Under
+      **Manage & Govern > Networking**, capture the VPC's region, connectivity profile, private CIDR, applied IP quota
+      and namespace association. Record the test workload's source/destination addresses for each reachability test.
+    expected: |
+      Namespace and VPC are created inside their quotas; the VPC is associated with `payments-dev`; permitted traffic
+      succeeds according to the selected address scope; oversize namespace and address requests are refused. Any
+      difference is evidence to record, not a reason to improvise changes outside this guide.
+  - id: content-libraries
+    title: Publish provider content and curate organization content
+    why: Covers the separate exam items for provider content libraries and organization content management.
+    instructions: |
+      1. In the **VCF Automation Provider Management Portal**, open **Infrastructure > Content Libraries**. On the
+         **Content Library** tab, select **New**.
+      2. Enter `golden-images`, add a description, leave external subscription disabled for a local library and select
+         **Next**. Select `region-lab` and its approved datastore-backed storage class, review and select **Confirm**.
+      3. Verify that the provider library appears in every selected region and is visible read-only from `org-dev`.
+         Where the region contains several vCenter instances, record the backing libraries and verify publisher-to-
+         subscriber connectivity before uploading a large item.
+      4. Return to the `org-dev` organization portal as `devadmin`. Open **Build & Deploy > Content Hub > Content
+         Libraries**, select **New**, and enter `payments-images`.
+      5. Decide whether this library belongs to all current and future namespaces. For the exercise, disable the toggle
+         and record that this choice cannot be changed later. Select **Next**, choose `region-lab` and the approved
+         storage class, then review and select **Confirm**.
+      6. Add `payments-images` to namespace class `small-app`, create or refresh a test namespace from that class, and
+         confirm that a namespace outside the class cannot see the library.
+      7. Open **Build & Deploy > Content Hub > VM Images**, select **Upload**, select a small approved OVA or OVF file,
+         choose `payments-images`, enter a clear image name and select **Submit**. Record the resulting VMI identifier.
+      8. From **VM Images** (or the library's **VM Images** tab), open the image's vertical ellipsis and select **Publish
+         to Catalog**. Enter `payments-test-vm`, select project `payments`, leave cross-project sharing disabled, enable
+         cloud-init only if the image supports it, and select **Publish**.
+      9. As a project member, open the catalog and confirm the item is available. Attempt the same direct-publish flow
+         with an ISO only as a read-only UI check; the action must not be offered for ISO content.
+      10. Record organization storage usage before and after the upload. Do not assume one image consumes one copy when
+          the selected region spans multiple vCenter instances.
+    validate: |
+      In the provider portal, capture the provider library's selected regions/storage classes and organization read-only
+      visibility. In the organization portal, capture `payments-images` region and namespace scope, the uploaded image's
+      VMI identifier, the catalog item's owning project and the observed storage-usage change.
+    expected: |
+      Provider content is read-only in `org-dev`; organization content is invisible to other organizations; only
+      namespaces selected through `small-app` see `payments-images`; the OVF catalog item is visible to project
+      `payments`; the ISO has no direct publish action; storage use is charged to the organization.
   - id: governance
     title: Policies and an event subscription
     why: Exam items "governance policies" and "extensibility".
     instructions: |
-      1. Create a **lease policy** of 1 day for project `payments` (shorten for testing if allowed).
-      2. Create an **approval policy** requiring `devadmin` approval for requests in `payments`.
-      3. Create a **day 2 action policy** that removes the delete action for project members.
-      4. If VCF Operations Orchestrator is available, create a simple workflow that logs the deployment name, and an
+      1. In the organization portal open **Manage & Govern > Policies > Policy Definition**. Select **New Policy >
+         Lease Policy**, set a one-day maximum lifetime for project `payments`, add namespace criterion `payments-dev`
+         if available, review the scope and save.
+      2. Select **New Policy > Approval Policy**. Match the test catalog item or project `payments`, designate
+         `devadmin` (or an approved group) as approver and save. Confirm the user can access **Inbox**.
+      3. Select **New Policy > Day 2 Action Policy**. Scope it to project `payments`, select the project-member group and
+         deny or omit the delete action while leaving the approved read actions available. Save.
+      4. Optionally create an **IaaS Resource Policy** for `payments-dev` that allows only the approved small VM class.
+         Start from the official template and use CEL only where the template requires it; validate syntax before save.
+      5. Open **Policy Assignments** and confirm the effective lease, approval, day-2 and optional IaaS rules for the
+         project/namespace. Remember that a new policy applies to current as well as future deployments.
+      6. If VCF Operations Orchestrator is available, create a simple workflow that logs the deployment name, and an
          **event subscription** (non-blocking) on a post-provisioning event topic in project `payments`.
-      5. As the project user, deploy a small VM into `payments-dev` from the catalog/content.
-      6. Approve it from the **Inbox** as `devadmin`; check the workflow run; check the lease and that delete is not offered.
-    validate: Use Policy Assignments and Policy Enforcement to see which policies applied.
-    expected: Request waits for approval, deploys, workflow runs, lease shown, delete blocked for the user.
+      7. As the project user, request a small VM in `payments-dev`. As `devadmin`, open **Inbox**, inspect and approve
+         the request. Verify deployment, workflow run, displayed lease and absence of delete for the project user.
+      8. Open **Policy Enforcement** and record enforcement date, policy name and status for the request. Do not change
+         the policy merely to make the expected result fit; capture any difference for correction.
+    validate: Capture Policy Assignments before the request, the approval in Inbox, the user's permitted day-2 actions and the Policy Enforcement audit entries afterward.
+    expected: Request waits for approval, deploys after approval, receives the lease, runs the optional workflow, hides delete from the project user and has traceable effective/enforced policies.
 troubleshooting:
   - symptom: Supervisor not selectable for the region.
     fix: Supervisor unhealthy or on a different NSX instance than others selected; fix Supervisor health first.
@@ -128,8 +232,36 @@ cleanup: |
 sources:
   - title: "VCF 9.0 - Provider Management"
     url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/provider-management.html
+  - title: "VCF 9.0 - Create a Region"
+    url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/provider-management/provider-virtual-datacenters/create-a-provider-virtual-datacenter.html
+  - title: "VCF 9.0 - Add an IP Space"
+    url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/provider-management/managing-networking-resources/managing-ip-spaces/add-a-public-ip-space.html
+  - title: "VCF 9.0 - Add a Provider Gateway"
+    url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/provider-management/managing-networking-resources/managing-provider-gateways/add-a-provider-gateway.html
+  - title: "VCF 9.0 - View and Sync Edge Clusters"
+    url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/provider-management/managing-networking-resources/view-and-sync-edge-clusters-in-vcf-automation.html
+  - title: "VCF 9.0 - Create an Organization for All Applications"
+    url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/provider-management/managing-organizations/create-an-organization.html
   - title: "VCF 9.0 - Organization Management"
     url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/organization-management.html
+  - title: "VCF 9.0 - Managing Networking in VCF Automation"
+    url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/organization-management/adding-and-managing-virtual-private-clouds.html
+  - title: "VCF 9.0 - Create a Connectivity Profile"
+    url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/organization-management/adding-and-managing-virtual-private-clouds/create-a-connectivity-profile.html
+  - title: "VCF 9.0 - Create a Virtual Private Cloud"
+    url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/organization-management/adding-and-managing-virtual-private-clouds/add-a-vpc.html
+  - title: "VCF 9.0 - Managing IP Address Blocks and IP Quotas"
+    url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/organization-management/adding-and-managing-virtual-private-clouds/ip-management.html
+  - title: "VCF 9.0 - Create a Provider Content Library"
+    url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/provider-management/create-a-content-library.html
+  - title: "VCF 9.0 - Managing Content Libraries"
+    url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/organization-management/adding-and-managing-content-libraries.html
+  - title: "VCF 9.0 - Create an Organization Content Library"
+    url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/organization-management/adding-and-managing-content-libraries/create-a-content-library.html
+  - title: "VCF 9.0 - Add a VM Image and Publish It to the Catalog"
+    url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/organization-management/adding-and-managing-content-libraries/creating-vm-images.html
+  - title: "VCF 9.0 - Managing Policies in VCF Automation"
+    url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/organization-management/creating-policies-for-all-apps-orgs.html
   - title: "William Lam - VCF 9.0 lab: configuring VCF Automation"
     url: https://williamlam.com/2025/08/ms-a2-vcf-9-0-lab-configuring-vcf-automation.html
   - title: "SDDC Manager API 9.0 - VcfAutomationSpec"

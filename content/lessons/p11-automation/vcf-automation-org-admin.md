@@ -9,7 +9,7 @@ difficulty: advanced
 summary: Everything the organization administrator does in an All Apps organization - users and roles, projects and namespaces, VPC networking, content libraries and blueprints, extensibility with Orchestrator and event subscriptions, and approval, lease, day-2 and IaaS resource policies.
 topics: [vcfa-org-admin]
 objectives: ["4.4"]
-keyTerms: [vcfa-project, vcfa-namespace, namespace-class, event-subscription, vcfa-governance-policy, region-quota, all-apps-organization]
+keyTerms: [vcfa-project, vcfa-namespace, namespace-class, vcfa-connectivity-profile, vcfa-ip-quota, organization-content-library, vm-image-identifier, nsx-vpc, transit-gateway, event-subscription, vcfa-governance-policy, region-quota, all-apps-organization]
 labs: [lab-vcfa-organization-setup]
 components: [vcf-automation, supervisor]
 related: [vcf-automation-tenancy-regions, vcf-automation-architecture, vcf-apis-powercli]
@@ -18,8 +18,30 @@ sources:
     url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/organization-management.html
   - title: "VCF 9.0 - Managing Projects in VCF Automation"
     url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/organization-management/managing-projects-in-vcfa.html
+  - title: "VCF 9.0 - Managing Networking in VCF Automation"
+    url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/organization-management/adding-and-managing-virtual-private-clouds.html
+  - title: "VCF 9.0 - Create a Connectivity Profile in VCF Automation"
+    url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/organization-management/adding-and-managing-virtual-private-clouds/create-a-connectivity-profile.html
+  - title: "VCF 9.0 - Create a Virtual Private Cloud in VCF Automation"
+    url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/organization-management/adding-and-managing-virtual-private-clouds/add-a-vpc.html
+  - title: "VCF 9.0 - Managing IP Address Blocks and IP Quotas"
+    url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/organization-management/adding-and-managing-virtual-private-clouds/ip-management.html
+  - title: "VCF 9.0 - Managing Content Libraries in VCF Automation"
+    url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/organization-management/adding-and-managing-content-libraries.html
+  - title: "VCF 9.0 - Create an Organization Content Library"
+    url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/organization-management/adding-and-managing-content-libraries/create-a-content-library.html
+  - title: "VCF 9.0 - Add a VM Image and Publish It to the Catalog"
+    url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/organization-management/adding-and-managing-content-libraries/creating-vm-images.html
   - title: "VCF 9.0 - Creating Policies for All Apps Organizations"
     url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/organization-management/creating-policies-for-all-apps-orgs.html
+  - title: "VCF 9.0 - Configure Approval Policies"
+    url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/organization-management/creating-policies-for-all-apps-orgs/vcfa-approval-policies-all-apps.html
+  - title: "VCF 9.0 - Configure Day 2 Action Policies"
+    url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/organization-management/creating-policies-for-all-apps-orgs/vcfa-all-apps-day-2-policies.html
+  - title: "VCF 9.0 - Configure Lease Policies"
+    url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/organization-management/creating-policies-for-all-apps-orgs/vcfa-all-apps-lease-policies.html
+  - title: "VCF 9.0 - Configure IaaS Resource Policies"
+    url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/organization-management/creating-policies-for-all-apps-orgs/vcfa-iaas-policy.html
   - title: "VCF 9.0 - Event Subscriptions in VCF Automation for All Apps"
     url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/organization-management/event-subcriptions-in-vcf-automation-for-all-apps.html
   - title: "VCF 9.0 - Managing Organizations (provider view)"
@@ -38,8 +60,8 @@ long, and what happens automatically around each request.
 
 - Manage users, groups and roles in an organization (including external identity providers).
 - Create projects, namespace classes and namespaces within the region quota.
-- Configure organization networking with VPCs and subnets.
-- Curate content: organization content libraries, blueprints and the catalog.
+- Configure organization networking with connectivity profiles, three address scopes, VPCs, namespaces and IP quotas.
+- Curate content: organization content libraries, VM images, blueprints and project-scoped catalog items.
 - Automate business processes with Orchestrator workflows, event subscriptions and custom resources.
 - Create approval, day-2 action, lease and IaaS resource policies, and scope them to the org or to projects.
 
@@ -49,7 +71,7 @@ long, and what happens automatically around each request.
 |---|---|---|
 | Identity | IdPs (LDAP, SAML, OIDC), users, groups, roles | "Roles assigned to users and groups are an essential part to identity and access management" |
 | Structure | [[vcfa-project|Projects]], [[vcfa-namespace|namespaces]], [[namespace-class|namespace classes]] | Project = "logical grouping of users and the infrastructure that they are assigned" |
-| Networking | VPCs, private/public subnets, network quotas | Organization networking pages |
+| Networking | Connectivity profiles, VPCs, three address scopes, transit gateway, IP quotas | Organization networking pages |
 | Content | Content libraries (VM images, templates), blueprints, catalog | "Create and publish blueprints for infrastructure-as-code deployments" |
 | Extensibility | Orchestrator workflows in the catalog, [[event-subscription|event subscriptions]], custom resources | Subscriptions run workflows "when a triggering event occurs" |
 | Governance | [[vcfa-governance-policy|Policies]]: approval, day 2 action, lease, IaaS resource | "guardrails around provisioning requests" |
@@ -84,6 +106,28 @@ Scope: the whole **organization** or specific **projects**, refined with deploym
 namespace names or namespace classes. Multiple policies are merged by evaluation and ranking. Three views: **Policy
 Definition**, **Policy Assignments** (effective application) and **Policy Enforcement** (audit history).
 
+### Exact policy workflow and lifecycle
+
+In the organization portal open **Manage & Govern > Policies**. On **Policy Definition**, select **New Policy** and the
+required type. Define the rule, choose organization-wide or selected-project scope, add deployment criteria when the
+rule should match only a project, namespace or namespace class, and save it. The policy applies to current deployments
+as well as new ones, so examine its effective scope before activation rather than treating it as request-time only.
+
+Use the three tabs for different questions:
+
+| View | Question it answers |
+|---|---|
+| Policy Definition | What rules has the organization administrator created? |
+| Policy Assignments | Which policies are effectively assigned to this resource, namespace or project after criteria evaluation? |
+| Policy Enforcement | When was a policy enforced, with what policy name and status? |
+
+For an approval policy, select the catalog item/resource criteria, designate approvers and verify pending work in
+**Inbox**. A Day 2 Action policy selects the user group and allowed or denied actions on deployed resources. A lease
+policy sets the maximum deployment lifetime; expiration destroys the deployment and reclaims its resources. An IaaS
+Resource policy constrains VM or Kubernetes Cluster service requests and uses CEL when the built-in templates are not
+sufficient. When several policies match, VCF Automation evaluates, ranks and, where supported, merges them into the
+effective policy shown in **Policy Assignments**.
+
 ### Extensibility
 
 | Mechanism | Use |
@@ -105,13 +149,19 @@ Org admin onboarding of a new team:
 3. **Namespace class**: create `small-app` (limits, VM classes `best-effort-small/medium`, storage class, content library).
 4. **Namespace**: create `payments-dev` from the class inside the project, within the org quota.
 5. **Network**: create a VPC for the project with a private subnet for app tiers and a public subnet for the load
-   balancer (public IPs come from the provider's IP space through the regional networking).
+   balancer. Select the region and a connectivity profile; public addresses come from provider-managed external blocks
+   and private TGW space gives direct reachability to other VPCs in the organization.
 6. **Content**: upload the team's hardened image to an org content library; publish a blueprint "3-tier app" to the
    catalog for the project.
 7. **Extensibility**: subscribe a CMDB-registration workflow to the post-provisioning event (blocking, priority 10).
 8. **Governance**: lease policy 30 days for `payments-dev`, approval policy for anything requesting more than the
    small class, day-2 policy forbidding "delete" for non-admins.
 9. **Test** as a team member: request the blueprint, approve it from the Inbox, verify the CMDB entry and the lease.
+
+The organization administrator owns both setup and continuous control. After onboarding, review project membership,
+namespace consumption versus provider allocation, VPC and content visibility, policy assignments and enforcement
+history. Escalate only provider-owned limits—region allocation, provider gateways, external IP capacity and provider
+libraries—to the provider administrator.
 
 ## Deep Dive
 
@@ -129,11 +179,40 @@ Assignments** to see the effective result and **Policy Enforcement** to audit wh
 
 ### Content layering
 
-| Layer | Who manages | Tenant can edit? |
+| Layer | Who manages | Availability and accounting |
 |---|---|---|
-| Provider content library | Provider | No (read-only) |
-| Organization content library | Org admin | Yes (within the org) |
-| Blueprints / catalog items | Org admin (or delegated) | Yes |
+| Provider content library | Provider | Read-only to every organization with quota in a selected region |
+| [[organization-content-library|Organization content library]] | Org admin | Private to this organization; selected regions; storage counts against organization quota |
+| VM image | Org admin | OVA, OVF or ISO; receives a unique [[vm-image-identifier|VMI identifier]] for blueprint references |
+| Catalog item | Org admin (or delegated) | Published for one project and optionally shared with other projects in the organization |
+
+Organization libraries must be explicitly enabled in each region where the organization has quota. They are normally
+available to all namespaces in all projects. During creation, the administrator can disable **Assign to all current and
+future namespaces**; that choice cannot be changed later. A namespace class can then expose the library only to
+namespaces created from that class.
+
+Content consumes real storage. An organization library counts against the organization's storage quota. A subscribed
+external library downloads remote images locally, and a region backed by multiple vCenter instances can replicate the
+library into each vCenter, so physical consumption can be higher than the nominal image size.
+
+### Exact organization-content workflow
+
+1. Log in to the organization portal as organization administrator and open **Build & Deploy > Content Hub > Content
+   Libraries**.
+2. Select **New**, enter a name, decide whether to assign it to all current and future namespaces, and select **Next**.
+   This namespace-assignment setting is immutable.
+3. Select one or more regions and one storage class per region, review and select **Confirm**.
+4. Open **Build & Deploy > Content Hub > VM Images**, select **Upload**, choose a local OVA, OVF or ISO file, select the
+   organization library, name the image and select **Submit**. Record its unique VMI identifier for blueprint use.
+5. To publish an OVF image, use its vertical ellipsis and select **Publish to Catalog**. Name the item, select the
+   owning project, optionally share it with other projects, optionally enable cloud-init for a compatible image, and
+   select **Publish**. ISO images cannot be published directly to the catalog.
+
+The library name and description can be changed after creation only through the VCF Automation API. If an
+administrator adds an item directly to the backing published vCenter library, refresh the VCF Automation library to
+reconcile it.
+
+::diagram[d11-vcfa-content-lifecycle]
 
 
 ### Worked exam-style scenarios
@@ -153,11 +232,51 @@ Assignments** to see the effective result and **Policy Enforcement** to audit wh
 
 ### Organization networking in more detail
 
-Organization networking is built on NSX VPCs (see [[nsx-vpc]] and [[transit-gateway]]). The provider's regional
-networking gives the organization a path north-south through a provider gateway; inside the organization the admin
-creates VPCs with **private subnets** (internal to the VPC), **public subnets** (addresses from the provider's IP
-space, reachable externally) and network quotas. Broadcom KB articles about regional networking show typical failure
-modes, such as overlapping private VPC CIDRs blocking creation, so plan non-overlapping private ranges per org.
+Organization networking is built on NSX [[nsx-vpc|VPCs]] and a [[transit-gateway]]. The provider first assigns the
+organization a region, regional networking through a provider gateway and external address capacity. The organization
+administrator then works in **Manage & Govern > Networking** and controls four layers:
+
+| Layer | What the org admin controls | Scope |
+|---|---|---|
+| IP management | Private TGW IPv4 blocks and [[vcfa-ip-quota|IP quotas]]; provider external blocks are visible but provider-managed | Organization / region |
+| [[vcfa-connectivity-profile|Connectivity profile]] | Region, up to five external IPv4 blocks and up to five private TGW IPv4 blocks | Reusable by VPCs |
+| VPC | Region, connectivity profile, private VPC CIDRs and applicable IP quotas | One isolated network domain |
+| Namespace association | One VPC can serve several namespaces, or a namespace can receive a dedicated VPC | Workload boundary |
+
+The three address scopes solve different problems:
+
+| Address scope | Who supplies it | Reachability and use |
+|---|---|---|
+| **Private VPC CIDR** | VPC administrator | Local to one VPC; may overlap another VPC; requires NAT to reach outside that VPC |
+| **Private TGW IPv4 block** | Organization administrator | Advertised inside the organization and its transit gateway; provides direct reachability between VPCs in that organization |
+| **External IPv4 block** | Provider administrator | Allocated from provider IP space; supports external connectivity and outbound SNAT for private workloads |
+
+Choose the sharing boundary deliberately. Use one VPC for several namespaces when they may share a network security
+boundary. Create a VPC per namespace or project when network separation matters. A project boundary controls who sees
+deployments; a VPC boundary controls the network domain. They solve different isolation requirements.
+
+::diagram[d11-vcfa-org-networking]
+
+### Exact organization-networking workflow
+
+1. Review the regions assigned to the organization on **Regions**.
+2. If east-west organization address space is required, open **Manage & Govern > Networking > IP Management > IP
+   Address Blocks**, select **New Private - TGW IP Block**, enter the CIDR and region, and select **Create**.
+3. If consumption must be capped, open **IP Management > IP Quotas**, select **New IP Quota**, then choose the region,
+   scope (**External** or **Private - Transit Gateway**), address blocks, counts of individual IPs and CIDRs, maximum
+   subnet size and the VPCs that receive the quota.
+4. Open **Manage & Govern > Networking > Virtual Private Clouds > Connectivity Profiles**, select **New Connectivity
+   Profile**, enter a name, select the region and select the required external and private TGW IPv4 blocks. A profile
+   accepts up to five blocks of each type. Select **Create**.
+5. Under **Virtual Private Clouds**, select **New VPC**. Enter the name, select an allocated region and its connectivity
+   profile, specify private VPC IPv4 CIDRs, apply the relevant IP quotas and select **Create**.
+6. Associate the VPC with one or more namespaces according to the required isolation model, then deploy a small test
+   workload and verify same-VPC, cross-VPC and north-south reachability separately.
+
+:::warning
+Editing a connectivity profile changes the northbound connectivity configuration of every VPC that uses it. Inventory
+the attached VPCs and plan a validation window before changing its blocks.
+:::
 
 ## Configuration
 
@@ -168,6 +287,10 @@ modes, such as overlapping private VPC CIDRs blocking creation, so plan non-over
 | Day 2 action policy | Deny `Delete` for role project user; allow for project admin |
 | IaaS resource policy | CEL constraint limiting VM classes in `*-dev` namespaces |
 | Event subscription | Topic: post-provisioning event; workflow: Register in CMDB; blocking, priority 10, recovery workflow: notify ops |
+| Connectivity profile | Region `region-lab`; external block supplied by provider; private TGW block reserved for the organization |
+| VPC | Region + connectivity profile + non-overlapping local CIDR for operational clarity; apply an IP quota where required |
+| Organization content library | Region `region-lab`; approved storage class; explicit namespace scope; storage budget included in org quota |
+| Catalog item | OVF image published to project `payments`; optional sharing only to named projects |
 
 Exact event topic names are listed in TechDocs ("Event Topics Provided with VCF Automation"); use the names shown in
 your version.
@@ -189,6 +312,13 @@ limits VCF Automation set are applied. The API patterns are in [VCF APIs and Pow
 | Provisioning fails at the end | Blocking subscription workflow failed (no recovery runnable) |
 | Namespace creation refused | Requested limits exceed the organization's region quota |
 | User sees no catalog items | User not a member of the project the items are shared with |
+| New VPC cannot be created in the intended region | No connectivity profile exists for that region, or the region is not allocated to the organization |
+| Cross-VPC traffic has no direct route | The VPCs do not use private TGW address space through the organization's transit gateway |
+| Several VPCs lose northbound connectivity after one edit | A shared connectivity profile was changed; every attached VPC inherited the new northbound configuration |
+| VPC creation or allocation exceeds policy | The selected external/private block has no suitable IP quota or the quota is exhausted |
+| Organization storage usage is higher than expected | External content was downloaded locally or the library was replicated across several vCenter instances in the region |
+| A namespace cannot see an organization library | The all-namespaces option was disabled and its namespace class does not include the library |
+| ISO image has no **Publish to Catalog** action | Direct catalog publishing is supported for OVF images, not ISO images |
 
 ## Troubleshooting
 
@@ -196,6 +326,10 @@ limits VCF Automation set are applied. The API patterns are in [VCF APIs and Pow
 2. Extensibility: check the workflow run in Orchestrator and the subscription's blocking/priority settings.
 3. Capacity: compare namespace limits with the org quota; ask the provider for more quota.
 4. Visibility: check project membership and roles.
+5. Networking: confirm region allocation, connectivity profile, selected address blocks, IP quota and namespace-to-VPC
+   association before tracing the provider gateway or NSX data path.
+6. Content: verify region and storage-class scope, namespace assignment, organization storage quota, image type and
+   target project before investigating the catalog.
 
 ## Real-World Scenario
 
@@ -213,8 +347,19 @@ an owner and an IP record.
 
 - Org admin tasks: identity and roles, projects, namespaces/namespace classes, networks (VPCs), content, catalog,
   extensibility, policies.
+- Organization network chain: provider regional networking -> organization connectivity profile -> VPC -> namespace.
+- Private VPC CIDR is local and needs NAT outside the VPC; private TGW space gives organization-internal cross-VPC
+  reachability; external blocks are provider-managed.
+- A connectivity profile is region-specific and reusable; editing it affects northbound connectivity for every VPC
+  that uses it.
+- Provider libraries are automatically read-only in organizations with regional quota; organization libraries are
+  private, quota-consuming and must be scoped to regions and namespaces.
+- Upload OVA, OVF or ISO; use the image's VMI identifier in blueprints; publish OVF directly to a project catalog, but
+  not ISO.
 - Project = users + infrastructure; namespace = resource envelope; namespace class = template.
 - Policies: **approval, day 2 action, lease** (catalog) and **IaaS resource** (CEL); scope org or project.
+- Policies affect current and future deployments; use **Assignments** for the effective result and **Enforcement** for
+  the dated audit trail.
 - Event subscriptions: **blocking** (sync, priority 0 highest, recovery runnable) vs **non-blocking** (async).
 - Extensibility runs **VCF Operations Orchestrator** workflows.
 
@@ -232,16 +377,27 @@ Priority 0 is the **highest** priority for blocking subscriptions.
 Day 2 action policies restrict *actions on existing resources*; approval policies gate *requests*.
 :::
 
+:::trap
+A project and a VPC are both isolation tools, but they isolate different things: project membership controls resource
+visibility, while the VPC defines the network domain.
+:::
+
+:::trap
+The **Assign to all current and future namespaces** choice for an organization content library cannot be changed after
+creation. Use namespace-class assignment when a library must stay limited to selected namespaces.
+:::
+
 ## Knowledge Check
 
 ::quiz
 
 ## Summary
 
-The organization administrator shapes the provider's quota into safe self-service: projects and namespaces (often from
-namespace classes) define who gets what; VPCs provide networks; content libraries, blueprints and the catalog define
-what can be deployed; Orchestrator workflows and event subscriptions automate business processes; and approval, day-2
-action, lease and IaaS resource policies govern every request.
+The organization administrator shapes the provider's quota into safe self-service: projects and namespaces define who
+gets what; connectivity profiles, VPCs, three address scopes and IP quotas define how workloads communicate; content
+libraries and their region/namespace scope, VMI-tagged images, blueprints and project catalog items define what can be
+deployed; Orchestrator workflows and event subscriptions automate business processes; and approval, day-2 action,
+lease and IaaS resource policies govern every request.
 
 ## Next Topic
 

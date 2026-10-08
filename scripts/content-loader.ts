@@ -155,6 +155,12 @@ export function loadContent(): ContentBundle {
   const diagramIds = uniq('diagram', diagrams);
   uniq('scenario', scenarios);
   const objectiveIds = new Set(objectives.map((o) => o.id));
+  const objectiveItems = new Map<string, { objective: string; text: string }>();
+  for (const objective of objectives) for (const item of objective.items) {
+    if (!item.id.startsWith(`${objective.id}.`)) err('objectives.yaml', `item "${item.id}" does not belong to objective "${objective.id}"`);
+    if (objectiveItems.has(item.id)) err('objectives.yaml', `duplicate objective item id "${item.id}"`);
+    objectiveItems.set(item.id, { objective: objective.id, text: item.text });
+  }
   const lessonAnchors = new Map(lessons.map((l) => [l.meta.id, new Set(l.anchors)]));
 
   // ---- cross references ---------------------------------------------------
@@ -195,6 +201,13 @@ export function loadContent(): ContentBundle {
     if (!lessonIds.has(q.lesson)) warn(f, `unknown lesson "${q.lesson}"`);
     else if (q.section && !lessonAnchors.get(q.lesson)?.has(q.section)) warn(f, `unknown section "${q.lesson}#${q.section}"`);
     if (q.objective && !objectiveIds.has(q.objective)) err(f, `unknown objective "${q.objective}"`);
+    if (q.objective && !q.objectiveItem) warn(f, `objective "${q.objective}" has no objectiveItem tag`);
+    if (q.objectiveItem) {
+      const item = objectiveItems.get(q.objectiveItem);
+      if (!item) err(f, `unknown objective item "${q.objectiveItem}"`);
+      else if (!q.objective) err(f, `objectiveItem "${q.objectiveItem}" requires an objective`);
+      else if (item.objective !== q.objective) err(f, `objectiveItem "${q.objectiveItem}" belongs to objective "${item.objective}", not "${q.objective}"`);
+    }
     if (q.diagram) ref(f, 'diagram', diagramIds, [q.diagram]);
     if ('options' in q) {
       const n = q.options.filter((o) => o.correct).length;

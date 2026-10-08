@@ -8,6 +8,7 @@
     "build": "npm run content:check && tsc -b && vite build",
     "preview": "vite preview --host",
     "content:check": "tsx scripts/check-content.ts",
+    "content:coverage": "tsx scripts/report-exam-coverage.ts",
     "test": "vitest run",
     "typecheck": "tsc -b"
   },

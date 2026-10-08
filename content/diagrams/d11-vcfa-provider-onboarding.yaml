@@ -1,0 +1,44 @@
+id: d11-vcfa-provider-onboarding
+title: "VCF Automation provider onboarding: infrastructure to governed tenant"
+description: >
+  Provider onboarding is a dependency chain. Homogeneous Supervisors attached to one NSX instance form a region.
+  An IPv4 IP space and an active-standby Tier-0 or Tier-0 VRF form the provider gateway, while synchronized edge
+  clusters supply data-plane capacity. An All Apps organization then receives region capacity, classes, a first
+  administrator and regional networking. The organization administrator subdivides that allocation into projects,
+  namespaces and policies for governed consumption.
+width: 1040
+height: 560
+groups:
+  - { id: g-infra, x: 20, y: 20, w: 1000, h: 150, label: "Infrastructure prerequisites", kind: compute }
+  - { id: g-provider, x: 20, y: 195, w: 1000, h: 175, label: "Provider-managed objects", kind: mgmt }
+  - { id: g-tenant, x: 20, y: 395, w: 1000, h: 145, label: "Organization consumption", kind: external }
+nodes:
+  - { id: nsx, x: 45, y: 65, w: 180, h: 64, label: "One NSX instance", sublabel: "shared by all Supervisors", kind: network, info: "Every Supervisor selected for one region must integrate with the same NSX instance." }
+  - { id: supervisors, x: 275, y: 55, w: 260, h: 84, label: "Homogeneous Supervisors", sublabel: "classes, VM classes, K8s, IaaS services", kind: compute, info: "Storage classes and VM classes must exist consistently. Kubernetes versions and enabled IaaS services must match." }
+  - { id: t0, x: 585, y: 65, w: 190, h: 64, label: "Tier-0 / Tier-0 VRF", sublabel: "active-standby in VCF 9.0", kind: network, info: "The provider gateway must be backed by an active-standby Tier-0 gateway; a VRF can link to that Tier-0." }
+  - { id: edge, x: 825, y: 65, w: 170, h: 64, label: "NSX Edge cluster", sublabel: "visible and synchronized", kind: network, info: "Changes are made in NSX, then synchronized into VCF Automation. Node Health exposes member health." }
+  - { id: region, x: 60, y: 245, w: 200, h: 72, label: "Region", sublabel: "Supervisors + offered classes", kind: mgmt, info: "Created at Infrastructure > Regions. It aggregates capacity and can represent a service class or location." }
+  - { id: ipspace, x: 310, y: 245, w: 200, h: 72, label: "IPv4 IP space", sublabel: "scope + default quotas", kind: network, info: "Provider-managed ranges and prefixes for external connectivity. Organization-specific quota overrides are optional." }
+  - { id: gateway, x: 560, y: 245, w: 200, h: 72, label: "Provider gateway", sublabel: "region + Tier-0 + IP spaces", kind: network, info: "Registers the NSX gateway and associates one or more IP spaces for tenant consumption." }
+  - { id: org, x: 810, y: 235, w: 185, h: 92, label: "All Apps organization", sublabel: "zone limits, classes, first admin", kind: external, info: "The name becomes the URL identifier. Creation cannot be cancelled after Create and Continue; disable before deletion." }
+  - { id: regionalnet, x: 175, y: 435, w: 220, h: 64, label: "Regional networking", sublabel: "organization binding", kind: network, info: "Connects the organization allocation to its region, provider gateway and edge capacity." }
+  - { id: quota, x: 430, y: 435, w: 200, h: 64, label: "Region allocation", sublabel: "CPU, memory, classes, storage", kind: mgmt, info: "The provider allocation is the ceiling from which organization namespaces consume capacity." }
+  - { id: workload, x: 675, y: 425, w: 285, h: 84, label: "Projects + namespaces + policies", sublabel: "isolated, quota-bound self-service", kind: vm, info: "Organization administrators create team boundaries, resource envelopes and governance policies inside the provider allocation." }
+edges:
+  - { from: nsx, to: supervisors, label: "integrates", kind: dependency }
+  - { from: supervisors, to: region, label: "pool", kind: dependency }
+  - { from: t0, to: gateway, label: "backs", kind: north-south }
+  - { from: edge, to: gateway, label: "capacity", kind: dependency, dashed: true }
+  - { from: ipspace, to: gateway, label: "associate", kind: dependency }
+  - { from: region, to: org, label: "allocate", kind: mgmt }
+  - { from: gateway, to: org, label: "expose", kind: north-south }
+  - { from: org, to: regionalnet, label: "bind", kind: control }
+  - { from: org, to: quota, label: "limit", kind: mgmt }
+  - { from: regionalnet, to: workload, label: "connect", kind: north-south }
+  - { from: quota, to: workload, label: "govern", kind: control }
+steps:
+  - { title: "Prove homogeneity", text: "Confirm one NSX instance, identical storage/VM classes, matching Kubernetes versions and consistent IaaS services.", highlight: [nsx, supervisors] }
+  - { title: "Create the region", text: "Select NSX Manager, Supervisors and offered storage classes; submit and inspect zones and capacity.", highlight: [supervisors, region] }
+  - { title: "Register provider networking", text: "Create an IPv4 IP space, add an active-standby-backed provider gateway and synchronize Edge clusters.", highlight: [ipspace, t0, edge, gateway] }
+  - { title: "Create the tenant boundary", text: "Create the All Apps organization, allocate zones/classes, add its first administrator and configure regional networking.", highlight: [region, gateway, org, regionalnet, quota] }
+  - { title: "Delegate safely", text: "The organization administrator creates projects, namespaces and policies inside the provider allocation.", highlight: [regionalnet, quota, workload] }

@@ -30,7 +30,7 @@ sources:
   - title: "VCF 9.0 - Monitor Your Environment and Prevent Issues with VCF Health"
     url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/infrastructure-operations/using-vcf-operations-diagnostics/monitor-your-environment-and-prevent-issues-with-vcf-health.html
   - title: "VCF 9.0 - Monitoring Storage Operations"
-    url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/infrastructure-operations/monitoring-storage-operations(1).html
+    url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/infrastructure-operations/connect-to-data-sources/vsan-overview/monitoring-storage-operations(1).html
   - title: "VCF 9.0 - Configuring Alerts and Using Actions (log-based alerts)"
     url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/infrastructure-operations/configuring-alerts-and-actions.html
 ---
@@ -70,6 +70,8 @@ and scale your network".
 ## Architecture
 
 ::diagram[d10-logs-network-dataflow]
+
+::diagram[d10-ops-network-storage-decision]
 
 ::figure{src="https://techdocs.broadcom.com/content/broadcom/techdocs/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/_jcr_content/assetversioncopies/7b16f92e-5c69-42bb-9e3e-655115c265a3.original.svg" caption="VCF Operations for Logs Models (Broadcom TechDocs, VCF 9.0 Architectural Options)" source="https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/design/vmware-cloud-foundation-concepts/vcf-operations.html"}
 
@@ -135,13 +137,50 @@ Monitoring networks:
 3. Launch into VCF Operations for networks for deep work: flow analytics, network maps and intents,
    micro-segmentation planning and **recommended firewall rules**.
 
+The built-in page has two evidence tiers. The core VCF Operations integrations can populate **Networking Inventory**,
+**Network Alerts**, **NSX Managers and VPCs**, and **NSX Health**. They let you open an NSX instance, transport node or
+edge cluster and determine whether the management and transport fabric are healthy. **Business Applications with
+Flows** and **Traffic Summary** depend on VCF Operations for networks. The first links into the networks console for
+flow analysis and troubleshooting; the second summarizes flow traffic from the last 24 hours. If the appliance is
+absent, the top-right **Install Operations Network Appliance** action is the supported starting point, and empty flow
+widgets are a missing-capability signal rather than proof that NSX itself is unhealthy.
+
+A disciplined Network Operations investigation is:
+
+1. Open **Infrastructure Operations > Network Operations** and set the time context for the incident.
+2. Read **Network Alerts**, then use **NSX Health** to identify an unhealthy manager, transport node or edge node.
+3. Use **Networking Inventory** to open the affected object and confirm whether the alert belongs to management,
+   transport or edge scope.
+4. If the question is about communicating endpoints, ports, paths or rules, open **Business Applications with Flows**
+   or **Traffic Summary**, then launch VCF Operations for networks for path and flow evidence.
+5. Correlate the same time window with logs and metrics. Do not treat a healthy NSX Manager as proof that an
+   application path is healthy.
+
 Monitoring vSAN:
 
 1. **Infrastructure Operations > Storage Operations** - filter by storage type.
 2. Check the **vSAN Cluster Health Score** and hover a cluster pin for IOPS, latency and throughput.
-3. In the vSAN Cluster Performance widget, **Run New Diagnostics** in mode **Troubleshooting** (production clusters
-   with workload) or **Benchmarking and Optimizing** (new clusters before go-live); reports cover seven days and include
-   remediation steps.
+3. Confirm that the expected vSAN cluster appears. VCF Operations needs a vSAN-enabled vCenter account that is
+   connected and collecting; missing data is first an integration/collection problem, not a storage-health result.
+4. In the **vSAN Cluster Performance** widget select **View Diagnostics > Run New Diagnostics**. Choose the diagnostic
+   goal, target vSAN cluster and time range.
+5. Use **Troubleshooting** for a cluster already running workloads, or **Benchmarking and Optimizing** for a new cluster
+   before workloads are added. The result page shows cluster information, diagnostic findings, remediation steps and
+   suggestions. The performance-diagnostics history reaches back seven days, so preserve older incident evidence
+   elsewhere.
+
+### Read the storage dashboard in the right order
+
+Storage Operations covers vSAN and non-vSAN datastores, but the richest diagnostics are vSAN-specific. Start with
+scope, then health, then performance:
+
+| Question | Evidence on Storage Operations | Interpretation |
+|---|---|---|
+| Is the datastore represented? | Inventory and the vSAN/non-vSAN filter | If it is absent, verify vCenter/vSAN integration and collection first |
+| Is the cluster broadly healthy? | **vSAN Cluster Health Score** and vSAN Clusters table | A score is a summary; drill into the failed health checks before remediation |
+| Is this a live performance issue? | Hover the cluster pin for IOPS, latency and throughput | Correlate the three measurements and the incident time; high IOPS alone is not a fault |
+| Which diagnostic goal fits? | **Troubleshooting** or **Benchmarking and Optimizing** | Choose by workload state, not by which option sounds more comprehensive |
+| What should change? | Diagnostics results, remediation steps and suggestions | Validate the recommendation against policy, capacity and failure-domain constraints |
 
 ## Deep Dive
 
@@ -171,6 +210,13 @@ rely on vSphere HA and backups.
 Alerts are object-level and policy-driven. VCF Health is a curated, stack-wide view of known-critical dependencies
 (certificates, NTP/DNS, vCenter, vMotion, VM operations, snapshots). Start with VCF Health when the question is "is the
 platform healthy?"; start with alerts when the question is "what is wrong with this object?".
+
+### Network and storage evidence are complementary
+
+An application timeout does not identify a layer. Network Operations can show a degraded transport node, a dropped
+flow or a firewall rule; Storage Operations can show a vSAN health or latency problem. Check both in the same time
+window, then use logs to explain the change. This prevents a common exam and operational error: selecting the tool by
+the symptom wording instead of by the evidence required.
 
 ## Configuration
 

@@ -18,10 +18,22 @@ sources:
     url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/provider-management.html
   - title: "VCF 9.0 - Regions in VCF Automation"
     url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/provider-management/provider-virtual-datacenters.html
+  - title: "VCF 9.0 - Create a Region"
+    url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/provider-management/provider-virtual-datacenters/create-a-provider-virtual-datacenter.html
   - title: "VCF 9.0 - Managing Organizations"
     url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/provider-management/managing-organizations.html
+  - title: "VCF 9.0 - Create an Organization for All Applications"
+    url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/provider-management/managing-organizations/create-an-organization.html
   - title: "VCF 9.0 - Managing Networking Resources"
     url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/provider-management/managing-networking-resources.html
+  - title: "VCF 9.0 - Add an IP Space"
+    url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/provider-management/managing-networking-resources/managing-ip-spaces/add-a-public-ip-space.html
+  - title: "VCF 9.0 - Add a Provider Gateway"
+    url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/provider-management/managing-networking-resources/managing-provider-gateways/add-a-provider-gateway.html
+  - title: "VCF 9.0 - View and Sync Edge Clusters"
+    url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/provider-management/managing-networking-resources/view-and-sync-edge-clusters-in-vcf-automation.html
+  - title: "VCF 9.0 - Create a Provider Content Library"
+    url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/provider-management/create-a-content-library.html
   - title: "VCF 9.0 - Organization Management (projects, namespaces)"
     url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/organization-management/managing-projects-in-vcfa.html
   - title: "William Lam - VCF 9.0 lab: configuring VCF Automation"
@@ -118,6 +130,34 @@ Provider setup sequence (matches William Lam's VCF 9.0 lab walkthrough):
 8. Optionally create a **provider content library** and share it to organizations (read-only for them).
 9. Hand over: the org admin logs in to the organization portal (`/automation` path in Lam's lab).
 
+::diagram[d11-vcfa-provider-onboarding]
+
+### Exact provider-portal workflow
+
+**Region.** Open **Infrastructure > Regions > New**. Enter the name and description, select the NSX Manager shared by
+all participating vCenter instances, select one or more Supervisors, select the storage classes offered in the region
+and select **Submit**. VCF Automation lists the union of storage classes but does not prove that each storage or VM
+class exists consistently on every vCenter. Expand the result to verify status, Supervisors, NSX Manager and CPU/memory
+use; open the region to inspect Supervisors, Classes, Storage Classes, Zones and Reserved VM Classes.
+
+**Provider networking.** Open **Infrastructure > Networking**:
+
+1. On **IP Spaces**, select **New**, enter the name, select the region and define up to five IPv4 ranges and prefixes
+   inside the internal scope. Optionally define `0.0.0.0/0` as external scope, then set default per-organization IP,
+   CIDR and maximum-subnet-size quotas. Review and select **Create**.
+2. In NSX, the backing Tier-0 must use **Active Standby** for VCF Automation 9.0. A Tier-0 VRF can be used when linked
+   to that Tier-0. Back it with the approved Edge cluster.
+3. On **Provider Gateways**, select **New**, name it, select the Tier-0's region, choose the Tier-0 or VRF, associate one
+   or more IP spaces, review and select **Create**.
+4. On **Edge Clusters**, verify the automatically discovered cluster and select **Sync** after NSX changes. Select the
+   cluster and open **Node Health** to inspect each Edge node.
+
+**All Apps organization.** Open **Infrastructure > Organizations > Create Organization**, choose **Organization for All
+Apps**, name it and select **Create and Continue**. The name becomes the URL identifier and the wizard cannot be
+cancelled after this checkpoint. Select a region and Supervisor; allocate zones with CPU/memory limits and reservations;
+assign VM and storage classes; then create the single first user with a role that can administer the organization and
+its identity provider. To remove an organization later, disable it before deletion.
+
 ## Deep Dive
 
 ### Multi-organizational tenancy and isolation
@@ -157,9 +197,30 @@ version before relying on limits.
 
 ### Provider content library
 
-Provider content libraries hold golden images and templates the provider wants every tenant to use. Because they are
-**read-only** to organizations, tenants cannot alter or delete provider images; they can add their own content in
-organization content libraries (next lesson).
+Provider content libraries hold golden images the provider wants every tenant to use. One VCF Automation library is an
+abstraction over backing vCenter content libraries in the selected regions. When the provider creates it, VCF
+Automation creates a backing library on suitable storage in every participating vCenter, randomly selects one backing
+library as publisher and makes the others subscribers. The vCenter instances therefore need network connectivity for
+content synchronization.
+
+The provider selects one or more regions and one storage class per region. Storage class names must exist consistently
+across the vCenter instances in the region; VCF Automation does not verify that every vCenter has the storage or VM
+class. Content libraries cannot use storage clusters, only datastores governed by the selected storage policies.
+
+Every organization with quota in a selected region receives the provider library automatically on a **read-only**
+basis. Organization users can deploy its images but cannot change the library. Provider actions remain centralized:
+
+1. In the **VCF Automation Provider Management Portal**, open **Infrastructure > Content Libraries**.
+2. On the **Content Library** tab, select **New**, enter a name and optional description.
+3. Optionally enable subscription to an external VCSP-compliant library and supply its URL and password.
+4. Select one or more regions and a storage class for each region, review and select **Confirm**.
+5. Use the row's vertical ellipsis to **Edit** scope/storage, **Refresh** changes made in backing vCenter libraries or
+   **Delete** the provider library.
+
+Changing the storage class triggers content migration. **Refresh** reconciles direct vCenter additions or deletions
+with the VCF Automation abstraction; it is not the same as an ordinary subscriber synchronization schedule.
+
+::diagram[d11-vcfa-content-lifecycle]
 
 ## Configuration
 
@@ -194,9 +255,12 @@ Line by line: `-u` uses basic authentication; `/policy/api/v1/infra/tier-0s` lis
 | Supervisor not offered when creating a region | It is on a different NSX instance than other selected Supervisors, or not healthy |
 | Region creation fails | Storage class names or configurations differ between Supervisors |
 | Tenant VPC public subnet unreachable from outside | IP space block not routed on the physical network (no BGP advertisement / static route) |
+| Provider gateway creation offers no suitable Tier-0 | The NSX Tier-0 is not in the selected region or is not configured Active Standby as required by VCF Automation 9.0 |
 | Org admin cannot create namespaces | No or insufficient region quota |
 | Org has no networking | Regional networking not configured (provider gateway / edge cluster not bound) |
 | Users locked out of an org | Organization deactivated |
+| Provider library missing in one expected region | Region was not selected, its storage class is inconsistent, or backing vCenter synchronization failed |
+| Content appears in a backing vCenter but not in VCF Automation | Run **Refresh** on the provider library to reconcile direct backing-library changes |
 
 ## Troubleshooting
 
@@ -204,6 +268,8 @@ Line by line: `-u` uses basic authentication; `/policy/api/v1/infra/tier-0s` lis
 2. Networking: verify provider gateway -> Tier-0 -> physical router routes for the IP space; edge cluster synced.
 3. Quota: check the org's region quota vs requested namespace limits.
 4. Content: confirm the provider library is shared to the org.
+5. Provider library distribution: verify selected regions and storage classes, then confirm publisher/subscriber
+   connectivity between participating vCenter instances.
 
 ## Real-World Scenario
 
@@ -221,11 +287,17 @@ immediately while the data stays intact for the handover.
 ## Exam Focus
 
 - Region = Supervisors sharing **one NSX instance** with **identical storage classes**; name/NSX immutable.
+- Region creation path = **Infrastructure > Regions > New**; VCF Automation does not verify class consistency on every
+  backing vCenter, so the provider must validate it.
 - Provider networking = **IP spaces** + **provider gateways** (Tier-0/VRF) + **edge cluster sync**; per-org
   **regional networking**.
+- In VCF Automation 9.0 the provider gateway uses an **Active Standby** Tier-0; IP spaces are IPv4 and can define
+  default quotas with organization-specific overrides.
 - Organizations: All Apps (region quota), VM Apps, Provider Consumption; first user = org admin; deactivation logs
   users out.
 - Provider content library = **read-only** to orgs.
+- Provider library = one VCF Automation abstraction backed by synchronized vCenter libraries across its selected
+  regions; all organizations with quota there receive it automatically.
 - Supervisor-based services: VM Service, VKS, storage classes, VPC networking in namespaces.
 
 ## Common Exam Traps
@@ -240,6 +312,11 @@ Supervisors attached to different NSX instances cannot be in the same region, ev
 
 :::trap
 Tenants cannot edit provider content libraries; they publish their own content in organization libraries.
+:::
+
+:::trap
+A provider content library is shared according to selected **regions** and organization quota in those regions. The
+provider does not manually grant edit rights to each organization.
 :::
 
 ## Knowledge Check
