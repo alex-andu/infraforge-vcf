@@ -78,6 +78,7 @@ topics:
   - { id: network-ops, title: VCF Network Operations, domain: operations, description: "Network visibility, flows and network monitoring." }
   - { id: health-diagnostics, title: Health and Diagnostics, domain: operations, description: "VCF Health and Diagnostics and storage operations." }
   - { id: compliance-drift, title: Compliance and Drift, domain: operations, description: "Security hardening compliance, configuration drift and app monitoring." }
+  - { id: hcx-workload-mobility, title: VCF Operations HCX, domain: operations, description: "Site pairing, service mesh, network extension and workload migration across VCF and vSphere environments." }
 
   # automation
   - { id: vcf-automation, title: VCF Automation, domain: automation, description: "Use cases, components and deployment options of VCF Automation." }

@@ -8,15 +8,15 @@ Totals:
 
 | Item | Count |
 |---|---|
-| Lessons | 71 (159,746 words) |
-| Questions | 677 |
-| Practical guides (internal `lab` schema) | 24 |
+| Lessons | 72 (161,862 words) |
+| Questions | 683 |
+| Practical guides (internal `lab` schema) | 25 |
 | Incidents | 10 |
 | Scenarios | 3 |
-| Diagrams | 110 |
-| Glossary terms | 270 |
+| Diagrams | 111 |
+| Glossary terms | 279 |
 | Commands / API entries | 116 |
-| Architecture components | 23 |
+| Architecture components | 24 |
 | Badges | 18 |
 
 ## Theory modules (VCF curriculum, `content/curriculum.yaml`)
@@ -33,7 +33,7 @@ Totals:
 | p07 | VCF Deployment | 4/4 | 8,953 | 37 | 4 |
 | p08 | Workload Domains | 5/5 | 11,100 | 41 | 2 |
 | p09 | Lifecycle Management | 4/4 | 8,892 | 40 | 1 |
-| p10 | VCF Operations | 5/5 | 12,284 | 71 | 2 |
+| p10 | VCF Operations | 6/6 | 14,400 | 77 | 3 |
 | p11 | Automation and APIs | 4/4 | 10,295 | 65 | 2 |
 | p12 | Identity, Security and Certificates | 4/4 | 8,047 | 30 | 2 |
 | p13 | Troubleshooting | 4/4 | 10,947 | 37 | 1 |
@@ -42,9 +42,9 @@ Totals:
 
 The lab counts are labs linked to that phase's lessons; one lab can be linked to several phases.
 
-- The standalone-theory template requires 17 sections, sources, at least one diagram and an inline quiz. The DNS/NTP pilot and Kubernetes foundations lesson use it; the other 69 lessons remain valid with their legacy `Lab` sections during incremental migration.
+- The standalone-theory template requires 17 sections, sources, at least one diagram and an inline quiz. The DNS/NTP pilot, Kubernetes foundations and HCX lessons use it; the other 69 lessons remain valid with their legacy `Lab` sections during incremental migration.
 - **Gaps:**
-  - VCF Operations HCX has no dedicated lesson. Foundational Kubernetes now has a dedicated theory lesson; its practical guide is gated on an available Workload Domain and Supervisor.
+  - Candidate-profile foundations for Kubernetes, DNS/NTP/certificates and HCX have dedicated theory. Their prepared guides remain gated on the required real infrastructure and observed evidence.
   - All 59 official items meet the internal five-question target. A question mapping is evidence of coverage, while later topic packages continue to review theory depth and accuracy.
 - **Unverified facts** are written as "check your version" rather than stated. The main areas:
   - ESX 9, vCenter and SDDC Manager log paths (only `domainmanager.log`, `hostd.log` and the sos output path are confirmed for VCF 9)
@@ -56,7 +56,7 @@ The lab counts are labs linked to that phase's lessons; one lab can be linked to
 
 ## Questions (`content/questions/*.yaml`)
 
-677 in total.
+683 in total.
 
 - **By objective:**
 
@@ -70,26 +70,26 @@ The lab counts are labs linked to that phase's lessons; one lab can be linked to
   | 4.2 | 111 |
   | 4.3 | 81 |
   | 4.4 | 69 |
-  | none | 3 (exam-strategy items, excluded from mocks) |
+  | none | 9 (3 exam-strategy and 6 HCX candidate-profile items, excluded from mocks) |
 
-- **By type:** 471 single, 74 multi, 46 ordering, 43 matching, 26 true/false, 17 CLI.
+- **By type:** 473 single, 75 multi, 47 ordering, 45 matching, 26 true/false, 17 CLI.
 - **Diagnostic pool:** 58 questions across 8 areas (16 are drawn at onboarding).
 - **Kinds:** concept, architecture, troubleshooting, log, command, scenario and design are all present.
 - Every question has an explanation: correct answer, concept, architecture, trap. It also has a lesson + section link and a `why` on each option.
-- All 674 objective-tagged questions have a primary `objectiveItem`; the three exam-strategy questions remain intentionally outside the testable objectives. See [EXAM_COVERAGE.md](EXAM_COVERAGE.md).
+- All 674 objective-tagged questions have a primary `objectiveItem`; three exam-strategy and six HCX candidate-profile questions remain intentionally outside the testable objectives. See [EXAM_COVERAGE.md](EXAM_COVERAGE.md).
 - **Gaps:**
   - 59/59 items meet the internal target of at least five questions; none are below it.
   - Coverage closure is complete; future additions should serve content depth, scenarios or newly verified product behavior rather than raw counts.
 
 ## Practical guides (`content/labs/*.yaml`)
 
-24 practical guides in the existing internal lab schema. Each has objectives, prerequisites, a topology diagram, steps with validation, expected results, hints and troubleshooting. The VCF Automation organization guide includes exact VCF 9.0 paths for regions, provider networking, organizations, address management, VPCs, content and policies. The two VCF Operations guides now have UI-first slices for Network Operations, Storage Operations, policy creation/assignment, product-managed Telegraf, Business Applications, VCF compliance and Configuration Drift. All three are marked **PREPARED — NOT YET LAB-VALIDATED** where current runtime evidence is absent.
+25 practical guides in the existing internal lab schema. Each has objectives, prerequisites, a topology diagram, steps with validation, expected results, hints and troubleshooting. The VCF Automation organization guide includes exact VCF 9.0 paths for regions, provider networking, organizations, address management, VPCs, content and policies. The three VCF Operations guides contain UI-first slices for Network Operations, Storage Operations, policy creation/assignment, product-managed Telegraf, Business Applications, compliance, Configuration Drift and HCX site-pair/service-mesh mobility. These guides are marked **PREPARED — NOT YET LAB-VALIDATED** where current runtime evidence is absent.
 
 - **Home lab and infrastructure:** `lab-homelab-proxmox-prep`, `lab-network-readiness`, `lab-esx-host-first-vm`, `lab-vcenter-cluster-ha-drs`, `lab-vm-templates-content-library`
 - **Storage:** `lab-vsan-esa-cluster`, `lab-vsan-storage-policies`
 - **NSX:** `lab-nsx-segments-tier1`, `lab-nsx-tier0-bgp-edge`, `lab-nsx-dfw-microsegmentation`
 - **VCF:** `lab-vcf-planning-workbook`, `lab-deploy-vcf-management-domain`, `lab-explore-vcf-fleet`, `lab-commission-hosts-create-wld`, `lab-enable-supervisor`
-- **Operate:** `lab-lifecycle-upgrade-planning`, `lab-certificate-replacement`, `lab-password-rotation`, `lab-vcf-ops-dashboards-alerts`, `lab-vcf-ops-logs-network`
+- **Operate:** `lab-lifecycle-upgrade-planning`, `lab-certificate-replacement`, `lab-password-rotation`, `lab-vcf-ops-dashboards-alerts`, `lab-vcf-ops-logs-network`, `lab-vcf-operations-hcx`
 - **Consume:** `lab-vcfa-organization-setup`, `lab-vcf-api-powercli`
 - **Troubleshooting:** `lab-troubleshooting-drill` (5 injected faults)
 - **Real-infrastructure verification:** `lab-verify-vcf-dns-ntp` (read-only DNS, reverse-resolution and time evidence for the documented VCF lab)
@@ -97,8 +97,8 @@ The lab counts are labs linked to that phase's lessons; one lab can be linked to
 **Status:**
 - The 23 legacy guides are written for a *generic* nested-on-Proxmox plan (`lab.internal`, 10.10.x.0/24).
 - The DNS/NTP pilot is the first separate, read-only guide for Alex's documented environment (`vcf.home.arpa`, DNS/NTP `infra01` at `10.100.80.10`, vCenter `10.100.10.21`, ESX hosts `10.100.10.11-.14`). Fresh PTR, saved-setting and synchronization evidence remain pending the real-lab run. See `docs/CURRENT_STATE.md` and `docs/LAB_ENVIRONMENT.md`.
-- The pilot is also the reference for the new UI-first runbook standard. The other 23 legacy guides still need bounded conversion to exact, build-verified click paths, field values, validation and rollback.
-- No labs for phases 14–15, HCX or Operations for Networks deployment.
+- The pilot is also the reference for the new UI-first runbook standard. The 23 legacy guides still need bounded conversion to exact, build-verified click paths, field values, validation and rollback. The new HCX guide follows the standard but remains unvalidated.
+- No labs for phases 14–15 or Operations for Networks deployment. The HCX guide is prepared but cannot be validated until a second supported site and HCX are available.
 
 ## Troubleshooting incidents and scenarios
 
@@ -112,7 +112,7 @@ The lab counts are labs linked to that phase's lessons; one lab can be linked to
 
 ## Glossary (`content/glossary/*.yaml`)
 
-270 terms, no duplicates.
+279 terms, no duplicates.
 
 | File | Terms |
 |---|---|
@@ -124,10 +124,10 @@ The lab counts are labs linked to that phase's lessons; one lab can be linked to
 | f-architecture | 15 |
 | g-deployment | 16 |
 | h-lifecycle-security | 28 |
-| i-ops-automation | 42 |
+| i-ops-automation | 51 |
 | j-troubleshooting | 11 |
 
-**Missing:** HCX terminology and selected Kubernetes operational terms such as CNI and kubeconfig. Core Kubernetes terms including control plane, node, pod, Deployment, Service, Namespace, PVC, StorageClass, Supervisor and VKS are present.
+**Missing:** selected Kubernetes operational terms such as CNI and kubeconfig. Core Kubernetes terms including control plane, node, pod, Deployment, Service, Namespace, PVC, StorageClass, Supervisor and VKS are present; core HCX terminology is now included.
 
 ## Commands / API reference (`content/commands/*.yaml`)
 

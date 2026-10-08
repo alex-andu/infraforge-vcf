@@ -1,0 +1,42 @@
+id: d10-hcx-service-mesh
+title: VCF Operations HCX control and data planes
+description: >
+  Each site has an HCX Manager appliance next to vCenter. A Site Pair connects the managers for authentication and
+  orchestration. Network and Compute Profiles define the resources and networks used by a Service Mesh. Creating the
+  Service Mesh deploys data-plane appliances at both sites: HCX-IX handles migration and encrypted interconnect traffic,
+  while HCX-NET-EXT bridges selected Layer 2 networks so migrated workloads can retain their IP and MAC addresses.
+width: 1120
+height: 620
+groups:
+  - { id: g-source, x: 20, y: 40, w: 500, h: 520, label: "Source site", kind: compute }
+  - { id: g-dest, x: 600, y: 40, w: 500, h: 520, label: "Destination site (vSphere + NSX)", kind: security }
+nodes:
+  - { id: srcvc, x: 45, y: 90, w: 200, h: 58, label: "Source vCenter", sublabel: "VMs to migrate", kind: mgmt, component: vcenter, info: "The source contains the workloads. NSX is optional unless the selected source-network extension requires it." }
+  - { id: srchcx, x: 285, y: 90, w: 200, h: 58, label: "HCX Manager", sublabel: "management zone", kind: mgmt, component: vcf-operations-hcx, info: "Registers source vCenter, SSO and optional NSX; initiates the Site Pair, Service Mesh tunnels and mobility operations." }
+  - { id: srcprof, x: 45, y: 225, w: 200, h: 68, label: "Network + Compute Profiles", sublabel: "IP pools, clusters, services", kind: network, info: "Network Profiles describe L3 settings and IP pools. The Compute Profile selects services, clusters, datastore and network profiles." }
+  - { id: srcix, x: 285, y: 225, w: 200, h: 68, label: "HCX-IX", sublabel: "initiator", kind: ops, info: "Interconnect appliance provides replication and vMotion-based migration, encryption and traffic engineering." }
+  - { id: srcne, x: 285, y: 390, w: 200, h: 68, label: "HCX-NET-EXT", sublabel: "initiator", kind: network, info: "Source-side Network Extension appliance bridges selected workload networks through the service mesh." }
+  - { id: dstvc, x: 625, y: 90, w: 200, h: 58, label: "Destination vCenter + NSX", sublabel: "target inventory", kind: mgmt, component: vcenter, info: "The private-cloud destination must run supported vSphere and NSX and receives migrations and extended networks." }
+  - { id: dsthcx, x: 865, y: 90, w: 200, h: 58, label: "HCX Manager", sublabel: "management zone", kind: mgmt, component: vcf-operations-hcx, info: "Destination endpoint for pairing. Registers vCenter and NSX and accepts orchestration from the source." }
+  - { id: dstprof, x: 625, y: 225, w: 200, h: 68, label: "Network + Compute Profiles", sublabel: "receiver resources", kind: network, info: "Defines destination deployment resources, services and management/uplink/vMotion/replication networks." }
+  - { id: dstix, x: 865, y: 225, w: 200, h: 68, label: "HCX-IX", sublabel: "receiver", kind: ops, info: "Destination data-plane appliance accepts the source-initiated encrypted interconnect tunnel." }
+  - { id: dstne, x: 865, y: 390, w: 200, h: 68, label: "HCX-NET-EXT", sublabel: "receiver", kind: network, info: "Destination-side bridge presents the extended Layer 2 network to migrated workloads." }
+  - { id: movedvm, x: 625, y: 475, w: 200, h: 58, label: "Migrated VM", sublabel: "same IP when network is extended", kind: vm, info: "Migration type determines downtime. Network Extension preserves the source network identity when required." }
+edges:
+  - { from: srcvc, to: srchcx, label: "register", kind: mgmt }
+  - { from: dstvc, to: dsthcx, label: "register", kind: mgmt }
+  - { from: srchcx, to: dsthcx, label: "Site Pair TCP 443", kind: control }
+  - { from: srcprof, to: srcix, label: "deploy", kind: control }
+  - { from: dstprof, to: dstix, label: "deploy", kind: control }
+  - { from: srcix, to: dstix, label: "Service Mesh UDP 4500", kind: data }
+  - { from: srcprof, to: srcne, label: "enable extension", kind: control }
+  - { from: dstprof, to: dstne, label: "enable extension", kind: control }
+  - { from: srcne, to: dstne, label: "L2 extension", kind: overlay }
+  - { from: dstix, to: movedvm, label: "migration", kind: data }
+  - { from: dstne, to: movedvm, label: "network", kind: overlay }
+steps:
+  - { title: "Pair the managers", text: "Register local vCenter/NSX, configure role mapping, then create the source-to-destination Site Pair over TCP 443.", highlight: [srcvc, srchcx, dsthcx, dstvc] }
+  - { title: "Describe each site", text: "Create Network Profiles for management, uplink and migration traffic, then Compute Profiles that select services and deployment resources.", highlight: [srcprof, dstprof] }
+  - { title: "Build the Service Mesh", text: "Pair the two Compute Profiles. HCX deploys source initiators and destination receivers and establishes the UDP 4500 data path.", highlight: [srcix, dstix] }
+  - { title: "Extend only when required", text: "Deploy paired Network Extension appliances for workloads that must retain their Layer 2 identity after migration.", highlight: [srcne, dstne, movedvm] }
+  - { title: "Choose the migration", text: "Select Bulk, vMotion, Cold, RAV, OSAM or Direct according to source type, scale, schedule and allowed downtime.", highlight: [srcvc, srcix, dstix, movedvm] }

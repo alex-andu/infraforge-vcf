@@ -1699,6 +1699,159 @@ questions:
   explanation:
     correct: Read status before remediation; a failed or unavailable check is not proof of configuration deviation.
     concept: Configuration Drift result states
+- id: hcx-found-001
+  type: matching
+  kind: concept
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - hcx-workload-mobility
+  lesson: vcf-operations-hcx
+  section: components
+  stem: Match each HCX object or appliance to its primary responsibility.
+  pairs:
+  - { id: p1, left: "Site Pair", right: "Management, authentication and orchestration relationship between HCX Managers" }
+  - { id: p2, left: "Network Profile", right: "Port group or segment plus appliance IP pool and Layer 3 settings" }
+  - { id: p3, left: "Compute Profile", right: "Per-site services, resource scope, appliance placement and network-profile selection" }
+  - { id: p4, left: "Service Mesh", right: "Instantiates and connects the selected source and destination data-plane services" }
+  - { id: p5, left: "HCX-IX", right: "Encrypted interconnect for replication and vMotion-based migration" }
+  - { id: p6, left: "HCX-NET-EXT", right: "Layer 2 bridge that preserves workload IP and MAC identity" }
+  explanation:
+    correct: Site Pair controls, profiles describe intent, Service Mesh instantiates it, and the service appliances move traffic.
+    concept: HCX control, intent and data-plane objects
+    trap: Creating a Compute Profile does not deploy an HCX-IX appliance.
+- id: hcx-found-002
+  type: ordering
+  kind: scenario
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - hcx-workload-mobility
+  lesson: vcf-operations-hcx
+  section: how-it-works
+  stem: Order the main steps for a two-site vSphere HCX deployment.
+  items:
+  - { id: i1, text: "Deploy and initialize the destination HCX Manager and register destination vCenter and NSX" }
+  - { id: i2, text: "Create destination Network and Compute Profiles" }
+  - { id: i3, text: "Deploy and initialize the source HCX Manager and register source systems" }
+  - { id: i4, text: "Create the source-to-destination Site Pair and require Connected status" }
+  - { id: i5, text: "Create source Network and Compute Profiles" }
+  - { id: i6, text: "Create and validate the Service Mesh, then test one approved network and VM" }
+  explanation:
+    correct: Destination readiness precedes source pairing; both sites need valid profile intent before the Service Mesh deploys the data plane.
+    concept: HCX installation dependency order
+- id: hcx-found-003
+  type: single
+  kind: design
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - hcx-workload-mobility
+  lesson: vcf-operations-hcx
+  section: concept
+  stem: Which statement correctly describes NSX requirements for a private-cloud HCX site pair?
+  options:
+  - id: a
+    text: The destination requires supported vSphere and NSX; the source does not require NSX except where the selected network extension needs it
+    why: This is the documented source/destination distinction.
+    correct: true
+  - id: b
+    text: Neither site can use HCX without NSX
+    why: A source site can migrate from supported vSphere without NSX.
+  - id: c
+    text: Only the source requires NSX because it initiates tunnels
+    why: The private-cloud destination is the site with the explicit NSX requirement.
+  - id: d
+    text: NSX is required only for Cold Migration
+    why: Migration state does not define the destination NSX requirement.
+  explanation:
+    correct: Private-cloud destination uses supported vSphere plus NSX; source NSX is conditional, especially for extension scenarios.
+    concept: HCX source and destination requirements
+- id: hcx-found-004
+  type: matching
+  kind: scenario
+  difficulty: advanced
+  version: vcf9
+  topics:
+  - hcx-workload-mobility
+  lesson: vcf-operations-hcx
+  section: migration-method-decision-table
+  stem: Match each migration requirement to the best HCX method.
+  pairs:
+  - { id: p1, left: "Hundreds of VMs in scheduled waves; reboot-like cutover is acceptable", right: "Bulk Migration" }
+  - { id: p2, left: "One critical powered-on vSphere VM; no service interruption", right: "HCX vMotion" }
+  - { id: p3, left: "Powered-off VM; simple offline transfer", right: "Cold Migration" }
+  - { id: p4, left: "Parallel scheduled wave plus zero-downtime final state transfer", right: "Replication Assisted vMotion (RAV)" }
+  - { id: p5, left: "Supported non-vSphere guest into vSphere", right: "OS Assisted Migration (OSAM)" }
+  - { id: p6, left: "Orchestrate a compatible native cross-vCenter vMotion path", right: "HCX Assisted vMotion (Direct)" }
+  explanation:
+    correct: Select from source platform, number of VMs, scheduling and allowed interruption.
+    concept: HCX migration types
+    trap: RAV combines Bulk scale/scheduling with vMotion continuity; it is not ordinary Bulk Migration.
+- id: hcx-found-005
+  type: single
+  kind: scenario
+  difficulty: intermediate
+  version: vcf9
+  topics:
+  - hcx-workload-mobility
+  lesson: vcf-operations-hcx
+  section: network-extension-is-a-migration-aid
+  context: A legacy VM must move to the destination site without changing its IP address during the migration wave.
+  stem: What should the administrator configure and what must the exit plan address?
+  options:
+  - id: a
+    text: HCX Network Extension, followed by migration to the final routed destination and removal of the extension when no longer needed
+    why: Network Extension bridges the L2 network and preserves IP/MAC identity, but should have a finite migration purpose.
+    correct: true
+  - id: b
+    text: A Site Pair only; it automatically stretches every source network permanently
+    why: Site Pair is control-plane orchestration and does not extend networks.
+  - id: c
+    text: A Compute Profile only; it deploys the destination gateway
+    why: Compute Profile stores intent and does not create an extension or gateway by itself.
+  - id: d
+    text: Cold Migration; powered-off VMs always retain connectivity on any destination network
+    why: Migration method does not replace destination network mapping and routing.
+  explanation:
+    correct: Use Network Extension for temporary L2 continuity, then remove the stretched dependency after routed cutover.
+    concept: HCX Network Extension lifecycle
+- id: hcx-found-006
+  type: multi
+  kind: troubleshooting
+  difficulty: advanced
+  version: vcf9
+  topics:
+  - hcx-workload-mobility
+  lesson: vcf-operations-hcx
+  section: troubleshooting
+  context: The source HCX console shows the destination Site Pair as Connected, but the new Service Mesh has no working interconnect tunnel.
+  stem: Which three checks most directly target the failed layer? (Choose three.)
+  options:
+  - id: a
+    text: Verify HCX-IX appliance health and initiator/receiver deployment at both sites
+    why: The data plane depends on the service appliances created by the mesh.
+    correct: true
+  - id: b
+    text: Verify source-initiated UDP 4500/NAT/firewall reachability between service-appliance uplinks
+    why: The pair can use TCP 443 while the tunnel path remains blocked.
+    correct: true
+  - id: c
+    text: Compare Uplink Network Profile IP, gateway and MTU with the actual networks and exported connection rules
+    why: Incorrect uplink intent prevents tunnel formation.
+    correct: true
+  - id: d
+    text: Recreate the Site Pair before checking the Service Mesh
+    why: Connected status already proves the manager relationship; start at the failing data-plane layer.
+  - id: e
+    text: Install Telegraf on the HCX Managers
+    why: Telegraf application monitoring does not establish HCX tunnels.
+    confusedWith: compliance-drift
+  select: 3
+  explanation:
+    correct: Check deployed service appliances, the UDP 4500 path and the uplink profile/connection rules.
+    concept: HCX control-plane versus data-plane troubleshooting
+    architecture: Site Pair can be healthy over TCP 443 while HCX-IX tunneling fails separately.
 - id: vcfa-arch-001
   type: single
   kind: scenario

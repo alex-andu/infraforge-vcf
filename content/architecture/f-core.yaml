@@ -243,6 +243,33 @@ components:
     lessons: [vcf9-architecture-overview, vcf-deployment-models, vcf-automation-architecture]
     labs: [lab-vcfa-organization-setup]
 
+  - id: vcf-operations-hcx
+    name: VCF Operations HCX
+    category: operations
+    parent: vcf-fleet
+    summary: Workload mobility, encrypted site interconnect and temporary Layer 2 network extension across VCF and supported vSphere environments.
+    function: |
+      HCX Manager appliances at source and destination form Site Pairs for management and orchestration. Network and
+      Compute Profiles define service intent; a Service Mesh deploys HCX-IX migration/interconnect appliances,
+      HCX-NET-EXT bridges and optional Sentinel appliances for non-vSphere migration. Supports Bulk, vMotion, Cold,
+      Replication Assisted vMotion, OS Assisted Migration and Direct cross-vCenter vMotion orchestration.
+    runsOn: HCX Manager in each site's management zone; service appliances on clusters selected by Compute Profiles.
+    managedBy: Local HCX Manager consoles; integrated into the VCF Operations HCX workload-mobility capability.
+    dependsOn: [vcenter, dns-service, ntp-service, physical-network]
+    communicatesWith:
+      - { id: vcenter, purpose: "Inventory, service-appliance deployment and VM migration" }
+      - { id: nsx-manager, purpose: "Required at private-cloud destination and used for supported network extension/mapping" }
+      - { id: vcf-identity-broker, purpose: "Optional VCF SSO authentication and role mapping" }
+    failureImpact: |
+      New migrations, site-pair orchestration and extension changes fail when a manager is unavailable. Existing HCX
+      data-plane services depend on the health of HCX-IX/HCX-NET-EXT appliances and their tunnels; migrated workloads
+      already on ordinary destination networks continue to run independently.
+    verify: |
+      Manager services healthy at both sites; Site Pair Connected; Compute Profiles valid; Service Mesh and required
+      appliances Up/Healthy; data-plane diagnostics pass; migration and extension state match the approved plan.
+    lessons: [vcf9-architecture-overview, vcf-operations-hcx]
+    labs: [lab-vcf-operations-hcx]
+
   - id: vcf-identity-broker
     name: VCF Identity Broker
     category: security

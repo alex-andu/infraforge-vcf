@@ -43,7 +43,7 @@ lines.push(
   '- Every question with an `objective` has exactly one primary `objectiveItem`. Composite questions use the item containing the main decision being graded.',
   '- Question-linked lesson counts show where tagged questions point; they do not by themselves prove that a dedicated lesson section is complete.',
   '- General API and PowerCLI questions under objective 4.4 currently map to 4.4.10 because extensibility and process automation are their nearest explicit exam item. Keep this mapping under review when the official guide changes.',
-  '- The three exam-strategy questions without an objective remain outside mock-exam objective allocation by design.',
+  '- Nine questions remain outside mock-exam objective allocation by design: three exam-strategy questions and six HCX candidate-profile questions.',
   '- Candidate-profile prerequisites such as Kubernetes, DNS/NTP/certificates and HCX are tracked alongside this item report even when they are not separate testable items.',
   '',
   '## Priority queue from measured gaps',
@@ -54,7 +54,7 @@ for (const row of rows.filter((candidate) => candidate.questions.length < target
   lines.push(`- **${row.item.id}** — ${row.item.text}: ${row.questions.length}/${target} questions.`);
 }
 
-lines.push('', 'Candidate-profile follow-up: foundational Kubernetes and DNS/NTP now have dedicated lessons; VCF Operations HCX remains a content gap.', '');
+lines.push('', 'Candidate-profile follow-up: foundational Kubernetes, DNS/NTP, and VCF Operations HCX now have dedicated lessons; their practical guides remain subject to real-lab validation.', '');
 
 const output = `${lines.join('\n').trimEnd()}\n`;
 if (process.argv.includes('--write')) {
