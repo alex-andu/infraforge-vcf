@@ -1,24 +1,24 @@
 id: d-lab-enable-supervisor-logical
-title: Supervisor lab – simplified Supervisor on wld01
+title: Prepared simplified Supervisor validation topology
 description: >
-  The simplified Supervisor runs one control plane VM on cluster wld01-cl01 (one vSphere zone), on a single VLAN 60
-  distributed port group used for both management and workloads, with storage from the wld01-nfs datastore through a
-  tag-based storage policy. A namespace lab-dev holds a VM created through VM Service. The stretch goal adds a
-  Foundation Load Balancer, which enables Supervisor Services and vSphere Pods.
+  The prepared flow activates one control plane VM on a discovered workload-domain cluster and one approved primary
+  network used initially for management and workload traffic. A discovered storage policy becomes a namespace storage
+  class, and a disposable namespace holds one VM created through VM Service. Load balancing, a second NIC, control-plane
+  HA, Supervisor Services and VKS remain separate future gates.
 width: 1000
 height: 600
 groups:
-  - { id: g-zone, x: 20, y: 120, w: 640, h: 460, label: "vSphere zone = wld01-cl01 (esx-21..23)", kind: compute }
+  - { id: g-zone, x: 20, y: 120, w: 640, h: 460, label: "Target cluster / vSphere zone (discover)", kind: compute }
 nodes:
-  - { id: vc, x: 40, y: 20, w: 220, h: 64, label: "vcenter-wld01", sublabel: "activates Supervisor", kind: mgmt, component: vcenter, info: "Simplified deployment flow." }
+  - { id: vc, x: 40, y: 20, w: 220, h: 64, label: "Workload-domain vCenter", sublabel: "<WLD_VCENTER>", kind: mgmt, component: vcenter, info: "Runs the verified simplified activation flow." }
   - { id: ws, x: 720, y: 20, w: 250, h: 64, label: "Workstation (kubectl)", kind: external, info: "kubectl vsphere login to the control plane address." }
-  - { id: cp, x: 60, y: 170, w: 260, h: 64, label: "Control plane VM (1)", sublabel: "10.10.60.10-14", kind: mgmt, component: supervisor, info: "Single control plane VM; scale to 3 for HA later." }
-  - { id: ns, x: 60, y: 300, w: 560, h: 64, label: "Namespace lab-dev: quota, storage policy, VM class, content library", kind: vm, info: "Where the VM Service VM lives." }
+  - { id: cp, x: 60, y: 170, w: 260, h: 64, label: "Control plane VM (1)", sublabel: "<SUPERVISOR_FQDN>", kind: mgmt, component: supervisor, info: "Single control plane VM and NIC; scale only through a separately approved gate." }
+  - { id: ns, x: 60, y: 300, w: 560, h: 64, label: "Disposable namespace: quota, storage, VM class, content", kind: vm, info: "<TEST_NAMESPACE> contains the governed VM Service test object." }
   - { id: vm, x: 60, y: 420, w: 260, h: 64, label: "VM Service VM", kind: vm, info: "Created with a VirtualMachine manifest." }
-  - { id: pol, x: 360, y: 420, w: 260, h: 64, label: "Policy wld01-supervisor", sublabel: "-> wld01-nfs", kind: storage, info: "Tag-based storage policy; becomes a storage class." }
-  - { id: pg, x: 360, y: 170, w: 260, h: 64, label: "VLAN 60 port group", sublabel: "mgmt + workload", kind: network, info: "One network for both in the simplified model." }
-  - { id: lb, x: 720, y: 200, w: 250, h: 64, label: "Foundation LB", sublabel: "stretch goal", kind: network, info: "Packaged with vCenter; VDS networking only; enables Supervisor Services and vSphere Pods." }
-  - { id: svc, x: 720, y: 340, w: 250, h: 64, label: "Supervisor Service", sublabel: "stretch goal", kind: ops, info: "For example Local Consumption Interface; needs the LB." }
+  - { id: pol, x: 360, y: 420, w: 260, h: 64, label: "Approved storage policy", sublabel: "<STORAGE_CLASS>", kind: storage, info: "Namespace-assigned storage policy exposed as a storage class." }
+  - { id: pg, x: 360, y: 170, w: 260, h: 64, label: "Primary Workload Network", sublabel: "<PORT_GROUP>", kind: network, info: "One approved network initially carries management and workload traffic." }
+  - { id: lb, x: 720, y: 200, w: 250, h: 64, label: "Future load balancer", sublabel: "separate gate", kind: network, info: "Select and validate only through a supported, separately approved growth design." }
+  - { id: svc, x: 720, y: 340, w: 250, h: 64, label: "Services / VKS", sublabel: "separate gate", kind: ops, info: "Requires its own service, networking, content and capacity validation." }
 edges:
   - { from: vc, to: cp, label: "activate", kind: mgmt }
   - { from: cp, to: pg, kind: data }
@@ -31,4 +31,4 @@ edges:
 steps:
   - { title: "Activate", text: "vCenter activates a single control plane VM on one network.", highlight: [vc, cp, pg] }
   - { title: "Consume", text: "Namespace with policy and VM class; VM created by kubectl.", highlight: [ws, ns, vm, pol] }
-  - { title: "Grow", text: "Add a Foundation LB, then Supervisor Services become possible.", highlight: [lb, svc] }
+  - { title: "Gate growth", text: "Validate load balancing, HA, services and VKS in separate approved packages.", highlight: [lb, svc] }

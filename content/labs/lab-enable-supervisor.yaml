@@ -1,124 +1,181 @@
 id: lab-enable-supervisor
-title: Activate a simplified vSphere Supervisor and grow it
+title: Activate and validate a simplified vSphere Supervisor
 level: challenge
 complexity: 5
-minutes: 300
+minutes: 360
 version: vcf9
-technologies: [vSphere Supervisor, vSphere Client, VM Service, Foundation Load Balancer, kubectl, Supervisor Services, ESX 9 (nested)]
+technologies: [vSphere Supervisor, vSphere Client, VM Service, kubectl, ESX 9]
 topics: [supervisor, workload-domains, vcf-automation]
-lessons: [supervisor-in-workload-domain, host-commissioning-wld-creation]
+lessons: [kubernetes-foundations-for-supervisor, supervisor-in-workload-domain, host-commissioning-wld-creation]
 objectives:
-  - Prepare the prerequisites for a Supervisor on the wld01 cluster (storage policy, management/workload network, IPs, DNS/NTP).
-  - Activate a Supervisor with the simplified deployment flow (single control plane VM, one network, VM Service only).
-  - Create a vSphere Namespace and deploy a VM through VM Service with kubectl.
-  - Stretch goal - add a load balancer, install one Supervisor Service, and explain how to scale the control plane to three VMs.
+  - Freeze a supported simplified-Supervisor design and evidence sheet before changing the target workload domain.
+  - Prepare storage, networking, DNS, NTP and capacity prerequisites using discovered environment values.
+  - Activate and validate a one-control-plane, one-NIC Supervisor with the VCF 9.0 simplified flow.
+  - Create a disposable vSphere Namespace, connect with kubectl and validate one VM Service virtual machine.
+  - Decide when load balancing, a second NIC, three control-plane VMs, Supervisor Services or VKS may be added.
 prerequisites:
-  - "lab-commission-hosts-create-wld completed (workload domain wld01 on NFS, Supervisor not enabled in the wizard)."
-  - "Lesson: vSphere Supervisor in a Workload Domain."
-  - "Read TechDocs 'Requirements for Simplified Supervisor Deployment' and 'Limitations of Simplified Supervisor Configurations' for your exact build before starting."
+  - "A supported VI Workload Domain and target cluster exist; record their exact builds and interoperability result."
+  - "Lessons: Kubernetes Foundations for vSphere Supervisor and vSphere Supervisor in a Workload Domain."
+  - "An approved maintenance window, capacity reservation, IP/DNS ownership, rollback decision and disposable test workload are available."
+  - "Read the current Broadcom requirements and limitations pages for the exact VCF/vCenter build before execution."
 topology:
   logical: d-lab-enable-supervisor-logical
 requirements:
   network:
-    - "VLAN 60 Supervisor network 10.10.60.0/24, gateway 10.10.60.1, added as a distributed port group on the wld01 VDS"
-    - "At least 5 consecutive free IPs for the control plane (10.10.60.10-10.10.60.14) plus a range for workloads"
-    - "DNS 10.10.10.2 and NTP 10.10.10.2 routable from VLAN 60"
+    - "Discover <PRIMARY_WORKLOAD_PORT_GROUP>, VLAN/subnet, gateway, MTU and routability; do not reuse example values."
+    - "Reserve <SUPERVISOR_IP_RANGE>, <SUPERVISOR_FLOATING_IP> and <SERVICE_CIDR>; keep them outside DHCP and future load-balancer VIP pools."
+    - "Create forward and reverse DNS for <SUPERVISOR_FQDN>; verify DNS and NTP from the target network."
   vms:
-    - "wld01 hosts esx-21..23 (consider raising them to 24-32 GB RAM each if Proxmox has headroom)"
-    - "Shut down non-essential VMs (for example VCF Operations collector, nfs test VMs) if Proxmox memory is short"
+    - "Record <WLD_VCENTER>, <TARGET_CLUSTER>, eligible hosts, free CPU/RAM/storage and DRS/HA health."
+    - "Approve <CONTROL_PLANE_STORAGE_POLICY>, <VM_CLASS>, <CONTENT_LIBRARY> and <VM_IMAGE> before namespace use."
   ip:
-    - "Control plane 10.10.60.10-14, workload range 10.10.60.100-10.10.60.199, Service CIDR 10.96.0.0/23 (not routed anywhere)"
+    - "Record approved values for <SUPERVISOR_IP_RANGE>, mask, gateway, DNS, NTP, <SERVICE_CIDR>, FQDN and floating IP."
 startingState: |
-  wld01 (3 nested hosts, NFS principal storage, single-node NSX, distributed connectivity) is healthy. No Supervisor
-  exists. Honest limitations: this is a challenge lab. Nested ESX on Proxmox is slow, Supervisor control plane VMs and
-  VKS clusters need real memory, and the simplified Supervisor runs VM Service only until a load balancer is added.
-  A full VPC-based Supervisor with an NSX Edge cluster and Tier-0 will very likely not fit next to the management
-  domain on 256 GB — that path is described, not built.
+  **PREPARED — NOT YET LAB-VALIDATED.** The supplied inventory does not confirm a VI Workload Domain, active
+  Supervisor, namespace network, load balancer, content-library image or spare capacity. Do not run this guide until
+  those prerequisites and the exact product interoperability are approved. Angle-bracket values are mandatory
+  discovery variables. Never store passwords, tokens, kubeconfig files or unredacted certificates in evidence.
 steps:
-  - id: plan-choice
-    title: Choose the Supervisor model on paper
-    why: The networking stack and load balancer are the big decisions; the exam asks which combinations are valid.
+  - id: freeze-design
+    title: Freeze the design, change record and evidence sheet
+    why: Activation creates a platform control plane and consumes network, storage and compute resources.
     instructions: |
-      Fill in the table and justify your lab choice:
-
-      | Option | Needs | Fits the lab? |
-      |---|---|---|
-      | WLD wizard Supervisor (centralized connectivity, VPC) | NSX Edge cluster + active-standby Tier-0 | Probably not (Edge RAM) |
-      | Full Supervisor on VDS + Foundation LB | VDS port groups, Foundation LB | Maybe, after simplified |
-      | **Simplified Supervisor** | 1 control plane VM, one network, no LB | Yes |
-    validate: You can explain why Foundation LB is not an option with VPC networking.
-    expected: Simplified Supervisor now, Foundation LB as the growth step.
-  - id: prereqs
-    title: Prepare storage policy, network and DNS
-    why: A Supervisor places control plane VMs and workloads by storage policy and needs routable DNS/NTP.
+      1. Record VCF, vCenter, ESX and NSX build labels from the product **About** pages and the current interoperability result.
+      2. Record `<WLD_VCENTER>`, `<TARGET_CLUSTER>`, hosts, VDS, `<PRIMARY_WORKLOAD_PORT_GROUP>`, storage policy,
+         free CPU/RAM/storage, DRS/HA health and the approved maintenance window.
+      3. Choose the **simplified** model only after documenting why one control-plane VM, one NIC and no load balancer
+         meet this learning run. Record that later platform services have separate prerequisite gates.
+      4. Define success: configuration Running, DNS/API reachable, namespace usable and one disposable VM validated.
+    validate: Evidence sheet contains exact builds, resources, approved values, owners, stop conditions and cleanup plan.
+    expected: A reviewable design exists before any vSphere Client change.
+  - id: verify-foundations
+    title: Verify cluster, storage, network, DNS and time readiness
+    why: Most activation failures are prerequisite failures presented late by the wizard.
     instructions: |
-      1. In vcenter-wld01 create a tag `supervisor` and tag the `wld01-nfs` datastore; create a tag-based VM storage
-         policy `wld01-supervisor` that selects it.
-      2. Add a distributed port group `wld01-supervisor` (VLAN 60) on the wld01 VDS.
-      3. Confirm 10.10.60.1 answers ping from a host VMkernel on VLAN 60 (or from a test VM) and that DNS/NTP are
-         reachable from that subnet.
-    validate: The storage policy shows `wld01-nfs` as compatible; the port group exists on all three hosts.
-    expected: Prerequisites in place.
+      1. In `https://<WLD_VCENTER>/ui`, open **Hosts and Clusters**, select `<TARGET_CLUSTER>` and verify all hosts,
+         vSphere DRS, vSphere HA and recent tasks/alarms are healthy.
+      2. Open **Menu > Policies and Profiles > VM Storage Policies**. Open `<CONTROL_PLANE_STORAGE_POLICY>` and verify
+         at least one intended datastore is **Compatible**; create a policy only through the approved storage design.
+      3. Open **Menu > Networking**, select the target VDS and verify `<PRIMARY_WORKLOAD_PORT_GROUP>` VLAN, teaming,
+         MTU and host coverage. Do not create or change it without the network owner's approved values.
+      4. From an approved endpoint on that network, verify gateway, forward/PTR DNS for `<SUPERVISOR_FQDN>`, DNS/NTP
+         reachability and that the reserved Supervisor addresses are unused.
+    validate: Cluster health, compatible storage, port-group settings and sanitized DNS/NTP/IP evidence all pass.
+    expected: The activation wizard will receive approved, non-conflicting infrastructure values.
   - id: activate
-    title: Activate the simplified Supervisor
-    why: This is the smallest Supervisor VCF 9.0 offers and the one that fits a nested lab.
+    title: Activate Supervisor with the verified simplified flow
+    why: Broadcom's VCF 9.0 flow creates the initial single-node, single-NIC Supervisor without a load balancer.
     instructions: |
-      Follow TechDocs *Activate Supervisor Using the Simplified Deployment Flow* in vcenter-wld01: select cluster
-      `wld01-cl01` (one vSphere zone), storage policy `wld01-supervisor`, the `wld01-supervisor` network, control
-      plane IPs 10.10.60.10-14, gateway, DNS and NTP, Service CIDR 10.96.0.0/23, single control plane VM. Start
-      activation and watch the configuration status.
-    hint: "If activation stalls, check Proxmox memory first, then DNS/NTP reachability from VLAN 60, then IP conflicts in the control plane range."
-    validate: The Supervisor shows a running/configured state and a control plane address.
-    expected: One control plane VM running on wld01; Supervisor API reachable on its address.
-  - id: namespace-vm
-    title: Create a namespace and deploy a VM with VM Service
-    why: Namespaces are how Supervisor resources are consumed; VM Service is what the simplified Supervisor supports.
+      1. In the vSphere Client open **Hosts and Clusters**, select `<TARGET_CLUSTER>`, then choose **Actions > Activate Supervisor**.
+      2. Select **Static** or **DHCP** exactly as approved. For Static, select `<PRIMARY_WORKLOAD_PORT_GROUP>` and enter
+         `<SUPERVISOR_IP_RANGE>`, subnet mask, gateway, DNS servers, NTP servers, `<SERVICE_CIDR>` and `<SUPERVISOR_FQDN>`.
+      3. Confirm the FQDN resolves to `<SUPERVISOR_FLOATING_IP>`. For the single-NIC configuration, the FQDN is required
+         for secure SNI access. Confirm the range does not overlap DHCP or a future load-balancer VIP range.
+      4. Select `<CONTROL_PLANE_STORAGE_POLICY>`, review every value against the evidence sheet and click **Activate**.
+         Capture the task ID/time and stop on validation errors rather than substituting guessed values.
+    hint: Check capacity, address conflicts, DNS/PTR, NTP, gateway/MTU and storage compatibility before retrying.
+    validate: Recent Tasks completes and Supervisor reaches Running/Configured with the expected FQDN and floating IP.
+    expected: One control-plane VM and one NIC are active; no load balancer has been inferred or installed.
+  - id: validate-control-plane
+    title: Validate control-plane health and access
+    why: A completed task does not prove DNS, API and node health from the consumer path.
     instructions: |
-      1. Create namespace `lab-dev` with a small CPU/memory quota, storage policy `wld01-supervisor`, a VM class (for
-         example best-effort-small) and a content library holding a small VM image.
-      2. From your workstation:
-      ```shell
-      kubectl vsphere login --server=10.10.60.10 --vsphere-username administrator@vsphere.local --insecure-skip-tls-verify
-      kubectl config use-context lab-dev
-      kubectl get virtualmachineclasses
-      kubectl get virtualmachineimages
-      ```
-      3. Apply a VirtualMachine manifest that uses the class, image and storage class from those outputs.
-    validate: "`kubectl get vm -n lab-dev` shows the VM PoweredOn; it also appears in vcenter-wld01 inside the namespace."
-    expected: A declaratively created VM.
-  - id: stretch
-    title: "Stretch: add a load balancer, a Supervisor Service, and plan control plane HA"
-    why: Supervisor Services and vSphere Pods require a load balancer; HA requires three control plane VMs.
+      1. Select `<TARGET_CLUSTER>` and open **Configure > Supervisor**; the exact subpage label may vary by build.
+         Record state, Kubernetes version, control-plane address, node count and alarms.
+      2. In **VMs and Templates**, identify the control-plane VM and confirm power, VMware Tools, host, datastore and
+         absence of active alarms. Do not alter the appliance directly.
+      3. From the approved workstation resolve `<SUPERVISOR_FQDN>`, connect to its HTTPS endpoint and inspect the
+         certificate name/chain. Record sanitized results only.
+    validate: UI state is healthy, exactly one expected control-plane VM runs and the FQDN/API path is reachable.
+    expected: Platform health is proven independently of wizard completion.
+  - id: create-namespace
+    title: Create and govern a disposable vSphere Namespace
+    why: Namespace policy is the boundary for permissions, quotas, storage classes and VM Service resources.
     instructions: |
-      1. Follow TechDocs *Add a Load Balancer* for the simplified Supervisor, using the Foundation Load Balancer on the
-         VDS network (it is packaged with vCenter).
-      2. Download a small Supervisor Service definition (for example Local Consumption Interface) from the Broadcom
-         support portal, add it in vCenter and install it on the Supervisor.
-      3. Write down the RAM needed to scale the control plane from 1 to 3 VMs and decide whether your server can take it.
-    validate: The service shows as installed/configured on the Supervisor.
-    expected: Supervisor now supports Supervisor Services; you have a written HA scaling plan.
+      1. Open **Menu > Workload Management > Namespaces** and select **New Namespace**.
+      2. Select the active Supervisor, name it `<TEST_NAMESPACE>` and select **Create**. Use only a disposable name.
+      3. Open the namespace and configure approved **Permissions**, CPU/memory/storage **Limits**,
+         `<CONTROL_PLANE_STORAGE_POLICY>` under **Storage**, `<VM_CLASS>` under **VM Service**, and `<CONTENT_LIBRARY>`.
+      4. Confirm the storage policy appears as a Kubernetes StorageClass and the chosen image is available.
+    validate: Namespace summary shows the expected Supervisor, permissions, quotas, storage, VM class and content source.
+    expected: A least-privilege disposable consumption boundary is ready for CLI validation.
+  - id: obtain-cli
+    title: Obtain the supported kubectl and vSphere plugin
+    why: The plugin establishes the authenticated Supervisor context; a random kubectl binary is insufficient evidence.
+    instructions: |
+      1. From the namespace or Supervisor **CLI Tools / Kubernetes CLI Tools** link, download the build-matched package
+         for the approved workstation. Record source URL and checksum and follow its software policy.
+      2. Place `kubectl` and the vSphere login plugin on the approved PATH and run their version commands.
+      3. Keep credentials and generated kubeconfig only on the workstation; exclude both from screenshots and the repo.
+    validate: Both binaries report compatible versions and no credential is stored in project evidence.
+    expected: The workstation can authenticate without weakening certificate verification by default.
+  - id: login-inventory
+    title: Log in and inventory namespace resources
+    why: Live discovery prevents manifests from depending on guessed class, image or storage names.
+    instructions: |
+      1. Run `kubectl vsphere login --server=<SUPERVISOR_FQDN> --vsphere-username=<APPROVED_USER>` and complete
+         interactive authentication. Use a trusted CA; any temporary insecure exception needs separate approval.
+      2. Run `kubectl config use-context <TEST_NAMESPACE>` and confirm the current context.
+      3. Run `kubectl get virtualmachineclasses`, `kubectl get virtualmachineimages` and `kubectl get storageclass`.
+         Record exact `<VM_CLASS>`, `<VM_IMAGE>` and `<STORAGE_CLASS>` values exposed by namespace policy.
+    validate: Current context is the disposable namespace and the three required resources are visible.
+    expected: Manifest inputs come from live discovery rather than generic examples.
+  - id: deploy-test-vm
+    title: Deploy and validate one disposable VM Service VM
+    why: One controlled object proves policy, placement, image access and declarative reconciliation.
+    instructions: |
+      1. Prepare a reviewed VirtualMachine manifest named `<TEST_VM>` using only the discovered class, image and storage
+         class. Store no password or SSH private key in the manifest; use the approved secret mechanism at runtime.
+      2. Run `kubectl apply -f <REVIEWED_VM_MANIFEST>` while the current context is `<TEST_NAMESPACE>`.
+      3. Monitor `kubectl get virtualmachine <TEST_VM> -w` and `kubectl describe virtualmachine <TEST_VM>`. In vSphere
+         Client open the namespace **Compute / Virtual Machines** view and correlate the backing VM and placement.
+      4. Validate guest readiness and one approved network/application check without exposing credentials.
+    validate: Kubernetes status and vSphere inventory agree that the disposable VM is powered on and healthy.
+    expected: VM Service reconciles one governed VM from the namespace manifest.
+  - id: evaluate-growth
+    title: Gate load balancing, HA, Supervisor Services and VKS separately
+    why: A successful simplified deployment does not prove prerequisites for the production feature set.
+    instructions: |
+      1. Record separate go/no-go decisions for a load balancer, second NIC and three control-plane VMs.
+      2. Before Supervisor Services or vSphere Pods, verify the current load-balancer design. Before VKS, verify service
+         installation, content, networking, storage and worker-node capacity.
+      3. Do not perform a growth action unless it has its own approved values, window, validation and rollback.
+    validate: Every growth feature has an explicit evidence gap or a separately approved execution package.
+    expected: Optional extensions are not turned into unverified claims.
+  - id: close-evidence
+    title: Close evidence and perform dependency-aware cleanup
+    why: Cleanup can remove namespace workloads or the platform control plane, so dependency order matters.
+    instructions: |
+      1. Export sanitized task, health, namespace, CLI and VM evidence. Record exact labels seen in this build.
+      2. If approved, delete `<TEST_VM>` with `kubectl delete -f <REVIEWED_VM_MANIFEST>` and verify the object and backing
+         VM disappear. Then remove `<TEST_NAMESPACE>` from **Workload Management > Namespaces**.
+      3. Deactivate Supervisor only through the current official procedure after proving no consumer depends on it.
+      4. Remove test-only DNS, reservations, policy or port-group objects only after owner confirmation.
+    validate: Evidence is complete and either the retained state or every cleanup action is independently verified.
+    expected: No orphaned VM, namespace, reservation or undocumented platform dependency remains.
 troubleshooting:
-  - symptom: "Activation stuck at configuring control plane"
-    fix: "Check memory on Proxmox and on the wld01 hosts, then IP conflicts in 10.10.60.10-14, then DNS/NTP from VLAN 60. Review the Supervisor configuration status messages in vCenter."
-  - symptom: "kubectl vsphere login fails with certificate or timeout errors"
-    fix: "Confirm the control plane address is routable from your workstation, time is in sync, and use --insecure-skip-tls-verify only in the lab."
-  - symptom: "Supervisor Service installation not possible"
-    fix: "A simplified Supervisor without a load balancer supports VM Service only; add the load balancer first."
-  - symptom: "No storage class in the namespace"
-    fix: "Assign the storage policy to the namespace; storage policies become storage classes."
+  - symptom: Activation validation fails or remains configuring.
+    fix: Recheck build support, capacity, storage compatibility, IP conflicts, DNS/PTR, NTP, gateway, MTU and Recent Tasks.
+  - symptom: FQDN or kubectl login fails while the UI reports Running.
+    fix: Verify FQDN-to-floating-IP resolution, client routing/firewall, time and certificate chain/SNI name before credentials.
+  - symptom: Namespace exposes no storage class, VM class or image.
+    fix: Correct namespace Storage, VM Service class and content-library assignments, then inventory live names again.
+  - symptom: VirtualMachine remains pending or fails placement.
+    fix: Inspect events, compatibility, quota, datastore, host capacity and network assignment; do not bypass policy.
 challenge: |
-  Describe, with a diagram, how you would rebuild this as a production design: three-zone Supervisor (three clusters),
-  three control plane VMs, VCF Networking with VPC, NSX Edge cluster with active-standby Tier-0, NSX load balancer,
-  and VCF Automation consuming the namespaces. List every additional resource it needs compared with the lab.
+  Produce two reviewed growth designs: a three-control-plane simplified Supervisor with separated networking and load
+  balancing, and a production VCF Networking/VPC design for VKS. Compare capacity, HA, routing, IP pools, failure
+  domains, services and rollback without deploying either design.
 cleanup: |
-  Deactivate the Supervisor in vcenter-wld01 when finished (namespaces and their VMs are removed), delete the
-  storage policy, tag and port group if you no longer need them.
+  Remove the disposable VM before its namespace. Deactivate Supervisor only after all consumers are removed and the
+  owner approves the current procedure. Keep shared storage, network, DNS and IP objects unless their owners confirm
+  they were created solely for this run and have no remaining dependency.
 sources:
+  - title: "VCF 9.0 – Activate Supervisor Using the Simplified Deployment Flow"
+    url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/vsphere-supervisor-installation-and-configuration/deploying-easy-supervisor/activate-easy-supervisor.html
   - title: "VCF 9.0 – Simplified Supervisor Deployment"
     url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/vsphere-supervisor-installation-and-configuration/deploying-easy-supervisor.html
   - title: "VCF 9.0 – vSphere Supervisor Models"
     url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/design/vmware-cloud-foundation-concepts/vsphere-supervisor-deployment-types.html
   - title: "VCF 9.0 – vSphere Supervisor Installation and Configuration"
     url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/vsphere-supervisor-installation-and-configuration.html
-  - title: "Supervisor Services catalog"
-    url: https://github.com/vsphere-tmm/Supervisor-Services

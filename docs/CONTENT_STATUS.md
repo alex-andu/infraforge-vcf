@@ -44,7 +44,7 @@ The lab counts are labs linked to that phase's lessons; one lab can be linked to
 
 - The standalone-theory template requires 17 sections, sources, at least one diagram and an inline quiz. The DNS/NTP pilot, Kubernetes foundations and HCX lessons use it; the other 69 lessons remain valid with their legacy `Lab` sections during incremental migration.
 - **Gaps:**
-  - Candidate-profile foundations for Kubernetes, DNS/NTP/certificates and HCX have dedicated theory. Their prepared guides remain gated on the required real infrastructure and observed evidence.
+  - Candidate-profile foundations for Kubernetes, DNS/NTP/certificates and HCX have dedicated theory and separate prepared guides. Validation remains gated on the required real infrastructure and observed evidence.
   - All 59 official items meet the internal five-question target. A question mapping is evidence of coverage, while later topic packages continue to review theory depth and accuracy.
 - **Unverified facts** are written as "check your version" rather than stated. The main areas:
   - ESX 9, vCenter and SDDC Manager log paths (only `domainmanager.log`, `hostd.log` and the sos output path are confirmed for VCF 9)
@@ -95,9 +95,9 @@ The lab counts are labs linked to that phase's lessons; one lab can be linked to
 - **Real-infrastructure verification:** `lab-verify-vcf-dns-ntp` (read-only DNS, reverse-resolution and time evidence for the documented VCF lab)
 
 **Status:**
-- The 23 legacy guides are written for a *generic* nested-on-Proxmox plan (`lab.internal`, 10.10.x.0/24).
+- The 22 remaining legacy guides are written for a *generic* nested-on-Proxmox plan (`lab.internal`, 10.10.x.0/24).
 - The DNS/NTP pilot is the first separate, read-only guide for Alex's documented environment (`vcf.home.arpa`, DNS/NTP `infra01` at `10.100.80.10`, vCenter `10.100.10.21`, ESX hosts `10.100.10.11-.14`). Fresh PTR, saved-setting and synchronization evidence remain pending the real-lab run. See `docs/CURRENT_STATE.md` and `docs/LAB_ENVIRONMENT.md`.
-- The pilot is also the reference for the new UI-first runbook standard. The 23 legacy guides still need bounded conversion to exact, build-verified click paths, field values, validation and rollback. The new HCX guide follows the standard but remains unvalidated.
+- The pilot is also the reference for the new UI-first runbook standard. The 22 remaining legacy guides still need bounded conversion to exact, build-verified click paths, field values, validation and rollback. The HCX and Supervisor guides follow the standard but remain unvalidated.
 - No labs for phases 14–15 or Operations for Networks deployment. The HCX guide is prepared but cannot be validated until a second supported site and HCX are available.
 
 ## Troubleshooting incidents and scenarios
