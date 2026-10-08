@@ -9,7 +9,7 @@ difficulty: advanced
 summary: Everything the organization administrator does in an All Apps organization - users and roles, projects and namespaces, VPC networking, content libraries and blueprints, extensibility with Orchestrator and event subscriptions, and approval, lease, day-2 and IaaS resource policies.
 topics: [vcfa-org-admin]
 objectives: ["4.4"]
-keyTerms: [vcfa-project, vcfa-namespace, namespace-class, vcfa-connectivity-profile, vcfa-ip-quota, nsx-vpc, transit-gateway, event-subscription, vcfa-governance-policy, region-quota, all-apps-organization]
+keyTerms: [vcfa-project, vcfa-namespace, namespace-class, vcfa-connectivity-profile, vcfa-ip-quota, organization-content-library, vm-image-identifier, nsx-vpc, transit-gateway, event-subscription, vcfa-governance-policy, region-quota, all-apps-organization]
 labs: [lab-vcfa-organization-setup]
 components: [vcf-automation, supervisor]
 related: [vcf-automation-tenancy-regions, vcf-automation-architecture, vcf-apis-powercli]
@@ -26,6 +26,12 @@ sources:
     url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/organization-management/adding-and-managing-virtual-private-clouds/add-a-vpc.html
   - title: "VCF 9.0 - Managing IP Address Blocks and IP Quotas"
     url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/organization-management/adding-and-managing-virtual-private-clouds/ip-management.html
+  - title: "VCF 9.0 - Managing Content Libraries in VCF Automation"
+    url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/organization-management/adding-and-managing-content-libraries.html
+  - title: "VCF 9.0 - Create an Organization Content Library"
+    url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/organization-management/adding-and-managing-content-libraries/create-a-content-library.html
+  - title: "VCF 9.0 - Add a VM Image and Publish It to the Catalog"
+    url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/organization-management/adding-and-managing-content-libraries/creating-vm-images.html
   - title: "VCF 9.0 - Creating Policies for All Apps Organizations"
     url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/organization-management/creating-policies-for-all-apps-orgs.html
   - title: "VCF 9.0 - Event Subscriptions in VCF Automation for All Apps"
@@ -47,7 +53,7 @@ long, and what happens automatically around each request.
 - Manage users, groups and roles in an organization (including external identity providers).
 - Create projects, namespace classes and namespaces within the region quota.
 - Configure organization networking with connectivity profiles, three address scopes, VPCs, namespaces and IP quotas.
-- Curate content: organization content libraries, blueprints and the catalog.
+- Curate content: organization content libraries, VM images, blueprints and project-scoped catalog items.
 - Automate business processes with Orchestrator workflows, event subscriptions and custom resources.
 - Create approval, day-2 action, lease and IaaS resource policies, and scope them to the org or to projects.
 
@@ -138,11 +144,40 @@ Assignments** to see the effective result and **Policy Enforcement** to audit wh
 
 ### Content layering
 
-| Layer | Who manages | Tenant can edit? |
+| Layer | Who manages | Availability and accounting |
 |---|---|---|
-| Provider content library | Provider | No (read-only) |
-| Organization content library | Org admin | Yes (within the org) |
-| Blueprints / catalog items | Org admin (or delegated) | Yes |
+| Provider content library | Provider | Read-only to every organization with quota in a selected region |
+| [[organization-content-library|Organization content library]] | Org admin | Private to this organization; selected regions; storage counts against organization quota |
+| VM image | Org admin | OVA, OVF or ISO; receives a unique [[vm-image-identifier|VMI identifier]] for blueprint references |
+| Catalog item | Org admin (or delegated) | Published for one project and optionally shared with other projects in the organization |
+
+Organization libraries must be explicitly enabled in each region where the organization has quota. They are normally
+available to all namespaces in all projects. During creation, the administrator can disable **Assign to all current and
+future namespaces**; that choice cannot be changed later. A namespace class can then expose the library only to
+namespaces created from that class.
+
+Content consumes real storage. An organization library counts against the organization's storage quota. A subscribed
+external library downloads remote images locally, and a region backed by multiple vCenter instances can replicate the
+library into each vCenter, so physical consumption can be higher than the nominal image size.
+
+### Exact organization-content workflow
+
+1. Log in to the organization portal as organization administrator and open **Build & Deploy > Content Hub > Content
+   Libraries**.
+2. Select **New**, enter a name, decide whether to assign it to all current and future namespaces, and select **Next**.
+   This namespace-assignment setting is immutable.
+3. Select one or more regions and one storage class per region, review and select **Confirm**.
+4. Open **Build & Deploy > Content Hub > VM Images**, select **Upload**, choose a local OVA, OVF or ISO file, select the
+   organization library, name the image and select **Submit**. Record its unique VMI identifier for blueprint use.
+5. To publish an OVF image, use its vertical ellipsis and select **Publish to Catalog**. Name the item, select the
+   owning project, optionally share it with other projects, optionally enable cloud-init for a compatible image, and
+   select **Publish**. ISO images cannot be published directly to the catalog.
+
+The library name and description can be changed after creation only through the VCF Automation API. If an
+administrator adds an item directly to the backing published vCenter library, refresh the VCF Automation library to
+reconcile it.
+
+::diagram[d11-vcfa-content-lifecycle]
 
 
 ### Worked exam-style scenarios
@@ -219,6 +254,8 @@ the attached VPCs and plan a validation window before changing its blocks.
 | Event subscription | Topic: post-provisioning event; workflow: Register in CMDB; blocking, priority 10, recovery workflow: notify ops |
 | Connectivity profile | Region `region-lab`; external block supplied by provider; private TGW block reserved for the organization |
 | VPC | Region + connectivity profile + non-overlapping local CIDR for operational clarity; apply an IP quota where required |
+| Organization content library | Region `region-lab`; approved storage class; explicit namespace scope; storage budget included in org quota |
+| Catalog item | OVF image published to project `payments`; optional sharing only to named projects |
 
 Exact event topic names are listed in TechDocs ("Event Topics Provided with VCF Automation"); use the names shown in
 your version.
@@ -244,6 +281,9 @@ limits VCF Automation set are applied. The API patterns are in [VCF APIs and Pow
 | Cross-VPC traffic has no direct route | The VPCs do not use private TGW address space through the organization's transit gateway |
 | Several VPCs lose northbound connectivity after one edit | A shared connectivity profile was changed; every attached VPC inherited the new northbound configuration |
 | VPC creation or allocation exceeds policy | The selected external/private block has no suitable IP quota or the quota is exhausted |
+| Organization storage usage is higher than expected | External content was downloaded locally or the library was replicated across several vCenter instances in the region |
+| A namespace cannot see an organization library | The all-namespaces option was disabled and its namespace class does not include the library |
+| ISO image has no **Publish to Catalog** action | Direct catalog publishing is supported for OVF images, not ISO images |
 
 ## Troubleshooting
 
@@ -253,6 +293,8 @@ limits VCF Automation set are applied. The API patterns are in [VCF APIs and Pow
 4. Visibility: check project membership and roles.
 5. Networking: confirm region allocation, connectivity profile, selected address blocks, IP quota and namespace-to-VPC
    association before tracing the provider gateway or NSX data path.
+6. Content: verify region and storage-class scope, namespace assignment, organization storage quota, image type and
+   target project before investigating the catalog.
 
 ## Real-World Scenario
 
@@ -275,6 +317,10 @@ an owner and an IP record.
   reachability; external blocks are provider-managed.
 - A connectivity profile is region-specific and reusable; editing it affects northbound connectivity for every VPC
   that uses it.
+- Provider libraries are automatically read-only in organizations with regional quota; organization libraries are
+  private, quota-consuming and must be scoped to regions and namespaces.
+- Upload OVA, OVF or ISO; use the image's VMI identifier in blueprints; publish OVF directly to a project catalog, but
+  not ISO.
 - Project = users + infrastructure; namespace = resource envelope; namespace class = template.
 - Policies: **approval, day 2 action, lease** (catalog) and **IaaS resource** (CEL); scope org or project.
 - Event subscriptions: **blocking** (sync, priority 0 highest, recovery runnable) vs **non-blocking** (async).
@@ -299,6 +345,11 @@ A project and a VPC are both isolation tools, but they isolate different things:
 visibility, while the VPC defines the network domain.
 :::
 
+:::trap
+The **Assign to all current and future namespaces** choice for an organization content library cannot be changed after
+creation. Use namespace-class assignment when a library must stay limited to selected namespaces.
+:::
+
 ## Knowledge Check
 
 ::quiz
@@ -307,8 +358,9 @@ visibility, while the VPC defines the network domain.
 
 The organization administrator shapes the provider's quota into safe self-service: projects and namespaces define who
 gets what; connectivity profiles, VPCs, three address scopes and IP quotas define how workloads communicate; content
-libraries, blueprints and the catalog define what can be deployed; Orchestrator workflows and event subscriptions
-automate business processes; and approval, day-2 action, lease and IaaS resource policies govern every request.
+libraries and their region/namespace scope, VMI-tagged images, blueprints and project catalog items define what can be
+deployed; Orchestrator workflows and event subscriptions automate business processes; and approval, day-2 action,
+lease and IaaS resource policies govern every request.
 
 ## Next Topic
 

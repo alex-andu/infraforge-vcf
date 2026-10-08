@@ -8,13 +8,13 @@ Totals:
 
 | Item | Count |
 |---|---|
-| Lessons | 71 (154,897 words) |
-| Questions | 625 |
+| Lessons | 71 (156,101 words) |
+| Questions | 637 |
 | Practical guides (internal `lab` schema) | 24 |
 | Incidents | 10 |
 | Scenarios | 3 |
-| Diagrams | 107 |
-| Glossary terms | 268 |
+| Diagrams | 108 |
+| Glossary terms | 270 |
 | Commands / API entries | 116 |
 | Architecture components | 23 |
 | Badges | 18 |
@@ -34,7 +34,7 @@ Totals:
 | p08 | Workload Domains | 5/5 | 11,100 | 41 | 2 |
 | p09 | Lifecycle Management | 4/4 | 8,892 | 40 | 1 |
 | p10 | VCF Operations | 5/5 | 10,066 | 49 | 2 |
-| p11 | Automation and APIs | 4/4 | 8,404 | 44 | 2 |
+| p11 | Automation and APIs | 4/4 | 9,608 | 56 | 2 |
 | p12 | Identity, Security and Certificates | 4/4 | 8,047 | 30 | 2 |
 | p13 | Troubleshooting | 4/4 | 10,947 | 37 | 1 |
 | p14 | Architecture and Design | 3/3 | 6,117 | 20 | 0 |
@@ -45,7 +45,7 @@ The lab counts are labs linked to that phase's lessons; one lab can be linked to
 - The standalone-theory template requires 17 sections, sources, at least one diagram and an inline quiz. The DNS/NTP pilot and Kubernetes foundations lesson use it; the other 69 lessons remain valid with their legacy `Lab` sections during incremental migration.
 - **Gaps:**
   - VCF Operations HCX has no dedicated lesson. Foundational Kubernetes now has a dedicated theory lesson; its practical guide is gated on an available Workload Domain and Supervisor.
-  - The item report identifies 22 official items below the internal five-question target. A question mapping is evidence of coverage, but each item still needs its linked theory section reviewed for sufficient depth.
+  - The item report identifies 19 official items below the internal five-question target. A question mapping is evidence of coverage, but each item still needs its linked theory section reviewed for sufficient depth.
 - **Unverified facts** are written as "check your version" rather than stated. The main areas:
   - ESX 9, vCenter and SDDC Manager log paths (only `domainmanager.log`, `hostd.log` and the sos output path are confirmed for VCF 9)
   - some vSphere Client / VCF Operations menu paths
@@ -56,7 +56,7 @@ The lab counts are labs linked to that phase's lessons; one lab can be linked to
 
 ## Questions (`content/questions/*.yaml`)
 
-625 in total.
+637 in total.
 
 - **By objective:**
 
@@ -69,21 +69,21 @@ The lab counts are labs linked to that phase's lessons; one lab can be linked to
   | 4.1 | 159 |
   | 4.2 | 111 |
   | 4.3 | 59 |
-  | 4.4 | 48 |
+  | 4.4 | 60 |
   | none | 3 (exam-strategy items, excluded from mocks) |
 
-- **By type:** 450 single, 63 multi, 36 ordering, 33 matching, 26 true/false, 17 CLI.
+- **By type:** 457 single, 66 multi, 37 ordering, 34 matching, 26 true/false, 17 CLI.
 - **Diagnostic pool:** 58 questions across 8 areas (16 are drawn at onboarding).
 - **Kinds:** concept, architecture, troubleshooting, log, command, scenario and design are all present.
 - Every question has an explanation: correct answer, concept, architecture, trap. It also has a lesson + section link and a `why` on each option.
-- All 622 objective-tagged questions have a primary `objectiveItem`; the three exam-strategy questions remain intentionally outside the testable objectives. See [EXAM_COVERAGE.md](EXAM_COVERAGE.md).
+- All 634 objective-tagged questions have a primary `objectiveItem`; the three exam-strategy questions remain intentionally outside the testable objectives. See [EXAM_COVERAGE.md](EXAM_COVERAGE.md).
 - **Gaps:**
-  - 37/59 items meet the internal target of at least five questions; 22 are below it.
-  - `4.4.8` organizational networks now meets the target with developed theory and five questions. Most remaining low-count items are in 4.3 Operations and 4.4 Consume and Automate; `4.4.1`, `4.4.6` and `4.4.9` each have one question.
+  - 40/59 items meet the internal target of at least five questions; 19 are below it.
+  - `4.4.1`, `4.4.6`, `4.4.8` and `4.4.9` now meet the target with developed theory and five questions each. Most remaining low-count items are in 4.3 Operations; the remaining VCF Automation gaps are `4.4.3`, `4.4.4`, `4.4.5`, `4.4.7` and `4.4.11`.
 
 ## Practical guides (`content/labs/*.yaml`)
 
-24 practical guides in the existing internal lab schema. Each has objectives, prerequisites, a topology diagram, steps with validation, expected results, hints and troubleshooting. The VCF Automation organization guide now includes exact VCF 9.0 paths for address blocks, IP quotas, connectivity profiles and VPCs, and is marked **PREPARED — NOT YET LAB-VALIDATED**.
+24 practical guides in the existing internal lab schema. Each has objectives, prerequisites, a topology diagram, steps with validation, expected results, hints and troubleshooting. The VCF Automation organization guide now includes exact VCF 9.0 paths for address blocks, IP quotas, connectivity profiles, VPCs, provider libraries, organization libraries, VM images and catalog publication, and is marked **PREPARED — NOT YET LAB-VALIDATED**.
 
 - **Home lab and infrastructure:** `lab-homelab-proxmox-prep`, `lab-network-readiness`, `lab-esx-host-first-vm`, `lab-vcenter-cluster-ha-drs`, `lab-vm-templates-content-library`
 - **Storage:** `lab-vsan-esa-cluster`, `lab-vsan-storage-policies`
@@ -112,7 +112,7 @@ The lab counts are labs linked to that phase's lessons; one lab can be linked to
 
 ## Glossary (`content/glossary/*.yaml`)
 
-256 terms, no duplicates.
+270 terms, no duplicates.
 
 | File | Terms |
 |---|---|
@@ -124,7 +124,7 @@ The lab counts are labs linked to that phase's lessons; one lab can be linked to
 | f-architecture | 15 |
 | g-deployment | 16 |
 | h-lifecycle-security | 28 |
-| i-ops-automation | 40 |
+| i-ops-automation | 42 |
 | j-troubleshooting | 11 |
 
 **Missing:** HCX terminology and selected Kubernetes operational terms such as CNI and kubeconfig. Core Kubernetes terms including control plane, node, pod, Deployment, Service, Namespace, PVC, StorageClass, Supervisor and VKS are present.
@@ -151,7 +151,7 @@ They cover esxcli, vmkping, nsxcli, vecs-cli, openssl, PowerCLI (`VCF.PowerCLI`)
 
 | Component | Where | Status |
 |---|---|---|
-| Interactive SVG diagrams with steps and a text description | `src/components/Diagram.tsx`, 105 diagrams | Done |
+| Interactive SVG diagrams with steps and a text description | `src/components/Diagram.tsx`, 106 diagrams | Done |
 | Architecture Explorer: tree, map, focus graph, failure impact | `src/pages/Architecture.tsx`, `content/architecture/` | Done |
 | Question renderer: single, multi, true/false, ordering, matching, CLI | `src/components/Question.tsx` | Done |
 | Quiz runner with feedback and summary | `src/components/QuizRunner.tsx` | Done |

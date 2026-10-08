@@ -120,6 +120,41 @@ steps:
       Namespace and VPC are created inside their quotas; the VPC is associated with `payments-dev`; permitted traffic
       succeeds according to the selected address scope; oversize namespace and address requests are refused. Any
       difference is evidence to record, not a reason to improvise changes outside this guide.
+  - id: content-libraries
+    title: Publish provider content and curate organization content
+    why: Covers the separate exam items for provider content libraries and organization content management.
+    instructions: |
+      1. In the **VCF Automation Provider Management Portal**, open **Infrastructure > Content Libraries**. On the
+         **Content Library** tab, select **New**.
+      2. Enter `golden-images`, add a description, leave external subscription disabled for a local library and select
+         **Next**. Select `region-lab` and its approved datastore-backed storage class, review and select **Confirm**.
+      3. Verify that the provider library appears in every selected region and is visible read-only from `org-dev`.
+         Where the region contains several vCenter instances, record the backing libraries and verify publisher-to-
+         subscriber connectivity before uploading a large item.
+      4. Return to the `org-dev` organization portal as `devadmin`. Open **Build & Deploy > Content Hub > Content
+         Libraries**, select **New**, and enter `payments-images`.
+      5. Decide whether this library belongs to all current and future namespaces. For the exercise, disable the toggle
+         and record that this choice cannot be changed later. Select **Next**, choose `region-lab` and the approved
+         storage class, then review and select **Confirm**.
+      6. Add `payments-images` to namespace class `small-app`, create or refresh a test namespace from that class, and
+         confirm that a namespace outside the class cannot see the library.
+      7. Open **Build & Deploy > Content Hub > VM Images**, select **Upload**, select a small approved OVA or OVF file,
+         choose `payments-images`, enter a clear image name and select **Submit**. Record the resulting VMI identifier.
+      8. From **VM Images** (or the library's **VM Images** tab), open the image's vertical ellipsis and select **Publish
+         to Catalog**. Enter `payments-test-vm`, select project `payments`, leave cross-project sharing disabled, enable
+         cloud-init only if the image supports it, and select **Publish**.
+      9. As a project member, open the catalog and confirm the item is available. Attempt the same direct-publish flow
+         with an ISO only as a read-only UI check; the action must not be offered for ISO content.
+      10. Record organization storage usage before and after the upload. Do not assume one image consumes one copy when
+          the selected region spans multiple vCenter instances.
+    validate: |
+      In the provider portal, capture the provider library's selected regions/storage classes and organization read-only
+      visibility. In the organization portal, capture `payments-images` region and namespace scope, the uploaded image's
+      VMI identifier, the catalog item's owning project and the observed storage-usage change.
+    expected: |
+      Provider content is read-only in `org-dev`; organization content is invisible to other organizations; only
+      namespaces selected through `small-app` see `payments-images`; the OVF catalog item is visible to project
+      `payments`; the ISO has no direct publish action; storage use is charged to the organization.
   - id: governance
     title: Policies and an event subscription
     why: Exam items "governance policies" and "extensibility".
@@ -166,6 +201,14 @@ sources:
     url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/organization-management/adding-and-managing-virtual-private-clouds/add-a-vpc.html
   - title: "VCF 9.0 - Managing IP Address Blocks and IP Quotas"
     url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/organization-management/adding-and-managing-virtual-private-clouds/ip-management.html
+  - title: "VCF 9.0 - Create a Provider Content Library"
+    url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/provider-management/create-a-content-library.html
+  - title: "VCF 9.0 - Managing Content Libraries"
+    url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/organization-management/adding-and-managing-content-libraries.html
+  - title: "VCF 9.0 - Create an Organization Content Library"
+    url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/organization-management/adding-and-managing-content-libraries/create-a-content-library.html
+  - title: "VCF 9.0 - Add a VM Image and Publish It to the Catalog"
+    url: https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/organization-management/adding-and-managing-content-libraries/creating-vm-images.html
   - title: "William Lam - VCF 9.0 lab: configuring VCF Automation"
     url: https://williamlam.com/2025/08/ms-a2-vcf-9-0-lab-configuring-vcf-automation.html
   - title: "SDDC Manager API 9.0 - VcfAutomationSpec"

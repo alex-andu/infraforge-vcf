@@ -222,11 +222,28 @@ terms:
     labs: [lab-vcfa-organization-setup]
   - id: provider-content-library
     term: Provider content library
-    definition: A content library created by the provider in VCF Automation and shared with organizations, read-only to their users.
-    whyItMatters: Distributes golden images to every tenant without letting tenants change them.
+    definition: A VCF Automation abstraction created by the provider over synchronized backing vCenter content libraries in selected regions; automatically available read-only to organizations with quota in those regions.
+    whyItMatters: Distributes centrally governed golden images across regions without letting organization users change them.
     version: vcf9
-    related: [vcfa-organization]
+    related: [vcfa-organization, organization-content-library]
     lessons: [vcf-automation-tenancy-regions]
+    labs: [lab-vcfa-organization-setup]
+  - id: organization-content-library
+    term: Organization content library
+    definition: A content library created and managed inside one VCF Automation organization, scoped to selected regions and to all namespaces or namespaces created from selected namespace classes; its storage counts against organization quota.
+    whyItMatters: Lets an organization curate private VM images without changing the provider's read-only library.
+    version: vcf9
+    related: [provider-content-library, namespace-class, vm-image-identifier]
+    lessons: [vcf-automation-org-admin]
+    labs: [lab-vcfa-organization-setup]
+  - id: vm-image-identifier
+    term: VM image identifier
+    expansion: VMI
+    definition: The unique identifier assigned to every VM image uploaded to VCF Automation, used to reference that exact image in blueprints.
+    whyItMatters: Separates a stable automation reference from the image's display name.
+    version: vcf9
+    related: [organization-content-library]
+    lessons: [vcf-automation-org-admin]
     labs: [lab-vcfa-organization-setup]
   - id: vcfa-project
     term: Project (VCF Automation)

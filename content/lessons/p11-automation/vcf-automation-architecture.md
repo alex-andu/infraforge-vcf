@@ -62,6 +62,21 @@ deployment options of VCF Automation". The following lessons cover regions, tena
 | Patch ESX hosts / upgrade the fleet | No | Fleet management / SDDC Manager lifecycle |
 | A single admin creating a handful of VMs with no governance | Usually no | vSphere Client is enough |
 
+Use VCF Automation when the requirement is a **repeatable consumption service**, rather than a one-time infrastructure
+task. Five signals make it the right control plane:
+
+| Signal in the scenario | Capability selected in VCF Automation |
+|---|---|
+| Different business units must consume shared infrastructure without seeing each other's resources | Organizations, projects and role-scoped portals |
+| Teams need to request VMs, VKS clusters, networks or volumes without direct administrator intervention | Self-service interfaces, catalog, namespaces and Supervisor services |
+| Consumption must stay inside budgets or technical limits | Region quotas, namespace limits, IP quotas and IaaS policies |
+| Only approved images and application patterns may be deployed | Provider/organization content libraries, blueprints and catalog items |
+| Provisioning must call approval, IPAM, CMDB or ticketing processes | Governance policies, event subscriptions and VCF Operations Orchestrator |
+
+The service boundary matters. VCF Automation decides **who may request what, from which approved content, under which
+quota and workflow**. vCenter and Supervisor execute the workload, NSX carries its traffic, VCF Operations observes it,
+and SDDC Manager or fleet management lifecycle the infrastructure and management products.
+
 ### Personas and portals
 
 | Persona | Portal | Typical tasks |
@@ -173,6 +188,8 @@ is organization/region based.
 | "Every new VM must be registered in the CMDB automatically." | Extensibility: event subscription running an Orchestrator workflow. |
 | "Upgrade VCF Automation to a new release." | VCF Operations fleet management lifecycle, not the VCF Automation UI. |
 | "The VCF Automation appliance VM is down; are tenant VMs affected?" | No - workloads run on the Supervisor/vSphere; only self-service stops. |
+| "An administrator needs to remediate ESX hosts against a desired image." | vSphere Lifecycle Manager / VCF lifecycle, not VCF Automation. |
+| "A provider wants every organization to consume one controlled golden image without editing it." | Provider content library in VCF Automation. |
 
 ### Dependencies to check before deployment
 
@@ -247,6 +264,8 @@ team that only needs VMs and has no Supervisor-enabled cluster gets a **VM Apps*
 ## Exam Focus
 
 - Use case: self-service, multi-tenant consumption of VMs, Kubernetes and networking with governance.
+- Select it when a scenario combines consumer delegation with isolation, quotas, approved content or workflow
+  automation; select the infrastructure product directly for one-off administration, lifecycle or monitoring.
 - Runs as **Kubernetes-based services on appliance VMs** in the management domain.
 - **Simple** = 1 node (small), **HA** = 3 nodes (medium/large), optional external LB.
 - IPs: **2 (simple) / 4 (HA)**; internal cluster CIDR from three allowed ranges.
@@ -266,6 +285,11 @@ organization or enable Supervisor first.
 
 :::trap
 Scaling Simple to HA is not "add one node": it is a resize to Medium/Large that forces the three-node cluster.
+:::
+
+:::trap
+VCF Automation is a provisioning and governance control plane. It does not replace vCenter for inventory operations,
+VCF Operations for monitoring, NSX for the network data path or SDDC Manager/fleet management for lifecycle.
 :::
 
 ## Knowledge Check
