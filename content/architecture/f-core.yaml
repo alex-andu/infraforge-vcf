@@ -342,13 +342,37 @@ components:
 
   - id: vcf-automation
     name: VCF Automation
+    fullName: VMware Cloud Foundation Automation
     category: automation
     parent: vcf-fleet
     summary: Self-service, multi-tenant consumption layer of the fleet (formerly Aria Automation).
+    purpose: |
+      Converts provider-controlled VCF capacity into governed self-service resources for organizations, projects and
+      application teams without giving consumers direct infrastructure-administrator access.
     function: |
       Provides organizations, regions, projects and self-service of VMs, networks and Kubernetes on top of VCF
       instances. Runs as containerized services in a Kubernetes cluster on dedicated appliances provisioned and
       managed by fleet management. Simple model 1 node (POC/dev), HA model 3 nodes (production).
+    capabilities:
+      - Organize provider capacity into regions, organizations and projects.
+      - Offer catalog content for virtual machines, networks, Kubernetes and application services.
+      - Apply policies, quotas, approvals, leases and role separation to consumption.
+      - Integrate vCenter, NSX and Supervisor capacity through supported provider onboarding.
+    limitations:
+      - It does not replace vCenter, NSX Manager or Supervisor as their underlying execution planes.
+      - Existing workloads continue running when the self-service portal is unavailable.
+      - A catalog item cannot provide capacity, networking or permissions that the onboarded region lacks.
+    managementSurfaces:
+      - Provider portal for infrastructure, content, governance and organization administration.
+      - Organization portal for consumer catalog and deployment operations.
+      - Supported APIs for content and workload automation.
+    commonMistakes:
+      - Confusing an organization with a vCenter folder or a VCF workload domain.
+      - Publishing content before its image, flavor, network and project mappings are valid.
+      - Granting provider roles to consumers instead of using organization/project roles.
+    examFocus: |
+      Follow the provider-to-consumer chain: onboard infrastructure, define regions and organizations, configure
+      networking and governance, publish content, deploy and operate workloads.
     runsOn: Management domain of the first VCF instance.
     managedBy: VCF Operations fleet management appliance
     dependsOn: [vcf-operations-fleet-management, vcf-identity-broker, vcenter, nsx-manager, dns-service, ntp-service]
@@ -366,14 +390,38 @@ components:
 
   - id: vcf-operations-hcx
     name: VCF Operations HCX
+    fullName: VMware Cloud Foundation Operations HCX
     category: operations
     parent: vcf-fleet
     summary: Workload mobility, encrypted site interconnect and temporary Layer 2 network extension across VCF and supported vSphere environments.
+    purpose: |
+      Moves workloads between supported sites while minimizing application downtime and providing temporary network
+      continuity during migration waves.
     function: |
       HCX Manager appliances at source and destination form Site Pairs for management and orchestration. Network and
       Compute Profiles define service intent; a Service Mesh deploys HCX-IX migration/interconnect appliances,
       HCX-NET-EXT bridges and optional Sentinel appliances for non-vSphere migration. Supports Bulk, vMotion, Cold,
       Replication Assisted vMotion, OS Assisted Migration and Direct cross-vCenter vMotion orchestration.
+    capabilities:
+      - Pair supported source and destination sites and build a secured interconnect.
+      - Orchestrate multiple migration methods for different downtime and scale requirements.
+      - Extend selected Layer 2 networks temporarily during migration.
+      - Use profiles and Service Mesh to deploy the required service appliances consistently.
+    limitations:
+      - It is not a permanent substitute for destination network and routing design.
+      - Migration method availability depends on source, destination, licensing and compatibility prerequisites.
+      - HCX Manager health alone does not prove that interconnect and network-extension appliances are healthy.
+    managementSurfaces:
+      - VCF Operations HCX workload-mobility entry point.
+      - Local HCX Manager interfaces at both paired sites.
+      - Service Mesh, appliance, migration and diagnostic views.
+    commonMistakes:
+      - Creating a Site Pair and assuming the Service Mesh and data path are automatically ready.
+      - Extending a network without planning gateway location, routing and final cutover.
+      - Choosing a migration type by name without checking its downtime and source requirements.
+    examFocus: |
+      HCX is candidate-profile context. Know Site Pairs, Network/Compute Profiles, Service Mesh, network extension and
+      the main migration methods at a practical comparison level without excessive product-depth detail.
     runsOn: HCX Manager in each site's management zone; service appliances on clusters selected by Compute Profiles.
     managedBy: Local HCX Manager consoles; integrated into the VCF Operations HCX workload-mobility capability.
     dependsOn: [vcenter, dns-service, ntp-service, physical-network]
@@ -393,13 +441,37 @@ components:
 
   - id: vcf-identity-broker
     name: VCF Identity Broker
+    fullName: VMware Cloud Foundation Identity Broker
     category: security
     parent: vcf-fleet
     summary: Connects an external identity provider to VCF components for VCF single sign-on (replaces Workspace ONE Access in this role).
+    purpose: |
+      Gives supported VCF interfaces a common external authentication path while preserving each product's own roles
+      and authorization boundaries.
     function: |
       Brokers authentication for VCF SSO to vCenter, NSX, VCF Operations, VCF Automation, VCF Operations for logs,
       for networks, orchestrator and HCX (not SDDC Manager or ESX). Deployment: embedded in the management domain
       vCenter, or a 3-node appliance cluster. Scope: fleet-wide, cross-instance or per-instance SSO models.
+    capabilities:
+      - Integrate a supported external identity provider with VCF single sign-on.
+      - Broker authentication across supported VCF components and scopes.
+      - Run embedded in management vCenter or as a dedicated appliance cluster.
+      - Preserve local accounts as documented break-glass paths.
+    limitations:
+      - It does not grant authorization automatically; product roles and group mappings still control access.
+      - It does not provide VCF SSO to SDDC Manager or direct ESX login.
+      - Identity-provider availability and time/DNS correctness remain external dependencies.
+    managementSurfaces:
+      - VCF Operations > Fleet Management identity configuration.
+      - External identity-provider administration for users, groups and trust.
+      - Individual product role-mapping and authorization pages.
+    commonMistakes:
+      - Treating authentication success as proof that the user has the required product role.
+      - Assuming every VCF component participates in VCF SSO.
+      - Removing local break-glass access before external identity is proven end to end.
+    examFocus: |
+      Separate authentication from authorization, recognize supported SSO scope models and know which components use
+      Identity Broker versus local or product-specific access.
     runsOn: Embedded in the management vCenter, or appliance nodes in the management domain.
     managedBy: VCF Operations (Fleet Management → identity); lifecycle by fleet management appliance
     dependsOn: [vcenter, dns-service, ntp-service]
@@ -688,12 +760,36 @@ components:
 
   - id: vcf-operations-logs
     name: VCF Operations for logs
+    fullName: VMware Cloud Foundation Operations for Logs
     category: operations
     parent: vcf-fleet
     summary: Fleet log collection and analysis (successor of Aria Operations for Logs).
+    purpose: |
+      Centralizes time-ordered logs from VCF components so an operator can search, correlate and alert across systems
+      without opening every appliance separately.
     function: |
       Receives logs via CFAPI (9000 / 9543 SSL) or syslog (514 UDP/TCP, 1514 UDP, 6514 TLS). Simple model 1 node,
       HA model 3 nodes with integrated load balancer. Deployed on Day 2 from fleet management.
+    capabilities:
+      - Ingest supported syslog and CFAPI streams from VCF products and operating systems.
+      - Search, filter, correlate and visualize events across components.
+      - Create dashboards, extracted fields and alerts from log patterns.
+      - Integrate log context with the broader VCF Operations experience.
+    limitations:
+      - It does not replace product health metrics, packet captures or authoritative configuration state.
+      - Missing forwarding configuration produces missing evidence rather than proving that no event occurred.
+      - Its outage does not stop the workloads or components that generate logs.
+    managementSurfaces:
+      - VCF Operations for logs web interface.
+      - Fleet Management lifecycle workflow for deployment and upgrade.
+      - Source-product log-forwarding configuration and agent status.
+    commonMistakes:
+      - Searching the wrong time range or ignoring clock skew between sources.
+      - Assuming every product forwards every useful log by default.
+      - Treating a matching message as root cause without correlating metrics and configuration.
+    examFocus: |
+      Know deployment ownership, ingestion paths, searching/alerting use cases and the boundary between centralized
+      logs and VCF Operations metric/health analytics.
     runsOn: Management domain of the first VCF instance (by default).
     managedBy: VCF Operations fleet management appliance
     dependsOn: [vcf-operations-fleet-management, dns-service, ntp-service]
@@ -708,12 +804,36 @@ components:
 
   - id: vcf-operations-networks
     name: VCF Operations for networks
+    fullName: VMware Cloud Foundation Operations for Networks
     category: operations
     parent: vcf-fleet
     summary: Network visibility and flow analytics for the fleet; its collector is an instance-level component.
+    purpose: |
+      Correlates virtual and physical network inventory, paths and flows so operators can analyze reachability,
+      dependencies and network behavior across VCF environments.
     function: |
       Platform nodes plus collectors. Simple: one platform node and one collector. "HA": three-node platform cluster
       for performance and scale, not redundancy.
+    capabilities:
+      - Discover supported vCenter, NSX and physical-network data sources.
+      - Analyze flows, application dependencies and communication paths.
+      - Visualize topology and help investigate reachability or path changes.
+      - Use distributed collectors to gather data from VCF instances.
+    limitations:
+      - It does not forward packets or replace NSX/physical-network configuration tools.
+      - A three-node platform model described as HA for scale does not automatically mean service redundancy.
+      - Conclusions are limited by the health, permissions and completeness of its data sources.
+    managementSurfaces:
+      - VCF Operations for networks web interface.
+      - Data-source and collector administration pages.
+      - Fleet Management lifecycle workflow for supported deployment and upgrades.
+    commonMistakes:
+      - Confusing a network analytics finding with an automatic configuration change.
+      - Assuming missing flow data proves that no communication occurred.
+      - Treating its collector as the general VCF Operations collector.
+    examFocus: |
+      Understand data sources, collectors, path/flow analysis and the difference between Operations for networks,
+      NSX Manager and ordinary VCF Operations monitoring.
     runsOn: Management domain (platform); collectors on each instance's VM management network.
     managedBy: VCF Operations fleet management appliance
     dependsOn: [vcf-operations-fleet-management, vcenter, nsx-manager]
@@ -729,12 +849,36 @@ components:
 
   - id: supervisor
     name: vSphere Supervisor
+    fullName: VMware vSphere Supervisor
     category: compute
     parent: workload-domain
     summary: Workload domain capability that provides a declarative API for VMs, Kubernetes clusters and services.
+    purpose: |
+      Adds a Kubernetes-style declarative control plane to eligible vSphere clusters so platform teams can expose
+      governed namespaces, VM Services and Kubernetes cluster services to consumers.
     function: |
       Activated on workload domain clusters (vSphere zones). Control plane simple (1 VM) or HA (3 VMs); networking
       via NSX VPC/segments, Avi or Foundation Load Balancer. Consumed by VCF Automation and kubectl users.
+    capabilities:
+      - Create governed vSphere Namespaces with quotas, permissions and storage policies.
+      - Provide VM Service and supported Kubernetes cluster services through declarative APIs.
+      - Integrate networking, load balancing, content libraries and storage policies.
+      - Supply region capacity that VCF Automation can expose to organizations.
+    limitations:
+      - It is not itself a tenant Kubernetes workload cluster.
+      - It does not remove the need for compatible networking, load balancing, storage and image/content inputs.
+      - A namespace grants a governed boundary, not unrestricted vCenter administrator access.
+    managementSurfaces:
+      - vSphere Client > Workload Management for activation and health.
+      - vSphere Namespaces for permissions, quotas, storage and services.
+      - Kubernetes CLI and service APIs for authorized consumers.
+    commonMistakes:
+      - Confusing the Supervisor control plane with a VKS workload cluster.
+      - Activating before networking, DNS, storage policy and load-balancer prerequisites are ready.
+      - Treating namespace permissions as ordinary vCenter inventory permissions.
+    examFocus: |
+      Kubernetes is candidate-profile foundation knowledge. Know the Supervisor/namespace/VKS relationship, major
+      prerequisites and how the capability fits a VI workload domain; keep deep Kubernetes internals beyond scope.
     runsOn: Workload domain clusters.
     managedBy: vCenter of the domain
     dependsOn: [vcenter, nsx-manager, esx-host]
