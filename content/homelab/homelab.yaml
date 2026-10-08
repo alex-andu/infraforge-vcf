@@ -173,6 +173,54 @@ profiles:
       - One physical server is one failure domain; HA and vSAN tests are logical only.
       - Hardware checks (vSAN ESA HCL, 10 GbE pre-check) need the documented lab workarounds.
 
+  - id: real-lab
+    name: Documented real lab – vcf-lab-01
+    purpose: A sanitized snapshot of Alex's supplied VCF 9.0.2 topology for guide planning and evidence collection. It is a documented current state, not a recommended production design or an independently observed live state. The VM table contains only the appliance whose complete CPU, RAM and disk sizing was supplied; the topology blocks below remain authoritative for the other components.
+    cpu: "Primary Proxmox node: 2 x Intel Xeon Platinum 8173M; each of the four nested ESX 9.0.2 VMs has 12 vCPU"
+    ram: "Primary Proxmox node: about 251 GiB; each nested ESX VM has about 44–45 GB"
+    disk: "vcf-fast: 1 TB NVMe ZFS (~899 GiB); vcf-aux: 256 GB (~231 GiB); vcf-capacity: 2 x 2 TB HDD mirror (~1.81 TB). The 256 GB nvme1n1 Proxmox OS device must not be touched."
+    nics: "Four vmxnet3 NICs per nested ESX on vmbr3; management VDS MTU 1700 with vmnic0/vmnic1 active-active. Observed physical-uplink MTUs are mixed and require guide-time validation."
+    storageLayout: |
+      | Layer | Documented state |
+      |---|---|
+      | Proxmox OS | `nvme1n1`, Samsung 256 GB — **do not touch** |
+      | Fast pool | `vcf-fast`, Kingston 1 TB NVMe ZFS, about 899 GiB |
+      | Auxiliary pool | `vcf-aux`, Samsung 256 GB, about 231 GiB |
+      | Capacity pool | `vcf-capacity`, two 2 TB HDDs in a mirror, about 1.81 TB |
+      | Management-domain storage | vSAN OSA, FTT=0; datastore `mgmt-domain-cl01-ds-vsan01` |
+
+      Preserve `VM501 infra01` and `CT106 infraforge`. The inventory did not provide complete virtual-disk sizing
+      for every nested host or management appliance, so this profile does not manufacture those values.
+    nested: |
+      Proxmox 9.x cluster `andulab`; primary node `prox-host-00.andulab.local` (`10.10.10.99`). Four nested ESX 9.0.2
+      VMs use VMIDs 701–704 and management addresses `10.100.10.11`–`10.100.10.14`. Each has 12 vCPU, about 44–45 GB
+      RAM and four vmxnet3 NICs on `vmbr3`. VCF instance `vcf-lab-01` contains the single-node Standard management
+      domain `mgmt-domain`, datacenter `mgmt-domain-dc01` and cluster `mgmt-domain-cl01`. Its VDS is
+      `mgmt-domain-cl01-vds01`, MTU 1700, with `vmnic0` and `vmnic1` active-active.
+    network: |
+      `infra01` (`10.100.80.10`) supplies BIND DNS, chrony NTP and routing; the DNS zone is `vcf.home.arpa`.
+
+      - **VLAN 110 — Management:** `10.100.10.0/24`; gateway `10.100.10.1`; MTU 1500.
+      - **VLAN 120 — vMotion:** `10.100.20.0/24`; validate gateway; MTU 1500.
+      - **VLAN 130 — vSAN:** `10.100.30.0/24`; validate gateway; MTU 1500.
+      - **VLAN 140 — NSX TEP:** `10.100.40.0/24`; pool `.20–.79`; validate gateway and MTU.
+      - **VLAN 180 — Infrastructure:** service address `10.100.80.10`; validate gateway and MTU.
+
+      Management components: VCF Installer / SDDC Manager `vcf01` (`10.100.10.20`), vCenter `vcenter01` (`.21`),
+      NSX VIP `nsx` (`.30`), NSX node `nsx01` (`.31`), Operations `ops01` (`.60`), fleet management `fleet01`
+      (`.61`) and collector `collector01` (`.62`), all under `vcf.home.arpa`. The offline depot is
+      `depot.vcf.home.arpa` (`10.10.30.100`).
+    vms:
+      - { name: nsx01, role: "Documented single NSX 9.0.2 manager node (medium)", vcpu: 6, ramGb: 24, diskGb: 300, notes: "Only appliance with complete sizing in the supplied inventory; this row is not the total lab footprint" }
+    resourceTotalsComplete: false
+    limitations:
+      - Supplied topology is documented but not independently queried; every practical guide must capture fresh runtime evidence for the systems it touches.
+      - Single-node Standard management domain, vSAN OSA FTT=0 and one Proxmox failure domain provide no representative production resilience.
+      - Gateway and MTU values for several service networks still require validation; VLANs 150, 160 and 170 exist but their purposes and subnets are not yet documented.
+      - Forward/reverse DNS equality and live NTP synchronization remain unverified.
+      - No NSX Edge, VI Workload Domain, Supervisor, VCF Automation, Operations for Logs, Operations for Networks or HCX deployment is confirmed by the supplied inventory.
+      - The documented nested speed-validation override and KVM topology are lab-specific and unsupported for production.
+
   - id: advanced
     name: Advanced – management + workload domain
     purpose: Full fleet practice — management domain with VCF Automation and VCF Operations for logs, plus a VI workload domain with its own vCenter/NSX and Supervisor.
