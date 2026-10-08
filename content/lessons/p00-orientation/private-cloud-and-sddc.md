@@ -127,6 +127,21 @@ What happens when a developer needs a new three-tier test environment in a VCF p
 | | Disaster recovery | "Protect against site loss" |
 | | Integrated security, compliance and resilience | "Continuous compliance against a hardening standard" |
 
+### Select the use-case theme from the business outcome
+
+The same component can support several themes, so classify the **outcome**, not a product name:
+
+| Scenario signal | Primary theme | Why |
+|---|---|---|
+| Standardize ageing sites, add edge capacity, replace ticket-driven VM delivery with automated IaaS | Infrastructure modernization | The requested outcome changes how infrastructure is built and supplied |
+| Give application teams one self-service experience for VMs, Kubernetes, Private AI and traditional applications | Unified cloud experience | The requested outcome is a common consumption model across workload types |
+| Recover from ransomware/site loss or prove continuous hardening and compliance | Secure and resilient platform | The requested outcome protects service, data and security posture |
+
+When a scenario spans themes, identify its dominant success measure. “Run AI on-premises because the data is
+sensitive” combines unified consumption with control, but the explicit workload-delivery request maps first to the
+**Private AI** use case under unified cloud experience. “Restore that AI service after ransomware” maps to secure and
+resilient platform.
+
 ### How VCF 9 deployment models express the principles
 
 Resilience and scale are also principles, and VCF 9 documents them as **fleet deployment models**: a basic design in one availability zone or region; site high availability across zones (stretched clusters, fault domains); disaster recovery across regions (a secondary instance with replication and failover); and a combination of fault domains plus disaster recovery. You will design with these in the Design phase. For now, notice that the same private cloud (one fleet, one operations console, one self-service portal) can span several of these physical layouts.

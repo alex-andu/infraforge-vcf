@@ -8,8 +8,8 @@ Totals:
 
 | Item | Count |
 |---|---|
-| Lessons | 71 (159,006 words) |
-| Questions | 668 |
+| Lessons | 71 (159,746 words) |
+| Questions | 677 |
 | Practical guides (internal `lab` schema) | 24 |
 | Incidents | 10 |
 | Scenarios | 3 |
@@ -23,14 +23,14 @@ Totals:
 
 | Phase | Title | Lessons written / planned | Words | Questions | Labs |
 |---|---|---|---|---|---|
-| p00 | Orientation | 4/4 | 8,093 | 29 | 1 |
+| p00 | Orientation | 4/4 | 8,267 | 34 | 1 |
 | p01 | Virtualization Foundations | 4/4 | 6,876 | 27 | 2 |
-| p02 | vSphere Core | 6/6 | 13,467 | 52 | 2 |
-| p03 | Storage and vSAN | 6/6 | 14,385 | 52 | 2 |
+| p02 | vSphere Core | 6/6 | 13,674 | 53 | 2 |
+| p03 | Storage and vSAN | 6/6 | 14,560 | 53 | 2 |
 | p04 | Networking | 4/4 | 10,077 | 35 | 3 |
 | p05 | NSX | 7/7 | 15,226 | 64 | 3 |
 | p06 | VCF Architecture | 6/6 | 12,127 | 66 | 3 |
-| p07 | VCF Deployment | 4/4 | 8,769 | 35 | 4 |
+| p07 | VCF Deployment | 4/4 | 8,953 | 37 | 4 |
 | p08 | Workload Domains | 5/5 | 11,100 | 41 | 2 |
 | p09 | Lifecycle Management | 4/4 | 8,892 | 40 | 1 |
 | p10 | VCF Operations | 5/5 | 12,284 | 71 | 2 |
@@ -45,7 +45,7 @@ The lab counts are labs linked to that phase's lessons; one lab can be linked to
 - The standalone-theory template requires 17 sections, sources, at least one diagram and an inline quiz. The DNS/NTP pilot and Kubernetes foundations lesson use it; the other 69 lessons remain valid with their legacy `Lab` sections during incremental migration.
 - **Gaps:**
   - VCF Operations HCX has no dedicated lesson. Foundational Kubernetes now has a dedicated theory lesson; its practical guide is gated on an available Workload Domain and Supervisor.
-  - The item report identifies 5 official items below the internal five-question target. A question mapping is evidence of coverage, but each item still needs its linked theory section reviewed for sufficient depth.
+  - All 59 official items meet the internal five-question target. A question mapping is evidence of coverage, while later topic packages continue to review theory depth and accuracy.
 - **Unverified facts** are written as "check your version" rather than stated. The main areas:
   - ESX 9, vCenter and SDDC Manager log paths (only `domainmanager.log`, `hostd.log` and the sos output path are confirmed for VCF 9)
   - some vSphere Client / VCF Operations menu paths
@@ -56,30 +56,30 @@ The lab counts are labs linked to that phase's lessons; one lab can be linked to
 
 ## Questions (`content/questions/*.yaml`)
 
-668 in total.
+677 in total.
 
 - **By objective:**
 
   | Objective | Questions |
   |---|---|
-  | 2.1 | 29 |
-  | 2.2 | 75 |
-  | 2.3 | 52 |
+  | 2.1 | 34 |
+  | 2.2 | 76 |
+  | 2.3 | 53 |
   | 2.4 | 89 |
-  | 4.1 | 159 |
+  | 4.1 | 161 |
   | 4.2 | 111 |
   | 4.3 | 81 |
   | 4.4 | 69 |
   | none | 3 (exam-strategy items, excluded from mocks) |
 
-- **By type:** 468 single, 72 multi, 44 ordering, 41 matching, 26 true/false, 17 CLI.
+- **By type:** 471 single, 74 multi, 46 ordering, 43 matching, 26 true/false, 17 CLI.
 - **Diagnostic pool:** 58 questions across 8 areas (16 are drawn at onboarding).
 - **Kinds:** concept, architecture, troubleshooting, log, command, scenario and design are all present.
 - Every question has an explanation: correct answer, concept, architecture, trap. It also has a lesson + section link and a `why` on each option.
-- All 665 objective-tagged questions have a primary `objectiveItem`; the three exam-strategy questions remain intentionally outside the testable objectives. See [EXAM_COVERAGE.md](EXAM_COVERAGE.md).
+- All 674 objective-tagged questions have a primary `objectiveItem`; the three exam-strategy questions remain intentionally outside the testable objectives. See [EXAM_COVERAGE.md](EXAM_COVERAGE.md).
 - **Gaps:**
-  - 54/59 items meet the internal target of at least five questions; 5 are below it.
-  - Every objective 4.3 and 4.4 item now meets the target. The five remaining gaps are isolated foundation/deployment items.
+  - 59/59 items meet the internal target of at least five questions; none are below it.
+  - Coverage closure is complete; future additions should serve content depth, scenarios or newly verified product behavior rather than raw counts.
 
 ## Practical guides (`content/labs/*.yaml`)
 

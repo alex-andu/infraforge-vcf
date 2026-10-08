@@ -1107,3 +1107,25 @@ questions:
       correct: "Golden VM → template → customization spec → deploy → customization runs in the guest."
       concept: "Template-based provisioning."
       trap: "Without VMware Tools in step 1, step 5 never happens."
+
+  - id: p02-vm-010
+    type: ordering
+    kind: scenario
+    difficulty: intermediate
+    version: vcf9
+    topics: [vm-management]
+    objective: "2.2"
+    objectiveItem: "2.2.4"
+    lesson: vm-lifecycle-templates
+    section: manage-a-vm-as-a-controlled-lifecycle
+    stem: "Order the safe vCenter workflow for using a snapshot as a temporary rollback point before patching a VM."
+    items:
+      - { id: i1, text: "Confirm the correct VM, change window, backup state and datastore free space" }
+      - { id: i2, text: "Create a named short-lived snapshot with the intended disk/memory options" }
+      - { id: i3, text: "Apply the approved guest patch and validate application health" }
+      - { id: i4, text: "Revert only if validation fails; otherwise delete the snapshot" }
+      - { id: i5, text: "Confirm consolidation completes and no snapshot or consolidation warning remains" }
+    explanation:
+      correct: "Validate prerequisites, create a temporary rollback point, make and test the change, then remove and verify consolidation."
+      concept: "Snapshot lifecycle management"
+      trap: "Leaving a successful-change snapshot indefinitely turns a rollback aid into a capacity and performance risk."

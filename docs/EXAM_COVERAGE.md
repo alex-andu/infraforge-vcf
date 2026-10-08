@@ -5,16 +5,16 @@ The item identifiers are repository ordinals attached to the official item text;
 The **5-question target is an internal content-quality threshold**, not an official exam weight or scoring rule.
 
 - Official items represented: **59/59**
-- Items meeting the internal target: **54/59**
-- Objective-tagged questions mapped to one primary item: **665/665**
+- Items meeting the internal target: **59/59**
+- Objective-tagged questions mapped to one primary item: **674/674**
 - Questions outside a testable objective: **3**
 
 ## 2.1 — Private Cloud Vision
 
 | Item | Official exam-guide text | Questions | Question-linked lessons | Status |
 |---|---|---:|---:|---|
-| 2.1.1 | Describe the principles of Private Cloud | 4 | 1 | Needs 1 |
-| 2.1.2 | Identify the use cases for Private Cloud | 1 | 1 | Needs 4 |
+| 2.1.1 | Describe the principles of Private Cloud | 5 | 1 | Target met |
+| 2.1.2 | Identify the use cases for Private Cloud | 5 | 1 | Target met |
 | 2.1.3 | Identify the value proposition for Private Cloud | 24 | 4 | Target met |
 
 ## 2.2 — VMware Compute Fundamentals
@@ -24,7 +24,7 @@ The **5-question target is an internal content-quality threshold**, not an offic
 | 2.2.1 | Given a scenario, deploy and configure VCF compute components (vCenter and ESX) | 33 | 6 | Target met |
 | 2.2.2 | Given a scenario, configure a vSphere Cluster | 33 | 4 | Target met |
 | 2.2.3 | Given a scenario, deploy and configure virtual machines | 5 | 1 | Target met |
-| 2.2.4 | Given a scenario, manage a virtual machine through vCenter | 4 | 1 | Needs 1 |
+| 2.2.4 | Given a scenario, manage a virtual machine through vCenter | 5 | 1 | Target met |
 
 ## 2.3 — VMware Storage Fundamentals
 
@@ -32,7 +32,7 @@ The **5-question target is an internal content-quality threshold**, not an offic
 |---|---|---:|---:|---|
 | 2.3.1 | Given a scenario, configure vSphere storage | 5 | 1 | Target met |
 | 2.3.2 | Given a scenario, describe the use cases for VMware vSAN ESA or VMware vSAN OSA | 5 | 1 | Target met |
-| 2.3.3 | Given a scenario, deploy a VMware vSAN cluster | 4 | 1 | Needs 1 |
+| 2.3.3 | Given a scenario, deploy a VMware vSAN cluster | 5 | 1 | Target met |
 | 2.3.4 | Given a scenario, configure vSAN Storage policies | 10 | 1 | Target met |
 | 2.3.5 | Given a scenario, identify the options for Resilience and Data Availability in VMware vSAN | 20 | 3 | Target met |
 | 2.3.6 | Given a scenario, describe the purpose of vSAN Space Efficiency | 8 | 1 | Target met |
@@ -53,7 +53,7 @@ The **5-question target is an internal content-quality threshold**, not an offic
 | 4.1.1 | Identify the components of a VCF Deployment | 28 | 3 | Target met |
 | 4.1.2 | Given a scenario identify the appropriate VMware Cloud Foundation deployment models | 18 | 2 | Target met |
 | 4.1.3 | Given a scenario, describe the deployment of a VMware Cloud Foundation-based private cloud | 46 | 9 | Target met |
-| 4.1.4 | Given a scenario, identify the additional components required to complete the deployment of a VMware Cloud Foundation-based private cloud | 3 | 1 | Needs 2 |
+| 4.1.4 | Given a scenario, identify the additional components required to complete the deployment of a VMware Cloud Foundation-based private cloud | 5 | 1 | Target met |
 | 4.1.5 | Given a scenario, describe the deployment of and configure a VMware Cloud Foundation (VCF) Network Gateway | 6 | 1 | Target met |
 | 4.1.6 | Given a scenario, describe the deployment of VMware Cloud Foundation (VCF) Networking | 5 | 4 | Target met |
 | 4.1.7 | Given a scenario, describe the deployment of a Workload Domain in VMware Cloud Foundation (VCF) | 31 | 4 | Target met |
@@ -118,10 +118,5 @@ The **5-question target is an internal content-quality threshold**, not an offic
 
 ## Priority queue from measured gaps
 
-- **2.1.2** — Identify the use cases for Private Cloud: 1/5 questions.
-- **4.1.4** — Given a scenario, identify the additional components required to complete the deployment of a VMware Cloud Foundation-based private cloud: 3/5 questions.
-- **2.1.1** — Describe the principles of Private Cloud: 4/5 questions.
-- **2.2.4** — Given a scenario, manage a virtual machine through vCenter: 4/5 questions.
-- **2.3.3** — Given a scenario, deploy a VMware vSAN cluster: 4/5 questions.
 
 Candidate-profile follow-up: foundational Kubernetes and DNS/NTP now have dedicated lessons; VCF Operations HCX remains a content gap.

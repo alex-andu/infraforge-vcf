@@ -133,6 +133,23 @@ vSphere 9.0 adds **custom EVC modes**, built from the CPU features common to the
 
 A snapshot preserves VM state (disks, optionally memory) at a point in time by redirecting writes to delta disks. Snapshots are **not backups** — they live on the same datastore and depend on the base disk — and long chains hurt performance and consume space. Use them for short rollback windows (patching, upgrades) and delete them afterwards. VCF lifecycle prechecks and backup products both care about lingering snapshots on management VMs.
 
+### Manage a VM as a controlled lifecycle
+
+“Manage a VM through vCenter” is broader than power on/off. Read the requested outcome, then choose the operation and
+prove its completion:
+
+| Outcome | vCenter operation | Validation |
+|---|---|---|
+| Repeatable new workload | Deploy/clone from template plus customization specification | Unique guest identity, correct network/storage policy and VMware Tools running |
+| Temporary rollback before an approved guest change | Create a short-lived snapshot, perform and validate the change, then delete/consolidate it | No lingering snapshot or consolidation warning |
+| Move a running workload | Migrate compute, storage or both according to reachability and compatibility | Task succeeds; VM runs on the intended host/datastore/network |
+| Change virtual hardware | Edit Settings with hot-add support or during an approved power-off window | Guest sees the new device/capacity and alarms remain clear |
+| Retire a workload | Power off, confirm retention/backup policy, remove from inventory or delete from disk as approved | Inventory, storage and CMDB records agree |
+
+For destructive or hard-to-reverse operations, confirm the selected inventory object and task wording. **Remove from
+Inventory** unregisters the VM while preserving its files; **Delete from Disk** removes the VM files. They are not
+interchangeable cleanup actions.
+
 ### Where VCF reuses this
 
 - **VCF Automation** consumes vCenter content libraries as the source of catalog images; provider content libraries are configured in VCF Automation (see [VCF Automation tenancy](lesson:vcf-automation-tenancy-regions)).
