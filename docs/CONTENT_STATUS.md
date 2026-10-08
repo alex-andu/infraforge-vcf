@@ -8,8 +8,8 @@ Totals:
 
 | Item | Count |
 |---|---|
-| Lessons | 71 (157,907 words) |
-| Questions | 661 |
+| Lessons | 71 (159,006 words) |
+| Questions | 668 |
 | Practical guides (internal `lab` schema) | 24 |
 | Incidents | 10 |
 | Scenarios | 3 |
@@ -33,7 +33,7 @@ Totals:
 | p07 | VCF Deployment | 4/4 | 8,769 | 35 | 4 |
 | p08 | Workload Domains | 5/5 | 11,100 | 41 | 2 |
 | p09 | Lifecycle Management | 4/4 | 8,892 | 40 | 1 |
-| p10 | VCF Operations | 5/5 | 11,185 | 64 | 2 |
+| p10 | VCF Operations | 5/5 | 12,284 | 71 | 2 |
 | p11 | Automation and APIs | 4/4 | 10,295 | 65 | 2 |
 | p12 | Identity, Security and Certificates | 4/4 | 8,047 | 30 | 2 |
 | p13 | Troubleshooting | 4/4 | 10,947 | 37 | 1 |
@@ -45,7 +45,7 @@ The lab counts are labs linked to that phase's lessons; one lab can be linked to
 - The standalone-theory template requires 17 sections, sources, at least one diagram and an inline quiz. The DNS/NTP pilot and Kubernetes foundations lesson use it; the other 69 lessons remain valid with their legacy `Lab` sections during incremental migration.
 - **Gaps:**
   - VCF Operations HCX has no dedicated lesson. Foundational Kubernetes now has a dedicated theory lesson; its practical guide is gated on an available Workload Domain and Supervisor.
-  - The item report identifies 8 official items below the internal five-question target. A question mapping is evidence of coverage, but each item still needs its linked theory section reviewed for sufficient depth.
+  - The item report identifies 5 official items below the internal five-question target. A question mapping is evidence of coverage, but each item still needs its linked theory section reviewed for sufficient depth.
 - **Unverified facts** are written as "check your version" rather than stated. The main areas:
   - ESX 9, vCenter and SDDC Manager log paths (only `domainmanager.log`, `hostd.log` and the sos output path are confirmed for VCF 9)
   - some vSphere Client / VCF Operations menu paths
@@ -56,7 +56,7 @@ The lab counts are labs linked to that phase's lessons; one lab can be linked to
 
 ## Questions (`content/questions/*.yaml`)
 
-661 in total.
+668 in total.
 
 - **By objective:**
 
@@ -68,22 +68,22 @@ The lab counts are labs linked to that phase's lessons; one lab can be linked to
   | 2.4 | 89 |
   | 4.1 | 159 |
   | 4.2 | 111 |
-  | 4.3 | 74 |
+  | 4.3 | 81 |
   | 4.4 | 69 |
   | none | 3 (exam-strategy items, excluded from mocks) |
 
-- **By type:** 466 single, 71 multi, 42 ordering, 39 matching, 26 true/false, 17 CLI.
+- **By type:** 468 single, 72 multi, 44 ordering, 41 matching, 26 true/false, 17 CLI.
 - **Diagnostic pool:** 58 questions across 8 areas (16 are drawn at onboarding).
 - **Kinds:** concept, architecture, troubleshooting, log, command, scenario and design are all present.
 - Every question has an explanation: correct answer, concept, architecture, trap. It also has a lesson + section link and a `why` on each option.
-- All 658 objective-tagged questions have a primary `objectiveItem`; the three exam-strategy questions remain intentionally outside the testable objectives. See [EXAM_COVERAGE.md](EXAM_COVERAGE.md).
+- All 665 objective-tagged questions have a primary `objectiveItem`; the three exam-strategy questions remain intentionally outside the testable objectives. See [EXAM_COVERAGE.md](EXAM_COVERAGE.md).
 - **Gaps:**
-  - 51/59 items meet the internal target of at least five questions; 8 are below it.
-  - Every objective 4.4 item and the VCF Operations tool-selection, data-model, dashboard, network-monitoring, storage-monitoring and policy items now meet the target. Three remaining gaps are in VCF Operations.
+  - 54/59 items meet the internal target of at least five questions; 5 are below it.
+  - Every objective 4.3 and 4.4 item now meets the target. The five remaining gaps are isolated foundation/deployment items.
 
 ## Practical guides (`content/labs/*.yaml`)
 
-24 practical guides in the existing internal lab schema. Each has objectives, prerequisites, a topology diagram, steps with validation, expected results, hints and troubleshooting. The VCF Automation organization guide includes exact VCF 9.0 paths for regions, provider networking, organizations, address management, VPCs, content and policies. The two VCF Operations guides now have UI-first slices for Network Operations, Storage Operations and policy creation/assignment. All three are marked **PREPARED — NOT YET LAB-VALIDATED** where current runtime evidence is absent.
+24 practical guides in the existing internal lab schema. Each has objectives, prerequisites, a topology diagram, steps with validation, expected results, hints and troubleshooting. The VCF Automation organization guide includes exact VCF 9.0 paths for regions, provider networking, organizations, address management, VPCs, content and policies. The two VCF Operations guides now have UI-first slices for Network Operations, Storage Operations, policy creation/assignment, product-managed Telegraf, Business Applications, VCF compliance and Configuration Drift. All three are marked **PREPARED — NOT YET LAB-VALIDATED** where current runtime evidence is absent.
 
 - **Home lab and infrastructure:** `lab-homelab-proxmox-prep`, `lab-network-readiness`, `lab-esx-host-first-vm`, `lab-vcenter-cluster-ha-drs`, `lab-vm-templates-content-library`
 - **Storage:** `lab-vsan-esa-cluster`, `lab-vsan-storage-policies`

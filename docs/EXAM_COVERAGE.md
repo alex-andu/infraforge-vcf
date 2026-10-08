@@ -5,8 +5,8 @@ The item identifiers are repository ordinals attached to the official item text;
 The **5-question target is an internal content-quality threshold**, not an official exam weight or scoring rule.
 
 - Official items represented: **59/59**
-- Items meeting the internal target: **51/59**
-- Objective-tagged questions mapped to one primary item: **658/658**
+- Items meeting the internal target: **54/59**
+- Objective-tagged questions mapped to one primary item: **665/665**
 - Questions outside a testable objective: **3**
 
 ## 2.1 — Private Cloud Vision
@@ -87,9 +87,9 @@ The **5-question target is an internal content-quality threshold**, not an offic
 | 4.3.9 | Given a scenario, monitor networks using VCF Network Operations | 5 | 1 | Target met |
 | 4.3.10 | Given a scenario, monitor vSAN storage using VCF Storage Operations | 5 | 1 | Target met |
 | 4.3.11 | Given a scenario, configure VCF Operations policies | 5 | 1 | Target met |
-| 4.3.12 | Given a scenario, monitor application using VCF Operations | 2 | 1 | Needs 3 |
-| 4.3.13 | Given a scenario, monitor security hardening and compliance using VCF Operations | 3 | 1 | Needs 2 |
-| 4.3.14 | Given a scenario, configure configuration drift in VCF Operations | 3 | 1 | Needs 2 |
+| 4.3.12 | Given a scenario, monitor application using VCF Operations | 5 | 1 | Target met |
+| 4.3.13 | Given a scenario, monitor security hardening and compliance using VCF Operations | 5 | 1 | Target met |
+| 4.3.14 | Given a scenario, configure configuration drift in VCF Operations | 5 | 1 | Target met |
 
 ## 4.4 — VCF: Consume and Automate
 
@@ -119,10 +119,7 @@ The **5-question target is an internal content-quality threshold**, not an offic
 ## Priority queue from measured gaps
 
 - **2.1.2** — Identify the use cases for Private Cloud: 1/5 questions.
-- **4.3.12** — Given a scenario, monitor application using VCF Operations: 2/5 questions.
 - **4.1.4** — Given a scenario, identify the additional components required to complete the deployment of a VMware Cloud Foundation-based private cloud: 3/5 questions.
-- **4.3.13** — Given a scenario, monitor security hardening and compliance using VCF Operations: 3/5 questions.
-- **4.3.14** — Given a scenario, configure configuration drift in VCF Operations: 3/5 questions.
 - **2.1.1** — Describe the principles of Private Cloud: 4/5 questions.
 - **2.2.4** — Given a scenario, manage a virtual machine through vCenter: 4/5 questions.
 - **2.3.3** — Given a scenario, deploy a VMware vSAN cluster: 4/5 questions.
