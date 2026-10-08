@@ -554,13 +554,37 @@ components:
 
   - id: nsx-manager
     name: NSX Manager
+    fullName: VMware NSX Manager
     category: network
     parent: management-domain
     summary: NSX management and control plane for one domain, or shared by several workload domains.
+    purpose: |
+      Defines and distributes the networking and security intent used by NSX transport nodes and Edge nodes while
+      giving administrators one API and interface for the NSX environment.
     function: |
       Network virtualization and security management. The management domain has a dedicated NSX Manager; workload
       domains get a dedicated instance or share one. Models: simple (1 node + VIP), HA (3 nodes + VIP), HA with
       external load balancer.
+    capabilities:
+      - Manage transport zones, host transport nodes, segments, gateways and security policy.
+      - Register vCenter as a compute manager and discover eligible clusters.
+      - Program the distributed host data plane and the centralized Edge services.
+      - Operate as a single-node lab model or a resilient three-node manager cluster.
+    limitations:
+      - It does not forward ordinary workload packets; prepared hosts and Edge nodes provide the data plane.
+      - It does not replace vCenter host/VM management or SDDC Manager lifecycle orchestration.
+      - Manager availability cannot repair an incorrect VLAN, MTU or physical underlay design.
+    managementSurfaces:
+      - NSX Manager web interface at the cluster VIP or documented manager FQDN.
+      - NSX Policy API for automation.
+      - NSX CLI and support bundles for component diagnostics.
+    commonMistakes:
+      - Assuming Manager loss immediately stops already-programmed east-west forwarding.
+      - Confusing a Manager node, a host transport node and an Edge transport node.
+      - Editing VCF-owned NSX lifecycle settings outside the supported VCF workflow.
+    examFocus: |
+      Distinguish management, control and data planes; know compute-manager integration, transport-node preparation,
+      policy ownership and what continues to work during a Manager outage.
     runsOn: Appliance VMs in the management domain (also for workload domains).
     managedBy: SDDC Manager (deploy, lifecycle, passwords, certificates) driven from VCF Operations
     dependsOn: [vcenter, dns-service, ntp-service]
@@ -578,12 +602,36 @@ components:
 
   - id: nsx-edge-cluster
     name: NSX Edge cluster
+    fullName: VMware NSX Edge Cluster
     category: network
     parent: workload-domain
     summary: Edge nodes providing north-south routing and centralized services; shareable between domains that share an NSX Manager.
+    purpose: |
+      Supplies the centralized data-plane capacity required when traffic must leave an overlay, reach a physical
+      network or consume a stateful service that cannot run only in the distributed host kernel.
     function: |
       Hosts Tier-0/Tier-1 service routers, NAT, gateway firewall, load balancing. Virtual appliances (vCenter/NSX
       deployed, VCF Operations lifecycle) or bare metal. Models: host, rack or availability-zone fault tolerant.
+    capabilities:
+      - Host Tier-0 and Tier-1 service routers and north-south uplinks.
+      - Run BGP or static routing toward the physical network.
+      - Provide centralized NAT, gateway firewall and supported load-balancing services.
+      - Form resilient Edge clusters with service-router placement and failover.
+    limitations:
+      - It is not required for every east-west flow between workloads on prepared hosts.
+      - It cannot provide north-south reachability without a correct physical uplink and routing design.
+      - Sharing an Edge cluster extends its failure and capacity considerations across every consuming domain.
+    managementSurfaces:
+      - NSX Manager > System > Fabric for Edge transport-node health.
+      - NSX Manager > Networking for gateways, routing and centralized services.
+      - Edge CLI for documented diagnostics.
+    commonMistakes:
+      - Placing the Tier-0 service-router function on ESX hosts instead of Edge nodes.
+      - Treating an Edge node as an NSX Manager node.
+      - Ignoring TEP, uplink-VLAN, BGP and capacity dependencies when a gateway exists but traffic fails.
+    examFocus: |
+      Know which services require an Edge, how Tier-0/Tier-1 distributed and service-router functions differ, and how
+      BGP, TEPs, uplinks and Edge-cluster availability affect north-south connectivity.
     runsOn: Workload domain clusters (also allowed in the management domain).
     managedBy: NSX Manager
     dependsOn: [nsx-manager, esx-host, physical-network]
@@ -599,10 +647,34 @@ components:
 
   - id: vds
     name: vSphere Distributed Switch
+    fullName: VMware vSphere Distributed Switch
     category: network
     summary: Per-cluster virtual switch carrying management, vMotion, storage and NSX host traffic.
+    purpose: |
+      Applies one centrally managed switching configuration across the hosts in a cluster so port groups, uplinks,
+      VLANs, MTU and traffic policies remain consistent.
     function: |
       Configured by VCF during domain/cluster creation; port groups for management, vMotion, vSAN and NSX TEP traffic.
+    capabilities:
+      - Provide distributed port groups with consistent VLAN and security policies.
+      - Map physical uplinks and VMkernel services across cluster hosts.
+      - Support teaming, failover, Network I/O Control and health checks.
+      - Carry VCF system traffic and provide the host-switch foundation used by NSX designs.
+    limitations:
+      - It cannot correct an upstream physical-switch VLAN or MTU mismatch.
+      - It is a vSphere switching construct, not an NSX overlay segment or Tier gateway.
+      - Changing the switch MTU does not guarantee that every existing VMkernel adapter uses the same MTU.
+    managementSurfaces:
+      - vSphere Client > Networking > distributed switch.
+      - Distributed port-group and host-networking workflows in vSphere Client.
+      - Supported vSphere API and PowerCLI cmdlets.
+    commonMistakes:
+      - Changing only the VDS MTU and assuming the complete end-to-end path is ready.
+      - Confusing a distributed port group with an NSX segment.
+      - Bypassing the VCF workflow for a VCF-created switch without evaluating drift.
+    examFocus: |
+      Expect VLAN, MTU, uplink, teaming, VMkernel and distributed-port-group scenarios and be able to separate VDS
+      underlay responsibilities from NSX overlay responsibilities.
     runsOn: ESX hosts, managed by vCenter.
     managedBy: vCenter
     dependsOn: [vcenter, physical-network]
@@ -677,11 +749,34 @@ components:
 
   - id: dns-service
     name: DNS service
+    fullName: Domain Name System
     category: external
     summary: External forward and reverse name resolution for every host and appliance - a hard VCF dependency.
+    purpose: |
+      Gives every VCF host and appliance a stable name-to-address and address-to-name identity used by deployment,
+      certificates, APIs, authentication and operational troubleshooting.
     function: |
       Every component addresses others by FQDN and certificates carry FQDNs. Forward and reverse records must exist
       before deployment, domain creation or host commissioning.
+    capabilities:
+      - Resolve management FQDNs to addresses and addresses back to canonical FQDNs.
+      - Provide stable identities used in certificates and component registrations.
+      - Forward public or external-zone queries according to enterprise DNS policy.
+    limitations:
+      - It does not provide time synchronization, routing or certificate issuance.
+      - A successful lookup from one workstation does not prove that every VCF component uses the same resolver path.
+      - Multiple or stale PTR answers can still fail VCF validation even when forward lookup succeeds.
+    managementSurfaces:
+      - Enterprise DNS administration platform outside VCF.
+      - Host and appliance resolver settings for the client side of the dependency.
+      - Standard DNS query tools for forward and reverse verification.
+    commonMistakes:
+      - Creating only A records and omitting matching PTR records.
+      - Using short names where the workflow requires an FQDN.
+      - Treating a client-side cache result as proof of authoritative-zone correctness.
+    examFocus: |
+      DNS is candidate-profile foundation knowledge and a common root cause in deployment, certificate and component-
+      communication scenarios. Test forward/reverse consistency and the resolver perspective.
     runsOn: Customer infrastructure (outside VCF).
     managedBy: Customer network/AD team
     dependsOn: []
@@ -695,10 +790,33 @@ components:
 
   - id: ntp-service
     name: NTP service
+    fullName: Network Time Protocol Service
     category: external
     summary: Common time source for all hosts and appliances.
+    purpose: |
+      Keeps VCF systems on a common timeline so certificates, authentication tokens, distributed workflows and log
+      correlation operate predictably.
     function: |
       Time synchronization; tokens, SSO and certificates are time-sensitive and logs need consistent timestamps.
+    capabilities:
+      - Synchronize hosts and appliances to approved enterprise time sources.
+      - Provide offsets, peer state and reachability evidence for troubleshooting.
+      - Support consistent event ordering across otherwise independent components.
+    limitations:
+      - A configured server entry does not prove the client is currently synchronized.
+      - NTP does not resolve names or repair expired/misissued certificates.
+      - One unreachable source provides no redundancy even when every client has the same configuration.
+    managementSurfaces:
+      - Enterprise NTP/chrony service outside VCF.
+      - vSphere Client, Host Client and appliance-management time pages.
+      - Component CLI diagnostics for configured peers, selection, reach and offset.
+    commonMistakes:
+      - Checking only the configured server and not live peer selection or offset.
+      - Allowing different components to use unrelated time sources with inconsistent time.
+      - Restarting services before recording the state that explains the failure.
+    examFocus: |
+      Treat NTP as a prerequisite and dependency behind authentication, certificate and log-correlation symptoms.
+      Separate configuration intent from evidence of active synchronization.
     runsOn: Customer infrastructure (outside VCF).
     managedBy: Customer network team
     dependsOn: []
@@ -713,11 +831,35 @@ components:
 
   - id: physical-network
     name: Physical network
+    fullName: Physical Data Center Network
     category: external
     summary: Top-of-rack switches and routers providing VLANs, MTU, routing and uplinks for VCF.
+    purpose: |
+      Provides the underlay that transports every VCF management, storage, mobility and overlay packet between hosts,
+      appliances, Edge nodes and external networks.
     function: |
       Carries management, vMotion, vSAN, host/edge TEP and edge uplink VLANs; provides gateways and BGP/static
       routing for NSX Edges. Jumbo frames recommended; overlay needs MTU of at least 1600.
+    capabilities:
+      - Carry required VLANs between host and Edge uplinks.
+      - Provide gateway, routed reachability and external connectivity.
+      - Support the path MTU, redundancy and bandwidth required by each traffic type.
+      - Exchange routes with NSX Edge nodes through BGP or supported static routing.
+    limitations:
+      - It does not create NSX logical segments, distributed firewall policy or VMkernel services.
+      - A large switch MTU cannot compensate for a smaller VMkernel, virtual-switch or intermediate-path MTU.
+      - A home-lab bridge can prove logical reachability without reproducing production failure domains or throughput.
+    managementSurfaces:
+      - Physical switch and router management platforms.
+      - Cabling, interface, VLAN, routing and telemetry views owned by the network team.
+      - VCF-side path tests such as VMkernel ping and NSX tunnel/route health.
+    commonMistakes:
+      - Treating a successful small ping as proof that jumbo frames work end to end.
+      - Configuring a VLAN on the host side but not allowing it on every trunk in the path.
+      - Troubleshooting an NSX overlay before proving the IP underlay and TEP path.
+    examFocus: |
+      Map symptoms to VLAN, MTU, gateway, routing, redundancy and underlay/overlay boundaries. Know what VCF or NSX
+      can configure and what remains the responsibility of the physical network.
     runsOn: Physical switches/routers.
     managedBy: Network team
     dependsOn: []
