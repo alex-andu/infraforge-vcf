@@ -29,7 +29,7 @@ sources:
 
 ## Why This Matters
 
-Exam objective 2.1, *Private Cloud Vision*, asks you to **describe the principles** of private cloud, **identify its use cases** and **identify its value proposition**. These questions are not technical in the "which port" sense, but they are easy to lose if you confuse "virtualized" with "cloud". They also explain *why* VCF is built the way it is: every major VCF component exists to deliver one of the principles below.
+Exam objective 2.1, *Private Cloud Vision*, asks you to **describe the principles** of private cloud, **identify its use cases** and **identify its value proposition**. These questions are not technical in the "which port" sense, but they are easy to lose if you confuse "virtualized" with "cloud". They also explain *why* VMware Cloud Foundation (VCF) is built the way it is: every major VCF component exists to deliver one of the principles below.
 
 ## Learning Objectives
 
@@ -42,29 +42,58 @@ Exam objective 2.1, *Private Cloud Vision*, asks you to **describe the principle
 
 ### Three steps of maturity
 
-| Stage | What you have | How a VM is delivered |
+| Stage | What you have | How a virtual machine (VM) is delivered |
 |---|---|---|
-| **Virtualized data center** | Hypervisors on servers; storage and network still physical and configured by hand | Ticket → admin creates VM → network/storage teams do their parts → days or weeks |
+| **Virtualized data center** | Hypervisors on servers; storage and network still physical and configured by hand | Ticket → admin creates a virtual machine (VM) → network/storage teams do their parts → days or weeks |
 | **Software-defined data center (SDDC)** | Compute, storage *and* network virtualized and controlled by software; lifecycle automated | Admin uses one platform; network segments and storage policies are software objects → hours |
-| **Private cloud** | SDDC + self-service, multi-tenancy, policy-based governance, metering, unified operations | Consumer clicks or calls an API within a quota → minutes, no ticket |
+| **Private cloud** | SDDC + self-service, multi-tenancy, policy-based governance, metering, unified operations | Consumer clicks or calls an Application Programming Interface (API) within a quota → minutes, no ticket |
 
 A [[hypervisor]] alone does not make a cloud. The cloud comes from the operating model on top.
+
+### Terms and operating boundaries
+
+**Software-Defined Data Center (SDDC).** An SDDC expresses compute, storage and networking as software-controlled
+resources. vSphere supplies compute, vSAN supplies policy-based storage and NSX supplies virtual networking and
+security. Controllers and APIs turn those resources into repeatable objects instead of device-by-device changes.
+An SDDC needs working physical servers, storage devices and an Internet Protocol (IP) underlay; it cannot remove hardware limits or fix
+a broken physical network. Administrators use vCenter and NSX Manager for detailed configuration, while VCF
+coordinates supported deployment and lifecycle. For the exam, an SDDC is the infrastructure foundation beneath
+the cloud operating model.
+
+**Private cloud.** A private cloud adds self-service, governance, tenancy, measurement and unified operations to the
+SDDC. It lets consumers request approved services while provider administrators retain control of capacity, policy,
+security and location. It can offer public-cloud-like consumption on infrastructure dedicated to one organization;
+it does not mean every request is unlimited, automatic or free of operational ownership. In VCF, VCF Automation is
+the main consumption surface and VCF Operations is the main fleet operations surface. Exam scenarios usually ask
+which missing cloud principle explains a business symptom.
+
+**Hypervisor.** A hypervisor isolates and schedules VMs on physical compute. VMware ESX executes the VM data plane
+and exposes host resources to vCenter. It depends on compatible hardware, firmware, drivers and management
+connectivity. A hypervisor can run and isolate VMs, but by itself it does not provide self-service, multi-tenancy,
+metering or full-stack lifecycle. Administrators manage individual hosts locally only for limited tasks; normal
+cluster operations use vCenter and VCF workflows.
+
+**VCF control and consumption layers.** SDDC Manager coordinates the desired inventory and core lifecycle of one
+VCF instance. VCF Operations provides fleet health, capacity and supported management workflows. VCF Automation
+applies catalog, organization, project, quota and placement policy for consumers. None of them replaces vCenter or
+NSX Manager for every element-level setting, and losing a management service does not automatically stop existing
+VM traffic. The exam tests ownership: choose the component that owns the requested action and its scope.
 
 ### Principles of a private cloud
 
 | Principle | What it means | VCF component that delivers it |
 |---|---|---|
-| **Self-service / on-demand** | Consumers provision resources themselves from a catalog or API | VCF Automation |
+| **Self-service / on-demand** | Consumers provision resources themselves from a catalog or Application Programming Interface (API) | VCF Automation |
 | **Resource pooling** | Hardware is abstracted into shared pools of compute, storage, network | vSphere clusters, vSAN, NSX |
 | **Rapid elasticity / scale** | Add capacity without redesigning; scale out with standard building blocks | Host commissioning, cluster expansion, workload domains |
 | **Multi-tenancy and isolation** | Teams or customers share infrastructure safely | Workload domains, VCF Automation organizations, NSX segmentation |
 | **Policy-based governance** | Quotas, placement, storage and security policy applied automatically | VCF Automation policies, vSAN storage policies, NSX firewall |
 | **Measured service / visibility** | Usage, capacity and cost are visible | VCF Operations |
 | **Automated lifecycle** | Deploy, patch, upgrade the stack as one | VCF Installer, SDDC Manager, VCF Operations fleet management |
-| **Security and resilience built in** | Compliance, certificates, identity, recovery are part of the platform | VCF Operations (compliance, certificates, passwords), Identity Broker, HA/vSAN resilience |
+| **Security and resilience built in** | Compliance, certificates, identity, recovery are part of the platform | VCF Operations (compliance, certificates, passwords), Identity Broker, High Availability (HA) and vSAN resilience |
 
 :::general
-The NIST definition of cloud computing lists five essential characteristics: on-demand self-service, broad network access, resource pooling, rapid elasticity and measured service. Broadcom's private cloud messaging adds *on-premises control, security, resilience and lower total cost of ownership*. Expect exam wording to mix both vocabularies.
+The United States National Institute of Standards and Technology (NIST) definition of cloud computing lists five essential characteristics: on-demand self-service, broad network access, resource pooling, rapid elasticity and measured service. Broadcom's private cloud messaging adds *on-premises control, security, resilience and lower total cost of ownership*. Expect exam wording to mix both vocabularies.
 :::
 
 ## Architecture
@@ -79,11 +108,11 @@ The personas Broadcom uses in the VCF 9 documentation help you remember who uses
 
 | Persona | Responsibility | Main tool |
 |---|---|---|
-| **VI / provider administrator** | Build, manage and operate cloud infrastructure that provides resources for applications | VCF Operations, vSphere Client |
+| **Virtual Infrastructure (VI) / provider administrator** | Build, manage and operate cloud infrastructure that provides resources for applications | VCF Operations, vSphere Client |
 | **Platform operator** | Track and analyze performance and behavior of workloads | VCF Operations |
 | **Organization / tenant administrator** | Enable consumers to operate autonomously within the resources given to the organization | VCF Automation |
 | **Platform engineer** | Manage, automate and monitor infrastructure for self-service provisioning | VCF Automation, APIs |
-| **Application developer / DevOps engineer** | Deploy VM- or container-based apps, manage Kubernetes and VMs for CI/CD | VCF Automation, Kubernetes APIs |
+| **Application developer / DevOps engineer** | Deploy VM- or container-based apps, manage Kubernetes and VMs for Continuous Integration and Continuous Delivery (CI/CD) | VCF Automation, Kubernetes APIs |
 | **Storage / network administrator** | Build and manage storage and network services | vSAN, NSX |
 
 Broadcom also groups capabilities by lifecycle phase: **Build** (deploy, expand domains, configure clusters and networks), **Manage** (licensing, identity, inventory, certificates and passwords, backup), **Operate** (alerts, logs, monitoring, diagnostics, capacity and cost), **Consume** (Supervisor, organizations, VM/Kubernetes provisioning).
@@ -94,9 +123,9 @@ What happens when a developer needs a new three-tier test environment in a VCF p
 
 1. The **provider admin** has already built workload domains and exposed capacity to VCF Automation as a region.
 2. The **organization admin** gave the developer's team a quota, a network and a catalog of approved templates.
-3. The developer **requests** the environment from the catalog or API.
+3. The developer **requests** the environment from the catalog or Application Programming Interface (API).
 4. **VCF Automation** applies policy (quota, placement, naming) and calls vCenter and NSX.
-5. **vCenter** places the VMs in a cluster (DRS chooses hosts); **vSAN** applies the storage policy; **NSX** creates the network and firewall rules.
+5. **vCenter** places the VMs in a cluster (Distributed Resource Scheduler (DRS) chooses hosts); **vSAN** applies the storage policy; **NSX** creates the network and firewall rules.
 6. **VCF Operations** starts collecting metrics and logs and attributes the cost/capacity to the team.
 7. The developer receives the environment, often in minutes, without a ticket.
 
@@ -106,10 +135,10 @@ What happens when a developer needs a new three-tier test environment in a VCF p
 
 | Value | Explanation |
 |---|---|
-| **Cost / TCO** | Higher hardware utilization through pooling; fewer manual operations per VM; predictable cost compared with variable public-cloud bills for steady workloads. |
+| **Cost / Total Cost of Ownership (TCO)** | Higher hardware utilization through pooling; fewer manual operations per VM; predictable cost compared with variable public-cloud bills for steady workloads. |
 | **Control and sovereignty** | Data stays on-premises or in a chosen location; meets regulatory and data-residency requirements. |
 | **Security and compliance** | Consistent hardening, micro-segmentation and compliance checks built into the platform. |
-| **Performance and latency** | Workloads run close to data and users; predictable performance for demanding apps (including AI). |
+| **Performance and latency** | Workloads run close to data and users; predictable performance for demanding apps (including Artificial Intelligence (AI)). |
 | **Agility** | Public-cloud-like speed through self-service and automation. |
 | **Operational consistency** | One platform, one lifecycle, one operations console for VMs and containers. |
 
@@ -121,7 +150,7 @@ What happens when a developer needs a new three-tier test environment in a VCF p
 | | Implement automated infrastructure to provide IaaS | "Developers wait weeks for VMs" |
 | | Extend the data center to the cloud | "Burst or migrate between sites/clouds" |
 | Unified cloud experience | Kubernetes and other modern workloads | "Run containers next to VMs on the same platform" |
-| | Private AI | "Run GPU workloads on-premises because of data privacy" |
+| | Private AI | "Run Graphics Processing Unit (GPU) workloads on-premises because of data privacy" |
 | | Traditional workloads | "Keep existing VM applications running with better operations" |
 | Secure and resilient platform | Ransomware protection and recovery | "Recover cleanly after a ransomware attack" |
 | | Disaster recovery | "Protect against site loss" |
@@ -133,7 +162,7 @@ The same component can support several themes, so classify the **outcome**, not 
 
 | Scenario signal | Primary theme | Why |
 |---|---|---|
-| Standardize ageing sites, add edge capacity, replace ticket-driven VM delivery with automated IaaS | Infrastructure modernization | The requested outcome changes how infrastructure is built and supplied |
+| Standardize ageing sites, add edge capacity, replace ticket-driven VM delivery with automated Infrastructure as a Service (IaaS) | Infrastructure modernization | The requested outcome changes how infrastructure is built and supplied |
 | Give application teams one self-service experience for VMs, Kubernetes, Private AI and traditional applications | Unified cloud experience | The requested outcome is a common consumption model across workload types |
 | Recover from ransomware/site loss or prove continuous hardening and compliance | Secure and resilient platform | The requested outcome protects service, data and security posture |
 
@@ -158,7 +187,7 @@ Nothing to configure yet. The private cloud principles turn into concrete config
 
 ## CLI / API
 
-Not applicable to this concept lesson. "API-first" is itself a private cloud principle: every capability you will configure later in VCF (vCenter, NSX, SDDC Manager, VCF Operations, VCF Automation) has a REST API, covered in the Automation phase.
+Not applicable to this concept lesson. "API-first" is itself a private cloud principle: every capability you will configure later in VCF (vCenter, NSX, SDDC Manager, VCF Operations, VCF Automation) has a Representational State Transfer (REST) API, covered in the Automation phase.
 
 ## Failure Scenarios
 
@@ -170,7 +199,7 @@ Private cloud *projects* fail more often for operating-model reasons than for te
 | One giant shared cluster for everything | Noisy neighbours, compliance scope covers everything | Multi-tenancy / isolation |
 | No quotas or policies | Sprawl, capacity exhausted | Governance |
 | No metering | Nobody knows who uses what; no capacity planning | Measured service |
-| Manual out-of-band patching | Upgrade prechecks fail, BOM drift | Automated lifecycle |
+| Manual out-of-band patching | Upgrade prechecks fail, Bill of Materials (BOM) drift | Automated lifecycle |
 
 ## Troubleshooting
 
@@ -179,14 +208,6 @@ When a scenario asks "what should the organisation do?", diagnose which principl
 ## Real-World Scenario
 
 A hospital group keeps patient data on-premises for regulatory reasons, but its developers have started using public cloud accounts because getting a VM internally takes three weeks. The infrastructure team deploys VCF: a dedicated workload domain for clinical systems with NSX micro-segmentation, a second workload domain for development, and VCF Automation organizations per development team with quotas. VCF Operations gives finance a showback report per team. Result: data stays on-premises (sovereignty), developers self-serve in minutes (agility), and the clinical domain has its own lifecycle and security scope (isolation, compliance).
-
-## Lab
-
-This concept lesson has no hands-on lab. Use the exercise below instead, then continue to the ESX lab in Phase 1.
-
-:::tip
-Write a one-page "private cloud charter" for your home lab: who are the consumers (you, as developer), what is self-service (later: VCF Automation catalog), what is isolated (management domain vs a workload domain), what is measured (VCF Operations). You will build each piece during the course.
-:::
 
 ## Exam Focus
 
@@ -210,7 +231,7 @@ Write a one-page "private cloud charter" for your home lab: who are the consumer
 
 ## Summary
 
-- Virtualized DC → SDDC → private cloud: each step adds software control, then self-service and governance.
+- Virtualized data center → SDDC → private cloud: each step adds software control, then self-service and governance.
 - Principles: self-service, pooling, elasticity, multi-tenancy, policy governance, measured service, automated lifecycle, built-in security.
 - VCF maps them to components: VCF Automation (consume), VCF Operations (operate/measure), vSphere/vSAN/NSX (pool), SDDC Manager and the installer (lifecycle).
 - Use-case themes: infrastructure modernization, unified cloud experience, secure and resilient platform.
