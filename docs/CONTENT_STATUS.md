@@ -19,6 +19,8 @@ Totals:
 | Architecture components | 24 |
 | Badges | 18 |
 
+Component catalog migration: **8/24** profiles use the expanded role/capability/limitation/management/mistake/exam format; all 24 remain available in Architecture Explorer.
+
 ## Theory modules (VCF curriculum, `content/curriculum.yaml`)
 
 | Phase | Title | Lessons written / planned | Words | Questions | Labs |

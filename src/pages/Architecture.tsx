@@ -130,9 +130,10 @@ export default function Architecture() {
             <div className="stack">
               <div>
                 <div className="row"><span className="chip">{CAT_RO[c.category]}</span><VersionChip v={c.version} /></div>
-                <h2 style={{ margin: '6px 0 4px' }}>{c.name}</h2>
+                <h2 style={{ margin: '6px 0 4px' }}>{c.name}{c.fullName ? ` (${c.fullName})` : ''}</h2>
                 <p className="small muted" style={{ margin: 0 }}>{c.summary}</p>
               </div>
+              {c.purpose && <div><div className="section-label">Rol și scop</div><div className="small"><Md src={c.purpose} /></div></div>}
               <div><div className="section-label">Funcție</div><div className="small"><Md src={c.function} /></div></div>
               <div className="grid grid-2" style={{ gap: 8 }}>
                 <div className="fact"><div className="k">Rulează pe</div><div className="small">{c.runsOn}</div></div>
@@ -147,12 +148,17 @@ export default function Architecture() {
                   ))}</tbody></table>
                 </div>
               )}
+              {c.capabilities.length > 0 && <div><div className="section-label">Ce poate face</div><ul className="list small">{c.capabilities.map((x) => <li key={x}>{x}</li>)}</ul></div>}
+              {c.limitations.length > 0 && <div><div className="section-label">Ce nu face</div><ul className="list small">{c.limitations.map((x) => <li key={x}>{x}</li>)}</ul></div>}
+              {c.managementSurfaces.length > 0 && <div><div className="section-label">Unde se administrează</div><ul className="list small">{c.managementSurfaces.map((x) => <li key={x}>{x}</li>)}</ul></div>}
               <div><div className="section-label">Impact la cădere</div><div className="small"><Md src={c.failureImpact} /></div></div>
               <div>
                 <button className="btn sm" aria-pressed={simulate} onClick={() => { const on = !simulate; setSimulate(on); if (on) setView('map'); }}>{simulate ? 'Oprește simularea' : 'Simulează căderea'}</button>
                 {simulate && <div className="small" style={{ marginTop: 6 }}>{impact.length ? <>Afectate în cascadă ({impact.length}): {impact.map((x) => componentsById.get(x)?.name).join(', ')}.</> : 'Nicio componentă din model nu depinde direct de aceasta.'}</div>}
               </div>
               <div><div className="section-label">Cum verifici că funcționează</div><div className="small"><Md src={c.verify} /></div></div>
+              {c.commonMistakes.length > 0 && <div className="callout warning"><div className="callout-title">Greșeli frecvente</div><ul>{c.commonMistakes.map((x) => <li key={x}>{x}</li>)}</ul></div>}
+              {c.examFocus && <div className="callout info"><div className="callout-title">Relevanță pentru examen</div><Md src={c.examFocus} /></div>}
               {(c.lessons.some((l) => lessonsById.has(l)) || c.labs.some((l) => labsById.has(l))) && (
                 <div><div className="section-label">Învață și exersează</div>
                   <ul className="list small">

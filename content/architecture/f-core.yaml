@@ -92,14 +92,39 @@ components:
 
   - id: vcf-installer
     name: VCF Installer
+    fullName: VMware Cloud Foundation Installer
     category: management
     version: vcf9
     summary: Appliance that deploys a new fleet, a new instance in an existing fleet, or converges existing vSphere into VCF (replaces Cloud Builder).
+    purpose: |
+      Turns prepared hosts, networks, DNS, NTP and downloaded product binaries into a consistent first VCF instance.
+      It owns initial bring-up and convergence, then hands day-2 ownership to SDDC Manager and VCF Operations.
     function: |
       Downloads and manages binaries, validates hosts and network, and deploys the management domain components
       (vCenter, NSX, SDDC Manager, VCF Operations + fleet management + collector, VCF Automation) in a simple or
       high-availability model, from a wizard or a JSON specification. Ships in the SDDC Manager appliance OVA; if
       deployed on a host that will become part of the management domain it switches into SDDC Manager mode.
+    capabilities:
+      - Validate deployment prerequisites before bring-up.
+      - Deploy a new VCF fleet or add an instance to an existing fleet.
+      - Converge eligible existing vSphere infrastructure into VCF.
+      - Accept the guided wizard or a version-matched JSON deployment specification.
+      - Download, stage and consume the binaries required by the selected deployment model.
+    limitations:
+      - It is not the day-2 lifecycle, monitoring or workload-management console.
+      - It cannot compensate for broken DNS, NTP, routing, VLAN or MTU prerequisites.
+      - A successful validation does not make an unsupported nested design production-supported.
+    managementSurfaces:
+      - VCF Installer web interface at the installer appliance FQDN.
+      - Version-matched JSON deployment specification for repeatable or advanced input.
+      - Installer task and validation views for bring-up progress and failures.
+    commonMistakes:
+      - Calling the VCF 9 appliance Cloud Builder, which is the earlier-generation deployment model.
+      - Expecting the installer to remain the normal administration console after handoff.
+      - Reusing example host names, VLANs or network pools without reconciling the deployment design.
+    examFocus: |
+      Recognize the Installer as the entry point for new deployment and convergence. Scenario questions commonly test
+      prerequisite validation, deployment models, wizard versus JSON input and the handoff to SDDC Manager.
     runsOn: A VM outside the target management domain (installer mode) or on a management host (becomes SDDC Manager).
     managedBy: The deploying administrator
     dependsOn: [dns-service, ntp-service, physical-network, esx-host]
@@ -116,15 +141,40 @@ components:
 
   - id: sddc-manager
     name: SDDC Manager
+    fullName: Software-Defined Data Center Manager
     category: management
     parent: management-domain
     summary: Per-instance orchestrator for core components - domains, host commissioning, core lifecycle, certificates and passwords - driven from VCF Operations.
+    purpose: |
+      Maintains the desired inventory and lifecycle state of one VCF instance. It coordinates multi-component workflows
+      so ESX, vCenter and NSX remain compatible instead of being upgraded or expanded as unrelated products.
     function: |
       One per VCF instance (VCF-SDDCM-REQD-CFG-001). Provides, in VCF Operations: lifecycle management for ESX,
       vCenter and NSX; deployment of workload domains; import of vCenter instances as workload domains; vSAN stretched
       cluster configuration; automated certificate replacement and password management. Stores core-component
       binaries, holds resource locks during upgrades. Its UI is deprecated in 9.0 (to be removed in a future major
       release); its API remains.
+    capabilities:
+      - Commission hosts and allocate them to VCF domains and clusters.
+      - Create and expand VI workload domains through coordinated workflows.
+      - Orchestrate core-component lifecycle according to the VCF bill of materials.
+      - Coordinate supported certificate, password and selected topology workflows.
+      - Expose instance inventory and workflow state through its API.
+    limitations:
+      - It is not the primary fleet-wide monitoring and capacity analytics engine.
+      - It does not replace vCenter or NSX for their element-level configuration and troubleshooting.
+      - It does not carry workload traffic and its outage does not stop running VMs.
+    managementSurfaces:
+      - VCF Operations Fleet Management for normal VCF 9 workflows.
+      - SDDC Manager API for automation and inventory queries.
+      - SDDC Manager appliance logs and the deprecated local UI for diagnostics where documented.
+    commonMistakes:
+      - Adding hosts or changing VCF-owned settings directly in vCenter and creating inventory drift.
+      - Treating SDDC Manager as a global singleton; each VCF instance has its own appliance.
+      - Assuming an SDDC Manager outage immediately stops ESX workloads.
+    examFocus: |
+      Distinguish instance orchestration from fleet operations and element management. Know which workflows belong to
+      SDDC Manager, which component executes them, and why direct changes can break future lifecycle operations.
     runsOn: Appliance VM in the management domain, first availability zone, VM management network.
     managedBy: VCF Operations (fleet management); updated first in the core-component upgrade order
     dependsOn: [vcenter, nsx-manager, dns-service, ntp-service, vcf-operations]
@@ -144,14 +194,38 @@ components:
 
   - id: vcf-operations
     name: VCF Operations
+    fullName: VMware Cloud Foundation Operations
     category: operations
     parent: vcf-fleet
     summary: Mandatory central console of the fleet - monitoring, licensing and fleet management (formerly Aria Operations).
+    purpose: |
+      Gives operators one fleet-level place to understand health, capacity, compliance, cost and lifecycle posture
+      across VCF instances while delegating execution to the responsible instance or management appliance.
     function: |
       Fleet console: inventory, dashboards, alerts, capacity, cost, compliance, licensing (connected/disconnected
       with the VCF Business Services console) and the Fleet Management menu (lifecycle, passwords, certificates,
       identity, drift, tags, backup). Models: simple (1 node), high availability (3 nodes: primary, replica, data),
       continuous availability (node pairs across two zones, max 10 ms).
+    capabilities:
+      - Collect and analyze inventory, health, performance, capacity, cost and alert data.
+      - Present fleet inventory and launch lifecycle, identity, certificate, password and drift workflows.
+      - Manage VCF licensing workflows and integration with the business-services console.
+      - Integrate instance collectors and optional VCF Operations products.
+    limitations:
+      - It does not replace vCenter, NSX Manager or SDDC Manager as their execution and element-management planes.
+      - Monitoring data does not itself prove root cause; alerts must be correlated with component evidence.
+      - Loss of the console removes observability and orchestration access but does not stop workload data planes.
+    managementSurfaces:
+      - VCF Operations web interface for fleet, dashboards, alerts, capacity and administration.
+      - Fleet Management area for supported platform workflows.
+      - Administration interface for cluster and node health where applicable.
+    commonMistakes:
+      - Treating VCF Operations as only a renamed metrics dashboard and missing its fleet-management role.
+      - Assuming it directly performs every core-component action rather than delegating to SDDC Manager.
+      - Equating a green aggregate badge with complete end-to-end validation.
+    examFocus: |
+      Expect scenarios about dashboards, alerts, policies, capacity, compliance, fleet inventory and the boundary
+      between VCF Operations, SDDC Manager and the individual product consoles.
     runsOn: Management domain of the first VCF instance, VM management network by default.
     managedBy: VCF Operations fleet management appliance (lifecycle)
     dependsOn: [vcf-operations-collector, vcf-operations-fleet-management, dns-service, ntp-service]
@@ -170,14 +244,38 @@ components:
 
   - id: vcf-operations-fleet-management
     name: VCF Operations fleet management appliance
+    fullName: VMware Cloud Foundation Operations Fleet Management Appliance
     category: operations
     parent: vcf-fleet
     summary: Deploys, lifecycles and configures fleet-level management components (formerly Aria Suite Lifecycle).
+    purpose: |
+      Provides the deployment and lifecycle engine for management products that exist at fleet scope rather than
+      inside one SDDC Manager core stack.
     function: |
       "Provides support for deployment, lifecycle management, and configuration for the VCF Operations, VCF
       Automation, and VCF Identity Broker" - and also VCF Operations for logs and for networks. Stores binaries for
       management components (Fleet Management → Lifecycle → Binary Management). Single node in both simple and HA
       models. Upgraded first in a maintenance release.
+    capabilities:
+      - Deploy and lifecycle VCF Operations, Automation and Identity Broker.
+      - Deploy and lifecycle supported Operations for logs and Operations for networks components.
+      - Store and manage product binaries used by fleet-level management workflows.
+      - Apply supported configuration and integration workflows for managed products.
+    limitations:
+      - It does not lifecycle ESX, vCenter or NSX; those core components belong to each instance's SDDC Manager.
+      - It is not an analytics collector or a workload self-service portal.
+      - Its single appliance is not made highly available merely because VCF Operations uses an HA model.
+    managementSurfaces:
+      - VCF Operations > Fleet Management > Lifecycle.
+      - Binary Management for fleet-product installation media.
+      - Product and environment workflow views for deployment and upgrade status.
+    commonMistakes:
+      - Confusing the fleet management appliance with the VCF Operations collector.
+      - Sending core ESX/vCenter/NSX lifecycle work to the fleet-level appliance.
+      - Assuming all fleet components share the same availability model.
+    examFocus: |
+      Know the split between fleet-level product lifecycle and SDDC Manager core lifecycle, including which appliance
+      handles VCF Automation, Identity Broker, logs and networks products.
     runsOn: Management domain of the first VCF instance.
     managedBy: VCF Operations
     dependsOn: [vcf-operations, dns-service, ntp-service]
@@ -197,13 +295,36 @@ components:
 
   - id: vcf-operations-collector
     name: VCF Operations collector (cloud proxy)
+    fullName: VMware Cloud Foundation Operations Collector
     category: operations
     parent: vcf-instance
     summary: Instance-level appliance that collects and monitors data locally in a VCF instance for VCF Operations.
+    purpose: |
+      Keeps data collection close to each VCF instance and forwards that operational data to the fleet's central
+      VCF Operations cluster.
     function: |
       "Collects and monitors data locally in the VCF Instance". Deployed with every VCF instance (mandatory during
       installation). In the HA model it can be expanded into a collector group. Recommended on the VM management
       network of the instance's management domain.
+    capabilities:
+      - Collect inventory, metrics, events and integration data from one VCF instance.
+      - Forward instance data to central VCF Operations across the approved management path.
+      - Scale collection through a collector group where the documented model supports it.
+    limitations:
+      - It does not store the authoritative VCF inventory or execute SDDC Manager workflows.
+      - It does not replace product-specific collectors used by optional Operations products.
+      - Its failure affects freshness and visibility, not workload packet forwarding.
+    managementSurfaces:
+      - VCF Operations collector and cloud-proxy inventory/status views.
+      - VCF Operations integrations for the associated VCF instance.
+      - Appliance diagnostics when collection or forwarding fails.
+    commonMistakes:
+      - Confusing the collector with the fleet management appliance because both are management VMs.
+      - Diagnosing stale metrics as an ESX workload outage before checking collector health.
+      - Assuming one collector is automatically shared by every independent VCF instance.
+    examFocus: |
+      Understand why every instance needs a collection path, what becomes stale when it fails and how that differs
+      from failures of VCF Operations itself or SDDC Manager.
     runsOn: Management domain of each VCF instance.
     managedBy: VCF Operations
     dependsOn: [vcf-operations, dns-service, ntp-service]
@@ -297,12 +418,36 @@ components:
 
   - id: vcenter
     name: vCenter
+    fullName: VMware vCenter Server
     category: management
     parent: management-domain
     summary: Virtualization management for one VCF domain; every domain has exactly one, and all run in the management domain.
+    purpose: |
+      Provides the authoritative inventory and management plane for the hosts, clusters, virtual machines, networks
+      and storage policies of one VCF domain.
     function: |
       Manages ESX hosts, clusters (HA/DRS), vSphere Lifecycle Manager images, VDS and storage of one domain. Each
       workload domain gets a dedicated vCenter and SSO domain. Registered in NSX Manager as a compute manager.
+    capabilities:
+      - Organize datacenters, clusters, hosts, resource pools, virtual machines and templates.
+      - Operate vSphere HA, DRS, vMotion, distributed switching and storage policies.
+      - Provide RBAC, tasks, events, alarms, APIs and lifecycle services for its domain.
+      - Integrate its domain inventory with NSX, SDDC Manager and VCF Operations.
+    limitations:
+      - It does not provide the NSX overlay/control plane or SDDC Manager's cross-product lifecycle orchestration.
+      - One domain's vCenter does not directly manage hosts assigned to another VCF domain.
+      - Direct changes can be technically possible but unsupported when a VCF-owned workflow exists.
+    managementSurfaces:
+      - vSphere Client at the domain vCenter FQDN.
+      - vCenter Server Management Interface for appliance administration.
+      - vSphere API, PowerCLI and supported automation interfaces.
+    commonMistakes:
+      - Treating vCenter as the manager of the complete VCF fleet.
+      - Adding or removing VCF hosts directly instead of using the VCF workflow.
+      - Confusing vCenter appliance health with cluster or workload health.
+    examFocus: |
+      Expect inventory, cluster, VM, distributed-switch, storage-policy, permissions and lifecycle scenarios. Always
+      distinguish a vCenter task from an SDDC Manager or NSX task.
     runsOn: Appliance VM in the management domain of its instance (also for workload domains).
     managedBy: SDDC Manager (lifecycle, passwords, certificates), VCF Operations (console)
     dependsOn: [esx-host, dns-service, ntp-service, physical-network]
@@ -322,9 +467,32 @@ components:
     name: ESX host
     category: compute
     summary: The hypervisor (called ESX, not ESXi, in VCF 9); commissioned into an instance and assigned to domain clusters.
+    purpose: |
+      Supplies the compute and local virtualization data plane on which management appliances and business workloads
+      run. In VCF it also participates in vSAN and the NSX host data plane when those services are enabled.
     function: |
       Runs VMs, vSAN, NSX data plane (TEPs, distributed routing/firewall). Hosts are prepared, commissioned into SDDC
       Manager inventory with a network pool, then used to create or expand clusters.
+    capabilities:
+      - Run and isolate virtual machines using CPU, memory, storage and network virtualization.
+      - Provide VMkernel services such as management, vMotion and vSAN traffic.
+      - Participate in HA, DRS, vSphere Lifecycle Manager, vSAN and NSX transport-node workflows.
+      - Expose host telemetry, logs, ESXCLI and supported APIs for operations.
+    limitations:
+      - A standalone host does not provide cluster HA, DRS or distributed resource coordination.
+      - The host does not replace vCenter, NSX Manager or SDDC Manager control planes.
+      - Direct host changes can create configuration drift from the VCF desired state.
+    managementSurfaces:
+      - vSphere Client through the domain vCenter.
+      - Direct ESX Host Client for documented recovery and host-specific operations.
+      - ESXCLI, DCUI and supported APIs for diagnostics and controlled administration.
+    commonMistakes:
+      - Calling every VCF 9 host ESXi without recognizing the VCF 9 product naming.
+      - Overcommitting nested-host memory and interpreting lab contention as VCF appliance failure.
+      - Applying a direct host fix without checking whether VCF owns the setting.
+    examFocus: |
+      Know host commissioning, VMkernel networking, maintenance mode, lifecycle, services, logs and the boundary
+      between direct host operations and domain-level VCF workflows.
     runsOn: Physical servers (or nested VMs in a lab).
     managedBy: vCenter of its domain; SDDC Manager for commissioning and lifecycle
     dependsOn: [physical-network, dns-service, ntp-service]
@@ -342,11 +510,35 @@ components:
 
   - id: vsan
     name: vSAN
+    fullName: Virtual Storage Area Network
     category: storage
     summary: Default principal storage of VCF clusters (ESA or OSA); also as vSAN storage cluster or vSAN compute cluster.
+    purpose: |
+      Aggregates storage devices in ESX hosts into a policy-driven shared datastore so VM availability and placement
+      requirements are expressed per object rather than by manually selecting a traditional storage tier.
     function: |
       Hyperconverged storage built from the hosts' local devices. Principal storage option for the management
       default cluster (ESA or OSA) and for workload domains (also storage cluster / compute cluster models there).
+    capabilities:
+      - Pool host-local devices into a distributed datastore managed with vCenter.
+      - Apply availability, performance and space-efficiency requirements through storage policies.
+      - Rebuild or resynchronize components after supported failures and topology changes.
+      - Provide principal storage for management and VI workload-domain clusters.
+    limitations:
+      - It does not create physical redundancy when all nested hosts depend on one physical server or device.
+      - FTT=0 cannot tolerate a data-component failure even if the cluster remains operational.
+      - ESA and OSA have different architecture and hardware requirements and are not interchangeable labels.
+    managementSurfaces:
+      - vSphere Client > cluster > Configure/Monitor > vSAN.
+      - VM Storage Policies for workload-level availability and performance intent.
+      - Skyline Health and ESX/vSAN diagnostic tools for cluster evidence.
+    commonMistakes:
+      - Equating datastore free capacity with policy compliance and usable protected capacity.
+      - Assuming an FTT policy protects against a failure domain the physical design does not provide.
+      - Mixing vSAN traffic with unrelated services or changing MTU on only one part of the path.
+    examFocus: |
+      Distinguish ESA from OSA, principal-storage choices, storage policies, failures to tolerate, health evidence,
+      resynchronization and the relationship between vSAN design and vSphere HA capacity.
     runsOn: ESX hosts of a cluster.
     managedBy: vCenter of the domain; SDDC Manager (stretched cluster configuration)
     dependsOn: [esx-host, vds, physical-network]
