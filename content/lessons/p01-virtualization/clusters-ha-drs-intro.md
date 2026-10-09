@@ -6,7 +6,7 @@ module: m01-virt-basics
 version: general
 minutes: 30
 difficulty: foundation
-summary: How ESX hosts become a vSphere cluster, what vSphere HA does when a host fails (primary/secondary hosts, heartbeats, isolation, admission control), what DRS does (placement, vMotion balancing, automation levels, resource pools), and why every VCF cluster runs both.
+summary: How ESX hosts become a vSphere cluster, what vSphere High Availability (HA) does when a host fails (primary/secondary hosts, heartbeats, isolation, admission control), what Distributed Resource Scheduler (DRS) does (placement, vMotion balancing, automation levels, resource pools), and why every VMware Cloud Foundation (VCF) cluster runs both.
 topics: [vsphere-cluster, vsphere-ha, drs]
 objectives: ["2.2"]
 keyTerms: [cluster, ha, drs, resource-pool, vmotion, vmware-tools, vcf-domain]
@@ -37,7 +37,7 @@ sources:
 
 ## Why This Matters
 
-A single ESX host is a single point of failure. The **vSphere cluster** turns several hosts into one pool, and two cluster services make that pool useful: **vSphere HA** (restart VMs after a host failure) and **DRS** (place and balance VMs). The VCF 9 taxonomy states that every domain contains *one or more vSphere clusters with HA and DRS enabled*. This lesson gives you the working model; Phase 2 goes deep into each feature.
+A single ESX host is a single point of failure. The **vSphere cluster** turns several hosts into one pool, and two cluster services make that pool useful: **vSphere HA** (restart virtual machines (VMs) after a host failure) and **DRS** (place and balance VMs). The VCF 9 taxonomy states that every domain contains *one or more vSphere clusters with HA and DRS enabled*. This lesson gives you the working model; Phase 2 goes deep into each feature.
 
 ## Learning Objectives
 
@@ -56,10 +56,34 @@ A **vSphere cluster** is a vCenter object that groups ESX hosts so their CPU and
 | **vSphere HA** | Restart VMs on surviving hosts after a host failure; optional VM/app monitoring | Shared storage visible to all hosts, management network |
 | **DRS** | Initial placement at power-on and load balancing via vMotion; resource pools; affinity rules | vCenter, vMotion network, shared storage (or vSAN) |
 | **vSAN** | Storage built from hosts' local disks | vSAN network, disks per host (Phase 3) |
-| **EVC** | Common CPU feature baseline so vMotion works across CPU generations | Same CPU vendor |
+| **Enhanced vMotion Compatibility (EVC)** | Common CPU feature baseline so vMotion works across CPU generations | Same Central Processing Unit (CPU) vendor |
 | **vSphere Lifecycle Manager** | Desired-state image for all hosts | vCenter (Phase 2 / Lifecycle) |
 
-**vSphere HA ≠ zero downtime.** HA *restarts* VMs after a failure; the VMs reboot. Continuous availability with no restart is **Fault Tolerance**, a different feature with strict limits.
+**vSphere HA ≠ zero downtime.** HA *restarts* VMs after a failure; the VMs reboot. Continuous availability with no restart is **Fault Tolerance (FT)**, a different feature with strict limits.
+
+### Core terms and operational boundaries
+
+**vSphere High Availability.** HA is a host-coordinated recovery service. Agents exchange network and datastore
+heartbeats, classify host failure states and restart protected VMs when capacity exists. HA depends on a correctly
+formed cluster, reachable management networks, accessible VM storage and sufficient restart capacity. It cannot
+preserve an in-memory application session after a host failure and does not use vMotion to rescue VMs from a dead
+host. Administrators configure policy in vCenter, while host agents continue recovery if vCenter is unavailable.
+
+**Distributed Resource Scheduler.** DRS evaluates demand, entitlement, rules and host capacity to recommend or
+perform initial placement and vMotion balancing. It depends on vCenter, compatible destination hosts, working
+vMotion networking and accessible storage. DRS improves placement but does not add capacity or override mandatory
+affinity rules. Administrators control automation and migration sensitivity in vCenter and verify decisions through
+recommendations, faults and cluster health.
+
+**Admission control.** Admission control protects restart headroom by rejecting power-on operations that would
+consume the selected failover capacity. It is a policy guard, not a reservation of one specific idle host in every
+policy mode. Disabling it can fit more running VMs but removes the guarantee that HA can restart them all. Exam
+scenarios often contrast successful failure detection with unsuccessful restart caused by insufficient capacity.
+
+**Resource pool.** A resource pool delegates shares, reservations and limits within a DRS cluster. It can express
+relative business priority and guaranteed capacity, but it is not an inventory folder and cannot create resources.
+The effective entitlement depends on the pool hierarchy and contention. Administrators use VM folders for
+organization and resource pools only when a resource policy is intended.
 
 ## Architecture
 
@@ -97,7 +121,7 @@ A **migration threshold** slider (conservative ↔ aggressive) sets how much imb
 
 1. Agents exchange **network heartbeats every second**.
 2. The primary stops receiving heartbeats from host 3.
-3. It **pings host 3's management IP** (ICMP).
+3. It **pings host 3's management Internet Protocol (IP) address using Internet Control Message Protocol (ICMP)**.
 4. It checks whether host 3 is still updating **datastore heartbeats**. If yes, host 3 is alive but isolated or partitioned; if no, it is **failed**.
 5. For a failed host, the primary **restarts its protected VMs** on the remaining hosts, honouring restart priority and available capacity.
 
@@ -109,7 +133,7 @@ The three failure types HA distinguishes:
 | **Isolation** | Host loses its management network; it pings the cluster **isolation addresses** and, if they also fail, declares itself isolated | Applies the configured **isolation response** (for example power off / shut down VMs so they can restart elsewhere, or leave them running) |
 | **Partition** | Host loses connectivity with the primary but not with all others | Hosts in the other partition elect their own primary; VMs keep running |
 
-**VM Monitoring** (optional) restarts an individual VM when its **VMware Tools heartbeats** stop for a set time, which catches a hung guest OS.
+**VM Monitoring** (optional) restarts an individual VM when its **VMware Tools heartbeats** stop for a set time, which catches a hung guest Operating System (OS).
 
 **Admission control** reserves enough spare capacity in the cluster so that VMs can actually be restarted after a failure; it can block power-on of new VMs when that capacity would be used up.
 
@@ -133,25 +157,31 @@ A resource pool carries **shares, reservations and limits**. Putting VMs in pool
 
 ### Affinity rules (preview)
 
-DRS supports VM-VM rules (keep together / keep apart) and VM-Host rules (run on / should run on a group of hosts). VCF and NSX use anti-affinity to keep, for example, NSX Manager nodes on separate hosts; this is part of why a high-availability VCF deployment needs four hosts.
+DRS supports VM-to-VM (VM-VM) rules (keep together / keep apart) and VM-to-Host (VM-Host) rules (run on / should run on a group of hosts). VCF and NSX use anti-affinity to keep, for example, NSX Manager nodes on separate hosts; this is part of why a high-availability VCF deployment needs four hosts.
 
 ## Configuration
 
-Creating a cluster in the vSphere Client (you do this in the vCenter lab):
+Cluster configuration follows several policy layers:
 
-1. Right-click the data center → **New Cluster**. Name it; optionally turn on DRS, HA and vSAN, and choose image-based lifecycle management.
-2. Add hosts (in VCF: through the VCF workflow, not by hand).
-3. Configure **HA**: host monitoring on, admission control policy, isolation response, datastore heartbeating, VM monitoring.
-4. Configure **DRS**: automation level and migration threshold.
-5. Verify the **vMotion** VMkernel network and shared storage.
+| Policy area | Owner and intent |
+|---|---|
+| Cluster membership | VCF workflow for VCF-owned domains; vCenter for standalone vSphere |
+| HA detection and recovery | vCenter cluster availability settings define monitoring, admission control, isolation response, heartbeating and VM priorities |
+| DRS placement and balancing | vCenter cluster resource settings define automation, migration threshold, rules and resource pools |
+| Mobility prerequisites | Host networking and storage provide compatible vMotion paths and shared access to VM files |
+| Host lifecycle | VCF lifecycle or vSphere Lifecycle Manager maintains a compatible desired image |
+
+The separate vCenter cluster practical guide provides the exact interface sequence, field values, expected screens,
+troubleshooting and rollback. In theory, remember that a green toggle is only configuration intent; cluster health,
+agent state, datastore heartbeats, capacity and vMotion readiness prove that the services can operate.
 
 :::note
-In VCF you do not build domain clusters by hand: the VCF Installer builds the management cluster, and VCF Operations / SDDC Manager workflows create workload domain clusters with HA and DRS enabled. You still tune and troubleshoot them in vCenter.
+In VCF you do not build domain clusters by hand: the VCF Installer builds the management cluster, and VCF Operations / Software-Defined Data Center (SDDC) Manager workflows create workload domain clusters with HA and DRS enabled. You still tune and troubleshoot them in vCenter.
 :::
 
 ## CLI / API
 
-Clusters, HA and DRS are configured in vCenter (vSphere Client, API, PowerCLI), not on individual hosts. On a host you can check and set maintenance mode:
+Clusters, HA and DRS are configured in vCenter (vSphere Client, Application Programming Interface (API), PowerCLI), not on individual hosts. On a host you can check and set maintenance mode:
 
 ```shell
 esxcli system maintenanceMode get
@@ -173,20 +203,14 @@ On a clustered host, prefer entering maintenance mode from vCenter so DRS migrat
 
 ## Troubleshooting
 
-1. **HA errors on a host** ("cannot configure HA agent"): check management network, DNS, and that the host is not in maintenance mode; reconfigure HA on the host.
+1. **HA errors on a host** ("cannot configure HA agent"): check management network, Domain Name System (DNS), and that the host is not in maintenance mode; reconfigure HA on the host.
 2. **VMs did not restart after a failure**: was admission control disabled and capacity exhausted? Were the VMs protected? Restart priority "disabled"?
 3. **DRS not balancing**: automation level Manual/Partially Automated? vMotion VMkernel adapter enabled and reachable? Affinity rules constraining placement?
-4. **Maintenance mode stuck**: VMs that cannot be vMotioned (local ISO attached, CPU incompatibility, rules) must be dealt with manually.
+4. **Maintenance mode stuck**: VMs that cannot be vMotioned (local International Organization for Standardization (ISO) image attached, CPU incompatibility, rules) must be dealt with manually.
 
 ## Real-World Scenario
 
 A three-host cluster runs at 85% memory with admission control disabled "to fit more VMs". One host fails: HA tries to restart 40 VMs, but only about half fit. The business-critical database was not given a high restart priority and is among those left powered off. Fixes: enable admission control with a policy that reserves one host's worth of capacity, set restart priorities, and right-size the cluster. In VCF, the same discipline applies to the management domain, where vCenter, NSX and SDDC Manager must always be able to restart.
-
-## Lab
-
-Clusters need vCenter, which you deploy in Phase 2:
-
-::lab[lab-vcenter-cluster-ha-drs]
 
 ## Exam Focus
 
