@@ -6,7 +6,7 @@ module: m03-vsan-ops
 version: vcf9
 minutes: 45
 difficulty: intermediate
-summary: How VM storage policies drive vSAN data placement — failures to tolerate, RAID-1 vs RAID-5/6, ESA adaptive RAID-5, auto-policy management, the advanced rules, and what happens when you change a policy.
+summary: How Storage Policy Based Management (SPBM), failures to tolerate (FTT) and Redundant Array of Independent Disks (RAID) layouts control VMware vSAN object placement, capacity and compliance.
 topics: [vsan-policies, vsan-architecture]
 objectives: ["2.3"]
 keyTerms: [spbm, ftt, raid-1-mirroring, erasure-coding, adaptive-raid-5, vsan-object, vsan-component, vsan-witness-component, object-space-reservation, auto-policy-management]
@@ -35,7 +35,7 @@ sources:
 
 ## Why This Matters
 
-On a SAN you choose *where* a VM goes (which LUN, which RAID group). On vSAN you choose *what the VM needs* — "survive one host failure, use as little capacity as possible" — and vSAN decides where the pieces go. That decision is expressed as a **VM storage policy**. Get the policy wrong and you either waste half your capacity or discover during a host failure that a critical VM had no redundancy.
+On a storage area network (SAN), an administrator often chooses a logical unit number (LUN) backed by a particular array layout. With VMware vSAN, the administrator declares what a virtual machine (VM) object needs, such as one-failure tolerance with efficient capacity use, and vSAN chooses component placement. A **VM storage policy** expresses that contract. A poor policy can waste capacity or leave a critical object without the intended protection.
 
 Exam objective 2.3 says "Given a scenario, configure vSAN Storage policies". Expect scenario questions like: *"A 4-host ESA cluster must tolerate one host failure with the least capacity overhead — which policy?"* This lesson gives you the numbers and the reasoning.
 
@@ -43,7 +43,7 @@ Exam objective 2.3 says "Given a scenario, configure vSAN Storage policies". Exp
 
 - Explain how SPBM policies are created, assigned and checked for compliance on vSAN.
 - Calculate host requirements and capacity overhead for RAID-1, RAID-5 and RAID-6 at FTT 1–3.
-- Describe ESA adaptive RAID-5 (2+1 vs 4+1) and auto-policy management.
+- Describe Express Storage Architecture (ESA) adaptive RAID-5 (2+1 versus 4+1) and auto-policy management.
 - Describe the advanced rules (stripes, IOPS limit, object space reservation, checksum, force provisioning) and their ESA differences.
 - Predict the impact of changing a policy on a running VM.
 
@@ -114,14 +114,24 @@ The diagram shows the same 100 GB VMDK object placed three ways across a 6-host 
 | Datastore default policy | Applied when a VM or disk has no explicit policy |
 | Compliance checker | Periodically compares objects to their policy; shows compliant / noncompliant / out of date |
 
+### Component responsibilities and limits
+
+**VM storage policy.** The policy records availability, service and allocation requirements independently of a datastore name. It can be assigned to VM home and individual virtual disks. It does not reserve enough cluster capacity by itself or make an impossible host/fault-domain layout valid.
+
+**vSAN VASA provider.** The VMware APIs for Storage Awareness (VASA) provider advertises vSAN capabilities to SPBM so vCenter can determine compatibility. It reports what the datastore can offer; it does not perform component I/O or repair objects.
+
+**CLOM and DOM.** The Cluster-Level Object Manager (CLOM) translates policy into a component layout and starts reconfiguration when policy or topology changes. The Distributed Object Manager (DOM) serves object input/output (I/O) across those components. Both depend on healthy membership, network paths and sufficient fault domains and capacity.
+
+**Compliance checker.** Compliance compares current layout with policy and reports compliant, noncompliant or out-of-date state. It can identify drift; it cannot guarantee application health, free capacity or successful repair. An object can remain accessible while noncompliant, or be compliant with an intentionally unprotected FTT=0 policy.
+
 ## How It Works
 
-1. You create a policy in **Policies and Profiles → VM Storage Policies → Create**, enabling "vSAN storage" rules.
-2. You set **Availability** (site disaster tolerance, failures to tolerate), **Storage rules** (encryption services, space efficiency, storage tier) and **Advanced rules**.
-3. When you deploy a VM, vCenter lists compatible datastores; vSAN reports compatible if it can satisfy the rules with current resources.
-4. CLOM computes a layout — for example 2+1 RAID-5 on three hosts — and the components are created.
-5. The compliance service keeps checking. A host failure that removes a component makes the object noncompliant (reduced availability) while it stays accessible.
-6. When you **change** a policy, vSAN builds the new layout alongside the old one, resyncs data, then deletes the old components. This needs **transient capacity**.
+1. A policy defines availability, storage services and advanced allocation requirements.
+2. vCenter asks the VASA provider which datastores advertise compatible capabilities.
+3. When the policy is assigned, CLOM computes a legal layout—for example 2+1 RAID-5 across three fault domains—and creates the components.
+4. DOM serves I/O through that layout while compliance checks compare actual placement with the contract.
+5. A failure can leave an object accessible but noncompliant until repair restores the required layout.
+6. A policy change builds the new layout alongside the old one, resynchronizes data and removes the old components. This requires **transient capacity** and network bandwidth.
 
 ## Deep Dive
 
@@ -169,17 +179,18 @@ Compliance answers "does the object match the policy?". Health answers "is the o
 
 ## Configuration
 
-Create an ESA RAID-5 policy for general workloads:
+| Decision | Management surface | Evidence |
+|---|---|---|
+| Which failures must the workload survive? | VM storage-policy availability rules | FTT, failure-tolerance method and site rule |
+| Which services or allocations apply? | Storage and advanced policy rules | Encryption preference, space efficiency, stripes, limit and reservation |
+| Can the cluster satisfy the contract? | Policy compatibility and vSAN capacity views | Compatible datastore, sufficient fault domains and transient headroom |
+| Which objects receive the policy? | VM policy assignment | VM home and each virtual disk mapped to the intended policy |
+| Did placement converge? | Compliance, virtual objects and resynchronization views | Compliant state, expected component layout and completed resync |
+| Should this become the fallback? | Datastore default-policy setting | Approved default and known effect on newly created objects |
 
-1. **Policies and Profiles → VM Storage Policies → Create**. Name: `vsan-esa-raid5-ftt1`.
-2. Policy structure: enable **"Enable rules for vSAN storage"**.
-3. Availability: Site disaster tolerance **None – standard cluster**; Failures to tolerate **1 failure – RAID-5 (Erasure Coding)**.
-4. Storage rules: leave encryption and space efficiency as **No preference** (compression stays on by default on ESA).
-5. Advanced: leave defaults (thin, 1 stripe, no IOPS limit).
-6. Storage compatibility: confirm your vSAN datastore appears as compatible.
-7. Apply: VM → **Configure → Policies → Edit VM Storage Policies**, choose the policy for VM home and each disk, then watch **Monitor → vSAN → Resyncing Objects** on the cluster.
+The separate practical guide owns exact VCF 9.0.2 navigation and component inspection. A safe rollout creates or versions a policy, tests a small workload set, monitors transient capacity and resynchronization, and then expands in controlled batches.
 
-Change the default for the datastore: vSAN datastore → **Configure → General → Default Storage Policy → Edit**.
+Automation can use a command-line interface (CLI) or an application programming interface (API), but it must apply the same compatibility, capacity and compliance checks.
 
 ## CLI / API
 
@@ -240,12 +251,6 @@ An 8-host ESA VI workload domain in VCF runs three classes of VMs:
 | Build agents (disposable) | FTT=1 RAID-1 or RAID-5 — not FTT=0 | FTT=0 saves capacity but any host reboot makes those disks inaccessible; acceptable only for truly disposable data |
 
 The team creates the policies, applies them to five VMs first, monitors resync, then applies them by tag in batches overnight.
-
-## Lab
-
-Create RAID-1, RAID-5 and FTT=0 policies on your nested ESA cluster and observe component placement and compliance.
-
-::lab[lab-vsan-storage-policies]
 
 ## Exam Focus
 

@@ -6,7 +6,7 @@ module: m04-net-fundamentals
 version: vcf9
 minutes: 40
 difficulty: foundation
-summary: Layer 2 vs layer 3, VLANs and 802.1Q trunks, gateways, routing and MTU, explained through the networks every VCF host needs and the physical-fabric requirements VCF 9 documents.
+summary: How VMware Cloud Foundation (VCF) uses layer 2 switching, layer 3 routing, virtual local area networks (VLANs), gateways and maximum transmission unit (MTU) across physical and virtual networks.
 topics: [l2-l3, mtu, vcf-network-design]
 objectives: ["2.4"]
 keyTerms: [vlan, vlan-trunk, mtu, jumbo-frame, first-hop-gateway, vmkernel-adapter, network-fabric, tep]
@@ -31,11 +31,7 @@ sources:
 
 ## Why This Matters
 
-VCF is a software-defined data center, but every byte it moves still crosses a physical switch. The VCF Installer
-will not even start a deployment if the host overlay network cannot carry at least a 1600-byte frame, and most failed
-deployments trace back to something unglamorous: a VLAN not allowed on a trunk, a missing gateway, an MTU mismatch
-on one switch port. Before you learn NSX or workload domains, you need a clear model of **layer 2**, **layer 3**,
-**VLANs**, **gateways** and **MTU** — and of exactly which networks a VCF host uses.
+VMware Cloud Foundation (VCF) is a software-defined data center (SDDC), but every packet still depends on a physical network path. The VCF Installer rejects a host overlay design below its frame-size requirement, while VLAN omissions, gateway errors and MTU mismatches can pass basic connectivity tests and later break deployment or workload traffic. Before studying VMware NSX or workload domains, the learner needs a precise model of layer 2, layer 3, VLANs, gateways, MTU and the traffic services carried by each VMware ESX host.
 
 For the 2V0-17.25 exam (objective 2.4, "VMware Network Fundamentals"), expect scenario questions where you must
 pick the right MTU, explain why a vMotion or overlay test fails, or tell a VLAN problem apart from a routing problem.
@@ -45,8 +41,8 @@ pick the right MTU, explain why a vMotion or overlay test fails, or tell a VLAN 
 - Explain the difference between layer 2 switching and layer 3 routing, and where VLANs and gateways fit.
 - List the infrastructure networks of a VCF ESX host (management, vMotion, vSAN/IP storage, host TEP) and their VCF 9 MTU guidance.
 - State the VCF 9 MTU minimum (1600) and recommendation (1700 minimum design value, 9000 recommended) for overlay traffic and explain why fragmentation is not an option.
-- Configure and validate an 802.1Q trunk to an ESX host and test end-to-end MTU with `vmkping -d -s`.
-- Distinguish single-rack, multi-rack and multi-AZ network fabric models.
+- Explain the state required for an Institute of Electrical and Electronics Engineers (IEEE) 802.1Q trunk and validate end-to-end MTU with `vmkping -d -s`.
+- Distinguish single-rack, multi-rack and multi-availability-zone (AZ) network fabric models.
 
 ## Concept
 
@@ -110,6 +106,20 @@ packet from the management VMkernel adapter to the DNS server in another subnet 
 | [[vmkernel-adapter]] (vmk) | 3 (host) | The host's own IP interface for one traffic type | VCF / vCenter |
 | [[vds]] port group | 2 (virtual) | Applies VLAN ID, teaming and security to vmk and VM ports | vCenter (VCF-deployed) |
 | Host TEP | 3 (host) | NSX tunnel endpoint vmk (vmk10/vmk11 typically) carrying Geneve | NSX Manager |
+
+### Component responsibilities and limits
+
+**Physical fabric.** Top-of-rack (ToR) and spine switches provide link redundancy, VLAN transport, routing and a consistent frame-size envelope. The fabric can carry VCF traffic only when every hop and gateway supports the design; software overlays cannot repair a missing VLAN, route or physical maximum transmission unit.
+
+**VLAN and trunk.** A VLAN defines a layer 2 broadcast domain, while an 802.1Q trunk carries several tagged VLANs over one physical link. The trunk does not route between subnets and does not guarantee that every allowed VLAN has a reachable gateway.
+
+**Subnet and first-hop gateway.** The subnet defines the local Internet Protocol (IP) scope, and the first-hop gateway routes traffic outside it. Gateway redundancy protects routed reachability. A gateway cannot help two peers in the same subnet when their VLAN or trunk path is broken.
+
+**VMkernel adapter.** A VMkernel adapter gives ESX an IP endpoint for a specific service such as management, vMotion, vSAN or Network File System (NFS). Its service tag and Transmission Control Protocol/Internet Protocol (TCP/IP) stack determine which path and routing table are used. A correct VMkernel configuration still fails when the distributed switch or physical fabric is inconsistent.
+
+**Virtual Distributed Switch (VDS).** The VDS applies port-group VLAN, teaming, security and MTU policy across hosts. It standardizes the virtual side but does not program the external switches unless a separate integration does so.
+
+**Tunnel endpoint (TEP).** An NSX TEP encapsulates overlay traffic in Geneve and depends on an underlay IP path with sufficient MTU. It provides overlay reachability; it cannot fragment Geneve traffic whose do-not-fragment behavior exceeds an undersized path.
 
 ### Infrastructure VLANs and their MTU (VCF 9 guidance)
 
@@ -198,23 +208,16 @@ VLANs and subnets and the spine routes between racks (BGP-EVPN can restore a sin
 
 ## Configuration
 
-Typical physical switch configuration for a VCF host port (vendor-neutral pseudo-config):
+| Design decision | Management surface | Evidence |
+|---|---|---|
+| Which traffic types need separate failure/security domains? | VCF planning workbook and physical design | VLAN, subnet, gateway, address range and owner for each service |
+| Which VLANs reach each host uplink? | ToR trunk configuration | Allowed-tag list, edge-trunk state and redundant uplinks |
+| Is frame size consistent end to end? | VDS, port group, VMkernel, switch and gateway settings | Small-packet test plus do-not-fragment payload test for the intended MTU |
+| Which stack and route does a service use? | VMkernel adapter and TCP/IP-stack views | Service tag, source interface, route and reachable gateway/peer |
+| Can the design grow without renumbering? | IP address management and VCF design | Free addresses, immutable subnet-mask assumption and reserved expansion range |
+| Does every new rack follow the same contract? | Fabric configuration and acceptance test | Pairwise reachability, latency and MTU results per new path |
 
-```shell
-interface Ethernet1/1
-  description esx-01 vmnic0
-  switchport mode trunk
-  switchport trunk allowed vlan 1610-1614   # mgmt, vMotion, vSAN, TEP, VM-mgmt
-  spanning-tree port type edge trunk        # "trunk PortFast"
-  mtu 9216
-interface Vlan1613                          # host TEP VLAN gateway
-  ip address 172.16.13.2/24
-  vrrp 13 address 172.16.13.1
-  mtu 9216
-```
-
-On the ESX side the VLAN ID lives on the port group, never on the vmk itself. VCF creates the VDS and port groups
-from your deployment input (VCF Installer wizard or JSON spec) — your job is to make the physical side match.
+VCF builds the VDS and port groups from deployment inputs; the network team makes the physical fabric and gateways match that contract. The separate practical guide owns vendor-specific switch syntax, exact VCF 9.0.2 navigation and lab validation.
 
 :::tip
 Do not mix "native VLAN" (untagged) traffic and tagged port groups for the same network. Pick one approach per
@@ -277,13 +280,6 @@ connectivity for large transfers (web pages half-load, file copies hang), while 
 host is cabled to a spare switch pair whose ports still have the default MTU 1500. Fix: set the ports to 9216, retest
 with 8972 and 1672, then re-run the workload. Lesson: MTU is a per-hop property — validate each new cabling path,
 not only the first rack.
-
-## Lab
-
-In the lab you prepare the learner home lab's network for VCF: VLAN-aware Proxmox bridge, gateways, DNS forward and
-reverse zones, NTP and jumbo-frame `vmkping` tests from nested ESX hosts.
-
-::lab[lab-network-readiness]
 
 ## Exam Focus
 

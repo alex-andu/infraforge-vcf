@@ -6,7 +6,7 @@ module: m03-storage
 version: vcf9
 minutes: 35
 difficulty: foundation
-summary: How ESX turns local disks, SAN LUNs and NAS exports into datastores (VMFS, NFS, vSAN, vVols), and how VCF 9 decides what can be principal versus supplemental storage.
+summary: How VMware ESX presents block, file and software-defined storage as datastores, and how VMware Cloud Foundation (VCF) 9 distinguishes principal from supplemental storage.
 topics: [datastores, wld-storage]
 objectives: ["2.3", "4.1"]
 keyTerms: [datastore, vmfs, nfs-datastore, vvols, principal-storage, supplemental-storage, spbm, vsan]
@@ -31,7 +31,7 @@ sources:
 
 ## Why This Matters
 
-Every virtual machine is, physically, a handful of files: a configuration file, one or more virtual disks, a swap file and logs. Those files have to live somewhere that every host in a cluster can reach, or vSphere HA, vMotion and DRS stop working. That "somewhere" is a [[datastore]].
+Every virtual machine (VM) is represented by configuration, virtual-disk, swap and log files. Those files must remain reachable from the hosts expected to run the VM, or VMware vSphere High Availability (HA), VMware vSphere vMotion and Distributed Resource Scheduler (DRS) operations lose required storage access. A [[datastore]] is the logical container that gives vSphere a consistent way to manage those files.
 
 In VMware Cloud Foundation (VCF) storage is not an afterthought: when you create the management domain or a VI workload domain, you must pick the **principal storage** for the first cluster, and that choice cannot be casually changed afterwards. The exam objective 2.3 starts with "Given a scenario, configure vSphere storage", and objective 4.1 asks you to "configure Workload Domain storage". Both assume you can answer three questions quickly:
 
@@ -42,9 +42,9 @@ In VMware Cloud Foundation (VCF) storage is not an afterthought: when you create
 ## Learning Objectives
 
 - Explain what a datastore is and how ESX presents block, file and software-defined storage to VMs.
-- Compare VMFS, NFS, vSAN and vVols datastores, including what is deprecated in VCF 9.0.
+- Compare Virtual Machine File System (VMFS), Network File System (NFS), VMware vSAN and VMware vSphere Virtual Volumes (vVols) datastores, including what is deprecated in VCF 9.0.
 - Distinguish **principal** from **supplemental** storage and list which storage types VCF 9.0 accepts for each.
-- Identify the storage devices and paths of an ESX host from the CLI and the vSphere Client.
+- Identify the storage devices and paths of an ESX host from the command-line interface (CLI) and the vSphere Client.
 - Describe how Storage Policy Based Management (SPBM) connects VM requirements to datastore capabilities.
 
 ## Concept
@@ -55,8 +55,8 @@ A VM never sees a physical disk. The chain is:
 
 | Layer | What it is | Example |
 |---|---|---|
-| Physical device | A disk, SSD, NVMe device, SAN LUN or NAS export | `naa.600a0980...` LUN on an array, a local NVMe drive |
-| Storage adapter | How ESX reaches the device | NVMe controller, SAS HBA, FC HBA, software iSCSI adapter, VMkernel NIC for NFS |
+| Physical device | A disk, solid-state drive (SSD), Non-Volatile Memory Express (NVMe) device, storage area network (SAN) logical unit number (LUN), or network-attached storage (NAS) export | `naa.600a0980...` LUN on an array, a local NVMe drive |
+| Storage adapter | How ESX reaches the device | NVMe controller, Serial Attached SCSI (SAS) host bus adapter (HBA), Fibre Channel (FC) HBA, software Internet Small Computer Systems Interface (iSCSI) adapter, or VMkernel network interface card (NIC) for NFS |
 | Datastore | The logical container vSphere manages | VMFS volume, NFS mount, vSAN datastore, vVols container |
 | VM files | What lives in the datastore | `.vmx`, `.vmdk`, `.vswp`, `.log` |
 | Virtual disk | What the guest sees | A SCSI or NVMe disk inside the VM |
@@ -121,20 +121,25 @@ The official VCF 9.0 design guide also shows how vSAN itself can be deployed in 
 | VASA providers | Built into vSAN; array-supplied for vVols | Tell vCenter what the storage can do (capabilities) | vCenter |
 | VCF Operations fleet workflows / SDDC Manager | Management domain | Automate vSAN during domain and cluster creation; consume pre-provisioned NFS/FC | VCF admin |
 
+### Component responsibilities and limits
+
+**ESX storage stack.** The VMkernel discovers devices, claims paths, applies multipathing and mounts datastores. It can isolate a failed path and continue over healthy paths when the design provides them. It cannot correct array zoning, export permissions, physical fabric failures or inconsistent presentation between hosts.
+
+**Datastore.** A datastore provides a common namespace and access model for VM files. Its type determines who owns the file system and how capabilities are exposed. A datastore does not by itself guarantee redundancy, performance or access from every cluster host; those properties depend on the backing system, network/fabric and policy.
+
+**Storage adapter and VMkernel network.** Adapters provide the transport from host to storage. Block transports expose devices that ESX can format with VMFS, while NFS mounts a file-system export. Multiple adapters or paths can improve availability, but only when zoning, addressing, path policy and the storage target are configured consistently.
+
+**Storage Policy Based Management (SPBM).** SPBM compares a VM storage policy with advertised datastore capabilities and reports compatibility and compliance. It can select an appropriate datastore and, with vSAN, control object layout. It cannot make an incompatible datastore satisfy a requirement or replace capacity and failure-domain planning.
+
+**VCF storage workflow.** VCF can configure supported vSAN storage during domain and cluster creation and can consume prepared NFS or FC storage. It does not provision an external array, create SAN zoning or authorize NAS exports; those remain storage-team responsibilities.
+
 ## How It Works
 
-Creating a VMFS datastore on a SAN LUN (traditional block storage):
+For VMFS on traditional block storage, the storage system first presents the same LUN to every intended host. Each host discovers the device and paths; the Pluggable Storage Architecture (PSA) claims them and applies a multipathing policy. ESX writes VMFS once, and all authorized hosts mount that shared clustered file system. HA and vMotion can then use the VM files only where device presentation is consistent.
 
-1. The storage team creates a LUN and presents it (zoning/masking for FC, target + CHAP for iSCSI).
-2. You **rescan** the storage adapters on each host; ESX discovers the device and its paths (for example `naa.600...` on `vmhba2:C0:T1:L4`).
-3. The Pluggable Storage Architecture claims the device and selects a path policy (for example round robin).
-4. In the vSphere Client you run **New Datastore → VMFS**, choose the device and VMFS6; ESX writes the file system.
-5. vCenter mounts the datastore on the other hosts that see the same LUN.
-6. VMs are created with their files on the datastore; HA and vMotion now work because every host sees the same files.
+For NFS, the NAS owns the file system and exports a path. ESX acts as an NFS client and mounts that export on each selected host; it does not format the export with VMFS. Protocol version, network reachability and export authorization must remain consistent across the cluster.
 
-Mounting an NFS datastore is shorter: the NAS exports a path, you give the NFS server and folder, choose NFS 3 or 4.1, and vCenter mounts it on the selected hosts. There is no VMFS: the NAS owns the file system and locking.
-
-Creating a vSAN datastore is different again: you enable vSAN on the cluster, claim local devices, and **one** vSAN datastore appears automatically, shared by every host in the cluster. The following lessons cover this in depth.
+For vSAN, cluster hosts contribute claimed devices to a distributed object store, and one vSAN datastore is exposed to the cluster. Policy determines how each VM object is placed and protected. The following lessons cover its architectures and policies in depth.
 
 ## Deep Dive
 
@@ -175,22 +180,19 @@ vVols map each VM disk to an object on the array and let SPBM push policies to t
 
 ## Configuration
 
-### Create a VMFS datastore (vSphere Client)
+Storage configuration begins with ownership and evidence:
 
-1. Right-click the cluster or a host → **Storage → New Datastore**.
-2. Type: **VMFS** → name it → select the device (check the capacity and the identifier with the storage team).
-3. Version: **VMFS 6** → partition: use all available space.
-4. Finish, then confirm the datastore is mounted on every host under the cluster's **Datastores** tab.
+| Decision | Management surface | Evidence |
+|---|---|---|
+| Which storage type satisfies the domain role? | VCF domain/cluster design and storage-model rules | Principal or supplemental classification and supported type |
+| Is external storage ready? | Array/NAS tooling plus host adapter views | LUN/export identifier, zoning or authorization, and matching presentation |
+| Can every intended host reach it? | Host devices, paths and cluster datastore views | Consistent device identity, healthy paths and datastore mounted on all hosts |
+| Which workloads are compatible? | VM storage policies and datastore capability view | Policy compatibility, capacity and compliance result |
+| Is redundancy working? | Path, network/fabric and datastore health views | Expected path count, failover behavior and no unresolved alarms |
 
-### Mount an NFS datastore
+The separate practical guide owns exact VCF 9.0.2 and vSphere Client navigation. The theory boundary is that VCF configures supported vSAN workflows, consumes already prepared NFS v3 or FC principal storage, and adds supported supplemental storage after cluster creation.
 
-1. **Storage → New Datastore → NFS** → choose **NFS 3** (if it is to be VCF principal storage) or **NFS 4.1**.
-2. Enter the folder (export path) and server; select all hosts in the cluster.
-3. Make sure the NAS export allows root access from every host's NFS VMkernel IP.
-
-### In VCF
-
-When you create a VI workload domain or add a cluster, the wizard asks for the principal storage type. For vSAN, VCF configures the vSAN cluster for you. For NFS v3 or FC, you supply an already-provisioned export or LUN; VCF does not provision the array side. Supplemental storage is added later through vCenter.
+Automation can use an application programming interface (API) or CLI, but it must preserve the same device identity, host-consistency and destructive-operation checks.
 
 ## CLI / API
 
@@ -260,12 +262,6 @@ A company is planning a VCF 9.0 VI workload domain for a database team that alre
 - **Alternative:** if they wanted hyperconverged storage that VCF configures end to end, vSAN ESA would be the default recommendation.
 
 In Alex's home lab, the Proxmox server's 1 TB NVMe is the natural backing for nested vSAN ESA devices, while the 2 TB HDDs could back an NFS export (from a small NAS VM) used as supplemental storage for ISOs and templates.
-
-## Lab
-
-You will build vSAN in the following lessons; this lab creates the cluster and its datastore, and also lets you inspect devices and file systems on each nested host.
-
-::lab[lab-vsan-esa-cluster]
 
 ## Exam Focus
 
