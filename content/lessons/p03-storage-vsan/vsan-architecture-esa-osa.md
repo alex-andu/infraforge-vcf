@@ -6,7 +6,7 @@ module: m03-storage
 version: vcf9
 minutes: 45
 difficulty: intermediate
-summary: How vSAN builds one shared datastore from local devices, the difference between the Express Storage Architecture (storage pools, NVMe only) and the Original Storage Architecture (disk groups), objects and components, deployment models including vSAN storage clusters, and how to deploy a vSAN cluster in VCF 9.
+summary: How VMware vSAN builds a shared datastore, how Express Storage Architecture (ESA) differs from Original Storage Architecture (OSA), and how VMware Cloud Foundation (VCF) 9 uses converged and disaggregated vSAN models.
 topics: [vsan-architecture, wld-storage]
 objectives: ["2.3"]
 keyTerms: [vsan, vsan-esa, vsan-osa, storage-pool, disk-group, vsan-object, vsan-component, vsan-storage-cluster, vsan-compute-cluster, principal-storage]
@@ -35,9 +35,9 @@ sources:
 
 ## Why This Matters
 
-vSAN is the default principal storage of VCF. The management domain you will build in your lab almost certainly runs vCenter, NSX Manager and VCF Operations on a vSAN datastore. If you do not understand how vSAN places data, you cannot predict what happens when a host reboots, a drive fails, or you add a node.
+VMware vSAN is the default principal-storage design for many VCF deployments. A management domain commonly runs VMware vCenter, VMware NSX Manager and VCF Operations on a vSAN datastore. Understanding object placement is necessary to predict what remains available when a host reboots, a device fails or cluster capacity changes.
 
-VCF 9 offers two vSAN architectures. The **Express Storage Architecture (ESA)** is the modern, NVMe-only design and the one Broadcom recommends for new deployments with high performance needs. The **Original Storage Architecture (OSA)** is the classic two-tier design and is still a supported principal storage option. Exam objective 2.3 asks you to "describe the use cases for VMware vSAN ESA or VMware vSAN OSA" and to "deploy a VMware vSAN cluster" — this lesson covers both.
+VCF 9 supports two architectures. **Express Storage Architecture (ESA)** is the modern design for certified Non-Volatile Memory Express (NVMe) hardware. **Original Storage Architecture (OSA)** is the classic cache-and-capacity design and remains a supported principal-storage option. Exam objective 2.3 requires selecting the appropriate architecture and understanding the state a valid deployment must achieve.
 
 ## Learning Objectives
 
@@ -45,7 +45,7 @@ VCF 9 offers two vSAN architectures. The **Express Storage Architecture (ESA)** 
 - Compare ESA (storage pool, single tier, NVMe only) with OSA (disk groups, cache + capacity tiers).
 - Choose ESA or OSA from a scenario using hardware, network and feature requirements.
 - Describe vSAN HCI, vSAN storage cluster, vSAN compute cluster and stretched topologies and where VCF allows them.
-- Outline the steps and verification commands to deploy a vSAN cluster.
+- Explain the compatibility, cluster, network and storage-claim gates for a vSAN deployment.
 
 ## Concept
 
@@ -62,7 +62,7 @@ vSAN does not store VM files as files on a file system. It stores [[vsan-object|
 | Object type | Contents |
 |---|---|
 | VM home namespace | `.vmx`, logs, descriptor files |
-| VMDK | The virtual disk contents |
+| VMware Virtual Machine Disk (VMDK) | The virtual disk contents |
 | VM swap | Created when the VM powers on |
 | Snapshot delta | OSA only: vSAN ESA does not create delta disks for snapshots |
 | Memory object | Snapshot memory or suspend state |
@@ -104,11 +104,23 @@ The official decision chart from the VCF 9.0 design guide:
 | Component | Where it runs | What it does |
 |---|---|---|
 | vSAN kernel modules | Every ESX host in the vSAN cluster | Data path: object I/O, replication, erasure coding, checksums |
-| CMMDS (cluster membership, monitoring and directory service) | Every host; one leader, one backup | Keeps the cluster directory: which hosts are members, where each component lives |
-| CLOM (cluster-level object manager) | Every host (`clomd`) | Decides component placement and repairs when policies or failures require it |
+| Cluster Monitoring, Membership and Directory Service (CMMDS) | Every host; one leader, one backup | Keeps the cluster directory: which hosts are members, where each component lives |
+| Cluster-Level Object Manager (CLOM) | Every host (`clomd`) | Decides component placement and repairs when policies or failures require it |
 | vSAN VMkernel adapter | Every host, including hosts that contribute no capacity | Carries vSAN traffic between hosts (L2 or L3, IPv4 or IPv6) |
 | vSAN health service and VASA provider | vCenter (plus host-side agents) | Health checks, performance service, and SPBM capabilities |
 | Witness host (stretched/2-node only) | A third site, usually the vSAN witness appliance | Holds witness components only, never VM data |
+
+### Component responsibilities and limits
+
+**vSAN data path.** ESX kernel modules accept VM input/output (I/O), apply policy services and coordinate durable writes across component hosts. The data path can tolerate failures allowed by the assigned policy, but it cannot keep an object accessible after quorum is lost or when the required network and devices are unavailable.
+
+**CMMDS.** CMMDS maintains cluster membership and the directory that maps objects to components. It gives hosts a shared view of placement; it does not store the VM payload or decide the desired redundancy policy.
+
+**CLOM.** CLOM converts a storage policy into component placement and initiates repairs or reconfiguration. It depends on sufficient compatible capacity and fault domains. It cannot make an impossible policy compliant in a cluster with too few hosts or too little free space.
+
+**Storage pool or disk group.** An ESA storage pool aggregates eligible NVMe devices per host. An OSA disk group couples one cache device with capacity devices. These structures contribute resources to vSAN; neither is a datastore that should be mounted or managed independently.
+
+**vSAN network.** The vSAN-tagged VMkernel path carries component traffic, resynchronization and cluster communication. Redundant physical paths and consistent maximum transmission unit (MTU) design reduce failure risk. The service cannot compensate for asymmetric routing, mismatched MTU or insufficient bandwidth during rebuilds.
 
 ## How It Works
 
@@ -129,15 +141,7 @@ The official decision chart from the VCF 9.0 design guide:
 
 ### Deploying a vSAN cluster (standalone vSphere)
 
-1. Hosts meet the requirements: certified devices/drivers/firmware, NVMe TLC for ESA, 128 GB+ memory for ESA, and supported NICs.
-2. Each host gets a VMkernel adapter tagged for **vSAN** traffic (MTU consistent end to end, often 9000).
-3. Create or select a vSphere cluster and run **Quickstart** or **Configure → vSAN → Services → Configure vSAN**.
-4. Choose the architecture (ESA or OSA) and the type (single site, two-node, stretched).
-5. Claim devices: ESA puts eligible NVMe devices into each host's storage pool; OSA asks you to assign cache and capacity tiers.
-6. vSAN creates the datastore and assigns the default storage policy.
-7. Verify: Skyline Health, `esxcli vsan cluster get`, and the datastore capacity view.
-
-Treat deployment as four gates rather than one “Enable vSAN” action:
+Treat deployment as four gates rather than one enablement action:
 
 | Gate | Evidence before continuing | Typical failure if skipped |
 |---|---|---|
@@ -146,9 +150,7 @@ Treat deployment as four gates rather than one “Enable vSAN” action:
 | Network | Every host has a vSAN-tagged VMkernel adapter with IP reachability and consistent MTU | Network partition and absent cluster membership |
 | Storage claim | ESA storage-pool devices or OSA cache/capacity tiers match the selected architecture | No datastore capacity or incorrect disk layout |
 
-After enabling the service, a datastore appearing is only an intermediate result. Close the deployment by checking
-membership, health, capacity and a policy-compliant test object. In VCF workflows the installer or domain/cluster
-workflow performs the enablement, but the same hardware, network and health gates still apply.
+After enablement, a datastore appearing is only an intermediate result. A completed deployment has consistent membership, healthy networking and devices, expected capacity and a policy-compliant test object. In VCF workflows the installer or domain/cluster workflow performs enablement and claiming, but the same compatibility and health gates still apply.
 
 ### In VCF 9
 
@@ -205,16 +207,17 @@ In VCF 5.x the management domain had to use vSAN (OSA or ESA), and vSAN Max was 
 
 ## Configuration
 
-Key settings in the vSphere Client for a vSAN cluster (cluster → **Configure → vSAN**):
+| Decision | Management surface | Evidence |
+|---|---|---|
+| Which architecture fits the hardware and workload? | VCF design plus Broadcom compatibility data | ESA/OSA decision, certified device/driver/firmware combination and sizing |
+| Which topology and failure boundary apply? | Cluster vSAN services and fault-domain design | Single-site, stretched, two-node or storage-cluster model and host count |
+| Is the data network ready? | Host VMkernel and physical-network configuration | vSAN service tag, reachability, consistent MTU and measured bandwidth/latency |
+| Which devices contribute? | vSAN disk management | ESA storage-pool or OSA disk-group membership and healthy device state |
+| Is usable storage available? | Skyline Health, capacity and policy views | Healthy membership, expected capacity and compliant test object |
 
-| Page | What you set |
-|---|---|
-| Services | Enable vSAN, architecture, data services (encryption, space efficiency for OSA), performance service |
-| Disk Management | Claim devices (ESA storage pool / OSA disk groups), view device health |
-| Fault Domains | Define fault domains or stretched cluster sites |
-| Remote Datastores | Mount a vSAN storage cluster datastore on a compute/client cluster |
+The separate practical guide owns exact VCF 9.0.2 navigation and nested-lab workarounds. Theory keeps the production rule: hardware compatibility cannot be waived merely because an unsupported nested device can be forced to work in a lab.
 
-Network: create a VMkernel adapter on each host with the **vSAN** service enabled, on a dedicated VLAN, with consistent MTU. Single-site clusters need RTT of 1 ms or less between hosts.
+Automation can use a command-line interface (CLI) or an application programming interface (API), but the same compatibility, networking, quorum and policy checks remain mandatory.
 
 ## CLI / API
 
@@ -273,7 +276,7 @@ esxcli vsan cluster unicastagent list
 ## Troubleshooting
 
 - **Host not contributing capacity on ESA**: the devices are not NVMe, are not eligible or were not claimed. Check `esxcli vsan storagepool list` and the **Disk Management** page. In nested labs this is the classic symptom of disks attached to a SCSI controller instead of NVMe.
-- **"No vSAN ESA certified disks found" in VCF**: hardware compatibility validation failed (see the [lab](lesson:vsan-architecture-esa-osa#lab) for the nested workaround and why it is lab-only).
+- **"No vSAN ESA certified disks found" in VCF**: hardware compatibility validation failed. The separate nested-vSAN practical guide documents the lab-only workaround and clearly separates it from a supported production design.
 - **Cluster partition**: compare `Sub-Cluster Member Count` on every host; check `esxcli vsan network list` and `vmkping -I <vsan-vmk>` with the right MTU.
 - **Health first**: start with Skyline Health under the cluster's Monitor tab (see [vSAN health](lesson:vsan-health-troubleshooting)).
 
@@ -284,12 +287,6 @@ A retailer is designing two VCF 9 workload domains:
 1. **Payments platform**: new servers, NVMe drives, 25 GbE, latency-sensitive databases. → **vSAN ESA HCI**, RAID-5 or RAID-6 policies, compression on.
 2. **Branch file archives on existing servers** with SATA SSDs and 10 GbE. → **vSAN OSA** (hardware does not meet ESA requirements). Plan an ESA refresh at the next hardware cycle.
 3. Later, a third cluster needs a lot of capacity but little compute. → A **vSAN storage cluster** in the same VI workload domain serving **vSAN compute clusters**, so storage and compute scale independently.
-
-## Lab
-
-Build a four-host nested vSAN ESA cluster on Proxmox, including virtual NVMe devices and the hardware-compatibility workaround needed for nested labs.
-
-::lab[lab-vsan-esa-cluster]
 
 ## Exam Focus
 
