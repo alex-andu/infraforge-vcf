@@ -8,8 +8,8 @@ Note: this repo has no RHCSA content. "InfraForge RHCSA" is a separate project.
 
 This section is the source of truth for work ownership and holds. Operating rules: [VCF_PARALLEL_WORKFLOW.md](VCF_PARALLEL_WORKFLOW.md). Proposed module batches: [VCF_MODULE_ROADMAP.md](VCF_MODULE_ROADMAP.md).
 
-- **Current milestone:** `THEORY-NSX-MODULE-STANDARD-25` migrates all seven NSX lessons as one bounded module while keeping execution in separate guides.
-- **Authorized now:** Alex explicitly asked Codex to continue as the primary end-to-end owner, including across usage resets. Automatic feature-branch pushes remain authorized. Current branch: `content/theory-nsx-module-standard`, based on pushed network-design commit `376953e`. Push only after checks and a secret scan; no direct push to `main`, force-push, merge, deployment or infrastructure mutation is authorized. Alex requested one cumulative PR only after all lessons are complete.
+- **Current milestone:** `THEORY-REMAINING-MODULES-STANDARD-26` completes theory/guide separation across VCF Architecture through Certification Preparation.
+- **Authorized now:** Alex explicitly asked Codex to continue as the primary end-to-end owner, including across usage resets. Automatic feature-branch pushes and one final cumulative pull request are authorized. Current branch: `content/theory-remaining-modules-standard`, based on pushed NSX commit `42a90ac`. Push only after checks and a secret scan; no direct push to `main`, force-push, merge, deployment or infrastructure mutation is authorized.
 - **Implementation direction:** The earlier exact real-lab alignment plan is superseded. Guides do not need to reproduce the current lab exactly and repository completion does not wait for lab validation. Alex handles execution. Codex focuses next on the component catalog and structured theory, then migrates guides in bounded curriculum-driven packages.
 - **Privacy:** verified on 2026-10-08: the unauthenticated GitHub API returns 404 while authenticated Git remote read succeeds, so the repository is private and this workstation retains access. The pilot stores only sanitized topology values and no credentials, tokens or unredacted captures. Task #1 is complete.
 - **Exam baseline:** Alex supplied the official-description excerpt updated 2026-04-23. Its 8 objectives / 59 items match `content/objectives.yaml`; Kubernetes/HCX and DNS/NTP/certificates are candidate-profile prerequisites. Ordinal item IDs are repository conventions; mock allocation/scoring remain practice estimates, not official weights or a raw passing percentage.
@@ -65,13 +65,14 @@ This section is the source of truth for work ownership and holds. Operating rule
 | THEORY-DNS-NTP-STANDARD-22 | Codex | COMPLETE; PUSHED `d4a524f` | Deepen name, resolver and time-trust boundaries while preserving the read-only guide | Superseded by VDS theory |
 | THEORY-VDS-STANDARD-23 | Codex | COMPLETE; PUSHED `a027120` | Deepen switch control/data planes, teaming and congestion boundaries; replace click paths with ownership and evidence | Superseded by VCF network design |
 | THEORY-VCF-NETWORK-DESIGN-STANDARD-24 | Codex | COMPLETE; PUSHED `376953e` | Deepen cluster traffic, switch models and validation boundaries; preserve the design record | Superseded by the NSX module migration |
-| THEORY-NSX-MODULE-STANDARD-25 | Codex | COMPLETE LOCALLY; CHECKS PASSED; PUSH PENDING | Migrate all seven NSX lessons to standalone theory and preserve their diagrams and official figures | Publish the feature branch, then start VCF Architecture |
+| THEORY-NSX-MODULE-STANDARD-25 | Codex | COMPLETE; PUSHED `42a90ac` | Migrate all seven NSX lessons to standalone theory and preserve their diagrams and official figures | Superseded by the remaining-module migration |
+| THEORY-REMAINING-MODULES-STANDARD-26 | Codex | COMPLETE LOCALLY; CHECKS PASSED; PUSH PENDING | Complete standalone-theory separation for the final 40 lessons and apply first-use acronym expansions | Publish the cumulative branch and create one PR |
 | #6–#10 remaining implementation | ChatGPT (Claude optional) | QUEUED | Existing task order retained; shared-file edits serialized and environment-dependent guides remain visibly unvalidated | Select one bounded package at a time |
 | Independent lab execution | Alex | AS NEEDED | Run the canonical guides when useful and adapt known home-lab exceptions | No repository completion dependency |
 
 The completed pilot spec and evidence sheet are in `docs/specs/theory-labs-separation/spec.md`. The hold still applies to the older tasks #2–#10; it does not roll back this explicitly approved pilot. The feature branch may be committed and pushed automatically under `CLAUDE.md`; PR, merge and deployment remain separate.
 
-Fresh local checks after `THEORY-NSX-MODULE-STANDARD-25`: strict content validation **0 errors / 0 warnings**, **674/674 objective-tagged questions mapped**, **59/59 items at target**, **23/23 unit tests passed**, typecheck and production build passed. Browser smoke passed for all seven NSX routes with no console errors; representative architecture and security lessons were visually reviewed. Inventory is 72 lessons / 170,496 words, 683 questions, 25 guides, 24 components, 111 diagrams and 279 glossary terms. Orientation through NSX are fully migrated; 39 untouched lessons may retain their legacy `Lab` section until migrated.
+Fresh local checks after `THEORY-REMAINING-MODULES-STANDARD-26`: strict content validation **0 errors / 0 warnings**, **674/674 objective-tagged questions mapped**, **59/59 items at target**, **23/23 unit tests passed**, typecheck and production build passed. Browser smoke passed for all 40 changed lesson routes with no console errors; representative architecture, deployment, automation and certification lessons were visually reviewed. Inventory is 72 lessons / 172,485 words, 683 questions, 25 guides, 24 components, 111 diagrams and 279 glossary terms. All 72 lessons now follow the standalone-theory contract; runnable work remains in the separate practical guides.
 
 Windows checkout note: the initial strict check reported 70 missing-frontmatter errors and 1,312 cascading warnings because Git converted lesson files to CRLF while `scripts/content-loader.ts:101` expects LF. Setting this clone's `core.autocrlf=input` and normalizing only unchanged lesson working-copy line endings to LF restored passing checks. Git reports no tracked content changes. A portable parser or repository line-ending policy is a separate proposed maintenance fix, not implemented here.
 
@@ -87,7 +88,7 @@ Windows checkout note: the initial strict check reported 70 missing-frontmatter 
   - YAML/Markdown in `content/`, validated by zod (`scripts/content-loader.ts`).
   - Exposed through virtual modules (`scripts/vite-plugin-content.ts`).
   - The production build fails on any content error.
-- Learn mode: 16 phases and 72 lessons. The standalone-theory contract has 17 required sections; 39 untouched lessons may retain their legacy `Lab` section until migrated. See `docs/CONTENT_STATUS.md`.
+- Learn mode: 16 phases and 72 lessons. Every lesson follows the 17-section standalone-theory contract and links runnable work through separate practical guides. See `docs/CONTENT_STATUS.md`.
 - Lesson page:
   - TOC with section tracking.
   - Callouts (vcf9 / legacy / exam / trap …).

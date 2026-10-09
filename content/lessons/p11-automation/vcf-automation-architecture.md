@@ -32,7 +32,7 @@ sources:
 
 ## Why This Matters
 
-VCF Automation is what turns VCF from "a well-managed virtual infrastructure" into a **private cloud**: self-service,
+VCF (VMware Cloud Foundation) Automation is what turns VCF from "a well-managed virtual infrastructure" into a **private cloud**: self-service,
 multi-tenant consumption of VMs, Kubernetes clusters and networks, with quotas and governance. TechDocs describes it as
 "the central provisioning platform for your VCF fleet" that "enables consumption of Kubernetes and cloud
 infrastructure resources as a service, while maintaining control, security, and compliance".
@@ -59,7 +59,7 @@ deployment options of VCF Automation". The following lessons cover regions, tena
 | Trigger an IPAM/CMDB/ticketing workflow whenever a VM is provisioned | **Yes** | Extensibility: event subscriptions + Orchestrator workflows |
 | Provider wants to offer "VPC-style" networking to tenants | **Yes** | Provider gateways, IP spaces, organization VPCs |
 | Monitor CPU contention of a cluster | No | VCF Operations |
-| Patch ESX hosts / upgrade the fleet | No | Fleet management / SDDC Manager lifecycle |
+| Patch ESX hosts / upgrade the fleet | No | Fleet management / SDDC (Software-Defined Data Center) Manager lifecycle |
 | A single admin creating a handful of VMs with no governance | Usually no | vSphere Client is enough |
 
 Use VCF Automation when the requirement is a **repeatable consumption service**, rather than a one-time infrastructure
@@ -109,7 +109,7 @@ appliances", and these nodes are visible in the vCenter inventory as individual 
 | VCF Automation appliance nodes | VMs in the management domain hosting the internal Kubernetes cluster (1 or 3 nodes) |
 | Containerized services | Provider portal, organization portals, catalog, policy engine, provisioning, APIs |
 | VCF Operations Orchestrator | Workflow engine used for extensibility (workflows published to the catalog, event subscriptions) |
-| Identity integration | VCF SSO / external IdPs; providers and orgs can import users and groups |
+| Identity integration | VCF SSO (Single Sign-On) / external IdPs; providers and orgs can import users and groups |
 | VCF Operations fleet management | Deploys (Day 2) and lifecycles VCF Automation; manages its certificates and passwords |
 | Consumed infrastructure | vCenter, NSX and Supervisors in workload domains (All Apps), vSphere clusters (VM Apps) |
 
@@ -117,14 +117,14 @@ appliances", and these nodes are visible in the vCenter inventory as individual 
 
 | Model | Nodes | Size | Benefits | Implications |
 |---|---|---|---|---|
-| **Simple** | 1 | Small | PoC, evaluation, small non-critical, dev/test | No application-level HA; scaling to HA means resizing to Medium/Large, which forces the 3-node expansion |
+| **Simple** | 1 | Small | PoC, evaluation, small non-critical, dev/test | No application-level HA (High Availability); scaling to HA means resizing to Medium/Large, which forces the 3-node expansion |
 | **High Availability** | 3 | Medium or Large | Production, mission-critical, enterprise, growth | Application-level availability; optional external load balancer; scale up/down |
 
-### Deployment inputs (SDDC Manager API `VcfAutomationSpec`)
+### Deployment inputs (SDDC Manager API (Application Programming Interface) `VcfAutomationSpec`)
 
 | Field | Meaning |
 |---|---|
-| `hostname` | FQDN users reach VCF Automation on (required) |
+| `hostname` | FQDN (Fully Qualified Domain Name) users reach VCF Automation on (required) |
 | `ipPool` | Node IP addresses: **2 for the standard (simple) model, 4 for High Availability** |
 | `internalClusterCidr` | Internal Kubernetes CIDR: one of `198.18.0.0/15`, `240.0.0.0/15`, `250.0.0.0/15` |
 | `nodePrefix` | Lower-case prefix for the node VM names |
@@ -139,7 +139,7 @@ networks the appliances must reach, otherwise routing to those networks breaks.
 ## How It Works
 
 1. **Plan**: choose Simple or HA; reserve the FQDN and the node IPs (2 or 4) on the management network; pick an
-   internal cluster CIDR; DNS forward and reverse records.
+   internal cluster CIDR; DNS (Domain Name System) forward and reverse records.
 2. **Deploy**: either during the initial VCF Installer deployment, or later from VCF Operations fleet management.
 3. **First login**: the provider admin logs in to organization **system** with the admin account.
 4. **Provider setup**: create regions, provider networking, organizations and quotas (next lesson).
@@ -198,23 +198,27 @@ is organization/region based.
 | DNS (forward and reverse) for the FQDN | Users, certificates and fleet management use the name |
 | Free node IPs on the management network | 2 (simple) or 4 (HA) |
 | Non-overlapping internal cluster CIDR | Embedded Kubernetes networking |
-| NTP | Tokens, certificates and cluster health depend on time |
+| NTP (Network Time Protocol) | Tokens, certificates and cluster health depend on time |
 | Supervisor-enabled workload domain (for All Apps) | Regions are built from Supervisors |
 | NSX with Tier-0 and edge cluster | Provider gateways and VPC networking |
 
 ## Configuration
+
+This section explains the configuration decisions, ownership boundaries, dependencies and evidence an administrator must understand. The executable click path, field values, validation and rollback belong to the linked practical guide.
 
 Planning worksheet for the learner's lab (Simple model):
 
 | Item | Example |
 |---|---|
 | FQDN | `auto01.lab.local` |
-| Node IPs (`ipPool`) | 2 addresses on the management VLAN |
+| Node IPs (`ipPool`) | 2 addresses on the management VLAN (Virtual Local Area Network) |
 | Internal cluster CIDR | `198.18.0.0/15` (not used anywhere else in the lab) |
 | Node prefix | `vcfa` |
 | DNS | A + PTR for `auto01.lab.local` |
 
 ## CLI / API
+
+CLI (Command-Line Interface) and API (Application Programming Interface) examples expose the same operational objects for inspection or automation.
 
 The deployment is described by the `VcfAutomationSpec` structure in the SDDC Manager / installer API:
 
@@ -257,9 +261,6 @@ They deploy VCF Automation in the **HA** model (production use, four node IPs re
 organization per faculty in a region built from the workload-domain Supervisors, and give each a region quota. A legacy
 team that only needs VMs and has no Supervisor-enabled cluster gets a **VM Apps** organization instead.
 
-## Lab
-
-::lab[lab-vcfa-organization-setup]
 
 ## Exam Focus
 

@@ -37,13 +37,13 @@ sources:
 
 ## Why This Matters
 
-The VCF Installer refuses to deploy into an environment that does not meet its prerequisites. That is a feature: a deployment that fails half-way through leaves appliances, switches and vSAN configuration behind. Your job is to read validation output like an engineer — recognise which layer is broken (DNS, time, network, host, certificate, password) and fix the cause, not the symptom. Exam scenarios regularly describe a failed validation and ask for the *first* thing to check.
+The VCF (VMware Cloud Foundation) Installer refuses to deploy into an environment that does not meet its prerequisites. That is a feature: a deployment that fails half-way through leaves appliances, switches and vSAN configuration behind. Your job is to read validation output like an engineer — recognise which layer is broken (DNS (Domain Name System), time, network, host, certificate, password) and fix the cause, not the symptom. Exam scenarios regularly describe a failed validation and ask for the *first* thing to check.
 
 ## Learning Objectives
 
 - Describe the validation step of the VCF Installer and the difference between warnings and errors.
 - Map common validation and deployment errors to their root-cause layer.
-- Diagnose DNS, NTP, MTU, password, certificate/thumbprint and host-preparation failures with the right tool.
+- Diagnose DNS, NTP (Network Time Protocol), MTU, password, certificate/thumbprint and host-preparation failures with the right tool.
 - Explain how to resume a failed deployment (fix, then retry the task).
 - Identify which lab-only workarounds exist and why they are unsupported.
 
@@ -54,7 +54,7 @@ Validation happens at two moments:
 1. **Pre-deployment validation** — after the Review page, the installer validates "all provided information". **Warnings** can be acknowledged and you can proceed. **Errors** block deployment until resolved; you fix them in the wizard or upload a corrected JSON spec.
 2. **Runtime failures** — a deployment task fails (for example the NSX Manager deployment). The deployment stops at that task; TechDocs' guidance is to "review failed tasks, address issues, and retry".
 
-In the API, a validation returns an `executionStatus` (`IN_PROGRESS`, `COMPLETED`, `FAILED`, …) and a `resultStatus` (`SUCCEEDED`, `FAILED`, `WARNING`, …) with a list of `validationChecks`. The `SddcSpec` even contains two explicit escape hatches — `skipEsxThumbprintValidation` and `skipGatewayPingValidation` — which tells you that thumbprints and gateway reachability are real checks.
+In the API (Application Programming Interface), a validation returns an `executionStatus` (`IN_PROGRESS`, `COMPLETED`, `FAILED`, …) and a `resultStatus` (`SUCCEEDED`, `FAILED`, `WARNING`, …) with a list of `validationChecks`. The `SddcSpec` even contains two explicit escape hatches — `skipEsxThumbprintValidation` and `skipGatewayPingValidation` — which tells you that thumbprints and gateway reachability are real checks.
 
 :::general
 **Dependency order for troubleshooting** — always fix the lowest layer first: physical network and VLANs → IP/gateway → DNS → NTP → MTU → host state → certificates/thumbprints → passwords/credentials → component-specific. A DNS error can masquerade as a certificate error; a time-skew error can masquerade as an authentication error.
@@ -68,7 +68,7 @@ What the installer touches during validation:
 
 | Target | Typical check |
 |---|---|
-| DNS server | Forward and reverse resolution of every host and appliance FQDN |
+| DNS server | Forward and reverse resolution of every host and appliance FQDN (Fully Qualified Domain Name) |
 | NTP server | Reachability and time consistency of hosts |
 | Gateways | Ping the gateways of the networks you specified (can be skipped only through the JSON spec) |
 | ESX hosts | Reachable, credentials valid, ESX version supported, hostname/FQDN, certificate thumbprint, NIC count and speed, disks eligible for the chosen storage |
@@ -110,7 +110,7 @@ nslookup 10.0.10.13          # reverse must return esx03.lab.local
 
 ### NTP
 
-Hosts and appliances must agree on time. Skew causes certificate validity errors ("not yet valid"), token failures and SSO problems after deployment. Point every host and the installer at the same NTP source, and verify the source is reachable over UDP 123 from the management network.
+Hosts and appliances must agree on time. Skew causes certificate validity errors ("not yet valid"), token failures and SSO (Single Sign-On) problems after deployment. Point every host and the installer at the same NTP source, and verify the source is reachable over UDP 123 from the management network.
 
 ### MTU
 
@@ -118,7 +118,7 @@ vSAN, vMotion and NSX overlay traffic are commonly configured with jumbo frames.
 
 ```shell
 vmkping -I vmk2 -d -s 8972 10.0.12.12   # 9000 MTU
-vmkping -I vmk10 -d -s 1572 10.0.13.12  # 1600 MTU overlay (TEP vmk number varies)
+vmkping -I vmk10 -d -s 1572 10.0.13.12  # 1600 MTU overlay (TEP (Tunnel Endpoint) vmk number varies)
 ```
 
 ### Passwords
@@ -135,7 +135,7 @@ esxcli system hostname set --fqdn=esx03.lab.local
 /etc/init.d/hostd restart && /etc/init.d/vpxa restart
 ```
 
-If you deploy with hosts that use certificates from an **external CA**, hosts later added to VCF domains must also use external-CA certificates.
+If you deploy with hosts that use certificates from an **external CA (Certificate Authority)**, hosts later added to VCF domains must also use external-CA certificates.
 
 ### Host preparation
 
@@ -158,10 +158,12 @@ If you deploy with hosts that use certificates from an **external CA**, hosts la
 | Certificate or thumbprint error on one host | Host renamed after install without regenerating the certificate, or DNS returning another host's name |
 | Authentication or token errors after deployment | Time skew between appliances and hosts (NTP) |
 | vMotion or vSAN connectivity check fails, but ping works | MTU mismatch on one hop, or MAC address filtering on the physical switch |
-| Host "not reachable" for one step only | Firewall or VLAN on a specific VMkernel network, not the management network |
+| Host "not reachable" for one step only | Firewall or VLAN (Virtual Local Area Network) on a specific VMkernel network, not the management network |
 | Random appliance deployment failures | Duplicate IP address on the appliance network |
 
 ## Configuration
+
+This section explains the configuration decisions, ownership boundaries, dependencies and evidence an administrator must understand. The executable click path, field values, validation and rollback belong to the linked practical guide.
 
 A validation-ready checklist you can run in 15 minutes before pressing Validate:
 
@@ -176,6 +178,8 @@ A validation-ready checklist you can run in 15 minutes before pressing Validate:
 | 7 | Passwords meet rules, no `%` for vCenter | Workbook |
 
 ## CLI / API
+
+CLI (Command-Line Interface) and API (Application Programming Interface) examples expose the same operational objects for inspection or automation.
 
 ```shell
 # Validate via API and poll
@@ -211,11 +215,6 @@ tail -f /var/log/vmware/vcf/domainmanager/domainmanager.log
 
 A deployment validates cleanly, then fails at the NSX Manager deployment task. The task error says the appliance could not be reached after power-on. The engineer checks DNS (fine), then notices the NSX Manager IP is also assigned to a forgotten test VM — an IP conflict. After removing the conflict, they **retry** the task in the Tasks panel and the deployment continues from where it stopped rather than starting over.
 
-## Lab
-
-Validation is the core of the deployment lab — intentionally break DNS and a certificate before validating to see the errors.
-
-::lab[lab-deploy-vcf-management-domain]
 
 ## Exam Focus
 

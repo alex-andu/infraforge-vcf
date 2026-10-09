@@ -12,7 +12,7 @@ Alex explicitly requested deeper, better explained and better structured standal
 
 This supersedes the earlier requirement to include a `Lab` section in every lesson. Concept explanations, worked examples, diagrams and knowledge checks remain appropriate in theory; executable lab instructions/checklists and embedded lab cards belong in the existing Labs section. Guides link back to prerequisite theory and start from confirmed deployed state, rather than reinstalling a generic lab by assumption. Missing components remain explicit guide prerequisites.
 
-The approved `THEORY-LABS-01` pilot implements this decision. The validator now requires 17 theory headings and permits untouched lessons to retain an extra legacy `Lab` section, so migration can happen in bounded batches without changing IDs, bookmarks or persisted progress. The visible area is named **Ghiduri practice** while internal `lab` routes/schema/state remain stable. See `VCF_PARALLEL_WORKFLOW.md`, `VCF_MODULE_ROADMAP.md` and live status in `CURRENT_STATE.md`.
+The approved `THEORY-LABS-01` pilot implemented this decision. The validator requires 17 theory headings, and the completed migration now applies that standalone structure to all 72 lessons without changing IDs, bookmarks or persisted progress. The visible area is named **Ghiduri practice** while internal `lab` routes/schema/state remain stable. See `VCF_PARALLEL_WORKFLOW.md`, `VCF_MODULE_ROADMAP.md` and live status in `CURRENT_STATE.md`.
 
 ### Practical guides are complete UI-first runbooks (2026-10-08)
 

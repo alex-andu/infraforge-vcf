@@ -34,7 +34,7 @@ sources:
 ## Why This Matters
 
 Undersize the management domain and the first lifecycle upgrade or the second workload domain stalls for lack of
-capacity. Oversize it and the business pays for idle hosts. Sizing in VCF is not one number: it is the sum of the
+capacity. Oversize it and the business pays for idle hosts. Sizing in VCF (VMware Cloud Foundation) is not one number: it is the sum of the
 management stack you chose, the workloads you expect, the failure reserves your availability design requires, and the
 growth headroom in hosts, subnets and limits. Exam scenarios test whether you recognise which of these drives the
 answer.
@@ -43,7 +43,7 @@ answer.
 
 - Identify the inputs to VCF sizing: management component models, workload demand, failure reserves, growth.
 - State the VCF 9 minimum host counts for the management domain and explain what drives them.
-- Apply N+1 and per-AZ reserves to vSphere HA and vSAN capacity.
+- Apply N+1 and per-AZ reserves to vSphere HA (High Availability) and vSAN capacity.
 - Choose between scaling up (bigger hosts), scaling out (more hosts/clusters) and adding domains or instances.
 - Avoid sizing dead ends: subnet masks, configuration maximums, shared-component limits.
 
@@ -53,7 +53,7 @@ answer.
 
 | Input | Examples | Source of numbers |
 |---|---|---|
-| Management stack | vCenter, NSX Manager (1 or 3 nodes), SDDC Manager, VCF Operations (1, 3 or more nodes), VCF Automation, Identity Broker, NSX Edges | Component sizing tables in the docs for your version; Planning and Preparation Workbook |
+| Management stack | vCenter, NSX Manager (1 or 3 nodes), SDDC (Software-Defined Data Center) Manager, VCF Operations (1, 3 or more nodes), VCF Automation, Identity Broker, NSX Edges | Component sizing tables in the docs for your version; Planning and Preparation Workbook |
 | Workload demand | vCPU, RAM, storage, IOPS, network throughput, growth per year | Current-state assessment (VCF Operations or other tools) |
 | Failure reserve | N+1 host per cluster, vSAN rebuild space, 50% per AZ in stretched clusters | Availability design |
 | Limits | Hosts per cluster, domains per instance, objects per NSX Manager | ConfigMax (configmax.broadcom.com) |
@@ -73,8 +73,8 @@ These are minimums, not recommendations. Minimum + workload + growth + N+1 is th
 | Scale unit | When to add it | VCF 9 notes |
 |---|---|---|
 | Host | More capacity in an existing cluster | Commission + add host |
-| Cluster | Different hardware profile, different vSAN, size limit, separate failure domain | One VDS set per cluster |
-| Workload domain | Separate lifecycle, separate vCenter/SSO, isolation, different NSX | Up to 24 workload domains per VCF instance (Workload Domain Models page) |
+| Cluster | Different hardware profile, different vSAN, size limit, separate failure domain | One VDS (vSphere Distributed Switch) set per cluster |
+| Workload domain | Separate lifecycle, separate vCenter/SSO (Single Sign-On), isolation, different NSX | Up to 24 workload domains per VCF instance (Workload Domain Models page) |
 | VCF instance | Another site/region, independent management domain | Managed together in one fleet by VCF Operations |
 
 ## Architecture
@@ -147,7 +147,7 @@ RAM, not CPU, drives this cluster. Always compute both and take the larger.
 ### Network and IP sizing
 
 - Infrastructure subnet masks cannot be changed later; adding IP ranges within the existing mask is supported.
-  Size management, vMotion, vSAN and TEP subnets for the **maximum** cluster size.
+  Size management, vMotion, vSAN and TEP (Tunnel Endpoint) subnets for the **maximum** cluster size.
 - Per host: 1 management IP, 1 vMotion IP, 1 per storage vmk, typically 2 TEP IPs (one per uplink).
 - Uplink bandwidth: 2 × 25 GbE is common for vSAN ESA; check vSAN guidance for your storage architecture.
 
@@ -185,11 +185,15 @@ Lab section for the actual build profile.
 
 ## Configuration
 
+This section explains the configuration decisions, ownership boundaries, dependencies and evidence an administrator must understand. The executable click path, field values, validation and rollback belong to the linked practical guide.
+
 Sizing results go into the **VCF Planning and Preparation Workbook** (downloadable from the Planning and Preparation
 page), which collects inputs for the fleet, workload domains, Identity Broker, vSphere Supervisor and VCF Automation.
 Use **ConfigMax** for limits and **ports.broadcom.com** for firewall planning.
 
 ## CLI / API
+
+CLI (Command-Line Interface) and API (Application Programming Interface) examples expose the same operational objects for inspection or automation.
 
 Sizing is a planning activity. After deployment you validate it with VCF Operations capacity views and with vSAN
 capacity reports in vCenter; the operations phase covers those tools.
@@ -220,13 +224,6 @@ domain and the business units want dedicated NSX Managers. Capacity review: mana
 Options: add two hosts to the management domain, or share one NSX Manager across the new domains. They add hosts
 (cheaper than the loss of isolation) and update the design record.
 
-## Lab
-
-The planning workbook lab walks through a sizing worksheet for your home lab and for a production example. Your lab
-(2 × 28 cores, 256 GB RAM) is RAM-bound for a nested VCF 9 deployment — a good real example of RAM driving the
-design.
-
-::lab[lab-vcf-planning-workbook]
 
 ## Exam Focus
 

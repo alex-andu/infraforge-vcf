@@ -37,7 +37,7 @@ sources:
 
 ## Why This Matters
 
-A workload domain can only be built from hosts that VCF already knows: hosts that have been **commissioned** into the inventory and are **unassigned**. Commissioning is where VCF checks that a host is fit for purpose — DNS, certificate, NICs, disks, storage type — and records which kind of cluster it can join. Then the workload domain wizard turns those hosts into a vCenter, an NSX environment, principal storage and distributed switches in one workflow. Objective 4.1 ("describe the deployment of a Workload Domain") is tested with exactly these steps and their prerequisites.
+A workload domain can only be built from hosts that VCF (VMware Cloud Foundation) already knows: hosts that have been **commissioned** into the inventory and are **unassigned**. Commissioning is where VCF checks that a host is fit for purpose — DNS (Domain Name System), certificate, NICs, disks, storage type — and records which kind of cluster it can join. Then the workload domain wizard turns those hosts into a vCenter, an NSX environment, principal storage and distributed switches in one workflow. Objective 4.1 ("describe the deployment of a Workload Domain") is tested with exactly these steps and their prerequisites.
 
 ## Learning Objectives
 
@@ -59,14 +59,14 @@ ESX installed and prepared → network pool exists → commission (validate) →
 |---|---|
 | [[network-pool]] | A collection of subnets within one L2 domain with IP ranges per network type. Automatically assigns static IPs to **vMotion**, **vSAN**, **vSAN Storage Client**, **NFS** and **iSCSI** VMkernel ports when a host is placed into a cluster. |
 | [[host-commissioning]] | Adding a prepared ESX host to the VCF global inventory after validation. |
-| [[unassigned-host]] | A commissioned host not yet in any domain (API status `UNASSIGNED_USEABLE`; `UNASSIGNED_UNUSEABLE` if it has a problem). |
+| [[unassigned-host]] | A commissioned host not yet in any domain (API (Application Programming Interface) status `UNASSIGNED_USEABLE`; `UNASSIGNED_UNUSEABLE` if it has a problem). |
 | [[host-decommissioning]] | Removing an unassigned host from the inventory. |
 
 The default network pool is created during the management domain deployment and **cannot be deleted**. For workload domains you usually create a new pool per L2 domain/rack or per workload domain.
 
 :::vcf9 Changed in VCF 9
-In VCF 5.x, network pools, commissioning and workload domain creation all lived in the **SDDC Manager UI**. In VCF 9.0 TechDocs documents:
-- **Network pools and host commissioning** in the **vSphere Client**: *Global Inventory Lists → Hosts → Network Pools* and *→ Unassigned Hosts → Commission Hosts* (you need access to the management domain vCenter, or VCF SSO with vCenter linking). The SDDC Manager UI is still listed as an alternative.
+In VCF 5.x, network pools, commissioning and workload domain creation all lived in the **SDDC (Software-Defined Data Center) Manager UI**. In VCF 9.0 TechDocs documents:
+- **Network pools and host commissioning** in the **vSphere Client**: *Global Inventory Lists → Hosts → Network Pools* and *→ Unassigned Hosts → Commission Hosts* (you need access to the management domain vCenter, or VCF SSO (Single Sign-On) with vCenter linking). The SDDC Manager UI is still listed as an alternative.
 - **Workload domain creation** in **VCF Operations**: *Inventory → Detailed View → VCF Instances → (instance) → Add Workload Domain → Create New*, with progress in *Fleet Management → Tasks*.
 SDDC Manager still executes the workflows behind the scenes, and its API (`/v1/hosts`, `/v1/network-pools`, `/v1/domains`) still exists.
 :::
@@ -83,7 +83,7 @@ Where things run once the workload domain exists:
 |---|---|
 | Workload domain vCenter | **Management domain** cluster |
 | Workload domain NSX Manager(s) | **Management domain** cluster (or shared with another workload domain) |
-| ESX hosts, VDS, vSAN/NFS/FC datastore | The workload domain cluster |
+| ESX hosts, VDS (vSphere Distributed Switch), vSAN/NFS/FC datastore | The workload domain cluster |
 | NSX Edge cluster (if created later) | Usually the workload domain cluster |
 
 This is why management domain capacity limits how many workload domains you can create.
@@ -96,8 +96,8 @@ This is why management domain capacity limits how many workload domains you can 
 |---|---|
 | Hardware/storage | vSAN hosts vSAN-compliant and on the HCL; NFS/vVols hosts on the HCL; FC hosts with supported HBAs and the VMFS datastore **mounted before commissioning** |
 | Network | All physical NICs at least **10 Gbps**; correct number of NICs; management IP on a VMkernel on the **standard switch**; gateway in management subnet |
-| DNS | Forward **and** reverse records; **hostname = FQDN** |
-| Certificate | Self-signed certificate **regenerated based on the FQDN** (or external CA certs if the instance used external CA for hosts) |
+| DNS | Forward **and** reverse records; **hostname = FQDN (Fully Qualified Domain Name)** |
+| Certificate | Self-signed certificate **regenerated based on the FQDN** (or external CA (Certificate Authority) certs if the instance used external CA for hosts) |
 | Disks | All partitions on HDD/SSD deleted; hardware health OK |
 | Software | Supported ESX version and drivers/firmware |
 | Pool | A network pool that supports the host's storage type exists |
@@ -134,12 +134,12 @@ This is why management domain capacity limits how many workload domains you can 
 | General | Domain name (3–20 chars), **Enable vSphere Supervisor** (on by default), SSO domain, passwords |
 | vCenter | FQDN, root password |
 | Cluster | Cluster name, vSphere Zone name (if Supervisor) |
-| Cluster image | vLCM image (hosts with different vendor add-ons are remediated) |
-| NSX Manager | **Standard** (1 node) or **High Availability** (3 nodes, recommended), or reuse an existing NSX Manager; FQDNs; admin/audit passwords; **Centralized** connectivity (needs an Edge cluster + active-standby Tier-0, configured after creation; required for Supervisor) or **Distributed** connectivity (VLAN, gateway CIDR, external IP block, private transit gateway block) |
+| Cluster image | vLCM (vSphere Lifecycle Manager) image (hosts with different vendor add-ons are remediated) |
+| NSX Manager | **Standard** (1 node) or **High Availability** (3 nodes, recommended), or reuse an existing NSX Manager; FQDNs; admin/audit passwords; **Centralized** connectivity (needs an Edge cluster + active-standby Tier-0, configured after creation; required for Supervisor) or **Distributed** connectivity (VLAN (Virtual Local Area Network), gateway CIDR, external IP block, private transit gateway block) |
 | Storage | vSAN (ESA/OSA), NFS, VMFS on FC, vVols (deprecated) |
 | Hosts | Unassigned hosts commissioned with the **same storage type** |
 | Distributed switch | Default / storage separation / NSX separation / both / custom |
-| Supervisor | Supervisor name, service CIDR, control plane IPs (≥5), workload DNS/NTP… (see [Supervisor](lesson:supervisor-in-workload-domain)) |
+| Supervisor | Supervisor name, service CIDR, control plane IPs (≥5), workload DNS/NTP (Network Time Protocol)… (see [Supervisor](lesson:supervisor-in-workload-domain)) |
 | Review | Finish → *Fleet Management → Tasks* |
 
 What gets built: a vCenter (on the management domain), the cluster on the chosen principal storage, VDS(es), NSX Manager (new or shared) with hosts prepared, and optionally a Supervisor with a single control plane VM.
@@ -177,6 +177,8 @@ In VCF 9 licensing is applied centrally in VCF Operations; new domains consume t
 
 ## Configuration
 
+This section explains the configuration decisions, ownership boundaries, dependencies and evidence an administrator must understand. The executable click path, field values, validation and rollback belong to the linked practical guide.
+
 Example network pool for a workload domain on NFS:
 
 | Field | Value |
@@ -187,6 +189,8 @@ Example network pool for a workload domain on NFS:
 | NFS | VLAN 22, 10.0.22.0/24, gw 10.0.22.1, MTU 9000, range .11–.30 |
 
 ## CLI / API
+
+CLI (Command-Line Interface) and API (Application Programming Interface) examples expose the same operational objects for inspection or automation.
 
 SDDC Manager API (9.0):
 
@@ -234,9 +238,6 @@ Start with the validation message per host, then check DNS from SDDC Manager, th
 
 A hospital adds a VDI workload domain. Twelve new hosts are racked in a new rack with its own vMotion and vSAN VLANs. The engineer creates `vdi-np01` with vMotion and vSAN networks for that rack, bulk-commissions all twelve via the JSON template as `VSAN_ESA`, and confirms fingerprints against the values on each host's DCUI. Two hosts fail validation: one has a stale PTR record, one still has partitions from a previous OS. Because *skip failed hosts* is on, ten are commissioned; the other two follow after fixes. The workload domain is created with a three-node NSX Manager, vSAN ESA, and Supervisor disabled because VDI does not need it.
 
-## Lab
-
-::lab[lab-commission-hosts-create-wld]
 
 ## Exam Focus
 

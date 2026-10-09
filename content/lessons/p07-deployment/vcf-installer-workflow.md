@@ -39,7 +39,7 @@ sources:
 
 ## Why This Matters
 
-The VCF Installer is the front door of every new VCF 9.0 environment. It downloads the software, asks you for every design decision, validates the environment and then orchestrates the build of the management domain plus the fleet-level management stack. Knowing its wizard page by page — and what it does *not* deploy — is directly testable under objective 4.1 ("describe the deployment of a VCF-based private cloud" and "identify the additional components required to complete the deployment").
+The VCF (VMware Cloud Foundation) Installer is the front door of every new VCF 9.0 environment. It downloads the software, asks you for every design decision, validates the environment and then orchestrates the build of the management domain plus the fleet-level management stack. Knowing its wizard page by page — and what it does *not* deploy — is directly testable under objective 4.1 ("describe the deployment of a VCF-based private cloud" and "identify the additional components required to complete the deployment").
 
 ## Learning Objectives
 
@@ -55,7 +55,7 @@ The [[vcf-installer]] is, in TechDocs' words, "a dedicated virtual machine that 
 
 | Fact | Detail |
 |---|---|
-| Packaging | Ships in the same OVA as SDDC Manager: `VCF-SDDC-Manager-Appliance-9.x.x.ova`. |
+| Packaging | Ships in the same OVA as SDDC (Software-Defined Data Center) Manager: `VCF-SDDC-Manager-Appliance-9.x.x.ova`. |
 | Dual personality | Deployed **inside** the management infrastructure (on a host that becomes part of the management domain), the appliance switches to **SDDC Manager mode** and loses its installer capabilities. Deployed **outside**, one installer can deploy multiple VCF platforms. |
 | Login | `https://<installer_FQDN>` as `admin@local`. |
 | Binaries | Not included. Download from an online depot or an offline depot. |
@@ -74,13 +74,13 @@ VCF 5.x used the **Cloud Builder** appliance and a process called **bring-up**: 
 
 Where the installer sits:
 
-- It needs IP reachability to the **ESX management network** of all hosts, the planned **appliance network**, **DNS** and **NTP**, and to the **depot** (internet or offline depot web server).
+- It needs IP reachability to the **ESX management network** of all hosts, the planned **appliance network**, **DNS (Domain Name System)** and **NTP (Network Time Protocol)**, and to the **depot** (internet or offline depot web server).
 - It talks to the ESX hosts (HTTPS/SSH for discovery and thumbprints), then to the vCenter and NSX Manager it deploys, and finally to VCF Operations.
 - If you place it on one of the management hosts, the same VM later *becomes* SDDC Manager of the new instance (the SDDC Manager wizard page is then pre-populated).
 
 ## Components
 
-| What the installer deploys (VCF, new fleet) | Simple | HA |
+| What the installer deploys (VCF, new fleet) | Simple | HA (High Availability) |
 |---|---|---|
 | vCenter (management domain) | 1 | 1 |
 | NSX Manager | 1 | 3 |
@@ -108,7 +108,7 @@ is a VCF-only completion component, while logs and orchestrator also complete a 
 ### Phase 1 – Prepare
 
 1. Prepare the ESX hosts (see [Planning and Prerequisites](lesson:deployment-planning-prereqs#esx-host-preparation-checklist)).
-2. Deploy the installer OVA; give it an FQDN, IP, DNS, NTP and passwords.
+2. Deploy the installer OVA; give it an FQDN (Fully Qualified Domain Name), IP, DNS, NTP and passwords.
 3. Log in as `admin@local`, configure the **depot** (online with download token, or offline) and **download the binaries** for the target VCF version.
 
 ### Phase 2 – Deployment wizard (order from TechDocs)
@@ -161,7 +161,7 @@ The wizard can download the [[deployment-specification]] after review, and you c
 - uplinks use **Link Aggregation Groups (LAG)**, or
 - the ESX hosts have **different root passwords**.
 
-The spec is also how you get repeatability (same lab rebuilt identically) and how API-driven deployments work. Top-level fields of the `SddcSpec` in the VCF Installer API 9.0 include `sddcId`, `vcfInstanceName`, `workflowType`, `version`, `hostSpecs`, `vcenterSpec`, `clusterSpec`, `datastoreSpec`, `dvsSpecs`, `nsxtSpec`, `networkSpecs`, `dnsSpec`, `ntpServers`, `sddcManagerSpec`, `managementPoolName`, `vcfOperationsSpec`, `vcfOperationsFleetManagementSpec`, `vcfOperationsCollectorSpec`, `vcfAutomationSpec`, `skipEsxThumbprintValidation` and `skipGatewayPingValidation`.
+The spec is also how you get repeatability (same lab rebuilt identically) and how API-driven deployments work. Top-level fields of the `SddcSpec` in the VCF Installer API (Application Programming Interface) 9.0 include `sddcId`, `vcfInstanceName`, `workflowType`, `version`, `hostSpecs`, `vcenterSpec`, `clusterSpec`, `datastoreSpec`, `dvsSpecs`, `nsxtSpec`, `networkSpecs`, `dnsSpec`, `ntpServers`, `sddcManagerSpec`, `managementPoolName`, `vcfOperationsSpec`, `vcfOperationsFleetManagementSpec`, `vcfOperationsCollectorSpec`, `vcfAutomationSpec`, `skipEsxThumbprintValidation` and `skipGatewayPingValidation`.
 
 Note `managementPoolName`: the vMotion/vSAN ranges you enter become the management domain's default **network pool**.
 
@@ -172,13 +172,15 @@ Note `managementPoolName`: the vMotion/vSAN ranges you enter become the manageme
 | Online | Installer → depot settings → enter your Broadcom download token → select the version → download | Installer has internet access (directly or via proxy) |
 | Offline | Run the VCF Download Tool on a machine with internet, store bundles under a web server root, point the installer at that URL | Air-gapped or bandwidth-limited sites; several instances share one depot |
 
-By default the installer requires **HTTPS** to the offline depot. In a lab William Lam documents an unsupported property (`lcm.depot.adapter.httpsEnabled=false` in the LCM application properties) to allow HTTP — revert it before switching back to an online depot.
+By default the installer requires **HTTPS** to the offline depot. In a lab William Lam documents an unsupported property (`lcm.depot.adapter.httpsEnabled=false` in the LCM (Lifecycle Management) application properties) to allow HTTP — revert it before switching back to an online depot.
 
 ### Deployment model scope
 
 The model you choose (Simple or HA) applies only to the appliances the installer deploys. If you connect to an existing VCF Operations, its node count stays as is. Custom networking for VCF Operations/Automation is unavailable when you deploy an instance into an existing fleet or use an existing VCF Operations.
 
 ## Configuration
+
+This section explains the configuration decisions, ownership boundaries, dependencies and evidence an administrator must understand. The executable click path, field values, validation and rollback belong to the linked practical guide.
 
 Minimal path for a lab (simple model, new fleet, VCF Automation deferred):
 
@@ -187,6 +189,8 @@ Minimal path for a lab (simple model, new fleet, VCF Automation deferred):
 3. Wizard: *A new VCF fleet* → deploy new VCF Operations → Simple → "connect a VCF Automation instance later" → vCenter/NSX details → storage → hosts → networks → Default switch profile → SDDC Manager → Review → **Download JSON** → Validate → Deploy.
 
 ## CLI / API
+
+CLI (Command-Line Interface) and API (Application Programming Interface) examples expose the same operational objects for inspection or automation.
 
 The VCF Installer API (9.0) mirrors the wizard:
 
@@ -236,9 +240,6 @@ Use `--depot-download-activation-code-file` instead when the file contains an ac
 
 A company with two data centres deploys the VCF Installer on a small utility cluster *outside* both future management domains. It downloads 9.0 binaries once to an offline depot shared by both sites, deploys site A as **a new VCF fleet** (HA model, new VCF Operations, VCF Automation deferred until the existing Aria Automation 8.x is upgraded), then uses the *same* installer to deploy site B as **a VCF instance in the existing fleet**, connecting to site A's VCF Operations and only adding a new collector. Had they deployed the installer on a site A management host, it would have turned into site A's SDDC Manager and they would need a second installer for site B.
 
-## Lab
-
-::lab[lab-deploy-vcf-management-domain]
 
 ## Exam Focus
 

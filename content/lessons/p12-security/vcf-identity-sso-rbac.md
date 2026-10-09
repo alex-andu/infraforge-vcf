@@ -35,11 +35,11 @@ sources:
 
 ## Why This Matters
 
-A VCF fleet has many consoles: vCenter, NSX Manager, VCF Operations, VCF Automation, VCF Operations for logs and
+A VCF (VMware Cloud Foundation) fleet has many consoles: vCenter, NSX Manager, VCF Operations, VCF Automation, VCF Operations for logs and
 networks. Without a shared identity layer, each has its own local users, and administrators juggle a dozen passwords
 (and leave a dozen stale accounts when they change jobs). VCF 9.0 introduces **VCF Single Sign-On**: one login from
 your corporate identity provider, with MFA, across the fleet. Exam objective 4.2 asks you to "configure Identity
-Management and Role-based Access Control (RBAC) in VMware Cloud Foundation". That means knowing the broker models,
+Management and Role-based Access Control (RBAC (Role-Based Access Control)) in VMware Cloud Foundation". That means knowing the broker models,
 what each model costs and protects against, which components participate, and the key fact that **authentication is
 central but authorisation (roles) is still per component**.
 
@@ -48,7 +48,7 @@ central but authorisation (roles) is still per component**.
 - Describe the three pillars of VCF authentication: identity provider, VCF Identity Broker, VCF Single Sign-On.
 - Compare the **embedded** and **appliance** Identity Broker models and choose one for a scenario.
 - List the supported identity providers, protocols (SAML 2.0, OIDC) and provisioning methods (SCIM, JIT, AD/LDAP).
-- Name the components that participate in VCF SSO and those that do not (SDDC Manager UI, ESX).
+- Name the components that participate in VCF SSO (Single Sign-On) and those that do not (SDDC (Software-Defined Data Center) Manager UI, ESX).
 - Explain how roles are assigned after SSO is configured, and the prerequisites (no Enhanced Linked Mode).
 
 ## Concept
@@ -67,14 +67,14 @@ TechDocs describes VCF authentication as three pieces:
 
 | Uses VCF SSO | Does not use VCF SSO |
 |---|---|
-| vCenter, NSX, VCF Operations, VCF Automation, VCF Operations for logs, VCF Operations for networks, VCF Operations orchestrator, VCF Operations HCX | **SDDC Manager UI** (local accounts such as @vsphere.local users; its API accepts VCF SSO users), **ESX** hosts |
+| vCenter, NSX, VCF Operations, VCF Automation, VCF Operations for logs, VCF Operations for networks, VCF Operations orchestrator, VCF Operations HCX | **SDDC Manager UI** (local accounts such as @vsphere.local users; its API (Application Programming Interface) accepts VCF SSO users), **ESX** hosts |
 
 ### Broker models
 
 | | **Embedded** | **Appliance** |
 |---|---|---|
 | Runs | Inside the **management domain vCenter** of a VCF instance | Separate **three-node** cluster deployed by VCF Operations fleet management in the management domain |
-| Availability | vSphere HA only; a single point of failure if that vCenter is down | Survives a single node failure |
+| Availability | vSphere HA (High Availability) only; a single point of failure if that vCenter is down | Survives a single node failure |
 | Scale | One VCF instance | Up to **five VCF instances** per broker |
 | Footprint | No extra appliance | 3 nodes, 8 vCPU and 16 GB RAM each, at least 700 GB storage for the cluster |
 | Change later | Moving from embedded to appliance requires a **reset of VCF SSO** | - |
@@ -183,6 +183,8 @@ configuring SSO, fixed by patching the broker to match.
 
 ## Configuration
 
+This section explains the configuration decisions, ownership boundaries, dependencies and evidence an administrator must understand. The executable click path, field values, validation and rollback belong to the linked practical guide.
+
 Decision table:
 
 | Requirement | Choose |
@@ -200,6 +202,8 @@ endpoint must be HTTPS with a full certificate chain your management vCenter tru
 
 ## CLI / API
 
+CLI (Command-Line Interface) and API (Application Programming Interface) examples expose the same operational objects for inspection or automation.
+
 The VCF Identity Broker has a REST API (documented on developer.broadcom.com as "VMware Identity Broker") and VCF
 Operations exposes APIs for SSO configuration; William Lam has published automation examples for configuring VCF SSO
 with an OIDC IdP. Most administrators configure SSO in the UI. For checks, test the IdP endpoint from your workstation:
@@ -216,7 +220,7 @@ openssl s_client -connect idp.lab.local:443 -servername idp.lab.local -showcerts
 | Management vCenter down (embedded) | No SSO logins for that instance | vSphere HA; local break-glass accounts |
 | One appliance node down | No impact (3-node cluster) | Repair node |
 | IdP outage | No SSO logins anywhere it serves | Local accounts for emergency |
-| IdP certificate not trusted | SSO configuration or login fails | Import the full chain; use a proper CA |
+| IdP certificate not trusted | SSO configuration or login fails | Import the full chain; use a proper CA (Certificate Authority) |
 | Broker/fleet management version mismatch | "Identity broker is unhealthy" | Patch to aligned versions |
 | ELM active on a participating vCenter | Configuration blocked | Deactivate ELM first |
 
@@ -237,12 +241,6 @@ gets Administrator in vCenter, Enterprise Admin in NSX and Administrator in VCF 
 read-only everywhere. When a host failure took down one broker node, logins continued. They keep the SDDC Manager local
 admin and vsphere.local administrator credentials in a vault for emergencies.
 
-## Lab
-
-::lab[lab-explore-vcf-fleet]
-
-When you explore your fleet, record where each component authenticates and which local accounts exist; that is the
-input for your SSO design. (Configuring SSO needs a deployed VCF instance and an IdP VM.)
 
 ## Exam Focus
 

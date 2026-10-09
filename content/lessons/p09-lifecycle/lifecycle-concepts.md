@@ -33,8 +33,8 @@ sources:
 
 ## Why This Matters
 
-A VCF private cloud is not one product: it is SDDC Manager, vCenter, ESX, vSAN, NSX, VCF Operations, VCF Automation
-and several more appliances that were engineered and tested **as a set**. "Lifecycle management" (LCM) is the
+A VCF (VMware Cloud Foundation) private cloud is not one product: it is SDDC (Software-Defined Data Center) Manager, vCenter, ESX, vSAN, NSX, VCF Operations, VCF Automation
+and several more appliances that were engineered and tested **as a set**. "Lifecycle management" (LCM (Lifecycle Management)) is the
 discipline of moving that whole set from one validated combination of versions to the next without breaking it.
 
 If you patch components one by one with their native tools, you will eventually land on a combination nobody tested:
@@ -118,12 +118,12 @@ Read the diagram top to bottom:
 | Component | Lifecycle role | Where it runs | What breaks if it is down |
 |---|---|---|---|
 | **VCF Operations** | Console for all lifecycle work (Fleet Management > Lifecycle) | Management domain | You cannot plan or start upgrades from the UI |
-| **VCF Operations fleet management** | Binary store and upgrade engine for management components; must be updated first | Appliance in the management domain | Management component upgrades/patches, SSO appliance deployment |
+| **VCF Operations fleet management** | Binary store and upgrade engine for management components; must be updated first | Appliance in the management domain | Management component upgrades/patches, SSO (Single Sign-On) appliance deployment |
 | **SDDC Manager** | Binary store, precheck engine, resource lock manager and orchestrator for core components of one instance | Appliance in the management domain of each instance | All core component lifecycle for that instance |
 | **vCenter + vSphere Lifecycle Manager** | Applies the cluster image to ESX hosts | Each domain's vCenter | Host remediation for that domain |
 | **Online depot** | Broadcom-hosted source of binaries (download token required in 9.0) | Internet | Downloads, unless an offline depot is used |
 | **Offline depot** | Your HTTPS web server holding a copy of the depot | Your network | Downloads for air-gapped sites |
-| **[[vcf-download-tool]]** | CLI that downloads binaries and metadata to build an offline depot or to side-load | A machine with internet access | Nothing at runtime; only preparation |
+| **[[vcf-download-tool]]** | CLI (Command-Line Interface) that downloads binaries and metadata to build an offline depot or to side-load | A machine with internet access | Nothing at runtime; only preparation |
 
 ## How It Works
 
@@ -156,7 +156,7 @@ William Lam's analysis of the 9.0 depot shows a single root (for example `/depot
 | `umds-patch-store/` | ESX updates, produced by Update Manager Download Service (UMDS) via the VCF Download Tool | Must stay unauthenticated |
 
 A full download needs significant space (Lam measured roughly 96 GB for a complete set). The depot must be served
-over **HTTPS**, so the appliances that consume it must trust the web server's certificate. If you use a private CA,
+over **HTTPS**, so the appliances that consume it must trust the web server's certificate. If you use a private CA (Certificate Authority),
 import its root into the consuming appliance before connecting. A missing trust is the most common reason an offline
 depot "does not connect".
 
@@ -192,6 +192,8 @@ check the docs for your exact build.
 
 ## Configuration
 
+This section explains the configuration decisions, ownership boundaries, dependencies and evidence an administrator must understand. The executable click path, field values, validation and rollback belong to the linked practical guide.
+
 Configuration for lifecycle is mostly **depot configuration**:
 
 | Setting | Where | Notes |
@@ -212,6 +214,8 @@ KB 443647). This lesson describes 9.0. Check the docs for your version.
 :::
 
 ## CLI / API
+
+CLI (Command-Line Interface) and API (Application Programming Interface) examples expose the same operational objects for inspection or automation.
 
 The VCF Download Tool is the CLI you will actually use. Examples from William Lam's 9.0 depot walkthrough (verify
 options with `--help` on your build):
@@ -243,7 +247,7 @@ heavily in [lifecycle failures](lesson:lifecycle-failures-recovery).
 
 ## Troubleshooting
 
-1. **Is the depot reachable?** From the appliance, DNS-resolve and reach the depot FQDN on 443 (or the proxy).
+1. **Is the depot reachable?** From the appliance, DNS-resolve and reach the depot FQDN (Fully Qualified Domain Name) on 443 (or the proxy).
 2. **Is TLS trusted?** `openssl s_client -connect depot.lab.local:443 -showcerts` shows the chain the server sends;
    the issuing CA must be trusted by the appliance.
 3. **Is the entitlement valid?** Regenerate the download token if in doubt.
@@ -259,18 +263,12 @@ Managers point to that offline depot. They learned two lessons: the `umds-patch-
 authentication (their first ESX update showed no ESX components), and the corporate root CA had to be imported into
 each appliance before the depot connected.
 
-## Lab
-
-::lab[lab-lifecycle-upgrade-planning]
-
-The lab walks you through building an upgrade plan for your lab instance: inventory current versions, map them to
-the target BOM, decide the depot method, and produce the ordered runbook. It works even before you have binaries.
 
 ## Exam Focus
 
 :::exam
 - Know the two families and their engines: **management components = fleet management**, **core components = SDDC
-  Manager** (ESX via vLCM). Lifecycle is driven from **VCF Operations > Fleet Management > Lifecycle**.
+  Manager** (ESX via vLCM (vSphere Lifecycle Manager)). Lifecycle is driven from **VCF Operations > Fleet Management > Lifecycle**.
 - Know the depot options: **online** (direct or proxy, download token), **offline** (web server, VCF Download Tool),
   **no depot** (manual upload).
 - Know the release types and that **patches can go in any order** while major/minor/maintenance follow the sequence.

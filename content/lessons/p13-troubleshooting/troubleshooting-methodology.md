@@ -33,7 +33,7 @@ sources:
 
 ## Why This Matters
 
-VCF is a stack of tightly coupled products: ESX hosts, vCenter, vSAN, NSX, SDDC Manager, VCF Operations, VCF Automation and the identity broker, all glued together by DNS, NTP, certificates and a physical network. When something breaks, the symptom almost never appears where the cause is. A host commissioning failure in the UI can be a reverse DNS record. An NSX "tunnel down" alarm can be an MTU mismatch on a physical switch port. A failed upgrade precheck can be a clock that drifted four minutes.
+VCF (VMware Cloud Foundation) is a stack of tightly coupled products: ESX hosts, vCenter, vSAN, NSX, SDDC (Software-Defined Data Center) Manager, VCF Operations, VCF Automation and the identity broker, all glued together by DNS (Domain Name System), NTP (Network Time Protocol), certificates and a physical network. When something breaks, the symptom almost never appears where the cause is. A host commissioning failure in the UI can be a reverse DNS record. An NSX "tunnel down" alarm can be an MTU mismatch on a physical switch port. A failed upgrade precheck can be a clock that drifted four minutes.
 
 Beginners usually troubleshoot by **guessing and restarting**: reboot the appliance, restart a service, retry the task. Sometimes it works, and you learn nothing. Often it makes things worse: you destroy the evidence (logs roll over, a stuck task gets a new ID), or you restart the wrong thing (`services.sh restart` on a vSAN host, see [Troubleshooting](#troubleshooting)).
 
@@ -44,7 +44,7 @@ The exam guide describes the target candidate as someone who can "install, confi
 - Apply the six-step method — **Observe → Scope → Hypothesize → Validate → Remediate → Verify** — to any VCF incident.
 - Separate a **symptom** from a **cause**, and a **trigger** from a **root cause**.
 - Scope an incident by layer (physical, host, cluster, domain, instance, fleet) and by blast radius.
-- Choose the cheapest discriminating test for each hypothesis, and know which tools (VCF Health, Diagnostics Findings, Troubleshooting Workbench, logs, CLI) provide the evidence.
+- Choose the cheapest discriminating test for each hypothesis, and know which tools (VCF Health, Diagnostics Findings, Troubleshooting Workbench, logs, CLI (Command-Line Interface)) provide the evidence.
 - Remediate with the smallest safe change, verify against the original symptom, and capture evidence (support bundles) before destructive actions.
 
 ## Concept
@@ -81,11 +81,11 @@ Read the stack bottom-up when scoping:
 
 | Layer | Examples of what lives here | If unhealthy, typically affects |
 |---|---|---|
-| Physical / external services | Switches, VLANs, MTU, router, DNS, NTP, CA, identity provider | Everything above it, often many components at once |
+| Physical / external services | Switches, VLANs, MTU, router, DNS, NTP, CA (Certificate Authority), identity provider | Everything above it, often many components at once |
 | ESX host | VMkernel, `hostd`, `vpxa`, vmknics, storage devices | VMs on that host, vSAN/NSX participation of that host |
-| Cluster services | vSAN, vSphere HA, DRS, NSX transport node / TEPs | All VMs in the cluster, cluster-level operations |
+| Cluster services | vSAN, vSphere HA (High Availability), DRS (Distributed Resource Scheduler), NSX transport node / TEPs | All VMs in the cluster, cluster-level operations |
 | Domain control | vCenter, NSX Manager cluster | Management operations for the domain (data plane often continues) |
-| Instance / fleet management | SDDC Manager, VCF Operations, fleet management, VCF Automation, identity broker | Workflows (commissioning, LCM, certificates, passwords), self-service, SSO |
+| Instance / fleet management | SDDC Manager, VCF Operations, fleet management, VCF Automation, identity broker | Workflows (commissioning, LCM (Lifecycle Management), certificates, passwords), self-service, SSO (Single Sign-On) |
 
 :::tip
 A single unhealthy component is usually a local problem. **Many unrelated components failing at once** almost always points down the stack: DNS, NTP, a certificate authority, the identity provider, or the physical network.
@@ -113,9 +113,9 @@ VCF 9 moves day-2 workflows out of the SDDC Manager UI: per the VCF blog, host c
 
 A worked pass of the method on a typical VCF symptom: *"Commissioning esx-07 fails at validation."*
 
-1. **Observe.** Open the failed task and copy the exact error text and timestamp. Note the UI (vCenter commissioning wizard), the host FQDN, and who ran it. Ask: did this ever work? Did anything change (new host, re-IP, new DNS server)?
+1. **Observe.** Open the failed task and copy the exact error text and timestamp. Note the UI (vCenter commissioning wizard), the host FQDN (Fully Qualified Domain Name), and who ran it. Ask: did this ever work? Did anything change (new host, re-IP, new DNS server)?
 2. **Scope.** Is it only esx-07 or every new host? Can esx-07 be reached at all (ping, Host Client)? Do existing hosts and workloads behave normally? Here: other hosts are fine, only esx-07 fails → local to esx-07 or its records.
-3. **Hypothesize.** Rank causes for "validation fails for one host": (a) forward/reverse DNS mismatch for esx-07, (b) NTP not configured/time skew on esx-07, (c) wrong root password or SSH disabled, (d) host certificate does not match the FQDN, (e) network pool / VLAN wrong for vMotion or vSAN. Cheapest tests first: DNS and NTP are one command each.
+3. **Hypothesize.** Rank causes for "validation fails for one host": (a) forward/reverse DNS mismatch for esx-07, (b) NTP not configured/time skew on esx-07, (c) wrong root password or SSH disabled, (d) host certificate does not match the FQDN, (e) network pool / VLAN (Virtual Local Area Network) wrong for vMotion or vSAN. Cheapest tests first: DNS and NTP are one command each.
 4. **Validate.** From the SDDC Manager appliance run `nslookup esx-07.vcf.lab` and `nslookup 10.10.10.107`. The reverse lookup returns `esx-17.vcf.lab` — a stale PTR record. Hypothesis (a) confirmed; you also read the matching validation error in the SDDC Manager service log to make sure the evidence agrees.
 5. **Remediate.** Fix the PTR record on the DNS server (smallest change). Do not touch the host.
 6. **Verify.** Repeat both lookups from the SDDC Manager appliance, retry the commissioning validation, confirm it passes, and write the root cause: "Stale PTR record for 10.10.10.107 (left from esx-17 decommission) caused commissioning validation failure."
@@ -128,7 +128,7 @@ On the exam, scenario answers that **jump straight to a disruptive action** (reb
 
 ### Observe: write a precise symptom statement
 
-A useful symptom statement has five parts: **what** (exact error/alarm), **where** (object, FQDN, domain), **when** (first seen, timestamps, frequency), **who/what triggered** (user action, scheduled job, upgrade), and **what still works**. "vCenter is broken" is not a symptom. "Since 09:14 UTC, vc-mgmt UI login fails for all users with a token error; API logins from VCF Operations also fail; VMs keep running" is.
+A useful symptom statement has five parts: **what** (exact error/alarm), **where** (object, FQDN, domain), **when** (first seen, timestamps, frequency), **who/what triggered** (user action, scheduled job, upgrade), and **what still works**. "vCenter is broken" is not a symptom. "Since 09:14 UTC, vc-mgmt UI login fails for all users with a token error; API (Application Programming Interface) logins from VCF Operations also fail; VMs keep running" is.
 
 Always record times in one time zone and note the clock of the component you read it from. If clocks disagree, that is already evidence (see [Troubleshooting Core Dependencies](lesson:troubleshooting-core-dependencies)).
 
@@ -176,6 +176,8 @@ Verification is against the **original symptom**, by the **original path**: if c
 
 ## Configuration
 
+This section explains the configuration decisions, ownership boundaries, dependencies and evidence an administrator must understand. The executable click path, field values, validation and rollback belong to the linked practical guide.
+
 There is little to "configure" for a method, but a few settings make every future incident easier:
 
 | Setting | Why it helps | Where |
@@ -187,6 +189,8 @@ There is little to "configure" for a method, but a few settings make every futur
 | Change log | Most incidents correlate with a change | Your own notes, ticketing |
 
 ## CLI / API
+
+CLI (Command-Line Interface) and API (Application Programming Interface) examples expose the same operational objects for inspection or automation.
 
 The first commands to reach for, by layer (details and outputs in the next lessons and in the Commands reference):
 
@@ -245,13 +249,6 @@ Monday morning, Alex finds that VCF Operations shows many red alerts: vCenter co
 
 The same incident without a method usually ends with someone rebooting vCenter, which "fixes" nothing and costs an hour.
 
-## Lab
-
-Practise the method under pressure: the drill gives you broken scenarios in your nested lab and asks you to write symptom, scope, hypothesis, evidence, fix and verification for each.
-
-::lab[lab-troubleshooting-drill]
-
-::incident[inc-esx-host-disconnected]
 
 ## Exam Focus
 

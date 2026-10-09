@@ -33,12 +33,12 @@ sources:
 
 ## Why This Matters
 
-Most organisations adopting VCF 9 already run vSphere. Rebuilding everything is expensive, so VCF 9.0 offers two brownfield paths: **converge** an existing vCenter to become the management domain of a new VCF instance, or **import** an existing vCenter as a new workload domain of an instance that already exists. Objective 4.2 asks you to "identify the tasks and processes required to complete the import of an existing vCenter". The exam rewards knowing the prerequisites (what blocks an import) and the limitations afterwards.
+Most organisations adopting VCF (VMware Cloud Foundation) 9 already run vSphere. Rebuilding everything is expensive, so VCF 9.0 offers two brownfield paths: **converge** an existing vCenter to become the management domain of a new VCF instance, or **import** an existing vCenter as a new workload domain of an instance that already exists. Objective 4.2 asks you to "identify the tasks and processes required to complete the import of an existing vCenter". The exam rewards knowing the prerequisites (what blocks an import) and the limitations afterwards.
 
 ## Learning Objectives
 
 - Distinguish **convergence** (new management domain) from **import** (new workload domain).
-- List the import prerequisites: versions, vLCM images, fully automated DRS, VDS, static VMkernel IPs, no ELM, FQDN hosts, SSH on vCenter.
+- List the import prerequisites: versions, vLCM (vSphere Lifecycle Manager) images, fully automated DRS (Distributed Resource Scheduler), VDS (vSphere Distributed Switch), static VMkernel IPs, no ELM, FQDN (Fully Qualified Domain Name) hosts, SSH on vCenter.
 - Walk through the import wizard in VCF Operations, including thumbprints, prechecks and NSX options.
 - Explain what happens to NSX and the DFW during import.
 - State the operational limitations of imported clusters.
@@ -52,12 +52,12 @@ Most organisations adopting VCF 9 already run vSphere. Rebuilding everything is 
 | Tool | **VCF Installer** (select the existing vCenter on the *Existing Components* page) | **VCF Operations** → Inventory → VCF instance → *Add Workload Domain* → *Import a vCenter* |
 | Strictness | Stricter prerequisites | More flexible |
 
-The VCF blog summarises it: converting creates a management domain from an existing vCenter when you lack a VCF fleet; importing adds an existing vCenter as a VI workload domain into an established fleet. Both require minimal VM downtime — the work is deploying missing components (SDDC Manager, NSX, VCF Operations) around running workloads.
+The VCF blog summarises it: converting creates a management domain from an existing vCenter when you lack a VCF fleet; importing adds an existing vCenter as a VI workload domain into an established fleet. Both require minimal VM downtime — the work is deploying missing components (SDDC (Software-Defined Data Center) Manager, NSX, VCF Operations) around running workloads.
 
 [[vcenter-convergence]] and [[vcenter-import]] are both "brownfield" paths; neither re-installs ESX or moves VMs.
 
 :::legacy VCF 5.x / Legacy Context
-VCF 5.2 introduced a separate command-line **VCF Import Tool** to convert a vCenter into a management domain or import it as a workload domain, run against SDDC Manager. In VCF 9.0 convergence is a VCF Installer workflow and import is a VCF Operations (UI or API) workflow — no separate tool.
+VCF 5.2 introduced a separate command-line **VCF Import Tool** to convert a vCenter into a management domain or import it as a workload domain, run against SDDC Manager. In VCF 9.0 convergence is a VCF Installer workflow and import is a VCF Operations (UI or API (Application Programming Interface)) workflow — no separate tool.
 :::
 
 ## Architecture
@@ -80,11 +80,11 @@ During an import, three systems cooperate:
 | vCenter | SSH enabled; vCenter VM runs on a cluster it manages or on the management domain default cluster; Enhanced Linked Mode is not supported (VCF 9 drops ELM; TechDocs lists a narrow case involving vCenters with existing NSX registrations — read the current page before planning around it) |
 | Hosts | All ESX hosts added to vCenter by **FQDN**, not short name or IP |
 | Clusters | **All** clusters imported together; fully automated DRS; vSphere Lifecycle Manager **images** (not baselines); no vSphere Configuration Profiles |
-| Network | VDS 8.0+; statically assigned VMkernel IPs (NSX host TEPs may use DHCP); dedicated vMotion network; forward and reverse DNS for all FQDNs |
+| Network | VDS 8.0+; statically assigned VMkernel IPs (NSX host TEPs may use DHCP); dedicated vMotion network; forward and reverse DNS (Domain Name System) for all FQDNs |
 | Storage | Shared datastore writable by all hosts in each cluster; vSAN (incl. stretched, ESA/OSA), NFS v3, NFS 4.1, VMFS, iSCSI; **vVols not supported** |
 | Not supported | Dell VxRail-managed clusters, Cisco virtual switches, manual/partial DRS, multiple NSX Managers per vCenter |
 
-Convergence has similar rules plus: minimum 3 hosts for simple deployments with vSAN or 2 with external storage, minimum 4 for HA deployments; ELM must be broken first; no VCHA; no NSX bare-metal edges; no custom vCenter client ports. NSX convergence is not supported in 9.0.0 (a new NSX is deployed) and is supported for non-ELM NSX from 9.0.1.
+Convergence has similar rules plus: minimum 3 hosts for simple deployments with vSAN or 2 with external storage, minimum 4 for HA (High Availability) deployments; ELM must be broken first; no VCHA; no NSX bare-metal edges; no custom vCenter client ports. NSX convergence is not supported in 9.0.0 (a new NSX is deployed) and is supported for non-ELM NSX from 9.0.1.
 
 ## How It Works
 
@@ -115,7 +115,7 @@ After the import:
 | Fully automated DRS | SDDC Manager workflows (remediation, host removal) rely on automatic evacuation via maintenance mode. |
 | Static VMkernel IPs | SDDC Manager tracks and validates addresses; DHCP-assigned management/vMotion/vSAN addresses can change. |
 | Host FQDNs | Certificates, DNS validation and inventory are FQDN-based. |
-| No ELM | VCF 9 does not support Enhanced Linked Mode; VCF Operations and VCF SSO take over its functions. |
+| No ELM | VCF 9 does not support Enhanced Linked Mode; VCF Operations and VCF SSO (Single Sign-On) take over its functions. |
 | Whole vCenter, all clusters | A workload domain maps 1:1 to a vCenter; partial import would leave orphaned clusters. |
 
 ### Post-import limitations (important for day 2)
@@ -131,6 +131,8 @@ The VCF blog notes a maximum of 24 VI workload domains per VCF instance; beyond 
 
 ## Configuration
 
+This section explains the configuration decisions, ownership boundaries, dependencies and evidence an administrator must understand. The executable click path, field values, validation and rollback belong to the linked practical guide.
+
 Pre-import hardening of a brownfield vCenter (example: `vc-legacy.lab.local` with two clusters):
 
 1. Break ELM if present; remove VCHA.
@@ -143,6 +145,8 @@ Pre-import hardening of a brownfield vCenter (example: `vc-legacy.lab.local` wit
 8. Run the import wizard; fix precheck findings; finish.
 
 ## CLI / API
+
+CLI (Command-Line Interface) and API (Application Programming Interface) examples expose the same operational objects for inspection or automation.
 
 Import is also available through the VCF Operations API (TechDocs: "Create a Workload Domain by Using the VCF Operations API"), but for the exam focus on the UI flow. Useful verification commands on the brownfield side:
 
@@ -175,11 +179,6 @@ Use the prechecks as a to-do list: they are designed to fail fast. Read the fail
 
 A retailer runs VCF 9.0 for new workloads and has a 6-year-old vCenter 8.0 U2 with three clusters. Two clusters already use vLCM images; the third still uses baselines and partially automated DRS. The import precheck fails on the third cluster. Because import is all-or-nothing per vCenter, the team converts the third cluster to an image, sets DRS to fully automated, re-runs prechecks, and imports. They deploy a new three-node NSX Manager during the import; DFW starts with allow-all, and the security team writes rules later. Afterwards, operations learns that hosts for the *existing* clusters are still added in the vSphere Client, while a brand-new cluster in that domain uses commissioned hosts.
 
-## Lab
-
-Importing requires a second vCenter with its own hosts — expensive for a single Proxmox server. The workload-domain lab includes an optional import exercise if you have spare RAM.
-
-::lab[lab-commission-hosts-create-wld]
 
 ## Exam Focus
 

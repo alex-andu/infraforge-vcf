@@ -29,7 +29,7 @@ sources:
 
 ## Why This Matters
 
-Four services sit underneath everything in VCF: **DNS**, **NTP**, **certificates (PKI)** and **identity (SSO)**. None of them is a VCF product, yet together they cause a large share of failed deployments, failed commissioning, failed upgrades and "random" authentication errors. The exam guide lists DNS, NTP and certificates among the foundational enterprise IT topics a candidate must already know, and objective 4.2 asks you to configure certificate management and identity/RBAC.
+Four services sit underneath everything in VCF (VMware Cloud Foundation): **DNS (Domain Name System)**, **NTP (Network Time Protocol)**, **certificates (PKI)** and **identity (SSO (Single Sign-On))**. None of them is a VCF product, yet together they cause a large share of failed deployments, failed commissioning, failed upgrades and "random" authentication errors. The exam guide lists DNS, NTP and certificates among the foundational enterprise IT topics a candidate must already know, and objective 4.2 asks you to configure certificate management and identity/RBAC (Role-Based Access Control).
 
 They also fail in a deceptive way: the error appears in a product UI ("Failed to connect", "Authentication failed", "Validation failed"), so beginners debug the product. This lesson trains the opposite reflex: **check the foundations first, in order.**
 
@@ -47,11 +47,11 @@ Each link in the chain needs the previous ones:
 
 | Link | What VCF needs from it | Breaks when |
 |---|---|---|
-| **DNS** | Every component reachable by [[fqdn|FQDN]]; **forward ([[a-record|A]]) and reverse ([[ptr-record|PTR]]) records that agree** | Missing/stale PTR, typo, wrong DNS server on one component, split-brain zones |
+| **DNS** | Every component reachable by [[fqdn|FQDN (Fully Qualified Domain Name)]]; **forward ([[a-record|A]]) and reverse ([[ptr-record|PTR]]) records that agree** | Missing/stale PTR, typo, wrong DNS server on one component, split-brain zones |
 | **NTP** | All components and ESX hosts on the same time | One source unsynced, firewall blocks UDP 123, host configured without NTP |
-| **Certificates** | TLS between every component; each certificate valid *now*, matching the FQDN, issued by a trusted CA | Expiry, wrong SAN/FQDN, CA not trusted by the peer, clock outside validity window |
+| **Certificates** | TLS between every component; each certificate valid *now*, matching the FQDN, issued by a trusted CA (Certificate Authority) | Expiry, wrong SAN/FQDN, CA not trusted by the peer, clock outside validity window |
 | **Identity (SSO)** | Users and solution users get tokens from the identity broker / vCenter SSO; tokens validated by time and signature | Identity source unreachable, time skew, broker certificate/trust problems |
-| **Services / workflows** | Calls between SDDC Manager, vCenter, NSX, VCF Operations by FQDN over TLS with tokens | Any link above failing |
+| **Services / workflows** | Calls between SDDC (Software-Defined Data Center) Manager, vCenter, NSX, VCF Operations by FQDN over TLS with tokens | Any link above failing |
 
 :::general
 **Why reverse DNS matters.** VCF components and validations look up IP → name to confirm identity (for example, that the host at 10.10.10.107 really is `esx-07.vcf.lab`), and certificates are issued to FQDNs. A missing or stale PTR record can make a perfectly healthy host fail validation.
@@ -67,7 +67,7 @@ Where the dependencies live in a VCF 9 instance:
 
 - **DNS and NTP** are external services you provide (an AD/DNS server, a BIND/Unbound server, your router). VCF does not run them for you.
 - **Certificates**: every appliance and ESX host has a machine certificate. VCF 9 manages them from VCF Operations (*Fleet Management → Certificates*, including *Configure CA*), per the VCF blog's day-2 overview.
-- **Identity**: the **[[vcf-identity-broker|VCF Identity Broker]]** provides VCF single sign-on. TechDocs describes two broker models — **embedded** (runs as part of vCenter, protected by vSphere HA, no extra appliance) and **appliance** (a three-node cluster, more resilient to host failures, more resources) — and placement choices (fleet-wide, cross-instance or per-instance).
+- **Identity**: the **[[vcf-identity-broker|VCF Identity Broker]]** provides VCF single sign-on. TechDocs describes two broker models — **embedded** (runs as part of vCenter, protected by vSphere HA (High Availability), no extra appliance) and **appliance** (a three-node cluster, more resilient to host failures, more resources) — and placement choices (fleet-wide, cross-instance or per-instance).
 
 ## Components
 
@@ -143,6 +143,8 @@ In VCF 9, certificate replacement and CA configuration for managed components ar
 
 ## Configuration
 
+This section explains the configuration decisions, ownership boundaries, dependencies and evidence an administrator must understand. The executable click path, field values, validation and rollback belong to the linked practical guide.
+
 What "correct" looks like before you deploy or troubleshoot:
 
 | Item | Correct state | Verify |
@@ -156,6 +158,8 @@ What "correct" looks like before you deploy or troubleshoot:
 In VCF 9 the DNS and NTP settings of an instance are changed in VCF Operations: *Inventory → VCF Instance → Actions → Manage VCF Instance Settings → Network Settings*.
 
 ## CLI / API
+
+CLI (Command-Line Interface) and API (Application Programming Interface) examples expose the same operational objects for inspection or automation.
 
 ```shell
 # Forward and reverse lookup (run on the appliance/host that reports the error)
@@ -212,13 +216,6 @@ Alex rebuilds the DNS server VM of his home lab and restores zones from an expor
 - Fix: recreate the `10.10.10.in-addr.arpa` zone and PTR records, re-run validation, all hosts pass.
 - Prevention: Alex adds a script to the readiness checklist that loops over every planned FQDN and checks forward + reverse agreement (see the Home Lab section).
 
-## Lab
-
-Build and verify the foundations in your lab, then break them deliberately in the drill.
-
-::lab[lab-network-readiness]
-
-::lab[lab-troubleshooting-drill]
 
 ## Exam Focus
 

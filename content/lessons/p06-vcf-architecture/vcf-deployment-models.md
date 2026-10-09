@@ -42,14 +42,14 @@ sources:
 
 ## Why This Matters
 
-Exam objective 4.1 includes "Given a scenario identify the appropriate VMware Cloud Foundation deployment models". In VCF 9.0 "deployment model" is not one choice but a stack of choices, documented under **Architectural Options** in TechDocs: how many nodes each management component has (simple vs high availability), how the fleet spans sites (basic, site HA, DR, both), how clusters span racks and zones, and how identity is scoped. A scenario gives you requirements (budget, availability, sites, latency); you must map them to the right model.
+Exam objective 4.1 includes "Given a scenario identify the appropriate VMware Cloud Foundation deployment models". In VCF (VMware Cloud Foundation) 9.0 "deployment model" is not one choice but a stack of choices, documented under **Architectural Options** in TechDocs: how many nodes each management component has (simple vs high availability), how the fleet spans sites (basic, site HA (High Availability), DR, both), how clusters span racks and zones, and how identity is scoped. A scenario gives you requirements (budget, availability, sites, latency); you must map them to the right model.
 
 ## Learning Objectives
 
 - Compare the **simple** and **high availability** deployment of management components (node counts, host counts).
 - Describe the four **fleet deployment designs** and the events each protects against.
 - Choose a **vSphere cluster model** (single-rack, L2/L3 multi-rack, stretched) and know its restrictions.
-- Describe VCF Operations, VCF Automation, NSX Manager, Identity Broker and VCF SSO models.
+- Describe VCF Operations, VCF Automation, NSX Manager, Identity Broker and VCF SSO (Single Sign-On) models.
 - Name the four **deployment pathways** of VCF 9 (new fleet, new instance, converge, import).
 
 ## Concept
@@ -68,7 +68,7 @@ Exam objective 4.1 includes "Given a scenario identify the appropriate VMware Cl
 | Appliance | Simple | High availability |
 |---|---|---|
 | vCenter | 1 | 1 |
-| SDDC Manager | 1 | 1 |
+| SDDC (Software-Defined Data Center) Manager | 1 | 1 |
 | NSX Manager | 1 | 3 |
 | VCF Operations | 1 (primary) | 3 (primary, replica, data) |
 | Fleet management appliance | 1 | 1 |
@@ -77,7 +77,7 @@ Exam objective 4.1 includes "Given a scenario identify the appropriate VMware Cl
 | **Total** | **7** | **13** |
 | Management default cluster minimum hosts | **3** | **4** |
 
-[[simple-deployment-model|Simple]] relies on vSphere HA restarting single nodes (smallest footprint, longer recovery, disruption during upgrades). [[ha-deployment-model|High availability]] uses three-node clusters with DRS anti-affinity (no single-node outage of the service, smoother upgrades), recommended for production.
+[[simple-deployment-model|Simple]] relies on vSphere HA restarting single nodes (smallest footprint, longer recovery, disruption during upgrades). [[ha-deployment-model|High availability]] uses three-node clusters with DRS (Distributed Resource Scheduler) anti-affinity (no single-node outage of the service, smoother upgrades), recommended for production.
 
 ## Architecture
 
@@ -108,7 +108,7 @@ In the DR designs, "VCF Operations utilizes replication or backup and restore me
 | VCF Operations for logs | Simple (1 node, relies on vSphere HA), High availability (3 nodes: primary + 2 workers, integrated load balancer) |
 | VCF Operations for networks | Simple (1 platform + 1 collector), "HA" (3-node platform cluster — for performance and scale, *not* redundancy) |
 | VCF Automation | Simple (1 node, POC/dev), High availability (3 nodes, production; simple can be scaled to 3 by resizing) |
-| NSX Manager | Simple (1 node with VIP), High availability (3 nodes, VIP), HA with external load balancer (API spread over all 3) |
+| NSX Manager | Simple (1 node with VIP), High availability (3 nodes, VIP), HA with external load balancer (API (Application Programming Interface) spread over all 3) |
 | NSX Global Manager (federation) | HA 3-node cluster, or HA with standby cluster |
 | VCF Identity Broker | **Embedded** (service in the management vCenter, protected by vSphere HA), **Appliance** (3-node cluster) |
 | VCF SSO scope | **Fleet-wide** (one broker for all), **Cross-instance** (one broker for several instances), **Per-instance** (one broker per instance) |
@@ -168,6 +168,8 @@ The "simple" model with 3 management hosts and single-node NSX Manager/VCF Opera
 
 ## Configuration
 
+This section explains the configuration decisions, ownership boundaries, dependencies and evidence an administrator must understand. The executable click path, field values, validation and rollback belong to the linked practical guide.
+
 | Choice | Where |
 |---|---|
 | Simple vs HA | VCF Installer wizard (or JSON spec) |
@@ -177,6 +179,8 @@ The "simple" model with 3 management hosts and single-node NSX Manager/VCF Opera
 | Logs / networks / Identity Broker appliance models | Fleet management, Day 2 |
 
 ## CLI / API
+
+CLI (Command-Line Interface) and API (Application Programming Interface) examples expose the same operational objects for inspection or automation.
 
 The VCF Installer accepts a **JSON specification** instead of the wizard, so the deployment model is captured as code and can be reviewed and reused. Inspect what is deployed afterwards with the SDDC Manager API (`GET /v1/nsx-t-clusters` shows NSX node count; `GET /v1/clusters` shows clusters and stretch state) and in VCF Operations inventory.
 
@@ -201,9 +205,6 @@ The VCF Installer accepts a **JSON specification** instead of the wizard, so the
 
 A hospital has two buildings 2 km apart with dark fibre and a DR site 200 km away. Requirement: survive a building failure with no data loss; survive a regional disaster within hours. Design: **Fault domains + DR** — HA component model, management and critical workload domains as **stretched clusters** across the two buildings, a second VCF instance in the DR region with VMware Live Recovery replication, VCF Operations protected by replication/backup and VCF Automation by backup and restore, per-instance or cross-instance SSO depending on how authentication should behave if the primary site is lost.
 
-## Lab
-
-::lab[lab-vcf-planning-workbook]
 
 ## Exam Focus
 

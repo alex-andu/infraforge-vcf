@@ -29,7 +29,7 @@ sources:
 
 ## Why This Matters
 
-In VCF 9, VCF Operations is no longer an optional add-on that you bolt on after the platform is running. It is the
+In VCF (VMware Cloud Foundation) 9, VCF Operations is no longer an optional add-on that you bolt on after the platform is running. It is the
 **central console of the fleet**: monitoring, dashboards, alerting, log analysis, reporting, licensing, and the fleet
 management capabilities (lifecycle, certificates, passwords, fleet extension) all surface there. If VCF Operations is
 unhealthy, you are blind to your environment *and* you lose a large part of your day-2 management tooling.
@@ -57,7 +57,7 @@ it has three layers:
 |---|---|---|
 | Collection | [[adapter-instance|Adapter instances]] connect to vCenter, NSX, vSAN and other sources and pull data | [[vcf-operations-collector|VCF Operations collectors]] (cloud proxy appliances) |
 | Analytics and storage | Stores metrics and properties, calculates thresholds, symptoms, alerts, capacity, compliance | The analytics cluster: [[ops-primary-node|primary]], [[ops-replica-node|replica]] and [[ops-data-node|data]] nodes |
-| Presentation and control | UI, dashboards, reports, API, fleet management pages | Served by the analytics cluster; fleet tasks executed by the fleet management appliance |
+| Presentation and control | UI, dashboards, reports, API (Application Programming Interface), fleet management pages | Served by the analytics cluster; fleet tasks executed by the fleet management appliance |
 
 Two optional Day-2 components extend it: [[vcf-operations-logs]] (central log management) and
 [[vcf-ops-for-networks]] (network visibility and flow analytics). Both are deployed later from VCF Operations and
@@ -66,7 +66,7 @@ integrate into its console. They are covered in [VCF Operations for logs and Net
 :::vcf9 Changed in VCF 9
 The product formerly called VMware Aria Operations is **VCF Operations**; Aria Operations for Logs is **VCF Operations
 for logs**; Aria Operations for Networks is **VCF Operations for networks** (the exam guide calls the capability "VCF
-Network Operations"). VCF Operations is deployed by the **VCF Installer** together with vCenter, NSX and SDDC Manager
+Network Operations"). VCF Operations is deployed by the **VCF Installer** together with vCenter, NSX and SDDC (Software-Defined Data Center) Manager
 when you build the first VCF instance, and it now carries the fleet management functions (lifecycle, certificates,
 passwords) that Aria Suite Lifecycle used to provide.
 :::
@@ -97,13 +97,13 @@ Where things run:
 | Component | Role | Notes |
 |---|---|---|
 | Primary node | First analytics node; coordinates the cluster and serves the UI/API | The only analytics node in the Simple model |
-| Replica node | Standby copy of the primary; takes over if the primary fails | Exists only when HA is enabled (High Availability model) |
+| Replica node | Standby copy of the primary; takes over if the primary fails | Exists only when HA (High Availability) is enabled (High Availability model) |
 | Data node | Additional analytics and storage capacity | Used to scale out; in HA the data is also redundant |
 | VCF Operations collector (cloud proxy) | Runs adapter instances, polls sources, forwards data | Deployed in every model; HA model: expand to a collector group manually |
 | Collector group | Set of collectors that share adapter instances | Provides collector-level failover |
 | VCF Operations fleet management appliance | Lifecycle, certificates, passwords for management components | Deployed in every model |
 | SDDC Manager | Per-instance management; integrated with VCF Operations | Listed as an "additional appliance" in each model table |
-| External load balancer | Single VIP/FQDN in front of the cluster | Optional (HA and CA models); needs extra IP/FQDN and SAN entries |
+| External load balancer | Single VIP/FQDN (Fully Qualified Domain Name) in front of the cluster | Optional (HA and CA (Certificate Authority) models); needs extra IP/FQDN and SAN entries |
 
 ### Deployment models (from the 9.0 Architectural Options page)
 
@@ -172,6 +172,8 @@ them to a Cloud Proxy or Cloud Proxy group under **Administration > Integrations
 
 ## Configuration
 
+This section explains the configuration decisions, ownership boundaries, dependencies and evidence an administrator must understand. The executable click path, field values, validation and rollback belong to the linked practical guide.
+
 Key configuration tasks after deployment:
 
 1. **Check integrations**: Administration > Integrations, confirm each vCenter, NSX and SDDC Manager integration shows
@@ -180,10 +182,12 @@ Key configuration tasks after deployment:
 3. **Certificates**: if using an external load balancer, issue a certificate whose SAN contains every node FQDN and
    the LB FQDN.
 4. **Sizing check**: compare the object and metric counts in the cluster's self-monitoring with KB 397782 limits.
-5. **Time and DNS**: every node and collector needs working forward/reverse DNS and NTP; analytics and certificate
+5. **Time and DNS (Domain Name System)**: every node and collector needs working forward/reverse DNS and NTP (Network Time Protocol); analytics and certificate
    validation depend on it.
 
 ## CLI / API
+
+CLI (Command-Line Interface) and API (Application Programming Interface) examples expose the same operational objects for inspection or automation.
 
 Most VCF Operations administration is in the UI. The REST API (the "suite API") is useful for checking adapters and
 collection status from scripts.
@@ -239,12 +243,6 @@ certificate request includes every node FQDN plus the LB FQDN in the SAN.
 In the learner's home lab, by contrast, resources are scarce: the **Simple** model with a small node is the right
 choice, accepting that vSphere HA restart is the only protection.
 
-## Lab
-
-::lab[lab-vcf-ops-dashboards-alerts]
-
-The lab starts with a tour of the deployed cluster (node roles, collectors, integrations) before building dashboards
-and alerts.
 
 ## Exam Focus
 

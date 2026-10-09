@@ -33,16 +33,16 @@ sources:
 
 ## Why This Matters
 
-Most "VCF is slow / VMs can't talk / vSAN is degraded" incidents are data-path problems, and the data path crosses the most teams: the physical network team owns switches and routers, the virtualization team owns the VDS and vmknics, the NSX admin owns TEPs, segments and gateways, and vSAN rides on all of it. Each team can honestly say "my side looks fine" while traffic dies in between.
+Most "VCF (VMware Cloud Foundation) is slow / VMs can't talk / vSAN is degraded" incidents are data-path problems, and the data path crosses the most teams: the physical network team owns switches and routers, the virtualization team owns the VDS (vSphere Distributed Switch) and vmknics, the NSX admin owns TEPs, segments and gateways, and vSAN rides on all of it. Each team can honestly say "my side looks fine" while traffic dies in between.
 
 The skill this lesson builds is **walking the data path layer by layer with a test that proves each layer**, from the physical link up to the vSAN object or the overlay segment. It ties directly to exam objectives 2.3 (vSAN resilience and health) and 2.4 (networking components, fabrics, connectivity and routing), and to 4.3 (monitoring networks and vSAN with VCF Operations).
 
 ## Learning Objectives
 
-- Troubleshoot bottom-up: physical link → VLAN → IP/gateway → MTU → VDS/vmknic → NSX TEP/overlay → logical routing/edges → workload.
+- Troubleshoot bottom-up: physical link → VLAN (Virtual Local Area Network) → IP/gateway → MTU → VDS/vmknic → NSX TEP (Tunnel Endpoint)/overlay → logical routing/edges → workload.
 - Prove MTU end-to-end with `vmkping` don't-fragment tests on the correct vmknic or netstack.
 - Distinguish NSX management-plane, control-plane and data-plane failures and their impact.
-- Diagnose edge/north-south problems (uplink VLANs, BGP/static routing, route advertisement).
+- Diagnose edge/north-south problems (uplink VLANs, BGP (Border Gateway Protocol)/static routing, route advertisement).
 - Diagnose vSAN network partitions and degraded/inaccessible objects, and choose safe remediation.
 
 ## Concept
@@ -70,22 +70,22 @@ Think of the data path as a stack where each layer depends on the one below:
 
 ::figure{src="https://techdocs.broadcom.com/content/broadcom/techdocs/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/_jcr_content/assetversioncopies/50eadc71-6d37-4996-aded-66d5ef711d70.original.svg" caption="Distributed Switch Models in VMware Cloud Foundation (Broadcom TechDocs)" source="https://techdocs.broadcom.com/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/design/vmware-cloud-foundation-concepts/cluster-network-deployment-models.html"}
 
-The distributed switch model determines **which physical NICs carry which traffic**, which in turn determines where to look. TechDocs lists models from a single VDS carrying everything (management, vMotion, vSAN, NSX and workloads — possible even with one physical NIC via the API) through storage separation, workload separation, storage-and-workload separation (minimum six NICs with redundancy), dedicated edge clusters and vSAN storage cluster separation. In a single-VDS design, one bad trunk configuration affects every traffic type at once; in separated designs, the symptom points at the specific fabric.
+The distributed switch model determines **which physical NICs carry which traffic**, which in turn determines where to look. TechDocs lists models from a single VDS carrying everything (management, vMotion, vSAN, NSX and workloads — possible even with one physical NIC via the API (Application Programming Interface)) through storage separation, workload separation, storage-and-workload separation (minimum six NICs with redundancy), dedicated edge clusters and vSAN storage cluster separation. In a single-VDS design, one bad trunk configuration affects every traffic type at once; in separated designs, the symptom points at the specific fabric.
 
 ## Components
 
 | Component | Data-path role | Where its evidence is |
 |---|---|---|
-| Physical switches/router | VLANs, MTU, routing between TEP subnets, BGP peers for Tier-0 | Switch CLI/logs (physical team) |
+| Physical switches/router | VLANs, MTU, routing between TEP subnets, BGP peers for Tier-0 | Switch CLI (Command-Line Interface)/logs (physical team) |
 | VDS | Port groups, uplinks, teaming; MTU per switch | vCenter (*Networking*), host `esxcli network vswitch dvs vmware list` |
 | vmknics | Management, vMotion, vSAN, TEP interfaces | `esxcli network ip interface list` / `ipv4 get` |
 | NSX Manager cluster | Management + control plane (desired state, topology) | NSX UI/API, `/var/log/syslog`, NSX CLI `get cluster status` |
 | Transport nodes (ESX) | Data plane: TEPs, distributed routing and firewall in the kernel | NSX UI host status/tunnels, host vmkernel logs |
-| NSX Edge nodes | Tier-0/Tier-1 service routers, uplinks, BGP, NAT | NSX UI, edge `/var/log/syslog` |
+| NSX Edge nodes | Tier-0/Tier-1 service routers, uplinks, BGP, NAT (Network Address Translation) | NSX UI, edge `/var/log/syslog` |
 | vSAN | Distributed storage over the vSAN vmknics | vSAN health (vCenter cluster *Monitor → vSAN*), `esxcli vsan ...`, VCF Operations storage operations |
 | VCF Operations for networks / VCF Operations | Flows, paths, alerts, vSAN monitoring | VCF Operations UI |
 
-NSX Manager models in VCF 9 (TechDocs): **simple** (single node + VIP, smallest footprint, slower recovery, management/control plane impacted during upgrades), **high availability** (three nodes + VIP, anti-affinity) and **HA with external load balancer**. A manager outage affects configuration and control-plane changes; it is not the same thing as a data-plane outage.
+NSX Manager models in VCF 9 (TechDocs): **simple** (single node + VIP, smallest footprint, slower recovery, management/control plane impacted during upgrades), **high availability** (three nodes + VIP, anti-affinity) and **HA (High Availability) with external load balancer**. A manager outage affects configuration and control-plane changes; it is not the same thing as a data-plane outage.
 
 ## How It Works
 
@@ -150,6 +150,8 @@ On vSAN hosts never use `services.sh restart` (Broadcom KB 320280). Before maint
 
 ## Configuration
 
+This section explains the configuration decisions, ownership boundaries, dependencies and evidence an administrator must understand. The executable click path, field values, validation and rollback belong to the linked practical guide.
+
 Reference values to compare against when troubleshooting a VCF 9 lab or design (your own design document is the authority):
 
 | Network | VLAN-backed? | Recommended MTU | Gateway needed? |
@@ -163,6 +165,8 @@ Reference values to compare against when troubleshooting a VCF 9 lab or design (
 | Overlay segments | No (Geneve) | Typically 1500 for guests | Tier-1/Tier-0 |
 
 ## CLI / API
+
+CLI (Command-Line Interface) and API (Application Programming Interface) examples expose the same operational objects for inspection or automation.
 
 ```shell
 # ESX: vmknics, their IPv4 config and MTU
@@ -219,11 +223,6 @@ After moving his lab server to a new 10 GbE switch, Alex sees vSAN health warnin
 - Remediate: enable jumbo frames (9216) on the new switch ports and confirm the Proxmox bridge still has MTU 9000.
 - Verify: `-s 8972` succeeds, vSAN health green after resync, tunnels up.
 
-## Lab
-
-::lab[lab-network-readiness]
-
-::lab[lab-troubleshooting-drill]
 
 ## Exam Focus
 

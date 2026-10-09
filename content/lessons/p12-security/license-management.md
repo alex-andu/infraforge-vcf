@@ -29,7 +29,7 @@ sources:
 
 ## Why This Matters
 
-Licensing used to be the boring part: paste a 25-character key into vCenter, done. In VCF 9.0 it is a workflow with
+Licensing used to be the boring part: paste a 25-character key into vCenter, done. In VCF (VMware Cloud Foundation) 9.0 it is a workflow with
 its own console, a registration step, and a **usage reporting obligation**. If you get it wrong, the consequences are
 operational, not just contractual: after expiry and its grace period, management operations are prevented, ESX hosts
 disconnect and you cannot create workloads. The exam asks you to "configure license management within VMware Cloud
@@ -49,7 +49,7 @@ Foundation", so you must know where licenses live, how they flow and what the ti
 | | VCF 5.x / vSphere 8 | VCF 9.0 |
 |---|---|---|
 | Unit of license | 25-character key per product | **Subscription-based license file** |
-| Where managed | vCenter licensing, SDDC Manager license inventory | **VCF Operations** + **VCF Business Services console** (vcf.broadcom.com) |
+| Where managed | vCenter licensing, SDDC (Software-Defined Data Center) Manager license inventory | **VCF Operations** + **VCF Business Services console** (vcf.broadcom.com) |
 | What you license | vCenter, ESX, vSAN, NSX separately | **vCenter instances only**; components behind them are licensed automatically |
 | Reporting | None | Usage report at least every **180 days** |
 
@@ -140,9 +140,9 @@ consume, and moving capacity later is a console operation followed by a license 
 
 ### What licensing does not do
 
-Licensing does not grant permissions, enable SSO or change features per user. It enforces capacity (cores, TiB) and
+Licensing does not grant permissions, enable SSO (Single Sign-On) or change features per user. It enforces capacity (cores, TiB) and
 entitlement (which products and add-ons you may run). If a feature is missing, check the license edition (VCF versus
-VVF, add-ons) before you look at RBAC.
+VVF, add-ons) before you look at RBAC (Role-Based Access Control).
 
 :::vcf9 Changed in VCF 9
 NSX is no longer separately licensed in VCF 9: it is covered via the vCenter it is attached to. Licensing moved from
@@ -156,6 +156,8 @@ environments, but VCF 9 components use the file-based model.
 :::
 
 ## Configuration
+
+This section explains the configuration decisions, ownership boundaries, dependencies and evidence an administrator must understand. The executable click path, field values, validation and rollback belong to the linked practical guide.
 
 | Task | Where |
 |---|---|
@@ -183,6 +185,8 @@ documented by William Lam). The evaluation window gives you up to 90 days to pra
 :::
 
 ## CLI / API
+
+CLI (Command-Line Interface) and API (Application Programming Interface) examples expose the same operational objects for inspection or automation.
 
 License management is designed as a UI and console workflow. VCF Operations has APIs, but for the exam and for your
 lab, the UI paths above are what matter. Check the VCF Operations API reference for your version if you automate it.
@@ -214,12 +218,6 @@ license file. They assigned the VCF primary license to both vCenters and a vSAN 
 quarter, well inside the 180-day limit, an operator exports the usage file, uploads it and imports the updated license.
 Nobody touches ESX or NSX licensing: both inherit from vCenter.
 
-## Lab
-
-::lab[lab-explore-vcf-fleet]
-
-While exploring your fleet, open the License Management area in VCF Operations and record: registration mode,
-licenses, which vCenters are licensed, and the evaluation days remaining.
 
 ## Exam Focus
 

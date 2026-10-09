@@ -32,7 +32,7 @@ sources:
 
 ## Why This Matters
 
-Everything you click in VCF is an API call underneath. Knowing the APIs lets you verify state quickly ("list every
+Everything you click in VCF (VMware Cloud Foundation) is an API (Application Programming Interface) call underneath. Knowing the APIs lets you verify state quickly ("list every
 domain and its version"), automate repetitive work (tagging 300 VMs), and integrate VCF with pipelines, CMDBs and
 ticketing. For the exam, API knowledge supports the "Consume and Automate" objective: recognising which endpoint and
 authentication pattern belongs to which component, and what PowerCLI provides. For the home lab, the API is the fastest
@@ -41,7 +41,7 @@ way to check that the environment is what you think it is.
 ## Learning Objectives
 
 - Map each VCF component to its API and authentication method.
-- Obtain and refresh an SDDC Manager API token and call `/v1/domains`.
+- Obtain and refresh an SDDC (Software-Defined Data Center) Manager API token and call `/v1/domains`.
 - Create a vCenter REST session and list VMs; read the JSON response.
 - Query the NSX Policy and management APIs.
 - Acquire a VCF Operations API token.
@@ -104,7 +104,7 @@ curl -sk -X POST https://sddc-manager.lab.local/v1/tokens \
 Line by line:
 
 1. `POST /v1/tokens` - creates a token pair.
-2. `username` / `password` - an SSO account with a role in SDDC Manager.
+2. `username` / `password` - an SSO (Single Sign-On) account with a role in SDDC Manager.
 3. `accessToken` - a JWT valid for one hour; copy it into the `Authorization: Bearer` header.
 4. `refreshToken` - valid 24 hours; use it with `PATCH /v1/tokens/access-token/refresh` to get a new access token
    without resending the password.
@@ -180,7 +180,7 @@ Get-SddcDomain
 ```
 
 1. Installs the module from the PowerShell Gallery for the current user.
-2. Accepts self-signed lab certificates (in production trust the CA instead).
+2. Accepts self-signed lab certificates (in production trust the CA (Certificate Authority) instead).
 3. Connects to vCenter.
 4. Lists VMs with their CPU and memory.
 5. Connects to SDDC Manager (new in VCF.PowerCLI 9.0).
@@ -238,6 +238,8 @@ outage where a loop applies a wrong setting to every host in seconds.
 
 ## Configuration
 
+This section explains the configuration decisions, ownership boundaries, dependencies and evidence an administrator must understand. The executable click path, field values, validation and rollback belong to the linked practical guide.
+
 Lab setup for API work:
 
 | Item | Value |
@@ -248,6 +250,8 @@ Lab setup for API work:
 | Trust | Import the lab CA into the workstation trust store |
 
 ## CLI / API
+
+CLI (Command-Line Interface) and API (Application Programming Interface) examples expose the same operational objects for inspection or automation.
 
 The whole lesson is the CLI/API reference; the commands are collected in the command library. Key ones:
 `POST /v1/tokens`, `PATCH /v1/tokens/access-token/refresh`, `GET /v1/domains`, `POST /api/session`,
@@ -280,9 +284,6 @@ PowerShell script connects to SDDC Manager (`Get-SddcDomain`), loops through dom
 vault. When the vCenter certificates were replaced, the script failed with TLS errors until the new CA was trusted on
 the automation host - the same failure mode as VCF Operations adapters.
 
-## Lab
-
-::lab[lab-vcf-api-powercli]
 
 ## Exam Focus
 
@@ -319,4 +320,4 @@ generated SDK cmdlets discoverable by API path.
 
 ## Next Topic
 
-Phase 12 continues with [identity, SSO and RBAC](lesson:vcf-identity-sso-rbac), which decides what your API accounts may do.
+Phase 12 continues with [identity, SSO and RBAC (Role-Based Access Control)](lesson:vcf-identity-sso-rbac), which decides what your API accounts may do.

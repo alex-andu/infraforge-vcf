@@ -35,7 +35,7 @@ sources:
 
 ## Why This Matters
 
-Workload domains are not static: capacity grows, hardware is refreshed, clusters are split by workload type. In VCF you do not just drag a host into a cluster — VCF has to configure the VDS uplinks, NSX transport node, VMkernel IPs from the network pool, principal storage and the vLCM image consistently. Doing it the VCF way keeps SDDC Manager's inventory correct; doing it behind VCF's back creates drift that breaks later lifecycle operations. The exam asks *where* you do these operations and *what must be true first*.
+Workload domains are not static: capacity grows, hardware is refreshed, clusters are split by workload type. In VCF (VMware Cloud Foundation) you do not just drag a host into a cluster — VCF has to configure the VDS (vSphere Distributed Switch) uplinks, NSX transport node, VMkernel IPs from the network pool, principal storage and the vLCM (vSphere Lifecycle Manager) image consistently. Doing it the VCF way keeps SDDC (Software-Defined Data Center) Manager's inventory correct; doing it behind VCF's back creates drift that breaks later lifecycle operations. The exam asks *where* you do these operations and *what must be true first*.
 
 ## Learning Objectives
 
@@ -71,7 +71,7 @@ What VCF does when a host joins an SDDC cluster:
 2. Adds the host to the cluster's **VDS**; you map free vmnics to the existing uplinks (different NIC enumeration is allowed).
 3. Allocates **VMkernel IPs** for vMotion and storage from the host's **network pool**.
 4. Configures **principal storage**: joins vSAN, or mounts the NFS / vVols datastore automatically; VMFS on FC must be zoned and visible beforehand.
-5. Prepares the host as an **NSX transport node** with TEP IPs from the static IP pool (or DHCP).
+5. Prepares the host as an **NSX transport node** with TEP (Tunnel Endpoint) IPs from the static IP pool (or DHCP).
 6. Marks the host **assigned** in SDDC Manager's inventory.
 
 ## Components
@@ -132,11 +132,11 @@ Before removing a vSAN host, make sure the remaining hosts still satisfy the sto
 
 | Situation | Better choice | Reason |
 |---|---|---|
-| Same workload needs more CPU/RAM | Add hosts to the existing cluster | Keeps one DRS/HA pool; vLCM image and storage already defined |
+| Same workload needs more CPU/RAM | Add hosts to the existing cluster | Keeps one DRS (Distributed Resource Scheduler)/HA (High Availability) pool; vLCM image and storage already defined |
 | New workload with different hardware or licensing boundary | Add a new cluster | Separate image, storage type and failure domain |
 | Need a different principal storage type | Add a new cluster | Principal storage cannot change on an existing cluster |
 | Cluster approaching vSphere maximums | Add a new cluster | Hosts per cluster are capped (see configmax) |
-| Need a separate vCenter/NSX/SSO boundary | Create a new workload domain | Clusters share their domain's vCenter and NSX |
+| Need a separate vCenter/NSX/SSO (Single Sign-On) boundary | Create a new workload domain | Clusters share their domain's vCenter and NSX |
 
 ### Sizing the change
 
@@ -154,18 +154,22 @@ This keeps the cluster at or above its original capacity throughout and never pu
 
 ## Configuration
 
+This section explains the configuration decisions, ownership boundaries, dependencies and evidence an administrator must understand. The executable click path, field values, validation and rollback belong to the linked practical guide.
+
 Expansion checklist:
 
 | # | Check |
 |---|---|
-| 1 | Host prepared (FQDN, DNS A+PTR, cert regenerated, NTP, clean disks, ≥10 Gbps NICs) |
+| 1 | Host prepared (FQDN (Fully Qualified Domain Name), DNS (Domain Name System) A+PTR, cert regenerated, NTP (Network Time Protocol), clean disks, ≥10 Gbps NICs) |
 | 2 | Commissioned with the **same storage type** as the target cluster |
 | 3 | Network pool has free IPs for each network type |
-| 4 | NSX host TEP pool has free IPs (or DHCP on the TEP VLAN) |
+| 4 | NSX host TEP pool has free IPs (or DHCP on the TEP VLAN (Virtual Local Area Network)) |
 | 5 | For FC: zoning and LUN presented |
 | 6 | Host hardware matches existing cluster nodes (avoid imbalance warning) |
 
 ## CLI / API
+
+CLI (Command-Line Interface) and API (Application Programming Interface) examples expose the same operational objects for inspection or automation.
 
 SDDC Manager API (9.0) – find candidates and check results:
 
@@ -203,9 +207,6 @@ Read the failed subtask: it names the stage (image remediation, VDS, VMkernel, v
 
 A media company's render workload domain needs 50% more CPU for a project. They commission four new vSAN ESA hosts and add them to the existing cluster: the vLCM image is applied only to the new hosts, VDS uplinks mapped, vSAN and vMotion IPs drawn from the rack's pool. When the project ends, two hosts are removed: VMs are evacuated by DRS, vSAN data migrates, the hosts are decommissioned, re-imaged and commissioned again into the VDI domain's pool.
 
-## Lab
-
-::lab[lab-commission-hosts-create-wld]
 
 ## Exam Focus
 

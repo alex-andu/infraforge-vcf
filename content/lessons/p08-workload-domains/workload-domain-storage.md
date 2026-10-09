@@ -33,7 +33,7 @@ sources:
 
 ## Why This Matters
 
-Storage is the decision you cannot undo. The principal storage of a cluster is fixed when the cluster is created; changing it means building a new cluster and migrating workloads. The type also reaches backwards into host commissioning (hosts are tagged with a storage type) and network pools (which VMkernel networks get IPs). Objective 4.1 includes "Given a scenario, configure Workload Domain storage" — expect questions like "which storage can be principal for a VI workload domain?" and "a customer has FC arrays and wants VCF — what is supported?"
+Storage is the decision you cannot undo. The principal storage of a cluster is fixed when the cluster is created; changing it means building a new cluster and migrating workloads. The type also reaches backwards into host commissioning (hosts are tagged with a storage type) and network pools (which VMkernel networks get IPs). Objective 4.1 includes "Given a scenario, configure Workload Domain storage" — expect questions like "which storage can be principal for a VI workload domain?" and "a customer has FC arrays and wants VCF (VMware Cloud Foundation) — what is supported?"
 
 ## Learning Objectives
 
@@ -99,7 +99,7 @@ The storage decision touches four layers:
 
 Storage choice end to end for an NFS-backed workload domain:
 
-1. Storage team exports `/export/wld01` to the NFS VLAN subnet with read-write for all host IPs.
+1. Storage team exports `/export/wld01` to the NFS VLAN (Virtual Local Area Network) subnet with read-write for all host IPs.
 2. Create a **network pool** with **vMotion** and **NFS** networks.
 3. **Commission** hosts with storage type **NFS** and that pool.
 4. **Create the workload domain**: storage page → NFS → datastore name, folder `/export/wld01`, server IP.
@@ -114,7 +114,7 @@ For vSAN ESA instead: pool with vMotion + vSAN; hosts commissioned as `VSAN_ESA`
 
 | Rule | Source / reason |
 |---|---|
-| One principal storage type per cluster; all hosts in it use the same type | Add-cluster page: "Each cluster can use a different type of principal storage, as long as all hosts within an SDDC cluster use the same type." |
+| One principal storage type per cluster; all hosts in it use the same type | Add-cluster page: "Each cluster can use a different type of principal storage, as long as all hosts within an SDDC (Software-Defined Data Center) cluster use the same type." |
 | Principal storage cannot be changed after creation | Installer storage page note; same logic for clusters |
 | Hosts commissioned for vSAN can only join vSAN clusters | Commissioning page |
 | VMFS on FC needs zoning/LUN/datastore ready before commissioning or expansion | FC prerequisites |
@@ -127,7 +127,7 @@ A **vSAN storage cluster** ([[vsan-storage-cluster]], the disaggregated model of
 
 ### Supplemental storage in practice
 
-Supplemental datastores are configured with normal vSphere workflows (add iSCSI adapter/targets, mount NFS 4.1, create VMFS on FC/NVMe) on the cluster's hosts. SDDC Manager does not create them for you, so keep them consistent across all hosts in the cluster or DRS/HA placement suffers. For iSCSI, the network pool can provide iSCSI VMkernel IPs.
+Supplemental datastores are configured with normal vSphere workflows (add iSCSI adapter/targets, mount NFS 4.1, create VMFS on FC/NVMe) on the cluster's hosts. SDDC Manager does not create them for you, so keep them consistent across all hosts in the cluster or DRS (Distributed Resource Scheduler)/HA (High Availability) placement suffers. For iSCSI, the network pool can provide iSCSI VMkernel IPs.
 
 ### vSAN ESA or OSA for a new workload domain?
 
@@ -150,6 +150,8 @@ vSAN ESA clusters created by VCF use auto-policy management; OSA lets you choose
 
 ## Configuration
 
+This section explains the configuration decisions, ownership boundaries, dependencies and evidence an administrator must understand. The executable click path, field values, validation and rollback belong to the linked practical guide.
+
 Choosing principal storage for three common scenarios:
 
 | Scenario | Recommendation | Why |
@@ -160,6 +162,8 @@ Choosing principal storage for three common scenarios:
 | Lab on Proxmox with a NAS/NFS export | NFS v3 principal | Avoids nested vSAN overhead and HCL checks |
 
 ## CLI / API
+
+CLI (Command-Line Interface) and API (Application Programming Interface) examples expose the same operational objects for inspection or automation.
 
 ```shell
 # On a host: list mounted NFS datastores and VMFS extents
@@ -193,11 +197,6 @@ Check in this order: storage type tag of the hosts (Unassigned Hosts view or API
 
 A bank has a recent FC array and wants VCF 9.0. The architect proposes: management domain on vSAN ESA (four new HCI nodes), and VI workload domains on **VMFS on FC** as principal storage, with **NVMe/FC** supplemental datastores for a latency-sensitive database cluster. A vendor suggests vVols for the workload domains; the architect rejects it because vVols is deprecated in VCF 9.0. iSCSI is accepted only as supplemental for a file-gateway use case.
 
-## Lab
-
-In the home lab you will use NFS v3 from Proxmox (or a NAS VM) as principal storage for the workload domain to save memory, and compare it with a vSAN ESA cluster from the vSAN labs.
-
-::lab[lab-commission-hosts-create-wld]
 
 ## Exam Focus
 

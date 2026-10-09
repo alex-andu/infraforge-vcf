@@ -32,7 +32,7 @@ sources:
 
 ## Why This Matters
 
-Every dashboard, alert, capacity forecast and compliance score in VCF Operations is built from two kinds of data:
+Every dashboard, alert, capacity forecast and compliance score in VCF (VMware Cloud Foundation) Operations is built from two kinds of data:
 **metrics** and **properties**. If you cannot tell them apart, you will build the wrong view ("show me which hosts
 run ESX build X" is a property question, not a metric), write symptoms that never fire, and misread exam scenarios
 that hinge on exactly this difference. Views and reports are then how you present that data to people who do not
@@ -155,6 +155,8 @@ object is an adapter instance, custom group, application, tier or general object
 
 ## Configuration
 
+This section explains the configuration decisions, ownership boundaries, dependencies and evidence an administrator must understand. The executable click path, field values, validation and rollback belong to the linked practical guide.
+
 Example: the operations manager wants a weekly PDF listing every VM in the workload domain with its vCPU count,
 memory size, guest OS (properties) and 7-day average CPU and memory usage (metrics), plus a trend of cluster CPU demand.
 
@@ -166,6 +168,8 @@ memory size, guest OS (properties) and 7-day average CPU and memory usage (metri
 | Schedule | Weekly, run against the workload domain cluster, email via outbound settings |
 
 ## CLI / API
+
+CLI (Command-Line Interface) and API (Application Programming Interface) examples expose the same operational objects for inspection or automation.
 
 Views and reports are UI-driven. The suite API can list report definitions and download generated reports for
 automation; check the VCF Operations API reference for your version before scripting. Authentication is shown in
@@ -196,11 +200,6 @@ for unsupported values) and another (subject Host System, property ESX build), p
 cover page, and schedules it monthly as PDF to the auditor's mailbox. Meanwhile, the capacity team receives a separate
 CSV of **metrics** (7-day average CPU/memory per cluster) they feed into their own spreadsheets.
 
-## Lab
-
-::lab[lab-vcf-ops-dashboards-alerts]
-
-Steps 2 and 3 of the lab create a custom List view and a scheduled report template.
 
 ## Exam Focus
 

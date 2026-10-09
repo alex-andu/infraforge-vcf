@@ -39,12 +39,12 @@ sources:
 
 ## Why This Matters
 
-VCF is a distributed system of a dozen appliances that constantly call each other's APIs. Most real outages are not "component X crashed" but "component X can no longer talk to Y" — because of DNS, time, certificates, a firewall, or an expired password. If you can draw the communication map from memory, you can turn a vague symptom ("VCF Operations shows no data for the dev domain") into a short list of links to test. The exam tests this indirectly through "which component is responsible…" and "what is the impact of…" scenarios.
+VCF (VMware Cloud Foundation) is a distributed system of a dozen appliances that constantly call each other's APIs. Most real outages are not "component X crashed" but "component X can no longer talk to Y" — because of DNS (Domain Name System), time, certificates, a firewall, or an expired password. If you can draw the communication map from memory, you can turn a vague symptom ("VCF Operations shows no data for the dev domain") into a short list of links to test. The exam tests this indirectly through "which component is responsible…" and "what is the impact of…" scenarios.
 
 ## Learning Objectives
 
 - Describe the main communication flows: monitoring, fleet management, core orchestration, vSphere management, NSX management/control/data planes, identity, logging, external depot/licensing.
-- Name the shared dependencies of every flow (DNS, NTP, certificates, credentials, network).
+- Name the shared dependencies of every flow (DNS, NTP (Network Time Protocol), certificates, credentials, network).
 - Recall the verified ports covered in this lesson and know where to look up the rest.
 - Use the map to scope a failure to one link.
 
@@ -54,11 +54,11 @@ Think of five layers of conversation:
 
 | Layer | Who talks | Why |
 |---|---|---|
-| Consumption | Users/API clients → VCF Operations, VCF Automation, vCenter, NSX | Operate and consume |
+| Consumption | Users/API (Application Programming Interface) clients → VCF Operations, VCF Automation, vCenter, NSX | Operate and consume |
 | Fleet management | VCF Operations → fleet management appliance → management components | Deploy/upgrade/configure fleet components |
-| Instance orchestration | VCF Operations → SDDC Manager → vCenter, NSX Manager, ESX | Domains, core lifecycle, certificates, passwords |
+| Instance orchestration | VCF Operations → SDDC (Software-Defined Data Center) Manager → vCenter, NSX Manager, ESX | Domains, core lifecycle, certificates, passwords |
 | Element management | vCenter ↔ ESX; NSX Manager ↔ vCenter and transport nodes | Day-to-day management of compute and network |
-| Data plane | ESX ↔ ESX (vMotion, vSAN, Geneve TEP), edges ↔ physical routers | Workload traffic, storage traffic |
+| Data plane | ESX ↔ ESX (vMotion, vSAN, Geneve TEP (Tunnel Endpoint)), edges ↔ physical routers | Workload traffic, storage traffic |
 
 Underneath **every** layer: DNS (forward and reverse), NTP, trusted certificates, valid service-account passwords, and IP reachability on the management network.
 
@@ -76,7 +76,7 @@ Use the steps in the diagram to walk each flow one at a time.
 |---|---|---|---|
 | VCF Operations collector | vCenter, NSX Manager, SDDC Manager of its instance | Collect metrics, properties, inventory locally in the instance | HTTPS APIs |
 | VCF Operations collector | VCF Operations | Forward collected data to the analytics cluster | HTTPS |
-| VCF Operations | SDDC Manager (per instance) | Fleet management of core components: domains, LCM, certs, passwords | HTTPS REST (integration account "VMware Cloud Foundation") |
+| VCF Operations | SDDC Manager (per instance) | Fleet management of core components: domains, LCM (Lifecycle Management), certs, passwords | HTTPS REST (integration account "VMware Cloud Foundation") |
 | VCF Operations | Fleet management appliance | Lifecycle/deployment of management components | HTTPS |
 | Fleet management appliance | VCF Operations, VCF Automation, Identity Broker, logs, networks | Deploy, upgrade, configure | HTTPS |
 | SDDC Manager | vCenter, NSX Manager, ESX hosts | Deploy domains, upgrade, commission hosts, rotate passwords, replace certificates | HTTPS APIs |
@@ -87,13 +87,13 @@ Use the steps in the diagram to walk each flow one at a time.
 | ESX transport nodes / edges | NSX Manager | **Management channel** (MPA / appliance proxy) | **TCP 1234** |
 | ESX transport nodes / edges | NSX Manager (CCP) | **Control channel** (nsx-proxy → controller) | **TCP 1235** |
 | TEP ↔ TEP (hosts, edges) | — | Overlay data plane | **Geneve UDP 6081** |
-| NSX Edge (Tier-0) | Physical routers | North-south routing (BGP or static) | Uplink VLANs |
-| vCenter, NSX, VCF Ops, VCF Automation… | VCF Identity Broker | Authentication for VCF SSO | HTTPS (OIDC/SAML flows) |
+| NSX Edge (Tier-0) | Physical routers | North-south routing (BGP (Border Gateway Protocol) or static) | Uplink VLANs |
+| vCenter, NSX, VCF Ops, VCF Automation… | VCF Identity Broker | Authentication for VCF SSO (Single Sign-On) | HTTPS (OIDC/SAML flows) |
 | VCF Identity Broker | External IdP | AD/OpenLDAP directory or OIDC/SAML federation | Per IdP |
 | Components | VCF Operations for logs | Log ingestion | CFAPI **9000** (clear) / **9543** (SSL); syslog **514** UDP/TCP, **1514** UDP, **6514** TLS |
 | VCF Operations | VCF Business Services console | License reporting in connected mode | Outbound internet |
 | VCF Automation | vCenter / NSX / Supervisor of its regions | Provision VMs, networks, namespaces | HTTPS APIs |
-| Everything | DNS | Forward and reverse resolution of every FQDN | DNS (53) |
+| Everything | DNS | Forward and reverse resolution of every FQDN (Fully Qualified Domain Name) | DNS (53) |
 | Everything | NTP | Time sync (tokens, certificates, logs) | NTP (UDP 123) |
 
 For any other port, use the official Ports and Protocols tool (ports.broadcom.com) for your exact release — do not guess.
@@ -148,6 +148,8 @@ In VCF 5.x the hub was SDDC Manager (UI and API) and Aria Operations was an opti
 
 ## Configuration
 
+This section explains the configuration decisions, ownership boundaries, dependencies and evidence an administrator must understand. The executable click path, field values, validation and rollback belong to the linked practical guide.
+
 What to have in place so every flow works:
 
 | Requirement | Applies to |
@@ -156,11 +158,13 @@ What to have in place so every flow works:
 | One NTP source for all components and hosts | All |
 | Management network reachability (VM management network) | Fleet and instance components, collectors |
 | Firewall rules per the Ports and Protocols tool | Between networks/sites |
-| Trusted CA chain imported where needed | All HTTPS flows |
+| Trusted CA (Certificate Authority) chain imported where needed | All HTTPS flows |
 | Service-account passwords managed only through fleet management | SDDC Manager/VCF Ops → components |
 | MTU ≥ 1600 (overlay) end to end where TEPs talk | Data plane |
 
 ## CLI / API
+
+CLI (Command-Line Interface) and API (Application Programming Interface) examples expose the same operational objects for inspection or automation.
 
 Verify links from the shell (examples):
 
@@ -210,9 +214,6 @@ Incident to practice:
 
 After a weekend firewall change, VCF Operations shows the Cluj instance as healthy but with metrics frozen since Saturday, and a password rotation in Cluj fails. vCenter in Cluj works fine locally. The map points to a link, not a component: the collector in Cluj (and VCF Operations → SDDC Manager Cluj) are crossing the new firewall. Opening HTTPS between the sites' management networks restores both flows.
 
-## Lab
-
-::lab[lab-explore-vcf-fleet]
 
 ## Exam Focus
 
@@ -244,4 +245,4 @@ After a weekend firewall change, VCF Operations shows the Cluj instance as healt
 
 ## Next Topic
 
-Finish the phase with [Deployment Models](lesson:vcf-deployment-models): simple vs HA components, fleet designs, cluster models and stretched clusters.
+Finish the phase with [Deployment Models](lesson:vcf-deployment-models): simple vs HA (High Availability) components, fleet designs, cluster models and stretched clusters.

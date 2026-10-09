@@ -44,10 +44,10 @@ should the administrator do next?"
 
 ## Learning Objectives
 
-- Classify a lifecycle failure by engine (fleet management or SDDC Manager) and by cause (environment, binaries, host
+- Classify a lifecycle failure by engine (fleet management or SDDC (Software-Defined Data Center) Manager) and by cause (environment, binaries, host
   state, known defect).
 - Find and read the right log for a failed task.
-- Explain why VCF upgrades are retried rather than rolled back, and what "rollback" means per component.
+- Explain why VCF (VMware Cloud Foundation) upgrades are retried rather than rolled back, and what "rollback" means per component.
 - Prepare the backups and evidence that make recovery possible.
 - Handle precheck failures before they become upgrade failures.
 
@@ -78,7 +78,7 @@ knowledge of where logs are.
 
 | Engine | Upgrades | Key log |
 |---|---|---|
-| **SDDC Manager** | SDDC Manager, NSX, vCenter, ESX (via vLCM) | `/var/log/vmware/vcf/lcm/lcm-debug.log` |
+| **SDDC Manager** | SDDC Manager, NSX, vCenter, ESX (via vLCM (vSphere Lifecycle Manager)) | `/var/log/vmware/vcf/lcm/lcm-debug.log` |
 | **Fleet management** | VCF Operations, Automation, logs, networks, Identity Broker | `/var/log/vrlcm/vmware_vrlcm.log` |
 
 Then go one level deeper to the target component's own logs (vCenter upgrade logs, NSX upgrade coordinator, host
@@ -93,7 +93,7 @@ logs, VCF Operations logs).
 | Piece | Why it matters during failure |
 |---|---|
 | **Task list in VCF Operations** | First evidence: stage name, error text, time |
-| **SDDC Manager LCM service** | Holds the workflow state for core components; retry resumes from it |
+| **SDDC Manager LCM (Lifecycle Management) service** | Holds the workflow state for core components; retry resumes from it |
 | **Fleet management** | Holds the workflow state for management components |
 | **Bundle repository on SDDC Manager** | Stale or partial bundle data can break a stage (KB 450414) |
 | **Backups** | SDDC Manager, vCenter and NSX file-based backups are your recovery point |
@@ -108,7 +108,7 @@ A repeatable sequence for any failed lifecycle task:
 3. **Read the engine log** around the failure time. Find the first error, not the last.
 4. **Read the target component's log** if the engine says the target failed.
 5. **Classify** the cause:
-   - Environment: DNS, NTP, certificates, passwords, disk space, host connectivity, locks.
+   - Environment: DNS (Domain Name System), NTP (Network Time Protocol), certificates, passwords, disk space, host connectivity, locks.
    - Binaries: incomplete or stale bundle, depot issue, wrong version.
    - Host/cluster state: disconnected host, maintenance mode blocked, image incompatible.
    - Known defect: search the Broadcom KB with the exact error string.
@@ -128,7 +128,7 @@ A repeatable sequence for any failed lifecycle task:
 | 435597 | VCF Operations 9.0.1 to 9.0.2 fails with `LCMVROPSYSTEM25008` | Orphaned directory left by an earlier failed attempt | Clean up per KB, delete failed task, retry |
 | 425321 | VCF Automation 9.0.0 to 9.0.1 times out after 2 h; retry does not help | `/var/log/messages` grew to tens of GB on VCFA nodes | Truncate the log per KB, retry |
 | 427385 | vCenter upgrade post-task cannot delete original VM | Host running the vCenter VMs not responding | Fix host, then manually rename/delete per KB |
-| 441948 | "Identity broker is unhealthy" during SSO configuration | Identity Broker and fleet management on different patch levels | Patch the broker to match |
+| 441948 | "Identity broker is unhealthy" during SSO (Single Sign-On) configuration | Identity Broker and fleet management on different patch levels | Patch the broker to match |
 
 Notice the pattern: **the error message points at the symptom, the log points at the cause, and the cause is usually
 environmental**. Note also the KB 425321 lesson: if retrying the same thing fails the same way, stop retrying and find
@@ -165,6 +165,8 @@ you met in earlier phases:
 
 ## Configuration
 
+This section explains the configuration decisions, ownership boundaries, dependencies and evidence an administrator must understand. The executable click path, field values, validation and rollback belong to the linked practical guide.
+
 Configure backups before you ever upgrade:
 
 | Component | Where backups are configured | What to verify |
@@ -175,6 +177,8 @@ Configure backups before you ever upgrade:
 | VCF Operations and others | Per product / fleet management documentation | Check the docs for your version |
 
 ## CLI / API
+
+CLI (Command-Line Interface) and API (Application Programming Interface) examples expose the same operational objects for inspection or automation.
 
 Read-only commands you will use during a failure (SDDC Manager, logged in as `vcf`, then `su -` to root):
 
@@ -224,14 +228,6 @@ fetching versions for hosts in one cluster. In vCenter, one host was Not Respond
 put the host in maintenance mode, removed it from the cluster, retried, and the vCenter upgrade completed. The host was
 repaired and re-added after the ESX step. Total delay: 40 minutes, no restore.
 
-## Lab
-
-::lab[lab-lifecycle-upgrade-planning]
-
-The lab's final step asks you to write the recovery section of your runbook: logs, backups, retry criteria and the
-escalation trigger. Then practise the method in the incident:
-
-::incident[inc-lcm-precheck-failure]
 
 ## Exam Focus
 
@@ -266,5 +262,5 @@ escalation trigger. Then practise the method in the incident:
 
 ## Next Topic
 
-Lifecycle is done. Phase 12 starts with [VCF identity, SSO and RBAC](lesson:vcf-identity-sso-rbac); many lifecycle
+Lifecycle is done. Phase 12 starts with [VCF identity, SSO and RBAC (Role-Based Access Control)](lesson:vcf-identity-sso-rbac); many lifecycle
 failures you just met are really identity, certificate or password problems.

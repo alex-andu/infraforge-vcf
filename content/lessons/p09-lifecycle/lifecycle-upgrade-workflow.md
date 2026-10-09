@@ -41,7 +41,7 @@ talk to. Skip prechecks and you discover a disconnected host halfway through a v
 and your colleague's host commissioning fails mysteriously during your maintenance window.
 
 The exam loves ordering questions ("put these steps in sequence") and "what should you do first" scenarios. This
-lesson gives you the sequence, the reason behind each position, and the planner workflow in VCF Operations.
+lesson gives you the sequence, the reason behind each position, and the planner workflow in VCF (VMware Cloud Foundation) Operations.
 
 ## Learning Objectives
 
@@ -50,7 +50,7 @@ lesson gives you the sequence, the reason behind each position, and the planner 
 - Walk through the VCF Operations planner: Precheck, Plan Upgrade, Customize Upgrade (flexible BOM), Validate
   Selection, review sequence, Update Now or Schedule Update.
 - Explain SYSTEM, DOMAIN and CLUSTER resource locks and predict which day-N operations they block.
-- Explain how SDDC Manager upgrades vCenter with a new appliance and a switchover.
+- Explain how SDDC (Software-Defined Data Center) Manager upgrades vCenter with a new appliance and a switchover.
 
 ## Concept
 
@@ -66,7 +66,7 @@ TechDocs gives the order for a maintenance update (for example 9.0.0.0 to 9.0.1.
 | 4 | **SDDC Manager** (per instance) | The engine for core components; a new SDDC Manager knows how to upgrade the new NSX/vCenter/ESX. |
 | 5 | **NSX** | Network virtualisation managers and edges come before vCenter in the core sequence. |
 | 6 | **vCenter** | Must be at least the version of the hosts it manages, so it precedes ESX. |
-| 7 | **ESX hosts** | Remediated by vLCM against the cluster image. |
+| 7 | **ESX hosts** | Remediated by vLCM (vSphere Lifecycle Manager) against the cluster image. |
 | 8 | **vSAN** | On-disk format and vSAN services last, after every host runs the new build. |
 
 Steps 4-8 run for the **management domain first**, then for **each workload domain** in the same order. There is one
@@ -190,6 +190,8 @@ that sharing.
 
 ## Configuration
 
+This section explains the configuration decisions, ownership boundaries, dependencies and evidence an administrator must understand. The executable click path, field values, validation and rollback belong to the linked practical guide.
+
 | Planner action | Where | Notes |
 |---|---|---|
 | Precheck | Domain > Updates > Precheck | Fix all errors; re-run before the window |
@@ -203,11 +205,13 @@ Checklist before **Update Now**:
 1. Recent successful backups of SDDC Manager, vCenter and NSX (configured file-based backups).
 2. Precheck green (or warnings understood and accepted).
 3. No other workflows running; no failed workflows left unresolved.
-4. DRS fully automated and enough capacity to evacuate one host at a time (vSAN data migration policy considered).
+4. DRS (Distributed Resource Scheduler) fully automated and enough capacity to evacuate one host at a time (vSAN data migration policy considered).
 5. Interoperability verified for anything outside the BOM (backup, plugins, firmware).
 6. Change window agreed; stakeholders know which operations are locked.
 
 ## CLI / API
+
+CLI (Command-Line Interface) and API (Application Programming Interface) examples expose the same operational objects for inspection or automation.
 
 Everything in the planner is backed by the SDDC Manager public API (for example update and precheck resources) and
 by the VCF Operations API. You will practise API access in [VCF APIs and PowerCLI](lesson:vcf-apis-powercli). During
@@ -246,9 +250,6 @@ SDDC Manager, NSX, vCenter Tuesday night, ESX Wednesday and Thursday, vSAN Frida
 sharing NSX planned together. Certificate renewals and the quarterly password rotation were moved to week 5 because of
 resource locks.
 
-## Lab
-
-::lab[lab-lifecycle-upgrade-planning]
 
 ## Exam Focus
 

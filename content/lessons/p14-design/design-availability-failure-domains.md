@@ -35,7 +35,7 @@ sources:
 
 ## Why This Matters
 
-"How available must it be?" is the first question of every VCF design, and the exam tests it directly (objective
+"How available must it be?" is the first question of every VCF (VMware Cloud Foundation) design, and the exam tests it directly (objective
 4.1: "identify the appropriate VMware Cloud Foundation deployment models"). The answer is not "as available as
 possible": every extra failure domain costs hosts, network, licences and operational complexity. A good designer
 maps each **failure the business must survive** to the **cheapest construct that survives it**.
@@ -54,7 +54,7 @@ maps each **failure the business must survive** to the **cheapest construct that
 
 | Term | Meaning | VCF construct |
 |---|---|---|
-| High availability (HA) | Keep running (or restart automatically) after a local failure | vSphere HA, vSAN FTT, fault domains, stretched clusters |
+| High availability (HA (High Availability)) | Keep running (or restart automatically) after a local failure | vSphere HA, vSAN FTT, fault domains, stretched clusters |
 | Disaster recovery (DR) | Recover service at another site after a site/region loss | Second VCF instance + replication or backup/restore |
 | [[rto]] (Recovery Time Objective) | How long recovery may take | Minutes (HA/stretched) vs hours (DR) |
 | [[rpo]] (Recovery Point Objective) | How much data may be lost | ~0 with synchronous stretched storage, > 0 with asynchronous replication or backup |
@@ -110,7 +110,7 @@ Availability choices for the management components themselves:
 | NSX Manager | Simple (1 node + VIP) · HA (3 nodes + VIP, anti-affinity) · HA with external load balancer | Simple = smallest footprint, management plane impacted during upgrades; HA needs more hosts |
 | VCF Operations | Simple (1 node) · HA (3-node cluster, external load balancer) · Continuous availability (nodes across two AZs, ≤10 ms) | Footprint vs monitoring/fleet-management continuity |
 | VCF Identity Broker | Embedded in vCenter · 3-node appliance | Appliance survives host failure without relying only on vSphere HA |
-| SSO scope | Fleet-wide · cross-instance · per-instance | Wider scope = simpler, but bigger blast radius |
+| SSO (Single Sign-On) scope | Fleet-wide · cross-instance · per-instance | Wider scope = simpler, but bigger blast radius |
 | NSX Edge cluster | Host-, rack- or AZ-fault-tolerant | Edges carry north-south traffic; their placement must match the availability goal |
 
 :::note
@@ -141,7 +141,7 @@ A design method that works in practice and in the exam:
 | Inter-AZ latency (VCF AZ definition) | < 10 ms RTT, high bandwidth, stretched layer 2 |
 | vSAN data-site latency | < 5 ms RTT, ≥ 10 Gbps (vSAN network design guide) |
 | Witness | Third site; VCF design table lists 150 ms maximum to the witness; vSAN guidance varies with hosts per site (e.g. < 200 ms up to 10 hosts per site) — check your version |
-| VLANs | ESX management, vMotion, vSAN port groups for AZ2; VM management VLAN available in both AZs |
+| VLANs | ESX management, vMotion, vSAN port groups for AZ2; VM management VLAN (Virtual Local Area Network) available in both AZs |
 | Gateway | First hop gateway highly available across AZs on the same IP (VCF-NET-RCMD-GTW-002) |
 | Capacity | Each AZ must be able to run the protected workloads alone (typically 50% utilisation per AZ) |
 
@@ -149,7 +149,7 @@ A design method that works in practice and in the exam:
 
 Both the site HA and DR models list "network portability – IP addresses stretched between zones" as a design
 attribute: seamless failover, at the cost of operational complexity and latency requirements. Without stretched or
-re-routable networks, VMs restarted elsewhere need new IPs and DNS updates.
+re-routable networks, VMs restarted elsewhere need new IPs and DNS (Domain Name System) updates.
 
 ### HA is not DR
 
@@ -167,6 +167,8 @@ SSO scope ("single point of failure for entire fleet authentication") and for sh
 
 ## Configuration
 
+This section explains the configuration decisions, ownership boundaries, dependencies and evidence an administrator must understand. The executable click path, field values, validation and rollback belong to the linked practical guide.
+
 Design decisions are recorded, not clicked. A design decision record:
 
 ```yaml
@@ -179,9 +181,11 @@ implications: ["Witness at third site", "< 5 ms RTT between halls", "AZ2 VLANs +
 
 ## CLI / API
 
+CLI (Command-Line Interface) and API (Application Programming Interface) examples expose the same operational objects for inspection or automation.
+
 Design work has no single CLI. You validate design assumptions with tools you already know: `vmkping` for latency and
 MTU between AZs, vSAN health checks for stretched cluster and witness status, and the VCF Operations dashboards for
-capacity. The deployment itself is driven by the VCF Installer and SDDC Manager workflows covered in the deployment
+capacity. The deployment itself is driven by the VCF Installer and SDDC (Software-Defined Data Center) Manager workflows covered in the deployment
 phase.
 
 ## Failure Scenarios
@@ -210,13 +214,6 @@ workload domain, a second VCF instance in another region with asynchronous repli
 the secondary site, VCF Automation via backup/restore. Non-critical workloads stay on single-AZ clusters to save
 cost.
 
-## Lab
-
-Work through the availability design scenario (`scn-availability-design`) in the Scenarios section, then record
-your decisions in the planning workbook lab. Your single Proxmox server is one failure domain by definition: you can
-simulate host failures with nested ESX, but not rack or AZ failures with real independence.
-
-::lab[lab-vcf-planning-workbook]
 
 ## Exam Focus
 

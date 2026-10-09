@@ -125,7 +125,7 @@ For an approval policy, select the catalog item/resource criteria, designate app
 **Inbox**. A Day 2 Action policy selects the user group and allowed or denied actions on deployed resources. A lease
 policy sets the maximum deployment lifetime; expiration destroys the deployment and reclaims its resources. An IaaS
 Resource policy constrains VM or Kubernetes Cluster service requests and uses CEL when the built-in templates are not
-sufficient. When several policies match, VCF Automation evaluates, ranks and, where supported, merges them into the
+sufficient. When several policies match, VCF (VMware Cloud Foundation) Automation evaluates, ranks and, where supported, merges them into the
 effective policy shown in **Policy Assignments**.
 
 ### Extensibility
@@ -208,7 +208,7 @@ library into each vCenter, so physical consumption can be higher than the nomina
    owning project, optionally share it with other projects, optionally enable cloud-init for a compatible image, and
    select **Publish**. ISO images cannot be published directly to the catalog.
 
-The library name and description can be changed after creation only through the VCF Automation API. If an
+The library name and description can be changed after creation only through the VCF Automation API (Application Programming Interface). If an
 administrator adds an item directly to the backing published vCenter library, refresh the VCF Automation library to
 reconcile it.
 
@@ -247,7 +247,7 @@ The three address scopes solve different problems:
 
 | Address scope | Who supplies it | Reachability and use |
 |---|---|---|
-| **Private VPC CIDR** | VPC administrator | Local to one VPC; may overlap another VPC; requires NAT to reach outside that VPC |
+| **Private VPC CIDR** | VPC administrator | Local to one VPC; may overlap another VPC; requires NAT (Network Address Translation) to reach outside that VPC |
 | **Private TGW IPv4 block** | Organization administrator | Advertised inside the organization and its transit gateway; provides direct reachability between VPCs in that organization |
 | **External IPv4 block** | Provider administrator | Allocated from provider IP space; supports external connectivity and outbound SNAT for private workloads |
 
@@ -280,6 +280,8 @@ the attached VPCs and plan a validation window before changing its blocks.
 
 ## Configuration
 
+This section explains the configuration decisions, ownership boundaries, dependencies and evidence an administrator must understand. The executable click path, field values, validation and rollback belong to the linked practical guide.
+
 | Setting | Value |
 |---|---|
 | Approval policy | Scope project `payments`; criteria: namespace class not `small-app`; approvers: `payments-leads` group |
@@ -296,6 +298,8 @@ Exact event topic names are listed in TechDocs ("Event Topics Provided with VCF 
 your version.
 
 ## CLI / API
+
+CLI (Command-Line Interface) and API (Application Programming Interface) examples expose the same operational objects for inspection or automation.
 
 Org-level objects (projects, namespaces, policies, catalog) are exposed through the VCF Automation APIs and can be
 managed with Terraform. Supervisor namespaces created by VCF Automation can also be inspected from vCenter (Workload
@@ -339,9 +343,6 @@ subscription that posts every new deployment to the team chat (non-blocking). A 
 the IPAM workflow before the VM is customized. Within a month the quota usage drops by a third and every deployment has
 an owner and an IP record.
 
-## Lab
-
-::lab[lab-vcfa-organization-setup]
 
 ## Exam Focus
 

@@ -76,7 +76,7 @@ TechDocs definitions to know by heart:
   entities, while maintaining a secure boundary from other organizations."
 - Region quota: "defines the compute and storage quota that an organization gets against a given region. Region quotas
   are applicable only to organizations for all applications."
-- Provider gateway: "leverages VCF networking tier-0 or tier-0 VRF gateways, and associates them with IP addresses from
+- Provider gateway: "leverages VCF (VMware Cloud Foundation) networking tier-0 or tier-0 VRF gateways, and associates them with IP addresses from
   IP spaces that can be advertised from those gateways."
 - Provider content libraries "are read-only to the users of the organizations."
 
@@ -122,7 +122,7 @@ Provider setup sequence (matches William Lam's VCF 9.0 lab walkthrough):
 1. Log in to VCF Automation as `admin` in organization **system** (Provider Management portal).
 2. **Create a region**: select the Supervisor(s) and the storage classes.
 3. **Create an IP space** with an external IP block (for example `31.32.0.0/16` in Lam's lab) for VPC subnets that
-   need external connectivity. If you do not use BGP, add a **static route on the physical router** for that block.
+   need external connectivity. If you do not use BGP (Border Gateway Protocol), add a **static route on the physical router** for that block.
 4. **Create a provider gateway** on the Tier-0 (or VRF) gateway, associated with the IP space.
 5. **Sync edge clusters** so VCF Automation sees the NSX edge cluster.
 6. **Create the organization** (All Apps), set its **region quota** (CPU, memory, storage, VM classes) and its first user.
@@ -191,7 +191,7 @@ Enabling the Supervisor itself is a VI-admin task in vCenter (see the Supervisor
 VM Apps organizations do not need a Supervisor or region quota. They use vSphere clusters directly and a VM-centric
 experience (cloud accounts are configured inside the org, as Broadcom KB articles about "cloud account on VCF Automation
 for VM Apps org" show). TechDocs describes the model as "one organization using vSphere cluster capabilities"; creating
-additional VM Apps organizations is described in Broadcom KB 419781 via the REST API. Check the docs for your exact
+additional VM Apps organizations is described in Broadcom KB 419781 via the REST API (Application Programming Interface). Check the docs for your exact
 version before relying on limits.
 :::
 
@@ -224,6 +224,8 @@ with the VCF Automation abstraction; it is not the same as an ordinary subscribe
 
 ## Configuration
 
+This section explains the configuration decisions, ownership boundaries, dependencies and evidence an administrator must understand. The executable click path, field values, validation and rollback belong to the linked practical guide.
+
 | Object | Example (lab) |
 |---|---|
 | Region | `region-lab` = Supervisor on `wld01` cluster, storage class `vsan-default` |
@@ -236,6 +238,8 @@ with the VCF Automation abstraction; it is not the same as an ordinary subscribe
 | Provider content library | `golden-images` (Ubuntu, Photon OVA) shared read-only |
 
 ## CLI / API
+
+CLI (Command-Line Interface) and API (Application Programming Interface) examples expose the same operational objects for inspection or automation.
 
 Provider configuration can be automated with the VCF Automation APIs and Terraform (TechDocs lists "Terraform
 configurations in VCF Automation provider management"). Before scripting, explore the objects in the UI so you know the
@@ -280,9 +284,6 @@ organizations with quotas sized to their budgets and a shared read-only "corpora
 unit is acquired by another company, the provider **deactivates** its organization, which logs out all its users
 immediately while the data stays intact for the handover.
 
-## Lab
-
-::lab[lab-vcfa-organization-setup]
 
 ## Exam Focus
 
