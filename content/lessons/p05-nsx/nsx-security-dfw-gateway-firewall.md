@@ -6,7 +6,7 @@ module: m05-nsx-security
 version: vcf9
 minutes: 40
 difficulty: intermediate
-summary: How the NSX distributed firewall enforces policy at every vNIC for east-west traffic, how the gateway firewall protects north-south on Edges, how rules, categories, groups and Applied-To work, how NAT behaves on Tier-0/Tier-1 and VPCs, and what vDefend licensing changes in VCF 9.
+summary: How the VMware NSX Distributed Firewall (DFW) enforces east-west policy at workload interfaces, while gateway firewall and network address translation protect centralized north-south paths.
 topics: [nsx-security, nsx-routing]
 objectives: ["2.4"]
 keyTerms: [dfw, gateway-firewall, nat, vdefend, sr, nsx-vpc]
@@ -90,6 +90,19 @@ gateway firewall on the Tier-0 SR (and NAT, if configured) **and** the DFW at th
 | Gateway firewall policy | Rules attached to a gateway (Tier-0/Tier-1) and optionally its interfaces |
 | NAT rule | Translation on a Tier-0/Tier-1 SR (or VPC / transit gateway) |
 
+
+### Component responsibilities and limits
+
+**Distributed Firewall (DFW).** DFW enforces policy at the workload vNIC on each prepared ESX host. It scales east-west control without a central hairpin and follows dynamic group membership. It cannot inspect traffic on unprepared hosts or replace gateway policy for traffic that must traverse an Edge.
+
+**Gateway firewall.** Gateway firewall rules run on Tier-0 or Tier-1 service routers at Edges. They protect centralized north-south or service paths. They do not automatically see same-segment or distributed east-west traffic.
+
+**Group.** A group defines sources and destinations from tags, names, addresses or other membership criteria. Dynamic groups reduce manual address lists, but inaccurate tags or broad criteria create equally dynamic policy mistakes.
+
+**Applied To.** Applied To controls where a rule is realized and evaluated. Narrow scope can improve efficiency; an incorrect scope can leave intended traffic unenforced.
+
+**Network address translation (NAT).** NAT changes source or destination addressing at the gateway path. It does not grant firewall permission, create routing reachability or replace DNS design.
+
 ## How It Works
 
 ### DFW rule lifecycle
@@ -155,17 +168,16 @@ Enterprise Plus). In VCF 9, firewalling is the vDefend add-on and its documentat
 
 ## Configuration
 
-DFW (NSX Manager → Security → Distributed Firewall):
+| Security decision | Management surface | Evidence |
+|---|---|---|
+| East-west or north-south enforcement? | DFW versus gateway firewall policy | Packet path and enforcement point documented |
+| Which identities form the policy boundary? | Groups, tags and inventory criteria | Deterministic membership and owner |
+| Where is the rule realized? | Applied-To and realization status | Intended hosts/interfaces only and successful realization |
+| How are precedence and defaults handled? | Categories, sequence and default rules | Effective order and explicit final behavior |
+| Is NAT required? | Tier-0/Tier-1/VPC NAT policy | Original/translated tuple, routing and separate firewall allowance |
+| Did the rule produce the intended result? | Logs, trace and flow evidence | Allowed and denied test cases without unrelated exposure |
 
-| Category | Policy | Rule | Source | Destination | Service | Action | Applied-To |
-|---|---|---|---|---|---|---|---|
-| Infrastructure | infra-services | dns | any | grp-dns | DNS, DNS-UDP | Allow | DFW |
-| Application | shop | web-to-app | grp-shop-web | grp-shop-app | TCP 8443 | Allow | grp-shop |
-| Application | shop | app-to-db | grp-shop-app | grp-shop-db | TCP 5432 | Allow | grp-shop |
-| Application | shop | shop-deny | grp-shop | grp-shop | any | Drop | grp-shop |
-
-Gateway firewall (Security → Gateway Firewall → choose the gateway): allow `any → web VIP 443`, drop the rest
-inbound. NAT (Networking → NAT → gateway): DNAT `203.0.113.10:443 → 172.16.10.11:443` on a Tier-1 with an SR.
+The separate practical guide owns rule creation and validation. Policy design starts from application flows and keeps routing, NAT and firewall decisions separate.
 
 ## CLI / API
 
@@ -210,12 +222,6 @@ After enabling a "drop any any" default rule in the lab, vCenter loses contact w
 default rule hit infrastructure VMs that weren't in an allow policy. Roll back to allow, build an **Infrastructure**
 policy (DNS, NTP, AD, backup, vCenter↔ESX), verify with Traceflow and DFW statistics, then reapply drop scoped with
 Applied-To to application groups only.
-
-## Lab
-
-Micro-segment a three-tier app in your lab with tags, groups, Applied-To and a scoped drop rule.
-
-::lab[lab-nsx-dfw-microsegmentation]
 
 ## Exam Focus
 

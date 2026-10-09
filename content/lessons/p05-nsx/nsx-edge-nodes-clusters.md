@@ -6,7 +6,7 @@ module: m05-nsx-routing
 version: vcf9
 minutes: 40
 difficulty: intermediate
-summary: What an NSX Edge is, where Edges run in VCF 9, how to size them, how edge clusters provide active/standby and active/active availability, and how VCF 9 deploys them from vCenter.
+summary: How VMware NSX Edge nodes and Edge clusters provide centralized routing and services, high availability, capacity and placement for VMware Cloud Foundation (VCF) 9.
 topics: [nsx-edge, nsx-routing]
 objectives: ["2.4", "4.1"]
 keyTerms: [edge-node, edge-cluster, sr, tier-0, bfd, ecmp]
@@ -109,6 +109,19 @@ peering with the physical routers, ECMP from the hosts' Tier-0 DR).
 | Edge cluster profile | HA/BFD settings for the cluster (default profile available) |
 | Failure domain | Logical grouping of Edges (e.g. per rack) so active/standby SRs are placed in different domains |
 
+
+### Component responsibilities and limits
+
+**Edge node.** An Edge node is a transport node optimized for centralized network services. It runs service routers and connects overlay traffic to external VLANs. It cannot replace distributed host routing or firewalling and must have working management, tunnel-endpoint and uplink networks.
+
+**Edge cluster.** The cluster provides a placement and availability boundary for Edge services. It can restart or relocate service-router roles according to service mode, but it does not combine node capacity into one unlimited appliance.
+
+**Service router.** A service router hosts stateful or centralized functions such as north-south routing, network address translation and gateway firewall. It depends on an assigned Edge cluster. Purely distributed routing can continue without traversing it.
+
+**Edge uplink.** Uplinks connect service routers to the physical network and external peers. They require matching VLAN, maximum transmission unit, gateway and routing configuration outside NSX.
+
+**VCF placement workflow.** VCF can deploy supported Edge form factors and associate them with workload-domain networking. It cannot infer business throughput, external routing policy or physical failure-domain requirements.
+
 ## How It Works
 
 The VCF 9 vCenter workflow (Networks > Network Connectivity > **Configure Network Connectivity** > Gateway type
@@ -158,18 +171,15 @@ edge clusters after an upgrade.
 
 ## Configuration
 
-Minimal production-like inputs:
+| Design decision | Management surface | Evidence |
+|---|---|---|
+| Which services need an Edge? | Gateway/service design | Centralized services and traffic direction documented |
+| How much capacity is required? | Edge sizing and performance design | Throughput, sessions, services and growth assumption |
+| How is availability provided? | Edge cluster and gateway high-availability mode | Node count, active roles and tested failover |
+| Where do Edge interfaces connect? | Transport zones, segments and uplinks | Management, TEP and external VLAN reachability |
+| Are physical dependencies redundant? | Fabric, gateway and routing views | Independent paths, healthy peers and consistent MTU |
 
-| Input | Example |
-|---|---|
-| Edge cluster name | `ec-wld01` |
-| Form factor | Medium (Large if L7 LB/TLS) |
-| Edge nodes | `edge-01.lab.local`, `edge-02.lab.local` |
-| Management | Static IPs on the management VLAN, DNS A+PTR records |
-| Edge TEP VLAN | Same as host TEP VLAN, or a dedicated routed VLAN |
-| Uplink VLANs | 2711 (to ToR-A), 2712 (to ToR-B) |
-| Tier-0 HA mode | Active/Standby if Supervisor/VCF Automation; Active/Active for ECMP throughput |
-| Routing | BGP, local AS 65001, peers 10.27.11.1 / 10.27.12.1 AS 65000 |
+The separate practical guide owns exact deployment fields and validation. Treat an Edge cluster as a service-placement boundary whose usable capacity and failure behavior must be designed explicitly.
 
 ## CLI / API
 
@@ -214,12 +224,6 @@ During a maintenance window, the infrastructure team puts host esx-05 into maint
 only edge cluster were on esx-05 and esx-06; DRS had migrated the second Edge to esx-05 earlier. North-south traffic
 for every tenant drops while the Edges migrate. Fix: a DRS **VM/Host anti-affinity rule** for the Edges, host-group
 affinity to the uplink-capable hosts, and failure domains so active and standby are placed apart.
-
-## Lab
-
-Deploy two Edge VMs and an active/standby Tier-0 with BGP to a router VM in your nested lab.
-
-::lab[lab-nsx-tier0-bgp-edge]
 
 ## Exam Focus
 

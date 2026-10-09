@@ -6,7 +6,7 @@ module: m05-nsx-fabric
 version: vcf9
 minutes: 35
 difficulty: foundation
-summary: What NSX is inside VCF 9, how the NSX Manager cluster hosts the management and central control planes, how hosts and edges form the data plane, and what keeps working when managers fail.
+summary: How VMware NSX separates management, control and data planes across NSX Managers, VMware ESX hosts and Edge nodes inside VMware Cloud Foundation (VCF) 9.
 topics: [nsx-architecture]
 objectives: ["2.4", "4.1"]
 keyTerms: [nsx, nsx-manager, ccp, lcp, transport-node, edge-node, tep, geneve]
@@ -122,6 +122,19 @@ There are also NSX Global Manager models for NSX Federation (three-node cluster,
 that requires manual failover). Federation is outside the scope of this exam objective but you should recognise the
 name.
 
+
+### Component responsibilities and limits
+
+**NSX Manager cluster.** The cluster provides the management plane, policy application programming interface (API), user interface and central control services. It stores desired state and computes configuration, but it is not normally in the packet-forwarding path. Existing host and Edge forwarding can continue during a manager outage, while configuration and some control-plane changes cannot.
+
+**Central control plane.** Control services translate policy into runtime state and distribute it to transport nodes. They depend on Manager cluster health and connectivity. They do not forward workload packets or replace the local forwarding state already installed on a host.
+
+**Host data plane.** NSX modules in the ESX kernel switch, route and filter traffic close to virtual network interface cards (vNICs). This distributed placement removes a central hairpin for east-west traffic. It cannot provide north-south services that require an Edge service router.
+
+**Edge data plane.** Edge nodes provide centralized services such as north-south routing, gateway firewall, network address translation and selected load-balancing or virtual private network services. They do not replace distributed host switching and firewalling.
+
+**VCF workflow.** VCF deploys and integrates supported NSX components from declared design inputs. It does not make the physical underlay, Domain Name System, maximum transmission unit or external routing correct; those remain prerequisites.
+
 ## How It Works
 
 What happens when you create a segment and attach a VM:
@@ -176,15 +189,15 @@ workload domain; in VCF 9 the workload-domain workflow is launched from VCF Oper
 
 ## Configuration
 
-Things you configure (or verify) at the architecture level:
-
-| Setting | Where | Note |
+| Design decision | Management surface | Evidence |
 |---|---|---|
-| NSX Manager instance and size | VCF Installer (management domain), VCF Operations workload domain wizard | Pick High-Availability for production |
-| Compute manager | NSX Manager → System → Fabric → Compute Managers | vCenter registered; VCF does this for you |
-| Global fabric MTU | NSX Manager → System → Global Fabric Settings | Default Tunnel Endpoint MTU 1700 |
-| Licensing | NSX Manager → System → Licenses | Core VCF licensing syncs; vDefend add-on keys may need manual entry |
-| Backup | NSX Manager → System → Backup & Restore | Schedule SFTP backups (VCF can configure this) |
+| Is the management cluster healthy? | NSX appliance/system views and VCF inventory | Node health, cluster status, stable virtual IP and backups |
+| Are hosts prepared as intended? | System fabric and transport-node views | Desired profile, successful realization and healthy tunnels |
+| Which services require Edges? | Gateway and Edge-cluster design | Service placement, capacity and high-availability mode |
+| Does realized state match policy? | NSX policy, alarms and transport-node status | Successful realization with no stale or failed objects |
+| Can forwarding survive a manager outage? | Host/Edge runtime state and controlled test | Existing connectivity retained; configuration freeze understood |
+
+The separate practical guides own exact VCF 9.0.2 navigation and deployment actions. Theory keeps the plane boundary: Managers express and calculate policy, while ESX and Edge transport nodes forward traffic.
 
 ## CLI / API
 
@@ -235,12 +248,6 @@ and a scheduled automation job that creates segments fails. **No production traf
 the anti-affinity (DRS) rule so the three managers sit on three different hosts, then confirm `get cluster status`
 reports all groups STABLE. Lesson: the managers are a quorum system — two on one host means one host failure costs
 you the majority.
-
-## Lab
-
-You will see the planes in action when you create your first segment and check its realization on the hosts.
-
-::lab[lab-nsx-segments-tier1]
 
 ## Exam Focus
 

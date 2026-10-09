@@ -6,7 +6,7 @@ module: m05-nsx-fabric
 version: vcf9
 minutes: 35
 difficulty: intermediate
-summary: How ESX hosts and Edges are prepared as NSX transport nodes, what transport zones and transport node profiles control, how TEPs and Geneve tunnels work, and why MTU is the number one overlay failure.
+summary: How VMware NSX prepares ESX hosts and Edges as transport nodes, and how transport zones, profiles, tunnel endpoints (TEPs), Geneve and maximum transmission unit (MTU) create the overlay.
 topics: [nsx-transport, nsx-architecture]
 objectives: ["2.4", "4.1"]
 keyTerms: [transport-zone, transport-node, transport-node-profile, tep, geneve, bfd]
@@ -112,6 +112,19 @@ In VCF, you rarely build these by hand for the management domain or new workload
 workload-domain workflow create the TNP and apply it, asking you for the **Host TEP VLAN** and either a **static IP
 pool or a DHCP server** on that VLAN.
 
+
+### Component responsibilities and limits
+
+**Transport node.** A prepared ESX host or Edge participates in NSX networking through installed data-plane modules, transport zones and uplink configuration. Preparation can realize segments and tunnels; it cannot repair an unreachable underlay.
+
+**Transport zone.** A transport zone defines which transport nodes may realize a set of overlay or VLAN-backed segments. It is a scope boundary, not a security boundary or physical broadcast domain.
+
+**Transport-node profile.** The profile standardizes host-switch, uplink-profile, TEP and transport-zone configuration across cluster hosts. It reduces drift but can also propagate a bad VLAN or MTU assumption consistently.
+
+**TEP.** A tunnel endpoint encapsulates and decapsulates Geneve traffic. It depends on routable IP reachability, an address pool or Dynamic Host Configuration Protocol source, and an end-to-end MTU large enough for encapsulation.
+
+**Uplink profile.** The profile controls teaming, active uplinks, TEP VLAN and transport MTU. It configures the NSX side and does not program external switch trunks.
+
 ## How It Works
 
 Host preparation and tunnel formation:
@@ -183,15 +196,15 @@ underlay path between two TEPs is broken (VLAN, routing, MTU, or a firewall in t
 
 ## Configuration
 
-Typical checklist when adding hosts to the overlay (most of it automated by VCF):
-
-| Step | Where | Check |
+| Design decision | Management surface | Evidence |
 |---|---|---|
-| Plan the Host TEP VLAN, subnet and gateway | Physical network | VLAN trunked to every host uplink, MTU ≥ 1700 (9000 preferred) |
-| Provide TEP addresses | IP pool in VCF workflow, or DHCP on the TEP VLAN | Enough addresses for 2 TEPs per host if multi-TEP |
-| Set VDS MTU | vCenter → VDS → Settings | Matches the fabric |
-| Attach TNP to cluster | NSX → System → Fabric → Hosts → Clusters | All hosts show "Success"/up |
-| Confirm transport zone membership | NSX → Transport Zones | Overlay TZ contains the hosts |
+| Which nodes participate? | Host transport-node profile and Edge transport-node state | All intended nodes prepared and realized |
+| Which segments can appear? | Overlay/VLAN transport-zone membership | Correct zone scope without unintended clusters |
+| How are TEPs addressed? | TEP pool or supported address assignment | Unique addresses, gateway/routing and free capacity |
+| Which physical paths carry tunnels? | Uplink profile, VDS and fabric | Correct VLAN, teaming and redundant uplinks |
+| Is encapsulation supported end to end? | Transport-node status and large-packet tests | Healthy tunnels and do-not-fragment MTU success |
+
+The separate practical guide owns preparation and packet tests. Theory should distinguish a healthy NSX configuration from the underlay evidence required to make its tunnels work.
 
 ## CLI / API
 
@@ -241,13 +254,6 @@ successfully, but VMs vMotioned to the new hosts lose connectivity for large tra
 `vmkping ++netstack=vxlan -d -s 1572` fails from new hosts to old ones but works between the new hosts. The new
 rack's leaf switches were left at MTU 1500 on the uplinks to the spine. Raising the MTU fixes it — no NSX change
 was needed.
-
-## Lab
-
-Your nested lab must carry TEP traffic through Proxmox bridges: set MTU 9000 (or at least 1700) on the Proxmox
-bridge/VLAN interfaces and the nested ESX VDS, then verify with vmkping.
-
-::lab[lab-nsx-segments-tier1]
 
 ## Exam Focus
 

@@ -6,7 +6,7 @@ module: m05-nsx-fabric
 version: vcf9
 minutes: 40
 difficulty: intermediate
-summary: Overlay versus VLAN-backed segments, how a segment appears in vCenter, and exactly what happens to a packet between two VMs on the same host, on different hosts, and on different segments.
+summary: How VMware NSX overlay and VLAN-backed segments provide layer 2 connectivity, how segments appear in VMware vCenter, and how local, tunneled and routed packet paths differ.
 topics: [nsx-segments, nsx-transport]
 objectives: ["2.4"]
 keyTerms: [segment, overlay-segment, vlan-segment, geneve, tep, dr]
@@ -89,6 +89,19 @@ show the three cases you must know: same segment same host, same segment differe
 | Distributed router ([[dr]]) | Instance of every connected gateway present in every host kernel; routes between segments locally |
 | CCP | Distributes MAC/IP-to-TEP tables and ARP information to hosts |
 
+
+### Component responsibilities and limits
+
+**Segment.** A segment is the logical layer 2 network to which workload interfaces connect. Its backing determines whether traffic uses Geneve overlay or an external VLAN. A segment does not provide routing unless connected to a gateway.
+
+**Overlay segment.** Overlay connectivity is realized on transport nodes and carried between TEPs through Geneve. It can span routed underlay networks without stretching the workload VLAN, but depends on healthy tunnels and sufficient MTU.
+
+**VLAN-backed segment.** A VLAN segment connects NSX ports to a physical VLAN through compatible transport nodes. It is useful for appliance uplinks and existing networks, but inherits the physical VLAN's scope and availability.
+
+**Local switching.** Two VMs on the same host and segment can exchange frames in the ESX data plane without using a TEP or physical switch. Cross-host traffic uses TEPs; inter-segment traffic uses distributed or service routing.
+
+**Addressing and attachment.** Segment connectivity still depends on correct guest addressing, gateway and security policy. Creating a segment does not supply Dynamic Host Configuration Protocol unless that service is configured.
+
 ## How It Works
 
 ### Case 1 — same segment, same host
@@ -157,24 +170,15 @@ Under the covers a VPC subnet is still an overlay segment connected to the VPC g
 
 ## Configuration
 
-Create an overlay segment connected to a Tier-1 (NSX Manager → Networking → Segments → Add Segment):
+| Design decision | Management surface | Evidence |
+|---|---|---|
+| Overlay or VLAN backing? | Segment and transport-zone design | Use case, scope and physical dependency documented |
+| Which gateway owns the subnet? | Segment connectivity | Connected gateway, subnet and gateway address |
+| Where may the segment realize? | Transport-zone membership | Required hosts/Edges realized without excess scope |
+| Are workloads attached correctly? | NSX/vCenter inventory | vNIC connection, address and expected logical port |
+| Does each packet path work? | Trace, port and tunnel evidence | Same-host, cross-host and routed tests as applicable |
 
-| Field | Example |
-|---|---|
-| Name | `seg-web` |
-| Connected Gateway | `t1-lab` (Tier-1) |
-| Transport Zone | `nsx-overlay-transportzone` |
-| Subnets | `172.16.10.1/24` |
-| DHCP | Optional — Gateway DHCP or segment DHCP server |
-
-Create a VLAN segment for an Edge uplink:
-
-| Field | Example |
-|---|---|
-| Name | `seg-uplink-v2711` |
-| Connected Gateway | None |
-| Transport Zone | VLAN TZ used by Edges |
-| VLAN | `2711` |
+The separate practical guide owns segment creation and validation. Packet-path reasoning should identify when traffic stays local, uses Geneve or requires a gateway service.
 
 ## CLI / API
 
@@ -218,13 +222,6 @@ An application team reports that the web tier on `seg-web` cannot reach the app 
 some VMs. Traceflow from a failing web VM shows the packet routed by the Tier-1 DR and then **dropped by a DFW rule**
 on the destination vNIC — a new "deny app from any" rule was placed above the allow rule. The network was fine; the
 policy order was not. Moving the allow rule above the deny fixed it.
-
-## Lab
-
-Build two overlay segments on a Tier-1, place VMs on two nested hosts and prove each packet-walk case with ping,
-Traceflow and `get logical-switches`.
-
-::lab[lab-nsx-segments-tier1]
 
 ## Exam Focus
 
