@@ -6,7 +6,7 @@ module: m03-vsan-ops
 version: vcf9
 minutes: 45
 difficulty: advanced
-summary: How vSAN keeps data available when devices, hosts, racks or whole sites fail — component states and repair timers, quorum, fault domains, maintenance mode options, two-node and stretched clusters with a witness, and how these appear in VCF 9.
+summary: How VMware vSAN uses quorum, fault domains, repair timers and witness components to protect virtual machines (VMs) from device, host, rack and site failures in VMware Cloud Foundation (VCF) 9.
 topics: [vsan-resilience, design-availability, vsan-policies]
 objectives: ["2.3"]
 keyTerms: [fault-domain, stretched-cluster-design, witness-host, vsan-witness-component, ftt, vsan-component, absent-component, degraded-component, resync]
@@ -35,13 +35,13 @@ sources:
 
 ## Why This Matters
 
-Storage policies say "tolerate one failure". Resilience design answers the harder questions: *one failure of what?* A device, a host, a rack, a room, a whole site? *What happens in the minutes after the failure?* *Can vSAN heal itself, and how long until it is safe again?*
+Storage policies state how many failures an object should tolerate. Resilience design defines the failure boundary: device, host, rack, room or site. It also determines whether VMware vSAN waits for a transient failure to return, starts an immediate rebuild or loses quorum, and whether enough independent capacity exists to restore compliance.
 
 Exam objective 2.3 asks you to "identify the options for Resilience and Data Availability in VMware vSAN". Questions are usually scenarios: a rack loses power, a host is rebooted for patching, a site link is cut. You need to say whether VMs stay up, whether vSAN rebuilds, and what the administrator should do.
 
 ## Learning Objectives
 
-- Explain quorum (votes), witness components and the object states healthy / reduced availability / inaccessible.
+- Explain quorum, votes, witness components and the object states healthy, reduced availability and inaccessible.
 - Distinguish **absent** from **degraded** components and the repair behaviour of each.
 - Design fault domains for rack awareness, including the "+1 fault domain" recommendation.
 - Choose the right maintenance mode option for a task.
@@ -101,7 +101,19 @@ Stretched cluster with a witness at a third site:
 | Witness host | Third site (stretched) or remote office (two-node) | Holds witness components only; "does not store customer data, only metadata"; cannot run VMs |
 | vSAN witness appliance | A nested ESX VM (OVA) deployed at the witness site | The usual form of the witness host |
 | Preferred / secondary site | Two data sites of a stretched cluster | The preferred site keeps running on an inter-site partition |
-| vSphere HA | Cluster | Restarts VMs whose host or site failed; uses the vSAN network for heartbeats when vSAN is enabled |
+| VMware vSphere High Availability (HA) | Cluster | Restarts VMs whose host or site failed; uses the vSAN network for heartbeats when vSAN is enabled |
+
+### Component responsibilities and limits
+
+**Votes and witness components.** Votes provide a deterministic quorum decision during partitions. Witness components carry metadata rather than customer data and prevent two sides from independently owning the same object. Quorum proves which component set may serve I/O; it does not restore missing redundancy or replace the data held by replicas and erasure-coded segments.
+
+**Fault domain.** A fault domain tells vSAN which hosts can fail together, normally because they share rack power or switching. Cluster-Level Object Manager (CLOM) places an object's components across those boundaries. A definition cannot protect against an unmodelled shared dependency or compensate for too few domains to satisfy and rebuild the selected policy.
+
+**Repair timer.** The timer avoids wasteful full rebuilds for short host reboots or transient disconnects. It applies to absent components; a component known to be permanently degraded triggers immediate repair. Waiting reduces resynchronization churn but temporarily leaves the object with reduced protection.
+
+**Witness host.** A witness arbitrates a two-node or stretched topology from a third failure location. It never stores VM payload and cannot run application VMs. It depends on reachable witness traffic and correct latency, and one stretched cluster requires its own witness relationship.
+
+**vSphere HA.** HA restores VM execution after a host or site failure when storage remains accessible. vSAN protects data availability; HA protects compute placement. Neither service alone provides both functions.
 
 ## How It Works
 
@@ -160,13 +172,18 @@ Three hosts with FTT=1 RAID-1 survive one host failure but **cannot rebuild** (n
 
 ## Configuration
 
-**Fault domains**: cluster → **Configure → vSAN → Fault Domains** → create a fault domain per rack and drag hosts into it. Keep the same number of hosts (and capacity) in each fault domain.
+| Decision | Management surface | Evidence |
+|---|---|---|
+| Which shared failures must be modelled? | vSAN fault-domain configuration | Rack/site mapping, balanced host/capacity distribution and an extra repair domain where required |
+| Which site should survive a partition? | Stretched-cluster site roles | Preferred/secondary designation and documented application placement behavior |
+| Can the witness arbitrate independently? | Witness assignment and network health | Third-site placement, reachable witness path and supported round-trip time (RTT) |
+| What must happen during maintenance? | Data-migration pre-check and maintenance option | Inaccessibility/noncompliance forecast and selected evacuation behavior |
+| Can objects heal after the planned failure? | Capacity, resynchronization and policy views | Spare domain, free capacity and estimated resync work |
+| Will compute restart where data remains accessible? | HA settings and VM placement rules | Valid destinations, compatible affinity rules and tested recovery outcome |
 
-**Stretched cluster** (standalone vSphere): deploy the witness appliance at the third site, then cluster → **Configure → vSAN → Fault Domains → Configure Stretched Cluster**, choose preferred and secondary hosts and the witness host. Then create policies with *Site mirroring – stretched cluster*.
+The separate practical guide owns exact VCF 9.0.2 navigation and controlled failure exercises. A production design records the failure assumptions, policy, witness dependency, repair capacity and recovery evidence before any site or host maintenance.
 
-**Maintenance mode**: host → **Maintenance Mode → Enter Maintenance Mode**, choose the vSAN data migration option; or run the pre-check under the cluster's **Monitor → vSAN → Data Migration Pre-check**.
-
-**HA with vSAN**: enable vSphere HA after vSAN; HA then uses the vSAN network for heartbeats.
+Automation can use a command-line interface (CLI) or an application programming interface (API), but it must preserve the same quorum, pre-check and failure-domain safeguards.
 
 ## CLI / API
 
@@ -229,12 +246,6 @@ A hospital runs a VCF VI workload domain in two buildings 3 km apart (RTT 1.2 ms
 - Policy: *Site mirroring – stretched cluster* + in-site FTT=1 RAID-5 (2+1 at 4 hosts per site).
 - Maintenance: building A's power work is handled with site maintenance mode in VCF 9.0.
 - Test plan: power off one data host (VMs stay up), disconnect the witness (objects noncompliant, VMs up), simulate the inter-site link failure (preferred site keeps running).
-
-## Lab
-
-Use the policy lab to watch component states change when you reboot one nested host and when you put a host in maintenance mode with different options.
-
-::lab[lab-vsan-storage-policies]
 
 ## Exam Focus
 
