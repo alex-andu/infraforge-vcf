@@ -6,7 +6,7 @@ module: m04-vsphere-networking
 version: vcf9
 minutes: 45
 difficulty: intermediate
-summary: The networks a VCF 9 instance needs per cluster (ESX management, VM management, vMotion, vSAN/IP storage, host TEP, edge TEP and uplinks), how they map onto the six VCF 9 distributed switch models, and how to plan VLANs, subnets and MTU for a domain.
+summary: How VMware Cloud Foundation (VCF) maps management, migration, storage and tunnel-endpoint traffic onto virtual local area networks (VLANs), subnets and VMware vSphere Distributed Switch (VDS) models.
 topics: [vcf-network-design, vds, mtu, deployment-planning]
 objectives: ["2.4", "4.1"]
 keyTerms: [vmkernel-adapter, vds, vlan, mtu, tep, first-hop-gateway, network-fabric, stretched-cluster-design]
@@ -33,8 +33,7 @@ sources:
 
 ## Why This Matters
 
-A VCF network design is a contract between you and the network team: which VLANs, which subnets, which gateways,
-which MTU, on which ports, for which cluster. VCF automates everything above the physical switch — but only if the
+A VMware Cloud Foundation (VCF) network design is a contract between the platform and network teams: which virtual local area networks (VLANs), subnets, gateways and maximum transmission unit (MTU) apply to each cluster path. VCF automates everything above the physical switch—but only if the
 physical side matches your input exactly. This lesson turns the fundamentals into a design you can write into the
 Planning and Preparation Workbook and defend in an exam scenario.
 
@@ -107,6 +106,20 @@ What you must provide per cluster:
 | IPs | per appliance | vCenter, NSX Manager nodes + VIP, SDDC Manager, VCF Operations, etc. |
 | DNS A + PTR | each host and appliance | See [DNS and NTP](lesson:dns-ntp-dependencies) |
 
+### Component responsibilities and limits
+
+**Planning contract.** The workbook or deployment specification binds traffic type to VLAN, subnet, gateway, MTU, address range and physical path. It gives VCF deterministic inputs. It cannot validate an undocumented switch difference or create missing external network services.
+
+**Distributed-switch model.** The selected model decides how traffic classes share or separate VDS instances and physical network interface cards (pNICs). It can isolate bandwidth and failure domains, but additional switches increase cabling, port and operational complexity.
+
+**Cluster model.** Single-rack, layer 2 multi-rack, layer 3 multi-rack and stretched designs determine VLAN scope and routing boundaries. A model constrains later expansion; a layer 3 multi-rack cluster cannot simply be converted into a stretched design.
+
+**Tunnel endpoint (TEP) network.** Host and edge TEP networks carry Geneve overlay traffic over the physical underlay. They depend on reachable Internet Protocol (IP) paths and sufficient MTU. They do not replace edge uplinks, external routing or workload addressing.
+
+**Physical network.** The fabric implements trunks, gateways, redundancy, frame size and latency targets for the logical design. VCF does not configure those external switches or guarantee that identical-looking ports have identical state.
+
+**Validation evidence.** Pairwise VMkernel tests, name/time checks and VCF validation prove the input contract from different layers. Passing one layer does not prove the others; a normal ping does not validate jumbo frames or overlay encapsulation.
+
 TEP IP addressing: NSX supports assigning host TEP addresses from a static IP pool or from DHCP. Which options the
 VCF workflow offers for your version is captured in the Planning and Preparation Workbook — check it rather than
 assuming.
@@ -169,7 +182,7 @@ provide the TEP VLAN, the addressing and the MTU; you do not create TEP vmks by 
 
 ## Configuration
 
-A compact design record for one workload domain cluster (single VDS, 2 × 25 GbE):
+A compact design record for one workload-domain cluster (single VDS, two 25-gigabit Ethernet links) captures desired state without prescribing vendor-specific switch commands:
 
 ```yaml
 cluster: wld01-cl01
@@ -223,13 +236,6 @@ want to stretch it later across two sites. Problem: layer 3 multi-rack clusters 
 single-rack clusters per rack (each its own vSphere cluster) for the current phase and plan a separate stretched
 cluster design for the second site. The VLAN plan uses per-rack VLANs for management/vMotion/vSAN and a single TEP
 design per rack, and every subnet is sized /24 for growth.
-
-## Lab
-
-Plan your home-lab VLAN table in the readiness lab, then validate it end to end. The full planning workbook exercise is
-in the deployment phase.
-
-::lab[lab-network-readiness]
 
 ## Exam Focus
 
