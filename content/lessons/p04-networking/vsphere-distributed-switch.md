@@ -6,7 +6,7 @@ module: m04-vsphere-networking
 version: vcf9
 minutes: 40
 difficulty: intermediate
-summary: How the vSphere Distributed Switch splits its management plane (vCenter) from its data plane (each ESX host), and how port groups, uplinks, teaming, failover, NIOC, LACP and port binding are configured in VCF 9.
+summary: How the VMware vSphere Distributed Switch (VDS) separates its VMware vCenter management plane from each VMware ESX host data plane, including teaming, Network I/O Control (NIOC) and Link Aggregation Control Protocol (LACP).
 topics: [vds, vcf-network-design]
 objectives: ["2.4"]
 keyTerms: [vds, distributed-port-group, uplink, nic-teaming, load-based-teaming, lag, nioc, vmkernel-adapter, port-binding]
@@ -94,6 +94,20 @@ vmnic1, each cabled to a different ToR switch. Port groups for management, vMoti
 | NSX host TEP teaming | NSX uplink profile | Defined by NSX/VCF during host preparation |
 | Physical NICs | Host | At least two per VDS, to two different ToR switches (KB 430982) |
 
+### Component responsibilities and limits
+
+**VDS management plane.** vCenter stores distributed-switch, port-group and policy configuration and distributes it to member hosts. It provides consistency and central change control. When vCenter is unavailable, existing forwarding continues, but administrators cannot safely make normal distributed configuration changes.
+
+**Host proxy switch.** Each ESX host keeps a local data-plane representation of the VDS and forwards frames among virtual ports and physical uplinks. It executes failover without waiting for vCenter. A proxy switch cannot correct an upstream VLAN, maximum transmission unit (MTU) or routing fault.
+
+**Distributed port group.** A port group supplies VLAN, teaming, security, traffic-shaping and binding policy to connected ports. It is a policy boundary rather than a physical network; the matching VLAN and MTU must exist on the external fabric.
+
+**Logical uplink.** Uplink names give policy a consistent reference while each host maps its own physical network interface card (pNIC) to those slots. Redundancy depends on mappings reaching independent physical failure paths, not merely on showing two logical uplinks.
+
+**NIOC.** NIOC divides congested uplink capacity among traffic classes with shares, reservations and limits. It has no effect while capacity is unconstrained and cannot create bandwidth that the physical links do not provide.
+
+**LACP and independent teaming.** LACP negotiates an aggregate with compatible switch configuration. Independent uplinks with load-based teaming avoid that dependency and remain the VCF default. A mismatch between IP-hash/LACP policy and the physical switch causes loss or media access control (MAC) address instability.
+
 ## How It Works
 
 What happens when a VM sends a frame and an uplink fails:
@@ -165,14 +179,16 @@ VLAN or a port with a smaller MTU.
 
 ## Configuration
 
-In VCF you do not hand-build the VDS for the management domain: you describe it in the VCF Installer (switch name,
-MTU, vmnic-to-uplink mapping, which networks — `MANAGEMENT`, `VM_MANAGEMENT`, `VMOTION`, `VSAN`, `NFS` — and NSX
-switch configuration). The installer API `DvsSpec` fields are `dvsName`, `mtu`, `vmnicsToUplinks`, `networks`,
-`nsxtSwitchConfig`, `nsxTeamings` and `lagSpecs`. Workload domain clusters get their VDS from the domain/cluster
-creation workflow in the same way.
+| Design decision | Management surface | Evidence |
+|---|---|---|
+| Which networks belong on the switch? | VCF Installer or domain/cluster network specification | Switch name, traffic types, port groups and ownership |
+| How are physical paths mapped? | Host pNIC-to-uplink mapping and fabric cabling | Two independent paths, consistent logical names and expected link speed |
+| Which traffic policy applies? | Distributed port group settings | VLAN, MTU, teaming, binding, security and traffic class |
+| How is congestion shared? | NIOC configuration | Enabled state, shares/reservations and intended priority under contention |
+| Does NSX use the expected data path? | VCF/NSX switch and uplink-profile state | Enhanced Datapath mode, TEP mapping and compliant host transport-node state |
+| Do virtual and physical configurations agree? | VDS health check and host evidence | No VLAN/MTU/team mismatch and all hosts synchronized |
 
-Day-2 changes in the vSphere Client: **Networking > VDS > Configure** for MTU/NIOC/LACP; **Distributed port group >
-Edit Settings > Teaming and failover** for teaming.
+VCF creates the management-domain and workload-domain VDS from deployment inputs. Day-2 changes must preserve the configuration expected by VCF and NSX. The separate practical guide owns exact VCF 9.0.2 navigation and controlled failover testing.
 
 :::warning
 Avoid editing VCF-managed VDS objects ad hoc (renaming, changing teaming on TEP-related uplinks). VCF workflows and
@@ -229,13 +245,6 @@ A team configures "Route based on IP hash" on the vMotion port group to "get mor
 EtherChannel on the switches. vMotion becomes erratic and the switches log MAC flapping. Reverting to "Route based on
 physical NIC load" fixes it and requires no switch change. If more vMotion bandwidth is really needed, the right
 answer is faster NICs or additional uplinks, not hashing against an unconfigured switch.
-
-## Lab
-
-Use the readiness lab to create VLAN-tagged port groups and VMkernel adapters with MTU 9000 on nested ESX and verify
-them with `esxcli` and `vmkping`.
-
-::lab[lab-network-readiness]
 
 ## Exam Focus
 
