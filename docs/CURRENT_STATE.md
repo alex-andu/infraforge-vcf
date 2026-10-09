@@ -8,8 +8,8 @@ Note: this repo has no RHCSA content. "InfraForge RHCSA" is a separate project.
 
 This section is the source of truth for work ownership and holds. Operating rules: [VCF_PARALLEL_WORKFLOW.md](VCF_PARALLEL_WORKFLOW.md). Proposed module batches: [VCF_MODULE_ROADMAP.md](VCF_MODULE_ROADMAP.md).
 
-- **Current milestone:** `THEORY-HYPERVISORS-ESX-STANDARD-05` starts Virtualization Foundations with a deeper ESX theory lesson and a clean theory/practical-guide boundary.
-- **Authorized now:** Alex explicitly asked Codex to continue as the primary end-to-end owner, including across usage resets. Automatic feature-branch pushes remain authorized. Current branch: `content/theory-hypervisors-esx-standard`, based on pushed terminology commit `357a38a`. Push only after checks and a secret scan; no direct push to `main`, force-push, PR, merge, deployment or infrastructure mutation is authorized.
+- **Current milestone:** `THEORY-CPU-MEMORY-STANDARD-06` deepens scheduling, overcommitment and memory reclamation while keeping observation work in the separate guide.
+- **Authorized now:** Alex explicitly asked Codex to continue as the primary end-to-end owner, including across usage resets. Automatic feature-branch pushes remain authorized. Current branch: `content/theory-cpu-memory-standard`, based on pushed ESX-foundations commit `47b413a`. Push only after checks and a secret scan; no direct push to `main`, force-push, PR, merge, deployment or infrastructure mutation is authorized.
 - **Implementation direction:** The earlier exact real-lab alignment plan is superseded. Guides do not need to reproduce the current lab exactly and repository completion does not wait for lab validation. Alex handles execution. Codex focuses next on the component catalog and structured theory, then migrates guides in bounded curriculum-driven packages.
 - **Privacy:** verified on 2026-10-08: the unauthenticated GitHub API returns 404 while authenticated Git remote read succeeds, so the repository is private and this workstation retains access. The pilot stores only sanitized topology values and no credentials, tokens or unredacted captures. Task #1 is complete.
 - **Exam baseline:** Alex supplied the official-description excerpt updated 2026-04-23. Its 8 objectives / 59 items match `content/objectives.yaml`; Kubernetes/HCX and DNS/NTP/certificates are candidate-profile prerequisites. Ordinal item IDs are repository conventions; mock allocation/scoring remain practice estimates, not official weights or a raw passing percentage.
@@ -45,13 +45,14 @@ This section is the source of truth for work ownership and holds. Operating rule
 | THEORY-PRIVATE-CLOUD-STANDARD-02 | Codex | COMPLETE; PUSHED `8557691` | Deepen `private-cloud-and-sddc`, define acronyms and remove its non-runnable embedded lab | Superseded by the platform comparison migration |
 | THEORY-VCF-VSPHERE-STANDARD-03 | Codex | COMPLETE; PUSHED `781f58e` | Deepen the VCF/vSphere/VVF comparison and remove its non-runnable embedded lab | Superseded by the terminology migration |
 | THEORY-VCF9-TERMINOLOGY-STANDARD-04 | Codex | COMPLETE; PUSHED `357a38a` | Complete orientation with structural-boundary explanations, acronym expansion and theory/guide separation | Orientation module fully migrated |
-| THEORY-HYPERVISORS-ESX-STANDARD-05 | Codex | COMPLETE LOCALLY; CHECKS PASSED; PUSH PENDING | Deepen ESX foundations, convert installation steps to conceptual flow and keep practical execution in separate guides | Publish the feature branch, then migrate CPU and memory virtualization |
+| THEORY-HYPERVISORS-ESX-STANDARD-05 | Codex | COMPLETE; PUSHED `47b413a` | Deepen ESX foundations, convert installation steps to conceptual flow and keep practical execution in separate guides | Superseded by CPU and memory foundations |
+| THEORY-CPU-MEMORY-STANDARD-06 | Codex | COMPLETE LOCALLY; CHECKS PASSED; PUSH PENDING | Deepen CPU scheduling, overcommitment and reclamation; remove embedded practical work | Publish the feature branch, then migrate storage/network virtualization basics |
 | #6–#10 remaining implementation | ChatGPT (Claude optional) | QUEUED | Existing task order retained; shared-file edits serialized and environment-dependent guides remain visibly unvalidated | Select one bounded package at a time |
 | Independent lab execution | Alex | AS NEEDED | Run the canonical guides when useful and adapt known home-lab exceptions | No repository completion dependency |
 
 The completed pilot spec and evidence sheet are in `docs/specs/theory-labs-separation/spec.md`. The hold still applies to the older tasks #2–#10; it does not roll back this explicitly approved pilot. The feature branch may be committed and pushed automatically under `CLAUDE.md`; PR, merge and deployment remain separate.
 
-Fresh local checks after `THEORY-HYPERVISORS-ESX-STANDARD-05`: strict content validation **0 errors / 0 warnings**, **674/674 objective-tagged questions mapped**, **59/59 items at target**, **23/23 unit tests passed**, typecheck passed and production build passed. Browser smoke passed for `hypervisors-and-esx` with no console errors and the rendered lesson was visually reviewed. Inventory is 72 lessons / 163,469 words, 683 questions, 25 guides, 24 components, 111 diagrams and 279 glossary terms. The four-lesson orientation module remains fully migrated and all 24 component profiles use the expanded catalog format.
+Fresh local checks after `THEORY-CPU-MEMORY-STANDARD-06`: strict content validation **0 errors / 0 warnings**, **674/674 objective-tagged questions mapped**, **59/59 items at target**, **23/23 unit tests passed**, typecheck passed and production build passed. Browser smoke passed for `cpu-memory-virtualization` with no console errors and the rendered lesson was visually reviewed. Inventory is 72 lessons / 163,730 words, 683 questions, 25 guides, 24 components, 111 diagrams and 279 glossary terms. The orientation module remains fully migrated and all 24 component profiles use the expanded catalog format.
 
 Windows checkout note: the initial strict check reported 70 missing-frontmatter errors and 1,312 cascading warnings because Git converted lesson files to CRLF while `scripts/content-loader.ts:101` expects LF. Setting this clone's `core.autocrlf=input` and normalizing only unchanged lesson working-copy line endings to LF restored passing checks. Git reports no tracked content changes. A portable parser or repository line-ending policy is a separate proposed maintenance fix, not implemented here.
 
@@ -67,7 +68,7 @@ Windows checkout note: the initial strict check reported 70 missing-frontmatter 
   - YAML/Markdown in `content/`, validated by zod (`scripts/content-loader.ts`).
   - Exposed through virtual modules (`scripts/vite-plugin-content.ts`).
   - The production build fails on any content error.
-- Learn mode: 16 phases and 72 lessons. The standalone-theory contract has 17 required sections; 64 untouched lessons may retain their legacy `Lab` section until migrated. See `docs/CONTENT_STATUS.md`.
+- Learn mode: 16 phases and 72 lessons. The standalone-theory contract has 17 required sections; 63 untouched lessons may retain their legacy `Lab` section until migrated. See `docs/CONTENT_STATUS.md`.
 - Lesson page:
   - TOC with section tracking.
   - Callouts (vcf9 / legacy / exam / trap …).
