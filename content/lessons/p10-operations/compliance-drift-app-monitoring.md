@@ -45,7 +45,7 @@ sources:
 
 Monitoring answers "is it working?". This lesson answers three different questions the exam asks about:
 
-- **Is it configured securely?** - "monitor security hardening and compliance using VCF Operations".
+- **Is it configured securely?** - "monitor security hardening and compliance using VCF (VMware Cloud Foundation) Operations".
 - **Is it still configured the way we decided?** - "configure configuration drift in VCF Operations".
 - **Is the application inside the VM healthy?** - "monitor application using VCF Operations".
 
@@ -54,7 +54,7 @@ is why they appear in the Operations objective rather than the security objectiv
 
 ## Learning Objectives
 
-- Explain compliance benchmarks (VMware SDDC/VCF standards, regulatory, custom) and how a policy activates them.
+- Explain compliance benchmarks (VMware SDDC (Software-Defined Data Center)/VCF standards, regulatory, custom) and how a policy activates them.
 - Read compliance scores and violations and plan remediation.
 - Describe configuration drift: configuration sources, templates and target vCenter instances, and its collector prerequisite.
 - Compare product-managed Telegraf, open-source Telegraf and the service discovery adapter for application monitoring.
@@ -165,7 +165,7 @@ Application monitoring:
 1. Configure a cloud proxy with the OS and Application adapter, configure the vCenter cloud account for managed VMs,
    and satisfy OS, network and credential prerequisites.
 2. Open **Workload Operations > Applications > Manage Telegraf Agents**. Select vCenter-managed VMs, then **Agent
-   Actions > Install**. Choose a cloud proxy or an application-monitoring HA collector group if the adapter does not
+   Actions > Install**. Choose a cloud proxy or an application-monitoring HA (High Availability) collector group if the adapter does not
    yet exist for that vCenter.
 3. Choose common credentials or per-VM credentials, optionally restore a backed-up agent configuration, review the VM
    list and select **Install Agent**. Credentials are runtime inputs and do not belong in course evidence.
@@ -253,6 +253,8 @@ did it and when* - is a strong troubleshooting pattern and a good mental model f
 
 ## Configuration
 
+This section explains the configuration decisions, ownership boundaries, dependencies and evidence an administrator must understand. The executable click path, field values, validation and rollback belong to the linked practical guide.
+
 Example compliance setup for a PCI-scoped cluster:
 
 | Step | Setting |
@@ -264,6 +266,8 @@ Example compliance setup for a PCI-scoped cluster:
 | Report | Scheduled compliance report (view + PDF) to the auditor |
 
 ## CLI / API
+
+CLI (Command-Line Interface) and API (Application Programming Interface) examples expose the same operational objects for inspection or automation.
 
 Remediation of hardening findings is often scripted with PowerCLI, for example reading an ESX advanced setting:
 
@@ -306,11 +310,6 @@ all clusters; the hosts' compliance score is 72% because SSH is enabled on many 
 score rises at the next collection, and add a monthly compliance report. The application team installs product-managed
 Telegraf on the SQL VMs and builds a business application so the database service, not just the VM, is monitored.
 
-## Lab
-
-::lab[lab-vcf-ops-logs-network]
-
-The lab's later steps configure a compliance benchmark and a drift template.
 
 ## Exam Focus
 

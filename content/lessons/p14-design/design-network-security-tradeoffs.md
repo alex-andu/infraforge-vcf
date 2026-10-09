@@ -32,7 +32,7 @@ sources:
 ## Why This Matters
 
 Security requirements arrive in many forms — "PCI workloads must be isolated", "the dev team must not see production",
-"each business unit manages its own networks" — and VCF offers many ways to satisfy them: a separate cluster, a
+"each business unit manages its own networks" — and VCF (VMware Cloud Foundation) offers many ways to satisfy them: a separate cluster, a
 separate workload domain, a separate NSX instance, separate physical NICs and fabrics, separate identity, or
 software segmentation with the NSX distributed firewall. Each option costs something different. The exam (and every
 design review) asks you to choose the **least costly option that actually meets the requirement**, and to explain why.
@@ -40,10 +40,10 @@ design review) asks you to choose the **least costly option that actually meets 
 ## Learning Objectives
 
 - Compare isolation levels in VCF 9: port group/segment, NSX microsegmentation, cluster, workload domain, VCF instance.
-- Choose among network consumption models (VCF Automation All Apps, VPC, NSX segments, VLAN) and workload networking models.
+- Choose among network consumption models (VCF Automation All Apps, VPC, NSX segments, VLAN (Virtual Local Area Network)) and workload networking models.
 - Decide between shared and dedicated NSX Managers and edge clusters.
 - Use distributed switch models and physical fabric separation for traffic isolation, and justify the cost.
-- Weigh identity scope (SSO) and management-plane access as part of security design.
+- Weigh identity scope (SSO (Single Sign-On)) and management-plane access as part of security design.
 
 ## Concept
 
@@ -84,9 +84,9 @@ domain, VPCs and DFW rules separate applications.
 | NSX for a workload domain | Share an NSX instance with other workload domains | Dedicated NSX Manager cluster | Sharing saves resources ("maximizes resource efficiency"); dedicated reduces blast radius and separates admins |
 | Edge cluster | Shared across domains on the same NSX | Dedicated per tenant/domain | Shared is efficient; dedicated isolates north-south capacity and failure |
 | Edge form factor | Virtual appliance (VCF-managed lifecycle, passwords) | Bare metal (100G interfaces, better small-packet performance) | Bare metal = manual lifecycle and passwords |
-| Switch model | Single VDS | Storage / workload / both separated | Separation = more NICs (4–6+), ports, complexity |
+| Switch model | Single VDS (vSphere Distributed Switch) | Storage / workload / both separated | Separation = more NICs (4–6+), ports, complexity |
 | Identity | Fleet-wide SSO | Per-instance SSO; dedicated identity provider per workload domain | Wider = simpler, larger blast radius |
-| Workload networking | VPC Full Services (A/S Tier-0, NAT, VPN) | VPC Scalable (A/A stateless Tier-0) | Services vs north-south throughput |
+| Workload networking | VPC Full Services (A/S Tier-0, NAT (Network Address Translation), VPN) | VPC Scalable (A/A stateless Tier-0) | Services vs north-south throughput |
 
 ## How It Works
 
@@ -162,6 +162,8 @@ by security, performance or operations — reviewers will challenge decisions th
 
 ## Configuration
 
+This section explains the configuration decisions, ownership boundaries, dependencies and evidence an administrator must understand. The executable click path, field values, validation and rollback belong to the linked practical guide.
+
 Example design decision records:
 
 ```yaml
@@ -177,6 +179,8 @@ Example design decision records:
 ```
 
 ## CLI / API
+
+CLI (Command-Line Interface) and API (Application Programming Interface) examples expose the same operational objects for inspection or automation.
 
 There is no design CLI. You validate implemented separation with tools from other phases: NSX DFW rule hit counts
 and traceflow (NSX phase), `esxcli network vswitch dvs vmware list` to confirm which NICs serve which VDS, and VCF
@@ -208,12 +212,6 @@ microsegmentation everywhere; single VDS model on both (no physical separation r
 "separate VCF instance for production" would have doubled the management stack without meeting any additional
 stated requirement.
 
-## Lab
-
-The planning workbook lab includes a separation decision table; the NSX microsegmentation lab implements the DFW
-part.
-
-::lab[lab-vcf-planning-workbook]
 
 ## Exam Focus
 

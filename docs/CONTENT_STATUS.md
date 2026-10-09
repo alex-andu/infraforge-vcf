@@ -8,7 +8,7 @@ Totals:
 
 | Item | Count |
 |---|---|
-| Lessons | 72 (169,266 words) |
+| Lessons | 72 (172,485 words) |
 | Questions | 683 |
 | Practical guides (internal `lab` schema) | 25 |
 | Incidents | 10 |
@@ -30,21 +30,21 @@ Component catalog migration: **24/24** profiles use the expanded role/capability
 | p02 | vSphere Core | 6/6 | 15,846 | 53 | 2 |
 | p03 | Storage and vSAN | 6/6 | 16,040 | 53 | 2 |
 | p04 | Networking | 4/4 | 11,161 | 35 | 3 |
-| p05 | NSX | 7/7 | 15,226 | 64 | 3 |
-| p06 | VCF Architecture | 6/6 | 12,127 | 66 | 3 |
-| p07 | VCF Deployment | 4/4 | 8,953 | 37 | 4 |
-| p08 | Workload Domains | 5/5 | 11,100 | 41 | 2 |
-| p09 | Lifecycle Management | 4/4 | 8,892 | 40 | 1 |
-| p10 | VCF Operations | 6/6 | 14,400 | 77 | 3 |
-| p11 | Automation and APIs | 4/4 | 10,295 | 65 | 2 |
-| p12 | Identity, Security and Certificates | 4/4 | 8,047 | 30 | 2 |
-| p13 | Troubleshooting | 4/4 | 10,947 | 37 | 1 |
-| p14 | Architecture and Design | 3/3 | 6,117 | 20 | 0 |
-| p15 | Certification Preparation | 1/1 | 2,304 | 4 | 0 |
+| p05 | NSX | 7/7 | 16,456 | 64 | 3 |
+| p06 | VCF Architecture | 6/6 | 12,492 | 66 | 3 |
+| p07 | VCF Deployment | 4/4 | 9,163 | 37 | 4 |
+| p08 | Workload Domains | 5/5 | 11,330 | 41 | 2 |
+| p09 | Lifecycle Management | 4/4 | 9,035 | 40 | 1 |
+| p10 | VCF Operations | 6/6 | 14,655 | 77 | 3 |
+| p11 | Automation and APIs | 4/4 | 10,536 | 65 | 2 |
+| p12 | Identity, Security and Certificates | 4/4 | 8,225 | 30 | 2 |
+| p13 | Troubleshooting | 4/4 | 11,196 | 37 | 1 |
+| p14 | Architecture and Design | 3/3 | 6,190 | 20 | 0 |
+| p15 | Certification Preparation | 1/1 | 2,349 | 4 | 0 |
 
 The lab counts are labs linked to that phase's lessons; one lab can be linked to several phases.
 
-- The standalone-theory template requires 17 sections, sources, at least one diagram and an inline quiz. The DNS/NTP pilot, Kubernetes foundations, HCX, every lesson in Orientation and Virtualization Foundations, and the first two vSphere Core lessons use it; the other 59 lessons remain valid with their legacy `Lab` sections during incremental migration.
+- The standalone-theory template requires 17 sections, sources, at least one diagram and an inline quiz. All 72 lessons now use it, and runnable work is linked through the separate practical-guide schema.
 - **Gaps:**
   - Candidate-profile foundations for Kubernetes, DNS/NTP/certificates and HCX have dedicated theory and separate prepared guides. Validation remains gated on the required real infrastructure and observed evidence.
   - All 59 official items meet the internal five-question target. A question mapping is evidence of coverage, while later topic packages continue to review theory depth and accuracy.

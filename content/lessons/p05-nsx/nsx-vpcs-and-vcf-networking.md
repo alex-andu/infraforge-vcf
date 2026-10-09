@@ -6,7 +6,7 @@ module: m05-nsx-routing
 version: vcf9
 minutes: 50
 difficulty: advanced
-summary: The VCF 9 networking consumption model — external connections, transit gateways, VPCs and subnet types — the centralized versus distributed connectivity choice in vCenter, what the exam means by "VCF Network Gateway", and how networking is deployed across a VCF 9 instance.
+summary: How VMware Cloud Foundation (VCF) 9 exposes networking through external connections, transit gateways, virtual private clouds (VPCs), subnets and centralized or distributed connectivity.
 topics: [nsx-vpc, nsx-edge, nsx-routing]
 objectives: ["2.4", "4.1"]
 keyTerms: [nsx-vpc, transit-gateway, external-connection, nsx-project, tier-0, edge-cluster, nat]
@@ -132,6 +132,19 @@ The blog line to remember: in centralized mode "the Transit Gateway forwards tra
 (centralized) on NSX Edge VMs" so "all traffic in or out goes through those Edge VMs"; in distributed mode the transit
 gateway "maps directly onto a shared VLAN across ESX hosts" and "every ESX host must attach to the same VLAN".
 
+
+### Component responsibilities and limits
+
+**External connection.** An external connection binds VCF networking to physical uplinks and upstream routing. It establishes provider reachability; it does not define tenant isolation or application subnets.
+
+**Transit gateway.** A transit gateway provides shared routing between VPCs and external/provider connectivity according to the selected model. It is a provider construct and does not replace organization-level policy or address planning.
+
+**VPC.** A virtual private cloud (VPC) gives an organization a delegated network boundary with address space, subnets and policy. It supports self-service within provider guardrails. It cannot exceed the address, routing, quota or service constraints granted by the provider.
+
+**Subnet type.** Routed, isolated and external subnet choices determine reachability and gateway behavior. The label is an intent choice; actual connectivity still depends on realized NSX routes, services and policy.
+
+**VCF Network Gateway.** The exam term represents the VCF consumption boundary that connects VPC networking with provider transit/external connectivity. It should not be confused with one legacy Tier-0 or Tier-1 object in every scenario.
+
 ## How It Works
 
 ### What "VCF Network Gateway" means {#vcf-network-gateway}
@@ -217,18 +230,16 @@ routed networks.
 
 ## Configuration
 
-Example inputs for a home-lab centralized gateway:
+| Design decision | Management surface | Evidence |
+|---|---|---|
+| Centralized or distributed connectivity? | VCF networking design | Scale, failure domain and traffic-path rationale |
+| How does the instance reach external networks? | External connection | Uplinks, address plan and routing adjacency |
+| Which shared connectivity is delegated? | Transit/network gateway | Connected scope and provider policy |
+| What may each organization create? | VPC quotas, address space and permissions | Non-overlapping allocation and enforced limits |
+| Which subnet type fits the workload? | VPC subnet configuration | Intended isolation/routing and realized connectivity |
+| Is consumption healthy end to end? | VCF, vCenter and NSX views | Object realization, routes, policy and workload tests |
 
-| Field | Value |
-|---|---|
-| Gateway type | Centralized Connectivity |
-| Edge cluster | `ec-mgmt`, Medium, 2 nodes |
-| HA mode | Active/Standby (keeps the Supervisor option open) |
-| Routing | BGP, local AS 65001, peers on VLAN 2711/2712 (router VM) |
-| External IP Blocks | `10.80.0.0/20` |
-| Private TGW IP Blocks | `172.30.0.0/20` |
-
-Then create VPC `vpc-dev` with a public subnet `/27` and a private subnet `/24`.
+The separate practical guide owns exact VCF 9.0.2 creation workflows. Theory emphasizes ownership: providers build external and transit foundations; organization users consume delegated VPC constructs.
 
 ## CLI / API
 
@@ -269,13 +280,6 @@ A team wants self-service networks in vCenter for dev VMs and plans to enable Su
 **centralized active/standby** — they must deploy an edge cluster and Tier-0 (centralized connectivity). Had they
 started with centralized A/S (Medium Edges), both use cases would be covered. Design lesson: choose connectivity
 from the most demanding consumer.
-
-## Lab
-
-The Tier-0/BGP lab includes an optional section that wires the Default project's transit gateway to your Tier-0 and
-creates a VPC with public and private subnets.
-
-::lab[lab-nsx-tier0-bgp-edge]
 
 ## Exam Focus
 

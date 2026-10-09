@@ -39,7 +39,7 @@ sources:
 
 Moving an application between sites is not just copying virtual disks. The destination needs compute, storage and
 network placement; the two control planes must trust each other; migration traffic needs a reliable encrypted path;
-and applications that cannot change IP addresses may need their Layer 2 network extended temporarily. VCF Operations
+and applications that cannot change IP addresses may need their Layer 2 network extended temporarily. VCF (VMware Cloud Foundation) Operations
 HCX packages these concerns into a repeatable mobility service.
 
 HCX appears in the official candidate profile even though it is not a separate numbered exam item. A VCF
@@ -86,9 +86,9 @@ profile, service appliance or tunnel is wrong.
 
 | Component | Where | Function |
 |---|---|---|
-| HCX Manager appliance | Management zone at each site, near vCenter | UI/API, local vCenter/NSX registration, role mapping, pairing and service-appliance lifecycle |
+| HCX Manager appliance | Management zone at each site, near vCenter | UI/API (Application Programming Interface), local vCenter/NSX registration, role mapping, pairing and service-appliance lifecycle |
 | Site Pair | Between managers | Management, authentication and orchestration relationship; private vSphere pairing uses the remote HCX URL and authorized remote identity |
-| Network Profile | Per site/network | Abstracts a port group or NSX segment plus IP pool, prefix, gateway, DNS and MTU for management, uplink, vMotion, replication or OSAM guest traffic |
+| Network Profile | Per site/network | Abstracts a port group or NSX segment plus IP pool, prefix, gateway, DNS (Domain Name System) and MTU for management, uplink, vMotion, replication or OSAM guest traffic |
 | Compute Profile | Per site | Selects services, service clusters, deployment resources/datastore and the Network Profiles used by those services |
 | Service Mesh | Between one source and one destination Compute Profile | Deploys and connects the data-plane appliances and enables selected services |
 | HCX-IX | Both sites | Interconnect for replication and vMotion migration, strong encryption and traffic engineering; source is initiator, destination is receiver |
@@ -99,12 +99,12 @@ profile, service appliance or tunnel is wrong.
 
 The dependency order matters:
 
-1. Prepare both sites: supported versions, destination NSX, DNS/NTP, management and uplink reachability, IP pools,
+1. Prepare both sites: supported versions, destination NSX, DNS/NTP (Network Time Protocol), management and uplink reachability, IP pools,
    compute/storage capacity, certificates and required ports.
 2. Deploy and initialize the **destination HCX Manager** first. On `https://<DEST_HCX>:9443`, set location/system name,
    register vCenter and NSX, restart services and define Role Mapping.
 3. In `https://<DEST_HCX>:443`, create destination **Network Profiles** and a **Compute Profile**.
-4. Deploy and initialize the **source HCX Manager**, registering source vCenter, SSO and optional NSX, then define Role
+4. Deploy and initialize the **source HCX Manager**, registering source vCenter, SSO (Single Sign-On) and optional NSX, then define Role
    Mapping.
 5. From the source console go to **Infrastructure > Site Pairs > New Site Pair**, enter the destination HCX URL and
    approved identity, and require status **Connected**.
@@ -150,6 +150,8 @@ broadcast domain. Plan the final routed destination and remove the extension whe
 
 ## Configuration
 
+This section explains the configuration decisions, ownership boundaries, dependencies and evidence an administrator must understand. The executable click path, field values, validation and rollback belong to the linked practical guide.
+
 ### Network Profile fields
 
 Open **Interconnect > Network Profiles > Create Network Profile**. Select vCenter, then a distributed/standard port
@@ -171,6 +173,8 @@ network containers eligible for extension; review connection rules; resolve vali
 
 ## CLI / API
 
+CLI (Command-Line Interface) and API (Application Programming Interface) examples expose the same operational objects for inspection or automation.
+
 This package teaches the supported UI because the exact HCX API surface and automation tooling can change with the
 installed build. Use browser-exported connection rules and the product API only after checking the API reference for
 that build. For a first deployment, the most valuable automation artifact is a sanitized input/evidence worksheet:
@@ -183,7 +187,7 @@ results—never passwords, client secrets or raw certificates.
 |---|---|---|
 | Site Pair is not Connected | Control plane | HCX URL, TCP 443, certificate trust, identity or Role Mapping |
 | Service Mesh deployment fails validation | Intent/deployment | Missing IPs, datastore capacity, network reachability, unsupported resource or firewall rule |
-| Site Pair works but tunnel is down | Data plane | UDP 4500/NAT/firewall/uplink MTU or HCX-IX health |
+| Site Pair works but tunnel is down | Data plane | UDP 4500/NAT (Network Address Translation)/firewall/uplink MTU or HCX-IX health |
 | VM is not selectable | Scope | Its cluster is excluded from the source Compute Profile or compatibility requirements fail |
 | Migration works but VM loses connectivity | Workload network | Destination mapping, gateway/routing or Network Extension state is wrong |
 | Compute Profile edit has no effect | Lifecycle | Running Service Mesh has not been Re-Synced |
@@ -209,12 +213,6 @@ Bulk Migration during a reboot window. A critical database tier uses RAV because
 zero downtime. One legacy application retains its IP through Network Extension during the wave, then the team moves
 its gateway to the destination and removes the extension after acceptance.
 
-## Lab
-
-::lab[lab-vcf-operations-hcx]
-
-The guide is fully prepared but deliberately unvalidated. Alex's inventory does not list HCX, a second vCenter/VCF
-site, destination NSX capacity or the required IP pools. Those become discovered inputs when the second site is built.
 
 ## Exam Focus
 

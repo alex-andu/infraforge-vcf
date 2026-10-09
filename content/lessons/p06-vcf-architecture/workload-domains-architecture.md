@@ -37,7 +37,7 @@ sources:
 
 ## Why This Matters
 
-Workload domains are how VCF separates "who runs what". Production vs development, PCI vs non-PCI, tenant A vs tenant B — each can be its own domain with its own vCenter, its own SSO domain, its own lifecycle and, if you want, its own NSX. Choosing between a new domain and a new cluster in an existing domain, or between shared and dedicated NSX, is a classic "Given a scenario…" exam question (objective 4.1) and a real design decision with cost consequences.
+Workload domains are how VCF (VMware Cloud Foundation) separates "who runs what". Production vs development, PCI vs non-PCI, tenant A vs tenant B — each can be its own domain with its own vCenter, its own SSO (Single Sign-On) domain, its own lifecycle and, if you want, its own NSX. Choosing between a new domain and a new cluster in an existing domain, or between shared and dedicated NSX, is a classic "Given a scenario…" exam question (objective 4.1) and a real design decision with cost consequences.
 
 ## Learning Objectives
 
@@ -49,7 +49,7 @@ Workload domains are how VCF separates "who runs what". Production vs developmen
 
 ## Concept
 
-TechDocs defines a workload domain as "a logical unit of application-ready infrastructure that groups ESX hosts managed by a vCenter instance". VCF 9.0 workload domains are **VI workload domains** ([[vi-workload-domain]]): you create them in **VCF Operations** to run consumer workloads, and "for the first workload domain in your environment, VCF Operations deploys a vCenter instance and an NSX Manager instance". SDDC Manager of the instance executes the work.
+TechDocs defines a workload domain as "a logical unit of application-ready infrastructure that groups ESX hosts managed by a vCenter instance". VCF 9.0 workload domains are **VI workload domains** ([[vi-workload-domain]]): you create them in **VCF Operations** to run consumer workloads, and "for the first workload domain in your environment, VCF Operations deploys a vCenter instance and an NSX Manager instance". SDDC (Software-Defined Data Center) Manager of the instance executes the work.
 
 ### Attributes of the workload domain model
 
@@ -110,7 +110,7 @@ Creating a workload domain:
 4. **SDDC Manager validates the spec** (domainmanager service) and starts the workflow.
 5. SDDC Manager deploys the new **vCenter** into the management domain and creates the first cluster with the commissioned hosts.
 6. **NSX**: either deploys a new NSX Manager instance into the management domain or registers the new vCenter with an existing shared NSX instance; hosts become transport nodes.
-7. Storage, VDS and NSX host preparation complete; the domain appears in VCF Operations inventory.
+7. Storage, VDS (vSphere Distributed Switch) and NSX host preparation complete; the domain appears in VCF Operations inventory.
 8. Day 2: add edge cluster, Supervisor, more clusters or hosts (host additions via VCF Operations/SDDC Manager — not "Add Host" directly in vCenter).
 
 Full procedure: [Host Commissioning and Workload Domain Creation](lesson:host-commissioning-wld-creation).
@@ -134,7 +134,7 @@ The management domain model lists its NSX Manager as **dedicated**; sharing is a
 
 | Need | New workload domain | New cluster in existing domain |
 |---|---|---|
-| Separate vCenter / SSO / RBAC | ✔ | ✘ |
+| Separate vCenter / SSO / RBAC (Role-Based Access Control) | ✔ | ✘ |
 | Separate lifecycle (upgrade timing) | ✔ | ✘ (domain upgrades together) |
 | Extra management overhead | vCenter (+ NSX), passwords, certificates | Minimal |
 | Just more capacity / different hardware | Overkill | ✔ |
@@ -151,17 +151,21 @@ Workload domains are created and managed from VCF Operations; SDDC Manager execu
 
 ## Configuration
 
+This section explains the configuration decisions, ownership boundaries, dependencies and evidence an administrator must understand. The executable click path, field values, validation and rollback belong to the linked practical guide.
+
 Decisions you make in the workload domain wizard:
 
 | Decision | Options |
 |---|---|
-| NSX | New dedicated NSX Manager (simple 1 node / HA 3 nodes) or shared existing |
+| NSX | New dedicated NSX Manager (simple 1 node / HA (High Availability) 3 nodes) or shared existing |
 | Cluster model | Single-rack, L2 multi-rack, L3 multi-rack, stretched |
 | Principal storage | vSAN ESA/OSA, vSAN storage/compute cluster, FC, NFS v3 |
 | Hosts | ≥ 3 commissioned hosts, uniform image/NIC layout |
 | Networking | VDS profile, network pool, IPv4/IPv6 workload network |
 
 ## CLI / API
+
+CLI (Command-Line Interface) and API (Application Programming Interface) examples expose the same operational objects for inspection or automation.
 
 ```http
 GET  https://sddc-manager.lab.local/v1/domains       # list domains (MANAGEMENT / VI)
@@ -180,8 +184,8 @@ SDDC Manager log for domain workflows (KB 439510): `/var/log/vmware/vcf/domainma
 | WLD vCenter down | Only that domain unmanageable; VMs keep running; other domains fine |
 | Shared NSX Manager cluster down | Management/control plane loss for **all** domains sharing it; existing data plane keeps forwarding |
 | Shared edge cluster down | North-south loss for all domains using it |
-| Domain creation fails at validation | Missing binaries, bad DNS, host issues — nothing is deployed yet |
-| Host added outside VCF (directly in vCenter) | Drift between SDDC Manager inventory and vCenter; future LCM problems |
+| Domain creation fails at validation | Missing binaries, bad DNS (Domain Name System), host issues — nothing is deployed yet |
+| Host added outside VCF (directly in vCenter) | Drift between SDDC Manager inventory and vCenter; future LCM (Lifecycle Management) problems |
 
 ## Troubleshooting
 
@@ -194,9 +198,6 @@ SDDC Manager log for domain workflows (KB 439510): `/var/log/vmware/vcf/domainma
 
 A bank needs: a PCI domain whose admins must not see other environments, a general production domain and a dev domain. Design: **PCI** = workload domain with **dedicated** NSX (HA, 3 nodes) and a dedicated identity provider; **prod** and **dev** = two workload domains **sharing** one NSX instance and one edge cluster. The management domain is sized for 4 vCenters (mgmt + 3) and 3 NSX instances (mgmt + PCI + shared).
 
-## Lab
-
-::lab[lab-commission-hosts-create-wld]
 
 ## Exam Focus
 

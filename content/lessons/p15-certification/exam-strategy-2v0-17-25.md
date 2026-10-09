@@ -25,7 +25,7 @@ sources:
 
 ## Why This Matters
 
-You can know VCF well and still lose points to the exam format: running out of time, over-reading "Given a scenario…" stems, mixing VCF 5.x and 9.0 behaviour, or spending your preparation on topics that carry no testable objectives. This lesson turns the official exam guide into a concrete plan and shows you how to use this platform's Exam Mode to measure readiness honestly.
+You can know VCF (VMware Cloud Foundation) well and still lose points to the exam format: running out of time, over-reading "Given a scenario…" stems, mixing VCF 5.x and 9.0 behaviour, or spending your preparation on topics that carry no testable objectives. This lesson turns the official exam guide into a concrete plan and shows you how to use this platform's Exam Mode to measure readiness honestly.
 
 ## Learning Objectives
 
@@ -50,7 +50,7 @@ You can know VCF well and still lose points to the exam format: running out of t
 | Product version | "Content in this exam is based on VCF 9.0. Review all 9.0 release notes and material for features and functions." |
 | Recommended training | *VMware Cloud Foundation: Build, Manage, and Secure*; *VMware Cloud Foundation: Automation and Operations* |
 
-The guide's **minimally qualified candidate** can "install, configure, manage, and perform basic troubleshooting" of VCF and knows the features, functions and architecture of vCenter, ESX, vSphere Supervisor, vSAN, NSX, VCF Identity Broker, VCF Automation, VCF Operations, VCF Operations for Logs, VCF Fleet Management, VCF Operations for Networks and VCF Operations HCX. The candidate is expected to have at least one year of IT experience, foundational Kubernetes knowledge and general knowledge of hardware, storage, networking, **DNS, NTP and certificates**, plus at least six months of hands-on VCF (or component) experience.
+The guide's **minimally qualified candidate** can "install, configure, manage, and perform basic troubleshooting" of VCF and knows the features, functions and architecture of vCenter, ESX, vSphere Supervisor, vSAN, NSX, VCF Identity Broker, VCF Automation, VCF Operations, VCF Operations for Logs, VCF Fleet Management, VCF Operations for Networks and VCF Operations HCX. The candidate is expected to have at least one year of IT experience, foundational Kubernetes knowledge and general knowledge of hardware, storage, networking, **DNS (Domain Name System), NTP (Network Time Protocol) and certificates**, plus at least six months of hands-on VCF (or component) experience.
 
 :::note
 The guide does not publish per-objective weightings, the raw cut score or the list of item types. A "scaled" 300 is **not** "300 out of 500 = 60%". Do not plan around a percentage you cannot verify; aim to be clearly above passing in every section. Check the exam page on Broadcom/Pearson VUE for price, languages and current delivery details before you book — those change.
@@ -77,12 +77,12 @@ The exam's "architecture" is its objective map. Section 4 dominates by item coun
 
 | Objective | Title | Items in guide | Where on this platform |
 |---|---|---|---|
-| 2.1 | Private Cloud Vision | 3 | Phases 0–1: [What is VCF](lesson:what-is-vcf), private cloud and SDDC |
-| 2.2 | VMware Compute Fundamentals | 4 | Phases 1–2: ESX, vCenter, clusters, HA/DRS, VM lifecycle |
+| 2.1 | Private Cloud Vision | 3 | Phases 0–1: [What is VCF](lesson:what-is-vcf), private cloud and SDDC (Software-Defined Data Center) |
+| 2.2 | VMware Compute Fundamentals | 4 | Phases 1–2: ESX, vCenter, clusters, HA (High Availability)/DRS (Distributed Resource Scheduler), VM lifecycle |
 | 2.3 | VMware Storage Fundamentals | 6 | Phase 3: datastores, vSAN ESA/OSA, policies, resilience, space efficiency |
-| 2.4 | VMware Network Fundamentals | 4 | Phases 4–5: VDS, VCF network design, NSX architecture, segments, edges, routing, VPCs, security |
+| 2.4 | VMware Network Fundamentals | 4 | Phases 4–5: VDS (vSphere Distributed Switch), VCF network design, NSX architecture, segments, edges, routing, VPCs, security |
 | 4.1 | VCF: Deploy and Configure | 9 | Phases 6–8: fleet/instance/domains, deployment models, VCF Installer, workload domains, storage, Supervisor |
-| 4.2 | VCF: Manage | 7 | Phases 6, 7, 9, 12: fleet management, identity/RBAC, licensing, certificates, passwords, vCenter import, lifecycle |
+| 4.2 | VCF: Manage | 7 | Phases 6, 7, 9, 12: fleet management, identity/RBAC (Role-Based Access Control), licensing, certificates, passwords, vCenter import, lifecycle |
 | 4.3 | VCF: Operations | 14 | Phase 10 + Phase 13: VCF Operations, logs, network ops, health and diagnostics, alerts, policies, compliance/drift |
 | 4.4 | VCF: Consume and Automate | 12 | Phase 11 (+ Supervisor in Phase 8): VCF Automation (regions, tenancy, org admin, content, extensibility, governance), Supervisor services |
 
@@ -157,9 +157,11 @@ The exam guide frames most items as "Given a scenario, …". In practice prepare
 | Sequence / process | Deployment, commissioning, upgrade order | Know prerequisites (DNS/NTP before deploy, commission before WLD) |
 | Troubleshooting | Next best step | Evidence first, smallest safe action |
 
-This platform also uses ordering, matching and CLI questions; those are **learning formats** to build recall. The guide does not list item types, so do not assume the real exam has CLI typing questions.
+This platform also uses ordering, matching and CLI (Command-Line Interface) questions; those are **learning formats** to build recall. The guide does not list item types, so do not assume the real exam has CLI typing questions.
 
 ## Configuration
+
+This section explains the configuration decisions, ownership boundaries, dependencies and evidence an administrator must understand. The executable click path, field values, validation and rollback belong to the linked practical guide.
 
 Set up the platform for your plan:
 
@@ -169,6 +171,8 @@ Set up the platform for your plan:
 4. Schedule mocks in your calendar: one at ~60% of the plan, two in the final week.
 
 ## CLI / API
+
+CLI (Command-Line Interface) and API (Application Programming Interface) examples expose the same operational objects for inspection or automation.
 
 There is no CLI on the exam path itself. What matters is recognising commands in scenarios: `esxcli`, `vmkping -d -s`, `nslookup`, the `sos` utility, PowerCLI and REST API usage. Practise them in the labs and in the Commands reference so you can read them quickly in a question context.
 
@@ -200,13 +204,6 @@ Diagnose your own preparation like an incident:
 
 Alex's checkpoint mock (week 11) gives an estimated 290: strong in 2.2–2.4, weak in 4.3 (55%) and 4.4 (48%). Flagged questions show he confuses *metrics* and *properties*, and organisation vs provider tasks in VCF Automation. He spends four days on those lessons, does per-objective practice for 4.3 and 4.4, and repeats the VCF Operations lab. Final mocks: 81% and 84% (estimates around 380–400), every objective above 70%. Then he books the exam.
 
-## Lab
-
-Two labs give the best exam return per hour: mapping a running VCF fleet (component recall for 4.1/4.2) and the troubleshooting drill (scenario reasoning).
-
-::lab[lab-explore-vcf-fleet]
-
-::lab[lab-troubleshooting-drill]
 
 ## Exam Focus
 

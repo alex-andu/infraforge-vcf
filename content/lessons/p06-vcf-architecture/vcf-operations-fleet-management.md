@@ -39,7 +39,7 @@ sources:
 
 ## Why This Matters
 
-Exam objective 4.2 starts with "Given a scenario, differentiate between the Fleet Management capabilities in VCF Operations". In VCF 9 almost every Day-2 task — certificates, passwords, lifecycle, identity, licensing, configuration drift, backup — starts in VCF Operations. But underneath, two different engines do the work: the **VCF Operations fleet management appliance** (for fleet-level management components) and **SDDC Manager** (for each instance's core components). Knowing which engine handles which component tells you where binaries go, which log to read and which appliance must be healthy before an upgrade.
+Exam objective 4.2 starts with "Given a scenario, differentiate between the Fleet Management capabilities in VCF (VMware Cloud Foundation) Operations". In VCF 9 almost every Day-2 task — certificates, passwords, lifecycle, identity, licensing, configuration drift, backup — starts in VCF Operations. But underneath, two different engines do the work: the **VCF Operations fleet management appliance** (for fleet-level management components) and **SDDC (Software-Defined Data Center) Manager** (for each instance's core components). Knowing which engine handles which component tells you where binaries go, which log to read and which appliance must be healthy before an upgrade.
 
 ## Learning Objectives
 
@@ -94,7 +94,7 @@ The 9.0 component table says it explicitly: SDDC Manager "provides support for t
 | VCF Operations fleet management appliance | Lifecycle + deployment engine for management components (formerly Aria Suite Lifecycle) |
 | VCF Operations collector (per instance) | Collects data locally in each instance and feeds VCF Operations |
 | SDDC Manager (per instance) | Orchestrator for core components; holds per-instance inventory and resource locks |
-| VCF Identity Broker | Brokers IdP authentication for VCF SSO (embedded in mgmt vCenter or 3-node appliance) |
+| VCF Identity Broker | Brokers IdP authentication for VCF SSO (Single Sign-On) (embedded in mgmt vCenter or 3-node appliance) |
 | vSphere Lifecycle Manager (in each vCenter) | Applies ESX images to clusters when SDDC Manager drives host upgrades |
 
 ## How It Works
@@ -120,7 +120,7 @@ Certificates follow the same pattern under **Fleet Management → Certificates**
 
 ### What "SDDC Manager UI deprecated" means
 
-The 9.0 product support notes state: "SDDC Manager UI is now deprecated, to be removed in a future major release", and "SDDC Manager APIs for identity configuration are deprecated … VCF Operations now provides this functionality". The appliance and most of its API remain: VCF Operations depends on it for core-component work. Some KBs for 9.0.x still direct you to the SDDC Manager UI as a workaround (for example KB 408116: when the VCF Instances tab under Fleet Management → Passwords/Certificates is empty in 9.0, manage certificates and passwords via the SDDC Manager UI or API; fixed in 9.0.1). KB 442933 points to the SDDC Manager UI to add a host to a workload domain cluster.
+The 9.0 product support notes state: "SDDC Manager UI is now deprecated, to be removed in a future major release", and "SDDC Manager APIs for identity configuration are deprecated … VCF Operations now provides this functionality". The appliance and most of its API (Application Programming Interface) remain: VCF Operations depends on it for core-component work. Some KBs for 9.0.x still direct you to the SDDC Manager UI as a workaround (for example KB 408116: when the VCF Instances tab under Fleet Management → Passwords/Certificates is empty in 9.0, manage certificates and passwords via the SDDC Manager UI or API; fixed in 9.0.1). KB 442933 points to the SDDC Manager UI to add a host to a workload domain cluster.
 
 ### VCF SSO scope
 
@@ -140,6 +140,8 @@ VCF Operations is **mandatory** in every fleet and is the single console for fle
 
 ## Configuration
 
+This section explains the configuration decisions, ownership boundaries, dependencies and evidence an administrator must understand. The executable click path, field values, validation and rollback belong to the linked practical guide.
+
 | Area (VCF Operations) | Verified location |
 |---|---|
 | Lifecycle of management components / settings | Fleet Management → Lifecycle → VCF Management |
@@ -151,6 +153,8 @@ VCF Operations is **mandatory** in every fleet and is the single console for fle
 UI labels can move between 9.0.x maintenance releases — confirm against the docs of your release.
 
 ## CLI / API
+
+CLI (Command-Line Interface) and API (Application Programming Interface) examples expose the same operational objects for inspection or automation.
 
 - VCF Operations exposes its own REST API (fleet management, lifecycle, licensing).
 - SDDC Manager API (per instance) still serves core-component inventory: `GET /v1/domains`, `GET /v1/hosts`, `GET /v1/releases`.
@@ -180,9 +184,6 @@ Hands-on API work comes in [APIs and PowerCLI](lesson:vcf-apis-powercli).
 
 An admin must patch the fleet to 9.0.1.0 over a weekend. Plan: Friday — download management binaries to the fleet management appliance and core binaries to each SDDC Manager. Saturday — fleet management appliance → VCF Operations → VCF Automation/logs/Identity Broker. Sunday — management domain (SDDC Manager → NSX → vCenter → ESX → vSAN), then each workload domain. A domain-creation request from the dev team on Saturday fails because SDDC Manager holds resource locks — expected behaviour, not a bug.
 
-## Lab
-
-::lab[lab-explore-vcf-fleet]
 
 ## Exam Focus
 

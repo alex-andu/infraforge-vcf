@@ -32,7 +32,7 @@ sources:
 
 ## Why This Matters
 
-The management domain is the "control room" of a VCF instance. Every vCenter, every NSX Manager, SDDC Manager and — in the first instance — the whole fleet management stack run here. If the management domain is undersized, badly placed or unprotected, *every* domain of the instance (and possibly the whole fleet) loses its management plane at once. Exam questions love to ask "where does component X run?" and "how many hosts do I need?", and the answers are almost always "in the management domain" and "it depends on simple vs highly available".
+The management domain is the "control room" of a VCF (VMware Cloud Foundation) instance. Every vCenter, every NSX Manager, SDDC (Software-Defined Data Center) Manager and — in the first instance — the whole fleet management stack run here. If the management domain is undersized, badly placed or unprotected, *every* domain of the instance (and possibly the whole fleet) loses its management plane at once. Exam questions love to ask "where does component X run?" and "how many hosts do I need?", and the answers are almost always "in the management domain" and "it depends on simple vs highly available".
 
 ## Learning Objectives
 
@@ -68,7 +68,7 @@ From the Storage Models page:
 | Management domain **default** cluster, Highly Available install | **4** |
 | All workload-domain clusters, including additional clusters in the management domain | 3 |
 
-With vSAN, three hosts tolerate one host failure but cannot rebuild objects back to policy compliance; four hosts tolerate one failure *and* automatically rebuild — that is why the HA install needs four.
+With vSAN, three hosts tolerate one host failure but cannot rebuild objects back to policy compliance; four hosts tolerate one failure *and* automatically rebuild — that is why the HA (High Availability) install needs four.
 
 | Principal storage | Mgmt default cluster | Additional mgmt clusters | VI workload domain |
 |---|---|---|---|
@@ -90,7 +90,7 @@ With vSAN, three hosts tolerate one host failure but cannot rebuild objects back
 
 ### Networks
 
-By default the fleet-level components are deployed on the **management domain VM management network** — the same VLAN-backed distributed port group used for vCenter and NSX Manager. Alternatives (dedicated port group, NSX VLAN segment, NSX overlay segment, stretched overlay segment) are Day-2, API-driven options. Collectors stay on the VM management network of their instance's management domain.
+By default the fleet-level components are deployed on the **management domain VM management network** — the same VLAN-backed distributed port group used for vCenter and NSX Manager. Alternatives (dedicated port group, NSX VLAN (Virtual Local Area Network) segment, NSX overlay segment, stretched overlay segment) are Day-2, API-driven options. Collectors stay on the VM management network of their instance's management domain.
 
 SDDC Manager is placed in the first availability zone of the management domain, on the VM management network.
 
@@ -115,7 +115,7 @@ The [[vcf-identity-broker|VCF Identity Broker]] can also run **embedded** in the
 
 Bring-up sequence of a management domain (first instance), simplified:
 
-1. ESX hosts are installed and prepared (DNS forward/reverse records, NTP, network).
+1. ESX hosts are installed and prepared (DNS (Domain Name System) forward/reverse records, NTP (Network Time Protocol), network).
 2. The VCF Installer validates the hosts and the network specification.
 3. vSAN (or other principal storage) is configured on the default cluster and vCenter is deployed onto it.
 4. The vSphere Distributed Switch and port groups (management, vMotion, vSAN, …) are created.
@@ -155,6 +155,8 @@ The management domain of the *first* instance now hosts **fleet** services as we
 
 ## Configuration
 
+This section explains the configuration decisions, ownership boundaries, dependencies and evidence an administrator must understand. The executable click path, field values, validation and rollback belong to the linked practical guide.
+
 Planning checklist for a management domain:
 
 | Item | Decision |
@@ -167,6 +169,8 @@ Planning checklist for a management domain:
 | Business workloads? | Only with resource pools |
 
 ## CLI / API
+
+CLI (Command-Line Interface) and API (Application Programming Interface) examples expose the same operational objects for inspection or automation.
 
 ```http
 GET https://sddc-manager.lab.local/v1/domains
@@ -196,11 +200,8 @@ In the vSphere Client of the management vCenter you see the appliances as VMs; i
 
 ## Real-World Scenario
 
-A mid-size company wants VCF for production with high availability but has budget for only 4 management hosts. Using the HA install they get 3-node NSX Manager, 3-node VCF Operations and 3-node VCF Automation on 4 vSAN ESA hosts, with DRS anti-affinity keeping cluster nodes apart. They plan three workload domains, so they size the management cluster for 4 extra vCenters (management + 3) and decide that two domains will **share** one NSX Manager cluster to save 3 appliances.
+A mid-size company wants VCF for production with high availability but has budget for only 4 management hosts. Using the HA install they get 3-node NSX Manager, 3-node VCF Operations and 3-node VCF Automation on 4 vSAN ESA hosts, with DRS (Distributed Resource Scheduler) anti-affinity keeping cluster nodes apart. They plan three workload domains, so they size the management cluster for 4 extra vCenters (management + 3) and decide that two domains will **share** one NSX Manager cluster to save 3 appliances.
 
-## Lab
-
-::lab[lab-explore-vcf-fleet]
 
 ## Exam Focus
 

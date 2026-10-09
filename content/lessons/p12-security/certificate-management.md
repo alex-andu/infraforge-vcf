@@ -37,10 +37,10 @@ sources:
 
 ## Why This Matters
 
-Every conversation between VCF components is TLS: SDDC Manager to vCenter, vCenter to ESX, VCF Operations to NSX,
+Every conversation between VCF (VMware Cloud Foundation) components is TLS: SDDC (Software-Defined Data Center) Manager to vCenter, vCenter to ESX, VCF Operations to NSX,
 fleet management to the Identity Broker. TLS only works if the client **trusts** the certificate the server presents.
-When a certificate expires, or is replaced with one from a CA the clients do not trust, components quietly stop talking:
-lifecycle prechecks fail, VCF Operations stops collecting, password operations fail, SSO breaks. Certificates are the
+When a certificate expires, or is replaced with one from a CA (Certificate Authority) the clients do not trust, components quietly stop talking:
+lifecycle prechecks fail, VCF Operations stops collecting, password operations fail, SSO (Single Sign-On) breaks. Certificates are the
 single most common hidden cause of "everything was fine yesterday" incidents.
 
 The exam objective is "configure certificate management within VMware Cloud Foundation". You need the TLS basics, the
@@ -63,8 +63,8 @@ service-to-service trust failure.
    validity dates, issuer).
 2. The leaf is signed by an **intermediate (issuing) CA**, which is signed by a **root CA** (self-signed).
 3. The client builds a path from leaf to a root it already trusts in its **trust store**.
-4. The client checks names (the FQDN it connected to must be in the SAN), dates and key usage.
-5. If any check fails, the TLS handshake fails, and an API client refuses to talk (a browser shows a warning you can
+4. The client checks names (the FQDN (Fully Qualified Domain Name) it connected to must be in the SAN), dates and key usage.
+5. If any check fails, the TLS handshake fails, and an API (Application Programming Interface) client refuses to talk (a browser shows a warning you can
    click through, an API client usually cannot).
 
 ### Who issues certificates in VCF
@@ -74,7 +74,7 @@ service-to-service trust failure.
 | **VMCA** | Inside every vCenter | vCenter machine SSL and ESX host certificates by default | Its root is in vCenter's TRUSTED_ROOTS store |
 | **Microsoft CA** | Your AD CS server (web enrollment, `https://ca.example.com/certsrv`) | VCF management and VCF instance components | Needs a custom template and a service account |
 | **OpenSSL CA** | On the SDDC Manager appliance | VCF instance components **only** | Good for labs |
-| **External/third-party CA** | Anywhere | Any component, via CSR, download, sign, import | You manage the signing process |
+| **External/third-party CA** | Anywhere | Any component, via CSR (Certificate Signing Request), download, sign, import | You manage the signing process |
 | **Self-signed** | The component itself | Default for some appliances | Must be trusted explicitly by clients |
 
 ### Where certificates are managed in 9.0
@@ -200,6 +200,8 @@ programme: auto-renewal at 60 days helps.
 
 ## Configuration
 
+This section explains the configuration decisions, ownership boundaries, dependencies and evidence an administrator must understand. The executable click path, field values, validation and rollback belong to the linked practical guide.
+
 Design decisions:
 
 | Question | Typical answer |
@@ -211,6 +213,8 @@ Design decisions:
 | Trust distribution | Enterprise root and intermediate in VCF trust stores and on admin workstations |
 
 ## CLI / API
+
+CLI (Command-Line Interface) and API (Application Programming Interface) examples expose the same operational objects for inspection or automation.
 
 Verification from any Linux shell (or the SDDC Manager appliance):
 
@@ -266,9 +270,6 @@ performed replacements through VCF Operations. Practise exactly this in the inci
 
 ::incident[inc-certificate-trust]
 
-## Lab
-
-::lab[lab-certificate-replacement]
 
 ## Exam Focus
 

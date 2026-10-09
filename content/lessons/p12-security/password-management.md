@@ -35,7 +35,7 @@ sources:
 
 ## Why This Matters
 
-VCF is an automation platform: SDDC Manager logs into vCenter, NSX and every ESX host thousands of times a day using
+VCF (VMware Cloud Foundation) is an automation platform: SDDC (Software-Defined Data Center) Manager logs into vCenter, NSX and every ESX host thousands of times a day using
 credentials it stores. If a password changes behind its back, or expires, automation breaks: lifecycle prechecks fail,
 host operations fail, VCF Operations shows "disconnected". If passwords never change, auditors are unhappy and a leaked
 password stays valid forever. Password management in VCF exists to change credentials **without breaking the
@@ -49,7 +49,7 @@ expect scenarios that test whether you pick **update**, **rotate** or **remediat
 - Locate each action in VCF 9.0 (VCF Operations Fleet Management > Passwords, SDDC Manager Security > Password
   Management).
 - Interpret password expiry and connection status, and know its refresh interval.
-- Retrieve stored credentials safely with `lookup_passwords` or the API.
+- Retrieve stored credentials safely with `lookup_passwords` or the API (Application Programming Interface).
 
 ## Concept
 
@@ -175,6 +175,8 @@ Remediate are in VCF Operations, while Rotate and its schedule remain in SDDC Ma
 
 ## Configuration
 
+This section explains the configuration decisions, ownership boundaries, dependencies and evidence an administrator must understand. The executable click path, field values, validation and rollback belong to the linked practical guide.
+
 Recommended baseline:
 
 | Item | Setting |
@@ -186,6 +188,8 @@ Recommended baseline:
 | Permissions | Grant Passwords: Manage only to the platform team; View to auditors |
 
 ## CLI / API
+
+CLI (Command-Line Interface) and API (Application Programming Interface) examples expose the same operational objects for inspection or automation.
 
 ```shell
 # On SDDC Manager (ssh as vcf)
@@ -228,9 +232,6 @@ Passwords > VCF Instances > the domain > NSX `admin` > **Remediate Password** wi
 Their post-mortem added a rule: any emergency password change opens a ticket that cannot be closed until Remediate has
 been run.
 
-## Lab
-
-::lab[lab-password-rotation]
 
 ## Exam Focus
 

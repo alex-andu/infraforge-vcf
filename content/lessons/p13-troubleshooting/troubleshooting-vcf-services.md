@@ -43,7 +43,7 @@ sources:
 
 ## Why This Matters
 
-Once DNS, NTP, certificates and identity are proven healthy, the next question is: **which service actually executes the workflow that failed, and where does it write its evidence?** In VCF 9 this is less obvious than before. A workload domain is *requested* in VCF Operations, *executed* by SDDC Manager services, and *materialised* in vCenter, NSX and ESX. A host is commissioned from the vCenter UI. An upgrade is planned in VCF Operations fleet management. If you open the wrong log you will find nothing — or worse, a misleading secondary error.
+Once DNS (Domain Name System), NTP (Network Time Protocol), certificates and identity are proven healthy, the next question is: **which service actually executes the workflow that failed, and where does it write its evidence?** In VCF (VMware Cloud Foundation) 9 this is less obvious than before. A workload domain is *requested* in VCF Operations, *executed* by SDDC (Software-Defined Data Center) Manager services, and *materialised* in vCenter, NSX and ESX. A host is commissioned from the vCenter UI. An upgrade is planned in VCF Operations fleet management. If you open the wrong log you will find nothing — or worse, a misleading secondary error.
 
 This lesson is your map: workflow → executor → evidence. It is also honest about which log paths have been verified for VCF 9 and which come from earlier versions.
 
@@ -68,7 +68,7 @@ Many day-2 workflows moved out of the SDDC Manager UI (VCF blog, *10 VCF 9 enhan
 | Cluster creation/expansion | vCenter: *Hosts and Clusters → Datacenter → New Cluster → New SDDC Cluster* | SDDC Manager |
 | Backup configuration | VCF Operations: *Fleet Management → Lifecycle → Settings*; *Manage VCF Instance Settings → Backup Settings* | SDDC Manager |
 | DNS/NTP settings | VCF Operations: *Inventory → VCF Instance → Actions → Manage VCF Instance Settings → Network Settings* | SDDC Manager |
-| Certificates / CA | VCF Operations: *Fleet Management → Certificates* (*Configure CA*) | SDDC Manager *Security* |
+| Certificates / CA (Certificate Authority) | VCF Operations: *Fleet Management → Certificates* (*Configure CA*) | SDDC Manager *Security* |
 | Passwords | VCF Operations: *Fleet Management → Passwords* | SDDC Manager *Security* |
 | NSX Edge cluster | vCenter: *Network → Network Connectivity* | SDDC Manager |
 
@@ -84,7 +84,7 @@ The evidence map in one sentence per component:
 - **ESX host** — the VMkernel, `hostd` (host management agent) and `vpxa` (vCenter agent) each log locally; logs can (and should) be forwarded with syslog.
 - **vCenter** — each service logs under `/var/log/vmware/<service>/`; `vpxd` is the core vCenter service.
 - **SDDC Manager / VCF Installer** — services log under `/var/log/vmware/vcf/<service>/`; the `sos` utility collects them.
-- **NSX Manager / Edge** — `/var/log/syslog` plus service logs (for example `nsxapi`); the NSX CLI can tail them.
+- **NSX Manager / Edge** — `/var/log/syslog` plus service logs (for example `nsxapi`); the NSX CLI (Command-Line Interface) can tail them.
 - **VCF Operations** and fleet management — evidence surfaced in the UI (alerts, VCF Health, Diagnostics Findings) and collected with **[[log-assist|Log Assist]]**.
 - **VCF Operations for logs** — the central place where all of the above can be searched together.
 
@@ -103,7 +103,7 @@ The evidence map in one sentence per component:
 | SDDC Manager / VCF Installer | `/var/log/vmware/vcf/domainmanager/domainmanager.log` | Deployment, domains, clusters, hosts | **Yes** — VCF 9 KBs 439546 and 418890 |
 | SDDC Manager | `/var/log/vmware/vcf/lcm/` | Lifecycle prechecks, bundles, upgrades | Path documented for 5.2 (KB 397253); cited for VCF 9 installer in the Broadcom community — verify |
 | SDDC Manager | `/var/log/vmware/vcf/operationsmanager/` | Host commission, certificates, passwords, backups (5.2 description) | 5.2 KB; cited for 9 in community — verify |
-| SDDC Manager | `/var/log/vmware/vcf/commonsvcs/` | Inventory, tasks, API logins | 5.2 KB; cited for 9 in community — verify |
+| SDDC Manager | `/var/log/vmware/vcf/commonsvcs/` | Inventory, tasks, API (Application Programming Interface) logins | 5.2 KB; cited for 9 in community — verify |
 | SDDC Manager | `/var/log/vmware/vcf/sddc-support/` | Output of `sos` bundles | **Yes** — KB 402476 (9.0.x) |
 | NSX Manager | `/var/log/syslog`, `/var/log/proton/nsxapi*`, `/var/log/policy/nsxapi*`, `/var/log/corfu/`, `/var/log/cbm/` | API, policy, clustering | KB 376813 (version not stated) — verify |
 | NSX Edge | `/var/log/syslog` | Edge datapath/agents | KB 376813 — verify |
@@ -127,7 +127,7 @@ Broadcom KB 323612 documents the [[esx-heartbeat|heartbeat]]: the host sends UDP
 The generic flow for a failed VCF workflow:
 
 1. **Read the task in the UI where it was started** (vCenter, VCF Operations, VCF Installer). Copy the failed step name, error text and timestamp.
-2. **Identify the executor.** Domain/cluster/host workflows → SDDC Manager services (domain manager). Lifecycle → fleet management / SDDC Manager LCM. Host-level steps → `hostd`/`vpxa`/`esxupdate` on the host. Network steps → NSX Manager.
+2. **Identify the executor.** Domain/cluster/host workflows → SDDC Manager services (domain manager). Lifecycle → fleet management / SDDC Manager LCM (Lifecycle Management). Host-level steps → `hostd`/`vpxa`/`esxupdate` on the host. Network steps → NSX Manager.
 3. **Open the executor's log at that timestamp** and search backwards for the **first** error or exception.
 4. **Check dependencies for the failing target** (DNS, NTP, certs, credentials, depot/binaries, connectivity).
 5. **Collect a bundle** if you will change anything significant: `sos` on SDDC Manager/VCF Installer, Log Assist in VCF Operations.
@@ -138,7 +138,7 @@ The generic flow for a failed VCF workflow:
 
 ### Deployment (VCF Installer)
 
-The VCF Installer appliance runs validation, then executes deployment; its services log under `/var/log/vmware/vcf/...` (collected with the [[sos-utility|SoS utility]]) — `domainmanager.log` is the community-recommended single file to follow during a deployment. Typical causes found there: DNS/NTP inputs, ESX host thumbprints/passwords, network spec errors (VLAN, MTU, IP pools), and binaries missing from the depot.
+The VCF Installer appliance runs validation, then executes deployment; its services log under `/var/log/vmware/vcf/...` (collected with the [[sos-utility|SoS utility]]) — `domainmanager.log` is the community-recommended single file to follow during a deployment. Typical causes found there: DNS/NTP inputs, ESX host thumbprints/passwords, network spec errors (VLAN (Virtual Local Area Network), MTU, IP pools), and binaries missing from the depot.
 
 Collect installer logs on 9.0.x (SSH as `vcf`, then `su` to root):
 
@@ -164,7 +164,7 @@ Lifecycle is planned and executed through VCF Operations fleet management with S
 
 ### Automation (VCF Automation)
 
-VCF Automation depends on everything below it: identity (organisation users log in through SSO), DNS, certificates, vCenter/NSX/Supervisor connectivity for regions, and the content library. When a tenant action fails, scope first: does the same operation work directly in vCenter (for example, deploying the VM from the same template)? If yes, the problem is in VCF Automation configuration (region, org networking, policy); if no, it is in the infrastructure. Detailed VCF Automation log paths are not covered here — use the product's documented support bundle collection.
+VCF Automation depends on everything below it: identity (organisation users log in through SSO (Single Sign-On)), DNS, certificates, vCenter/NSX/Supervisor connectivity for regions, and the content library. When a tenant action fails, scope first: does the same operation work directly in vCenter (for example, deploying the VM from the same template)? If yes, the problem is in VCF Automation configuration (region, org networking, policy); if no, it is in the infrastructure. Detailed VCF Automation log paths are not covered here — use the product's documented support bundle collection.
 
 ### ESX host Not Responding / Disconnected
 
@@ -180,6 +180,8 @@ KB 323612 lists `Started heartbeating..` repeating every minute in `vpxa.log` as
 
 ## Configuration
 
+This section explains the configuration decisions, ownership boundaries, dependencies and evidence an administrator must understand. The executable click path, field values, validation and rollback belong to the linked practical guide.
+
 Make future troubleshooting possible:
 
 | Setting | How | Why |
@@ -191,6 +193,8 @@ Make future troubleshooting possible:
 | Depot | Online or offline depot configured with correct protocol/port | Lifecycle and domain workflows need binaries |
 
 ## CLI / API
+
+CLI (Command-Line Interface) and API (Application Programming Interface) examples expose the same operational objects for inspection or automation.
 
 ```shell
 # ESX: follow the three main logs
@@ -249,16 +253,11 @@ Failed to get install image for component VCENTER, version 9.0.2.0.25148086
 
 During Alex's nested lab bring-up the VCF Installer stops at an NSX deployment step. The UI error is generic. Following the method:
 
-1. `tail` of `domainmanager.log` around the failure shows a timeout reaching the NSX Manager FQDN.
+1. `tail` of `domainmanager.log` around the failure shows a timeout reaching the NSX Manager FQDN (Fully Qualified Domain Name).
 2. Dependency check from the installer: forward lookup OK, **reverse lookup of the NSX VIP returns NXDOMAIN** — the PTR record was forgotten for the VIP (only node records existed).
 3. Fix: add PTR for the VIP; retry from the installer UI; the workflow resumes from the failed step and completes.
 4. Verification: NSX Manager UI reachable via VIP FQDN; installer task green.
 
-## Lab
-
-::lab[lab-troubleshooting-drill]
-
-::incident[inc-esx-host-disconnected]
 
 ## Exam Focus
 

@@ -117,6 +117,9 @@ export function loadContent(): ContentBundle {
       else if (idx < last) warn(file, `section "## ${s}" is out of template order`);
       else last = idx;
     }
+    if (headings.includes('Lab') || /::lab\[[^\]]+\]/.test(body)) {
+      err(file, 'embedded labs are not allowed in standalone theory; link the practical guide through frontmatter');
+    }
     const words = body.split(/\s+/).length;
     lessons.push({ meta, body, anchors, file: rel(file), words });
   }

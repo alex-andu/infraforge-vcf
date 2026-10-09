@@ -32,9 +32,9 @@ sources:
 
 ## Why This Matters
 
-Every other part of VCF 9 (deployment, workload domains, lifecycle, certificates, passwords, operations) is described in terms of a small set of containers: the **fleet**, the **VCF instance**, the **domain** and the **cluster**. If you cannot say instantly which container a component belongs to, you will misread exam scenarios such as "an administrator adds a second data center" or "where are the vCenter instances of the workload domains running?".
+Every other part of VCF (VMware Cloud Foundation) 9 (deployment, workload domains, lifecycle, certificates, passwords, operations) is described in terms of a small set of containers: the **fleet**, the **VCF instance**, the **domain** and the **cluster**. If you cannot say instantly which container a component belongs to, you will misread exam scenarios such as "an administrator adds a second data center" or "where are the vCenter instances of the workload domains running?".
 
-VCF 9 also changed the vocabulary. Things that were called Aria Operations, Aria Suite Lifecycle, Cloud Builder or Workspace ONE Access in VCF 5.x now have new names or no longer exist, and the central console moved from SDDC Manager to VCF Operations. The exam is written in VCF 9 language, so this lesson is the map you will use for the rest of the course.
+VCF 9 also changed the vocabulary. Things that were called Aria Operations, Aria Suite Lifecycle, Cloud Builder or Workspace ONE Access in VCF 5.x now have new names or no longer exist, and the central console moved from SDDC (Software-Defined Data Center) Manager to VCF Operations. The exam is written in VCF 9 language, so this lesson is the map you will use for the rest of the course.
 
 ## Learning Objectives
 
@@ -53,7 +53,7 @@ VCF 9 also changed the vocabulary. Things that were called Aria Operations, Aria
 | VCF private cloud | The highest management level; can contain several fleets | "Contoso private cloud" |
 | [[fleet\|VCF fleet]] | "An environment that is managed by a single set of fleet-level management components – VCF Operations and VCF Automation. A VCF fleet contains one or more VCF Instances." | One fleet per business unit or per regulatory boundary |
 | [[vcf-instance\|VCF instance]] | "Compute, storage, networking virtual infrastructure that runs business workloads. A VCF Instance consists of VCF domains – a management domain and, optionally, additional workload domains." | One instance per data center / site |
-| VCF domain | One vCenter instance plus one or more vSphere clusters with vSphere HA and DRS enabled (and an NSX Manager instance) | "mgmt" domain, "prod" domain, "dev" domain |
+| VCF domain | One vCenter instance plus one or more vSphere clusters with vSphere HA (High Availability) and DRS (Distributed Resource Scheduler) enabled (and an NSX Manager instance) | "mgmt" domain, "prod" domain, "dev" domain |
 | vSphere cluster | A group of ESX hosts with shared/principal storage | 4-host vSAN cluster |
 | ESX host | The hypervisor | Physical server |
 
@@ -147,16 +147,20 @@ In VCF 5.x the top of the hierarchy was the **VCF instance** managed by SDDC Man
 
 ## Configuration
 
+This section explains the configuration decisions, ownership boundaries, dependencies and evidence an administrator must understand. The executable click path, field values, validation and rollback belong to the linked practical guide.
+
 There is nothing to "configure" about the hierarchy itself — it results from deployment choices you make:
 
 | Decision | Where you make it | Effect |
 |---|---|---|
 | New fleet or join existing fleet | VCF Installer wizard | Whether new VCF Operations/Automation are deployed |
 | Simple or high-availability components | VCF Installer wizard | 1 node vs 3 nodes for NSX Manager, VCF Operations, VCF Automation |
-| New workload domain | VCF Operations (SDDC Manager executes) | New vCenter + SSO domain, dedicated or shared NSX |
+| New workload domain | VCF Operations (SDDC Manager executes) | New vCenter + SSO (Single Sign-On) domain, dedicated or shared NSX |
 | Add cluster to a domain | VCF Operations / SDDC Manager | More capacity inside the same vCenter |
 
 ## CLI / API
+
+CLI (Command-Line Interface) and API (Application Programming Interface) examples expose the same operational objects for inspection or automation.
 
 The hierarchy is visible through the SDDC Manager public API of each instance (authentication with `POST /v1/tokens`):
 
@@ -179,7 +183,7 @@ Fleet-level objects (VCF Operations, VCF Automation, fleet management) are manag
 |---|---|---|
 | VCF Operations (fleet level) | No monitoring, no fleet management UI, no license reporting | All instances keep running workloads; vCenter/NSX consoles still work |
 | Fleet management appliance | Cannot lifecycle/deploy management components | Monitoring continues |
-| SDDC Manager of one instance | No workload domain creation, host commissioning or core LCM for that instance | Workloads, vCenter, NSX of that instance; other instances unaffected |
+| SDDC Manager of one instance | No workload domain creation, host commissioning or core LCM (Lifecycle Management) for that instance | Workloads, vCenter, NSX of that instance; other instances unaffected |
 | Management domain of instance 1 | Fleet services and instance-1 management appliances down | Workload VMs in workload domains keep running (data plane on ESX), but cannot be managed |
 | A workload domain vCenter | That domain cannot be managed | Other domains unaffected — domains are isolation boundaries |
 
@@ -189,7 +193,7 @@ When something "in VCF" is broken, first locate it in the hierarchy:
 
 1. **Which fleet / instance / domain?** A problem visible only in one domain usually points at that domain's vCenter or NSX Manager.
 2. **Fleet or instance component?** Fleet-level symptoms (all instances show stale data) → VCF Operations or its collectors. Instance-level symptoms (cannot create a domain in site B) → SDDC Manager of site B.
-3. **Check dependencies** shared by everything: DNS forward/reverse, NTP, certificates (see [Component Communication](lesson:component-communication)).
+3. **Check dependencies** shared by everything: DNS (Domain Name System) forward/reverse, NTP (Network Time Protocol), certificates (see [Component Communication](lesson:component-communication)).
 4. **Check the integration**: VCF Operations shows an instance through its VMware Cloud Foundation integration account (Administration → Integrations → Accounts → VMware Cloud Foundation). A broken integration looks like "the domain is there but has no children".
 
 ## Real-World Scenario
@@ -200,11 +204,6 @@ A retailer runs a data center in Bucharest and one in Cluj. They want one operat
 - **Instances**: Bucharest = instance 1 (management domain + "prod" and "dev" workload domains), Cluj = instance 2 (its own management domain with SDDC Manager, vCenter, NSX Manager and a VCF Operations collector, plus a "prod-cluj" workload domain).
 - **Result**: Cluj survives a Bucharest outage for running workloads; only fleet-level visibility and automation are lost until Bucharest recovers (or until fleet components are protected with a DR design — see [Deployment Models](lesson:vcf-deployment-models)).
 
-## Lab
-
-In the lab you will build an inventory map of a running VCF instance — every appliance, its level, where it runs and what it depends on.
-
-::lab[lab-explore-vcf-fleet]
 
 ## Exam Focus
 

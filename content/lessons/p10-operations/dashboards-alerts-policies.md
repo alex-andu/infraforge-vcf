@@ -42,7 +42,7 @@ sources:
 
 ## Why This Matters
 
-Three exam items live in this lesson: "create and share dashboards", "configure Alerting" and "configure VCF
+Three exam items live in this lesson: "create and share dashboards", "configure Alerting" and "configure VCF (VMware Cloud Foundation)
 Operations policies". They are also the three things that decide whether VCF Operations is useful in practice. A
 dashboard nobody can see is useless; an alert that fires for everything is ignored; and a policy that applies
 production thresholds to a test cluster floods you with noise. Policies are the glue: they decide which data is
@@ -221,6 +221,8 @@ cluster's hosts. Dashboard navigation links one dashboard to another. These are 
 
 ## Configuration
 
+This section explains the configuration decisions, ownership boundaries, dependencies and evidence an administrator must understand. The executable click path, field values, validation and rollback belong to the linked practical guide.
+
 Scenario configuration for a "Production" policy:
 
 | Setting | Value |
@@ -233,6 +235,8 @@ Scenario configuration for a "Production" policy:
 | Priority | Above the default policy |
 
 ## CLI / API
+
+CLI (Command-Line Interface) and API (Application Programming Interface) examples expose the same operational objects for inspection or automation.
 
 Dashboards and alert definitions can be exported (JSON) and imported, which is the practical way to move content
 between instances or keep it in version control. Alerts can be read through the suite API (see
@@ -270,9 +274,6 @@ deactivated and capacity settings relaxed, and assign it with a priority above t
 stricter policy. A shared "Prod Health" dashboard (group sharing to the NOC group, no editing) shows only production,
 and a notification rule pages the on-call engineer only for Critical health alerts in production.
 
-## Lab
-
-::lab[lab-vcf-ops-dashboards-alerts]
 
 ## Exam Focus
 

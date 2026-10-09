@@ -6,7 +6,7 @@ module: m05-nsx-routing
 version: vcf9
 minutes: 45
 difficulty: advanced
-summary: How NSX splits routing between provider (Tier-0) and tenant (Tier-1) gateways, the SR/DR model, the north-south packet walk, BGP and static routing, route advertisement and redistribution, and the failures that break north-south.
+summary: How VMware NSX Tier-0 and Tier-1 gateways split provider and tenant routing, including distributed and service routers, Border Gateway Protocol (BGP), route advertisement and redistribution.
 topics: [nsx-routing, nsx-edge]
 objectives: ["2.4"]
 keyTerms: [tier-0, tier-1, sr, dr, bgp, ecmp, route-advertisement, bfd]
@@ -99,6 +99,19 @@ Avoid these ranges in your own addressing (or change them before building gatewa
 | Route advertisement | Tier-1 | Which Tier-1 routes are sent to the Tier-0 |
 | Route redistribution | Tier-0 | Which routes (connected, Tier-1 advertised, NAT, static…) go into BGP/OSPF |
 
+
+### Component responsibilities and limits
+
+**Tier-0 gateway.** Tier-0 is the provider routing boundary between NSX and the external network. Its service routers peer or route northbound, while its distributed router provides east-west forwarding where possible. It does not define tenant segmentation by itself.
+
+**Tier-1 gateway.** Tier-1 is the tenant or application routing boundary for connected segments. Its distributed router keeps inter-segment traffic on hosts; a service router is created when centralized services require an Edge.
+
+**Distributed router.** The distributed-router instance exists on relevant transport nodes and forwards close to workloads. It reduces hairpinning but cannot terminate external BGP peers or host stateful centralized services.
+
+**Service router.** The service-router instance runs on an Edge for north-south connectivity and centralized functions. It depends on Edge-cluster capacity and uplink reachability.
+
+**Route advertisement and redistribution.** Advertisement sends selected Tier-1 routes toward Tier-0; redistribution injects connected, static or service routes into a routing protocol. Neither should be treated as automatic route intent—prefix scope and filters must be designed.
+
 ## How It Works
 
 ### North-south: VM to the internet (Tier-1 without SR)
@@ -177,19 +190,15 @@ SR/DR machinery (the transit gateway in centralized mode connects to a Tier-0).
 
 ## Configuration
 
-Tier-1 (Networking → Tier-1 Gateways → Add):
+| Design decision | Management surface | Evidence |
+|---|---|---|
+| Where is the provider/tenant boundary? | Tier-0/Tier-1 topology | Gateway ownership and attached segments |
+| Which services require service routers? | Gateway service configuration | Edge placement and high-availability mode |
+| How does Tier-0 reach the fabric? | Uplink interfaces and external routing | VLAN/IP state, peer health and learned/advertised routes |
+| Which Tier-1 prefixes travel north? | Route advertisement | Explicit advertised categories and expected prefixes |
+| Which routes enter BGP? | Tier-0 redistribution and filters | Approved sources, route map/filter and routing table evidence |
 
-| Field | Lab value |
-|---|---|
-| Name | `t1-lab` |
-| Linked Tier-0 Gateway | `t0-lab` |
-| HA mode | Distributed Only (no services) |
-| Edge Cluster | (none — avoids an SR) |
-| Route Advertisement | All Connected Segments and Service Ports |
-
-Tier-0 (Networking → Tier-0 Gateways → Add): name, HA mode, edge cluster; **Interfaces**: one external interface per
-Edge on the uplink VLAN segment; **BGP**: local AS, neighbors; **Route Re-distribution**: Tier-0 connected + Tier-1
-connected segments.
+The separate practical guide owns gateway creation and peer configuration. Theory keeps advertisement, redistribution and forwarding-plane roles distinct.
 
 ## CLI / API
 
@@ -240,13 +249,6 @@ A new tenant Tier-1 with `seg-app` (`172.16.30.0/24`) can reach other segments b
 `get route` on the Tier-0 SR shows no `172.16.30.0/24`. The Tier-1 was created with route advertisement empty. After
 enabling *All Connected Segments and Service Ports*, the route appears on the SR, `advertised-routes` toward the ToR
 now lists it, and connectivity works — no Edge or BGP change needed.
-
-## Lab
-
-Build the Tier-0 with BGP in your lab, then connect your Tier-1 from the segments lab and watch the routes appear
-on a router VM.
-
-::lab[lab-nsx-tier0-bgp-edge]
 
 ## Exam Focus
 

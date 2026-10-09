@@ -31,23 +31,23 @@ sources:
 
 ## Why This Matters
 
-vSphere Supervisor turns a workload domain cluster into a Kubernetes-API-driven platform: developers and VCF Automation request VMs, Kubernetes clusters, volumes and services declaratively, and vSphere builds them. In VCF 9.0 the workload domain wizard offers to activate Supervisor **by default**, and VCF Automation's modern consumption model is built on it. Objective 4.1 ends with "configure Supervisor within a Workload Domain" and 4.4 with "describe the deployment of Supervisor-based Services" — both are covered here.
+vSphere Supervisor turns a workload domain cluster into a Kubernetes-API-driven platform: developers and VCF (VMware Cloud Foundation) Automation request VMs, Kubernetes clusters, volumes and services declaratively, and vSphere builds them. In VCF 9.0 the workload domain wizard offers to activate Supervisor **by default**, and VCF Automation's modern consumption model is built on it. Objective 4.1 ends with "configure Supervisor within a Workload Domain" and 4.4 with "describe the deployment of Supervisor-based Services" — both are covered here.
 
 ## Learning Objectives
 
 - Describe the Supervisor architecture: control plane VMs, Spherelet, vSphere Pods, VM Service, VKS, zones.
 - Activate Supervisor during workload domain creation and explain what the wizard deploys.
-- Compare the networking stacks (VPC, NSX segments, VDS) and load balancers (NSX, Avi, Foundation Load Balancer).
+- Compare the networking stacks (VPC, NSX segments, VDS (vSphere Distributed Switch)) and load balancers (NSX, Avi, Foundation Load Balancer).
 - Explain the simplified Supervisor and how to grow it.
 - Describe how Supervisor Services (VKS, Harbor, Contour, …) are deployed and consumed through vSphere Namespaces.
 
 ## Concept
 
-TechDocs defines [[supervisor]] as "a workload domain capability that, when activated, enables a self-service consumption experience that uses a single declarative API to create resources such as Virtual Machines, Kubernetes Guest Clusters, Storage Volumes and other advanced services."
+TechDocs defines [[supervisor]] as "a workload domain capability that, when activated, enables a self-service consumption experience that uses a single declarative API (Application Programming Interface) to create resources such as Virtual Machines, Kubernetes Guest Clusters, Storage Volumes and other advanced services."
 
 | Building block | What it is |
 |---|---|
-| Supervisor control plane VMs | Kubernetes control plane running as VMs on the cluster — **one** (simple) or **three** (HA, recommended for control plane HA) |
+| Supervisor control plane VMs | Kubernetes control plane running as VMs on the cluster — **one** (simple) or **three** (HA (High Availability), recommended for control plane HA) |
 | Spherelet | "A kubelet that is ported natively to ESX", making each ESX host a Kubernetes node |
 | vSphere Pods | Containers running in a CRX (Container Runtime Executive) — a paravirtualised Linux kernel with VM-level isolation |
 | VM Service | Declarative VMs (and the VMs behind VKS clusters) |
@@ -96,7 +96,7 @@ Where things run:
 |---|---|---|
 | NSX | Default for VPC/NSX segment models | L4, no extra configuration |
 | Avi | All networking models | Advanced (L7, analytics); additional entitlement |
-| Foundation LB | VLAN (VDS) networking only | Packaged with vCenter; single/dual-node; L4 |
+| Foundation LB | VLAN (Virtual Local Area Network) (VDS) networking only | Packaged with vCenter; single/dual-node; L4 |
 
 ### Control plane and zones
 
@@ -125,7 +125,7 @@ Where things run:
 | Control plane IP range | **At least 5** addresses |
 | NSX project / VPC connectivity profile | Not configurable when a **new** NSX Manager is deployed |
 | Private (transit gateway) CIDR, Private CIDR | VPC address space for namespaces/workloads |
-| Workload DNS / Workload NTP | DNS and routable NTP for workloads |
+| Workload DNS (Domain Name System) / Workload NTP (Network Time Protocol) | DNS and routable NTP for workloads |
 
 5. Finish. The result is a Supervisor with **one control plane VM** and **one vSphere zone**.
 6. **Complete activation**: deploy an **NSX Edge cluster with an active-standby Tier-0 gateway** (centralized connectivity), unless you reused a compatible existing NSX Manager. Until then the Supervisor cannot reach external networks.
@@ -173,6 +173,8 @@ VCF Automation's "All Apps" organizations consume Supervisor namespaces through 
 
 ## Configuration
 
+This section explains the configuration decisions, ownership boundaries, dependencies and evidence an administrator must understand. The executable click path, field values, validation and rollback belong to the linked practical guide.
+
 Minimum worksheet for wizard-based activation:
 
 | Item | Example |
@@ -183,9 +185,11 @@ Minimum worksheet for wizard-based activation:
 | Private transit gateway CIDR | 172.16.100.0/24 |
 | Private CIDR | 172.16.0.0/20 |
 | Workload DNS / NTP | 10.0.10.2 / 10.0.10.2 |
-| Tier-0 | active-standby, BGP or static to ToR |
+| Tier-0 | active-standby, BGP (Border Gateway Protocol) or static to ToR |
 
 ## CLI / API
+
+CLI (Command-Line Interface) and API (Application Programming Interface) examples expose the same operational objects for inspection or automation.
 
 Supervisor configuration is exposed through the vSphere Automation API (`Vcenter NamespaceManagement Supervisors …` data structures, including `SupervisorServices CreateSpec`). After activation, users log in with the vSphere kubectl plugin:
 
@@ -214,11 +218,6 @@ Work bottom-up: ESX hosts healthy and in the zone cluster → management network
 
 A software company creates a workload domain `dev01` with Supervisor enabled, centralized connectivity and a single zone. The wizard finishes but developers cannot reach the Kubernetes API from their laptops. The platform engineer realises the NSX Edge cluster and active-standby Tier-0 were never deployed — the wizard explicitly leaves that for afterwards. After deploying the edge cluster with BGP to the ToR, the Supervisor completes activation. They then scale the control plane to three VMs for HA, install Harbor and Contour as Supervisor Services, and create namespaces per team with quotas.
 
-## Lab
-
-Running Supervisor in a nested home lab is the hardest exercise in this course — read its sizing notes carefully.
-
-::lab[lab-enable-supervisor]
 
 ## Exam Focus
 

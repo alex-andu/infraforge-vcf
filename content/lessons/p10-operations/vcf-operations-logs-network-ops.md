@@ -38,7 +38,7 @@ sources:
 ## Why This Matters
 
 Metrics tell you *that* something is wrong. Logs tell you *why*, and network visibility tells you *where in the path*.
-VCF 9 brings all three into one console. The exam has five items in this lesson: identify the use case for VCF Network
+VCF (VMware Cloud Foundation) 9 brings all three into one console. The exam has five items in this lesson: identify the use case for VCF Network
 Operations and VCF Operations (Logs), monitor log events, monitor networks, monitor VCF components with VCF Health and
 Diagnostics, and monitor vSAN with Storage Operations. The scenarios are usually "which tool would you use to..." so
 the key skill is knowing what each tool sees.
@@ -58,7 +58,7 @@ the key skill is knowing what each tool sees.
 |---|---|---|
 | Central log collection, search, log alerts | **VCF Operations for logs** | "Which host logged the APD event at 02:13?" |
 | Network visibility, flow analytics, micro-segmentation planning, path troubleshooting | **VCF Operations for networks** (VCF Network Operations) | "Which VMs talk to the database on port 3306, and through which firewall rules?" |
-| Platform health across the VCF stack | **VCF Health** | "Are certificates, NTP/DNS, vCenter and vMotion healthy across the fleet?" |
+| Platform health across the VCF stack | **VCF Health** | "Are certificates, NTP (Network Time Protocol)/DNS (Domain Name System), vCenter and vMotion healthy across the fleet?" |
 | Known issues and support | **Diagnostics Findings**, **Log Assist** | "Does my environment match a known issue? Bundle logs for a support case." |
 | vSAN and other storage | **Storage Operations** | "Which vSAN cluster has a falling health score or rising latency?" |
 
@@ -83,7 +83,7 @@ and scale your network".
 
 | Model | Nodes | Notes |
 |---|---|---|
-| Simple | 1 node | Smallest footprint; relies on vSphere HA; **a VIP IP/FQDN is still required at deployment**; options: cluster VIP, FIPS compliance mode |
+| Simple | 1 node | Smallest footprint; relies on vSphere HA (High Availability); **a VIP IP/FQDN (Fully Qualified Domain Name) is still required at deployment**; options: cluster VIP, FIPS compliance mode |
 | High Availability | Primary node + worker node 1 + worker node 2 | Integrated load balancer with cluster VIP; data redundancy; options include retention notification threshold and additional disk |
 
 Both are **Day-2** deployments performed from VCF Operations (fleet management).
@@ -220,6 +220,8 @@ the symptom wording instead of by the evidence required.
 
 ## Configuration
 
+This section explains the configuration decisions, ownership boundaries, dependencies and evidence an administrator must understand. The executable click path, field values, validation and rollback belong to the linked practical guide.
+
 | Task | Key settings |
 |---|---|
 | Deploy logs (HA) | Primary + 2 workers, cluster VIP IP and FQDN in DNS, size per expected ingestion |
@@ -228,6 +230,8 @@ the symptom wording instead of by the evidence required.
 | Storage diagnostics | Mode Troubleshooting for prod, Benchmarking and Optimizing for new clusters |
 
 ## CLI / API
+
+CLI (Command-Line Interface) and API (Application Programming Interface) examples expose the same operational objects for inspection or automation.
 
 Most of this lesson is UI-driven. Useful command-line checks on an ESX host when logs seem missing (verified ESX
 commands, covered by other phases):
@@ -269,9 +273,6 @@ window, searched from the VCF Operations log pages, confirm rejected packets. Fi
 alert for future DFW rejects on that application. Meanwhile **Storage Operations** confirms vSAN latency was normal, so
 storage is excluded.
 
-## Lab
-
-::lab[lab-vcf-ops-logs-network]
 
 ## Exam Focus
 

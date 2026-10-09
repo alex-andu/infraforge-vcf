@@ -31,9 +31,9 @@ sources:
 
 ## Why This Matters
 
-ESX hosts are the most numerous and most hardware-dependent part of VCF. A cluster of sixteen hosts can drift in
+ESX hosts are the most numerous and most hardware-dependent part of VCF (VMware Cloud Foundation). A cluster of sixteen hosts can drift in
 sixteen different ways: a driver installed by hand, a NIC firmware a generation behind, a vendor agent missing. vSphere
-Lifecycle Manager (vLCM) fixes this with a single declarative **image** per cluster: "every host in this cluster must
+Lifecycle Manager (vLCM (vSphere Lifecycle Manager)) fixes this with a single declarative **image** per cluster: "every host in this cluster must
 look exactly like this". VCF builds on that: you cannot create a workload domain, add a cluster or upgrade ESX in VCF
 9.0 without a vLCM image. If you understand images and remediation, the ESX step of every upgrade becomes predictable.
 
@@ -91,7 +91,7 @@ Where each piece lives:
 - The **image definition** lives in vCenter (per cluster). vLCM is a vCenter service.
 - The **vLCM depot** in vCenter holds the components the image refers to (synchronised from an online source or
   imported offline bundles).
-- **VCF** keeps its own copy of images per instance: you **import** an image into the VCF instance so SDDC Manager can
+- **VCF** keeps its own copy of images per instance: you **import** an image into the VCF instance so SDDC (Software-Defined Data Center) Manager can
   use it when creating a workload domain, adding a cluster, or upgrading ESX.
 - **ESX component data** (the ESX content in the SDDC Manager depot) is downloaded or synchronised per VCF instance;
   on an offline depot it lives under `umds-patch-store`.
@@ -105,7 +105,7 @@ Where each piece lives:
 | **VCF Operations** | UI for image import: Fleet Management > Lifecycle > VCF Instance > SDDC Manager > Image Management > Import Image |
 | **Hardware support manager (HSM)** | Vendor plugin that lets vLCM read and apply firmware |
 | **ESX host** | Target of remediation; enters maintenance mode, installs, reboots (unless live patch applies) |
-| **DRS / vSAN** | Evacuate VMs and data so a host can enter maintenance mode |
+| **DRS (Distributed Resource Scheduler) / vSAN** | Evacuate VMs and data so a host can enter maintenance mode |
 
 ## How It Works
 
@@ -171,6 +171,8 @@ compliance, and remediation can update it in the same maintenance-mode cycle.
 
 ## Configuration
 
+This section explains the configuration decisions, ownership boundaries, dependencies and evidence an administrator must understand. The executable click path, field values, validation and rollback belong to the linked practical guide.
+
 Image decisions you make per cluster:
 
 | Decision | Recommendation |
@@ -187,6 +189,8 @@ Do not add a vendor add-on for nested ESX: it brings drivers for hardware your V
 :::
 
 ## CLI / API
+
+CLI (Command-Line Interface) and API (Application Programming Interface) examples expose the same operational objects for inspection or automation.
 
 On a host, these read-only commands show what vLCM sees (ESXCLI, run in an SSH session on ESX):
 
@@ -225,12 +229,6 @@ version, two image definitions with different firmware add-ons, each with the ve
 information. Their ESX step is now one cluster upgrade, sequential because it is vSAN, spread over two nights using
 batch remediation.
 
-## Lab
-
-::lab[lab-lifecycle-upgrade-planning]
-
-In the lab, inspect the image of your nested cluster in the vSphere Client and run a compliance check. On nested ESX
-the image is only the base image; that is fine for practising the workflow.
 
 ## Exam Focus
 

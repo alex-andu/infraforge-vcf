@@ -37,14 +37,14 @@ sources:
 
 ## Why This Matters
 
-A VCF deployment is an automated workflow that builds a vCenter, an NSX Manager cluster, principal storage, SDDC Manager and the VCF Operations stack *on top of* infrastructure that you prepare by hand. The automation is strict: it validates DNS, NTP, IP ranges, passwords, host configuration and certificates before it starts, and it stops if any of them are wrong. Almost every failed deployment traces back to a planning gap — a missing reverse DNS record, a VLAN that is not trunked, a host whose certificate still carries the name `localhost`.
+A VCF (VMware Cloud Foundation) deployment is an automated workflow that builds a vCenter, an NSX Manager cluster, principal storage, SDDC (Software-Defined Data Center) Manager and the VCF Operations stack *on top of* infrastructure that you prepare by hand. The automation is strict: it validates DNS (Domain Name System), NTP (Network Time Protocol), IP ranges, passwords, host configuration and certificates before it starts, and it stops if any of them are wrong. Almost every failed deployment traces back to a planning gap — a missing reverse DNS record, a VLAN (Virtual Local Area Network) that is not trunked, a host whose certificate still carries the name `localhost`.
 
 The exam (objective 4.1) expects you to know *what has to be ready before you press Deploy*, which tool you use to plan, and which inputs are fixed forever once deployed (for example, the principal storage type). In the lab, good planning is the difference between a deployment that finishes in a few hours and a week of retries.
 
 ## Learning Objectives
 
 - Explain what the VCF 9.0 **Planning and Preparation Workbook** is and how it relates to the VCF Installer.
-- List the ESX host prerequisites (FQDN hostname, DNS, NTP, regenerated certificate, clean disks, NIC speed, supported ESX build).
+- List the ESX host prerequisites (FQDN (Fully Qualified Domain Name) hostname, DNS, NTP, regenerated certificate, clean disks, NIC speed, supported ESX build).
 - Plan the networks, VLANs, IP ranges, MTU and DNS records a management domain needs.
 - Choose between the **simple** and **high availability** deployment models and between vSAN, NFS v3 and VMFS on FC as principal storage.
 - Describe how deployment binaries reach the VCF Installer (online depot or offline depot).
@@ -53,7 +53,7 @@ The exam (objective 4.1) expects you to know *what has to be ready before you pr
 
 Planning a VCF 9.0 deployment answers four questions before any appliance exists:
 
-1. **What will I build?** A new VCF fleet, or a new VCF instance in an existing fleet; simple or high availability (HA) model; which principal storage; which switch profile.
+1. **What will I build?** A new VCF fleet, or a new VCF instance in an existing fleet; simple or high availability (HA (High Availability)) model; which principal storage; which switch profile.
 2. **Where will it live?** Hosts, VLANs, subnets, gateways, MTU, IP ranges, FQDNs.
 3. **What does it depend on?** DNS (forward and reverse), NTP, routing to the gateway, optionally an external certificate authority and a proxy or offline depot.
 4. **Where do the bits come from?** The VCF Installer does not ship with the component binaries; you connect it to an online depot or an offline depot and download them first.
@@ -100,7 +100,7 @@ The planning surface has three layers:
 
 | Layer | What you plan | Who owns it in real life |
 |---|---|---|
-| Physical / external | ToR VLANs and trunks, MTU, gateways, DNS zones, NTP sources, optional CA, optional proxy/offline depot | Network, DNS and PKI teams |
+| Physical / external | ToR VLANs and trunks, MTU, gateways, DNS zones, NTP sources, optional CA (Certificate Authority), optional proxy/offline depot | Network, DNS and PKI teams |
 | Host | ESX build, hostname = FQDN, management VMkernel IP, root password, certificate, disks, NICs | Virtualization team |
 | VCF | instance name, management domain name, deployment model, appliance FQDNs/IPs, IP ranges for vMotion/vSAN, switch profile, principal storage | VCF architect |
 
@@ -111,7 +111,7 @@ The planning surface has three layers:
 | Planning and Preparation Workbook | Excel file: prerequisite checklist, sizing, the values for every wizard field. Download from TechDocs (`vcf-9.0-planning-and-preparation-workbook.xlsx`). |
 | [[vcf-installer]] appliance | Deployed from `VCF-SDDC-Manager-Appliance-9.x.x.ova`; downloads binaries and runs the deployment. Needs to reach the ESX management network, DNS and NTP. |
 | [[depot]] | Online depot (Broadcom, needs a download token) or an offline depot you host. |
-| [[vcf-download-tool]] | CLI used to populate an offline depot when the installer has no internet access. |
+| [[vcf-download-tool]] | CLI (Command-Line Interface) used to populate an offline depot when the installer has no internet access. |
 | DNS service | Forward **and** reverse records for every host and appliance. |
 | NTP service | One time source for hosts and appliances. |
 | ESX hosts | Imaged with a supported ESX 9.0 build, prepared per the checklist. |
@@ -171,7 +171,7 @@ Order matters: set the FQDN first, then regenerate the certificate. Regenerating
 | ESX management | VLAN, subnet, gateway, host IPs (static) | The installer can reuse it for VM management or you specify a separate VM management network. |
 | vMotion | VLAN, subnet, gateway, **IP inclusion range** | Range must hold at least one IP per host; avoid network/broadcast addresses. |
 | vSAN | VLAN, subnet, gateway, IP inclusion range | Needs consistent MTU end to end (jumbo frames are common). |
-| NSX host overlay (TEP) | VLAN, static IP pool or DHCP | MTU at least 1600 for Geneve; 9000 is common. |
+| NSX host overlay (TEP (Tunnel Endpoint)) | VLAN, static IP pool or DHCP | MTU at least 1600 for Geneve; 9000 is common. |
 | NFS (if NFS principal storage) | NFS server IPv4, share path, optional VMkernel binding | Export must allow all host IPs. |
 
 These vMotion and vSAN ranges become the **default network pool** of the management domain — the [[network-pool]] that later host commissioning draws from.
@@ -193,6 +193,8 @@ The VCF Installer "does not include software binaries". Options:
 
 ## Configuration
 
+This section explains the configuration decisions, ownership boundaries, dependencies and evidence an administrator must understand. The executable click path, field values, validation and rollback belong to the linked practical guide.
+
 A planning sheet for a minimal lab management domain (adapt to your own [Home Lab IP plan](lesson:network-fundamentals-for-vcf)):
 
 | Item | Example |
@@ -209,6 +211,8 @@ A planning sheet for a minimal lab management domain (adapt to your own [Home La
 | DNS / NTP | 10.0.10.2 / 10.0.10.2 |
 
 ## CLI / API
+
+CLI (Command-Line Interface) and API (Application Programming Interface) examples expose the same operational objects for inspection or automation.
 
 Pre-flight checks from any Linux jump host or the installer appliance shell:
 
@@ -245,11 +249,6 @@ Work from the outside in: **DNS → NTP → routing/gateway → MTU → host sta
 
 A team plans a 4-host HA management domain on vSAN ESA. The network team delivers VLANs 10–13 but configures MTU 9000 only on the leaf ports, not on the inter-switch link. DNS has A records but the reverse zone for the vMotion subnet is missing (harmless) and the reverse zone for the management subnet is missing (fatal). The VCF architect catches both in a workbook review because the checklist demands "forward and reverse lookup for all FQDNs" and "end-to-end MTU". The deployment validates first time. The lesson: the workbook is a contract between teams, not paperwork.
 
-## Lab
-
-Fill a real Planning and Preparation Workbook for your Proxmox lab, size it against 256 GB of RAM and produce DNS records and an IP plan.
-
-::lab[lab-vcf-planning-workbook]
 
 ## Exam Focus
 
