@@ -6,7 +6,7 @@ module: m02-clusters-vms
 version: vcf9
 minutes: 45
 difficulty: intermediate
-summary: Deploying and configuring VMs in vCenter — new VMs, clones, templates, guest customization, OVF/OVA, content libraries (local, published, subscribed), snapshots, vMotion/Storage vMotion and EVC — and where these building blocks reappear in VCF Automation and Supervisor.
+summary: How VMware vCenter manages the virtual machine (VM) lifecycle through templates, customization, Open Virtualization Format (OVF) packages, content libraries, migration and Enhanced vMotion Compatibility (EVC).
 topics: [vm-management, virtual-hardware, vsphere-cluster]
 objectives: ["2.2", "4.4"]
 keyTerms: [vm-template, content-library, guest-customization, ovf, vmotion, storage-vmotion, evc, snapshot, vmware-tools]
@@ -33,11 +33,11 @@ sources:
 
 ## Why This Matters
 
-Everything VCF builds exists to run virtual machines. Even in a fleet driven by VCF Automation, the VM operations underneath are vCenter operations: clone from a template, customize the guest, place on a cluster, migrate with vMotion. VCF Automation's provider content library (objective 4.4) is a vCenter **content library**; Supervisor's VM Service consumes VM images from content libraries; lifecycle remediation depends on vMotion. Objective 2.2 says it directly: *deploy and configure virtual machines* and *manage a virtual machine through vCenter*.
+Everything VMware Cloud Foundation (VCF) builds ultimately supports workloads. Even in a fleet driven by VCF Automation, VM operations remain VMware vCenter operations: clone from a template, customize the guest, select compute and storage, and migrate with VMware vSphere vMotion. VCF Automation provider content, Supervisor VM Service images and cluster lifecycle remediation all reuse these vSphere building blocks. Objectives 2.2 and 4.4 therefore connect ordinary VM administration with fleet automation.
 
 ## Learning Objectives
 
-- Choose the right deployment method: new VM, clone, template, instant clone, OVF/OVA, content library.
+- Choose the right deployment method: new VM, clone, template, instant clone, OVF/Open Virtualization Appliance (OVA), or content library.
 - Build a template with a guest customization specification and deploy from it.
 - Explain local, published and subscribed content libraries, and VM templates versus OVF templates in a library.
 - Pick the right migration type (cold, vMotion, Storage vMotion, compute + storage, cross-vCenter) and meet its requirements.
@@ -54,8 +54,8 @@ Everything VCF builds exists to run virtual machines. Even in a fleet driven by 
 | Clone/convert to [[vm-template]] | Standard build to deploy many times | Template object; cannot be powered on |
 | Deploy from template | Standard provisioning | New VM + optional [[guest-customization]] |
 | Instant clone | Many powered-on VMs from a running parent's state | Fast, shares parent memory/disk state |
-| Deploy [[ovf|OVF/OVA]] | Vendor appliances (vCenter, NSX, etc. are OVAs) | VM or vApp from a portable package |
-| [[content-library|Content library]] item | Share templates/ISOs across clusters and vCenters | VM from a library OVF template or VM template |
+| Deploy [[ovf|OVF/OVA]] | Vendor appliances such as vCenter or VMware NSX | VM or virtual application (vApp) from a portable package |
+| [[content-library|Content library]] item | Share templates and International Organization for Standardization (ISO) images across clusters and vCenters | VM from a library OVF template or VM template |
 
 A **template** is "a primary copy of a virtual machine that can be used to create and provision new virtual machines". *Convert to template* turns the VM itself into a template; *clone to template* keeps the VM and creates a template copy.
 
@@ -63,7 +63,7 @@ A **template** is "a primary copy of a virtual machine that can be used to creat
 
 - **VM hardware version (compatibility)**: which virtual hardware features and which ESX versions can run the VM. Upgrade only when you need new features and all hosts that may run the VM support it.
 - **VMware Tools** ([[vmware-tools]]): drivers and the guest agent; needed for clean shutdown, guest customization, heartbeats for HA VM Monitoring, and IP reporting. Linux distributions ship `open-vm-tools`.
-- **Files**: `.vmx` (configuration), `.vmdk` (disk descriptor + data), `.nvram`, logs, snapshot delta files, all in the VM folder on a datastore.
+- **Files**: `.vmx` configuration, VMware Virtual Machine Disk (`.vmdk`) files, non-volatile random-access memory (`.nvram`), logs and snapshot delta files in the VM folder on a datastore.
 
 ## Architecture
 
@@ -79,6 +79,18 @@ A **template** is "a primary copy of a virtual machine that can be used to creat
 | Content Library service | vCenter appliance | Sync between published and subscribed libraries over HTTPS |
 | vMotion network | VMkernel adapters on hosts | Live migration data path |
 | EVC | Cluster (or per-VM) setting | Masks CPU features for migration compatibility |
+
+### Component responsibilities and limits
+
+**Inventory template.** An inventory template is an immutable provisioning source in a vCenter inventory. It supports repeatable cloning and guest customization, but it cannot power on and does not automatically synchronize to another vCenter.
+
+**Content library.** A content library stores and distributes versioned deployment artifacts. A local or published library owns content; a subscribed library consumes published content and remains read-only. Library distribution does not customize the resulting guest, guarantee network compatibility or replace image patch governance.
+
+**Guest customization specification.** The specification supplies a unique operating-system identity after cloning. It depends on a supported guest, VMware Tools and valid network or directory inputs. It cannot repair a badly prepared golden image or configure application-specific state unless another automation layer performs that work.
+
+**vMotion.** vMotion changes a running VM's compute placement; Storage vMotion changes its datastore placement. Compatibility, reachable networks, accessible storage and supported devices remain prerequisites. Migration does not change the guest identity or turn a snapshot into a backup.
+
+**EVC.** EVC presents a common processor feature baseline so VMs can move among compatible hosts from the same processor vendor. It cannot bridge Intel and AMD, provide missing hardware features or activate a newly raised baseline inside a running VM without the required power cycle.
 
 ## How It Works
 
@@ -159,16 +171,20 @@ interchangeable cleanup actions.
 
 ## Configuration
 
-| Task | vSphere Client path |
-|---|---|
-| New VM | Right-click cluster/host/folder → **New Virtual Machine** |
-| Clone / template | Right-click VM → **Clone** → *Clone to Virtual Machine* / *Clone to Template*; or **Template → Convert to Template** |
-| Customization spec | **Policies and Profiles → VM Customization Specifications → New** |
-| Content library | **Content Libraries → Create** (local; enable publishing) or subscribed (paste subscription URL) |
-| Import to library | Library → **Actions → Import item** (URL or local file) |
-| VM template to library | Right-click VM → **Clone → Clone as Template to Library** |
-| Migrate | Right-click VM → **Migrate** → compute, storage or both |
-| EVC | Cluster → **Configure → Configuration → VMware EVC** |
+Manage VM lifecycle as desired state with evidence:
+
+| Decision | Management surface | Evidence |
+|---|---|---|
+| Which artifact is authoritative? | Inventory templates and content libraries | Item type, owner, version and patch date |
+| How will each clone become unique? | Customization specifications and deployment options | Unique hostname, network identity, VMware Tools status and directory result |
+| Where may the VM run? | Compute selection, storage policy, network and EVC | Compatibility result and selected policy-backed resources |
+| What must move during migration? | VM migration workflow | Compute/storage choice, completed task and final placement |
+| Is rollback temporary and bounded? | Snapshot manager and datastore monitoring | Change window, snapshot owner, expiry and successful consolidation |
+| How is retirement controlled? | VM tasks plus retention and configuration-management records | Approval, backup/retention result and matching inventory/storage records |
+
+The separate practical guide owns the exact VCF 9.0.2 click paths for template creation, content-library publication and deployment validation. Theory should make clear which artifact, identity, compatibility and evidence decisions each path implements.
+
+Repeatable workflows can use a command-line interface (CLI) or an application programming interface (API); they remain subject to the same permissions, compatibility checks and destructive-operation boundaries as the vSphere Client.
 
 ## CLI / API
 
@@ -213,10 +229,6 @@ Get-Snapshot -VM "web03" -Name "pre-patch" | Remove-Snapshot -Confirm:$false
 ## Real-World Scenario
 
 A company runs two VCF workload domains, each with its own vCenter and SSO domain. The platform team maintains golden images in a **published** library in `wld01`. `wld02` has a **subscribed** library set to *download when needed*, so only images actually used are copied. Because the vCenters are not linked, the team publishes **OVF templates** rather than VM templates for distribution. Each month they check out the Linux template in `wld01`, patch it, check it in, and the subscriber syncs automatically. VCF Automation catalog items point at the library, so new deployments pick up the patched image.
-
-## Lab
-
-::lab[lab-vm-templates-content-library]
 
 ## Exam Focus
 
