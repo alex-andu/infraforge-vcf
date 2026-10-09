@@ -6,7 +6,7 @@ module: m03-vsan-ops
 version: vcf9
 minutes: 45
 difficulty: advanced
-summary: A practical method for vSAN problems — Skyline Health and the health score, object health states, resync, network partitions, device failures and hardware compatibility — using the vSphere Client, esxcli and VCF Operations.
+summary: How to diagnose VMware vSAN through Skyline Health, object state, resynchronization, capacity, network and hardware evidence across vSphere and VMware Cloud Foundation (VCF) Operations.
 topics: [vsan-health, troubleshooting-method, health-diagnostics]
 objectives: ["2.3", "4.3"]
 keyTerms: [skyline-health, resync, absent-component, degraded-component, vsan-object, network-partition, hcl-database]
@@ -37,7 +37,7 @@ sources:
 
 ## Why This Matters
 
-In a VCF environment the management domain's vCenter, NSX Managers and VCF Operations usually live on vSAN. A vSAN problem is therefore never "just storage": it can stop lifecycle operations, break backups and, in the worst case, take the management plane offline. On the other hand, vSAN produces many warnings that are harmless (an outdated compatibility database, a resync after maintenance). The skill is telling the two apart fast.
+In a VMware Cloud Foundation (VCF) environment, management components such as VMware vCenter, VMware NSX Managers and VCF Operations commonly live on VMware vSAN. A vSAN incident can block lifecycle work, interrupt backups or affect the management plane. vSAN also reports warnings that may be expected, such as an outdated compatibility database in an isolated lab or resynchronization after maintenance. Effective troubleshooting ranks evidence by availability impact before chasing secondary findings.
 
 This lesson supports objective 2.3 (resilience and availability options in practice) and objective 4.3 ("monitor vSAN storage using VCF Storage Operations").
 
@@ -45,7 +45,7 @@ This lesson supports objective 2.3 (resilience and availability options in pract
 
 - Use Skyline Health, the health score and its findings to find the root-cause issue first.
 - Interpret object health states and resync information.
-- Diagnose network partitions, device failures and capacity problems with esxcli.
+- Diagnose network partitions, device failures and capacity problems with the ESX command-line interface (`esxcli`).
 - Separate noise (informational or expected warnings) from real availability risks.
 - Know where VCF Operations fits for fleet-wide vSAN monitoring.
 
@@ -102,6 +102,18 @@ The flow starts with the health score, then splits into the four most common cau
 | Hardware compatibility (HCL) database | vCenter | "vSAN HCL DB up-to-date" finding |
 | VCF Operations | Management domain | Fleet-wide vSAN capacity, performance and alerts across clusters |
 
+### Component responsibilities and limits
+
+**Skyline Health.** Skyline Health correlates cluster configuration, availability, network, capacity, hardware and performance checks and ranks findings by impact. It is the first triage surface. It cannot replace direct evidence from hosts, devices and object state, and silencing a check does not resolve its cause.
+
+**Object health.** Object state shows whether components are active, absent, rebuilding, unable to rebuild or inaccessible. It directly describes data availability and compliance. It does not alone identify whether the originating cause is a device, host, network partition or exhausted capacity.
+
+**Resynchronization view.** Resync evidence shows objects and bytes remaining for repair, policy change or maintenance recovery. It helps estimate exposure and progress, but displayed affected-object size can exceed the actual changed data transferred after maintenance.
+
+**Host evidence.** `esxcli`, VMkernel connectivity tests and ESX logs expose membership, devices, peers and low-level failures. They provide local truth, but one host's view can be incomplete during a partition; compare evidence across the cluster.
+
+**VCF Operations.** VCF Operations aggregates trends, health and capacity across domains and clusters. It is suited to fleet prioritization and forecasting. Skyline Health and host evidence remain the primary tools for root-cause work on one vSAN cluster.
+
 ## How It Works
 
 The method this course uses everywhere — Observe, Scope, Hypothesize, Validate, Remediate, Verify — applied to vSAN:
@@ -156,11 +168,18 @@ In VCF the same vSAN clusters appear in VCF Operations, which aggregates capacit
 
 ## Configuration
 
-- Turn on the **performance service** (cluster → Configure → vSAN → Services) so you have history when something goes wrong.
-- Keep the **HCL database** current (online, or upload a file in air-gapped sites).
-- Configure **capacity reserves and alerts** (see [capacity lesson](lesson:vsan-space-efficiency-capacity)).
-- Run **proactive tests** (for example the VM creation test) after building or changing a cluster.
-- Forward ESX logs (including vobd and clomd) to VCF Operations for logs so evidence survives a host failure.
+| Observability decision | Management surface | Evidence |
+|---|---|---|
+| Is historical performance available? | vSAN performance service | Healthy statistics object and usable latency, throughput and congestion history |
+| Is compatibility evidence current? | Skyline hardware compatibility checks | Current hardware compatibility list (HCL) database or documented offline update |
+| Will capacity risk be visible early? | vSAN reserves/alerts and VCF Operations | Operations and rebuild reserves, alert threshold and growth forecast |
+| Does the cluster work after a change? | Skyline proactive tests | Successful supported test and recorded remediation for failures |
+| Will logs survive a host outage? | Central log collection | ESX `vobd`, `clomd` and VMkernel events searchable by host and time |
+| Can responders distinguish symptoms from causes? | Alert routing and runbook | Owner, severity, affected objects and first evidence path |
+
+The separate practical guide owns exact VCF 9.0.2 navigation and the controlled partition exercise. Theory keeps the diagnostic order: availability and object state first, then scope, cause-specific evidence, remediation and verification.
+
+Automation can use an application programming interface (API) or command-line interface (CLI), but diagnostic collection must preserve timestamps, host identity and the difference between observed evidence and inferred cause.
 
 ## CLI / API
 
@@ -230,12 +249,6 @@ Monday 08:10: VCF Operations raises a vSAN alert for VI workload domain cluster 
 3. Notes the HCL DB warning is weeks old — unrelated.
 4. Checks capacity: 71 % used, enough room for the rebuild to finish. Components are **degraded** (permanent failure), so waiting for a 60-minute timer is not relevant.
 5. Opens a hardware ticket, replaces the device, claims it into the storage pool, waits for resync to finish, clicks RETEST: score back to 100 except the HCL DB finding, which is then updated.
-
-## Lab
-
-After building your nested cluster, deliberately disconnect a nested host's vSAN NIC in Proxmox and observe the partition findings, then reconnect it and watch the resync.
-
-::lab[lab-vsan-esa-cluster]
 
 ## Exam Focus
 
