@@ -6,7 +6,7 @@ module: m02-hosts-vcenter
 version: vcf9
 minutes: 35
 difficulty: intermediate
-summary: How vCenter authorizes users — privileges, roles, permissions, propagation, user-versus-group precedence and global permissions — and where vCenter permissions sit inside VCF 9 identity and RBAC.
+summary: How VMware vCenter authorizes users through privileges, roles, permissions and inheritance, and where that model fits within VMware Cloud Foundation (VCF) 9 identity and role-based access control (RBAC).
 topics: [vsphere-permissions, rbac, identity-sso, vcenter]
 objectives: ["2.2", "4.2"]
 keyTerms: [privilege, role, permission, global-permission, sso-domain, vm-folder]
@@ -35,23 +35,23 @@ sources:
 
 ## Why This Matters
 
-In a VCF fleet, many teams touch vCenter: platform engineers, application owners deploying VMs, backup software, monitoring, VCF Automation. Each needs exactly the rights its job requires. vCenter permissions are where that is enforced for vSphere objects. Get the model wrong and either people cannot do their jobs, or an application team can delete the management domain's NSX Managers.
+In a VMware Cloud Foundation (VCF) fleet, many teams use VMware vCenter: platform engineers, application owners deploying virtual machines (VMs), backup services, monitoring systems and VCF Automation. Each identity needs only the rights required for its job. vCenter permissions enforce that boundary for VMware vSphere objects. A weak design can block legitimate work or let an application team change infrastructure such as VMware NSX Managers.
 
-Exam objective 4.2 asks you to *configure Identity Management and RBAC in VCF*; objective 2.2 asks you to *manage VMs through vCenter*. Both rest on the vCenter authorization model in this lesson. The VCF-wide layer (Identity Broker, VCF SSO, VCF Operations roles) builds on it and is covered in [Identity and SSO](lesson:vcf-identity-sso-rbac).
+Exam objective 4.2 asks you to configure identity management and role-based access control (RBAC) in VCF; objective 2.2 asks you to manage VMs through vCenter. Both depend on the authorization model in this lesson. The fleet layer—VCF Identity Broker, VCF Single Sign-On (SSO) and VCF Operations roles—builds on it and is covered in [Identity and SSO](lesson:vcf-identity-sso-rbac).
 
 ## Learning Objectives
 
-- Define privilege, role and permission, and name the three system roles.
+- Distinguish authentication from authorization and explain privilege, role, principal and permission.
 - Apply permission inheritance rules: propagation, child override, user-over-group precedence, and union of group permissions.
 - Decide when to use a global permission instead of a vCenter permission.
-- Design a least-privilege folder and role structure for an application team.
+- Design a least-privilege folder and role structure for an application team without treating login success as proof of access.
 - Troubleshoot "user can log in but cannot see/do X" problems.
 
 ## Concept
 
 vSphere separates two questions:
 
-- **Authentication** — *who are you?* — handled by vCenter Single Sign-On against its identity sources (the local SSO domain such as `vsphere.local`, Active Directory/LDAP, or — in VCF 9 — the VCF Identity Broker federating an external identity provider).
+- **Authentication** — *who are you?* — handled by vCenter SSO against its identity sources: the local SSO domain such as `vsphere.local`, Microsoft Active Directory (AD), Lightweight Directory Access Protocol (LDAP), or the VCF Identity Broker federating an external identity provider (IdP).
 - **Authorization** — *what may you do on this object?* — handled by vCenter permissions.
 
 The authorization building blocks (vSphere 9.0 docs):
@@ -62,12 +62,20 @@ The authorization building blocks (vSphere 9.0 docs):
 | [[role]] | "A set of privileges"; reusable across objects |
 | [[permission]] | **Principal (user or group) + role + object**, with a *propagate* flag |
 
+**Privilege.** A privilege is the smallest authorization capability evaluated by vCenter. It answers whether an identity may perform one specific operation, such as powering on a VM or allocating datastore space. Privileges are product-defined and cannot be invented by an administrator; they become useful when collected into roles.
+
+**Role.** A role is a reusable bundle of privileges. It describes a job capability, not who receives it or where it applies. A custom role can support least privilege, but it cannot grant an action that its privilege set does not contain and it does not provide access until a permission binds it to a principal and an object.
+
+**Principal.** A principal is the user or group to which access is assigned. Group principals reduce per-user drift and let the identity system manage staff changes. vCenter still evaluates the principal against its current group memberships, so identity-source availability and correct group resolution are dependencies.
+
+**Permission.** A permission binds one principal to one role on one inventory object and records whether that assignment propagates to children. It is the effective policy unit. A role alone grants nothing, successful authentication grants nothing beyond login, and a permission cannot cross an independent SSO domain by itself.
+
 There are four places authorization comes from:
 
 1. **vCenter permissions** on inventory objects.
 2. [[global-permission|Global permissions]] on a root object spanning solutions (including tags and content libraries).
 3. **Group membership in SSO groups** (for example, the built-in administrators group).
-4. **ESX local host permissions**, only for standalone hosts not managed by vCenter.
+4. **VMware ESX local host permissions**, for direct host access. On a vCenter-managed host, use vCenter permissions for normal administration because the two authorization scopes are separate.
 
 ### System roles
 
@@ -98,6 +106,16 @@ System roles "are permanent": you cannot delete them or edit their privileges. S
 | Inventory tree | vCenter | Where permissions are attached and inherited |
 | Global root | Above all vCenters in the SSO domain | Where global permissions live |
 
+### Responsibility boundaries
+
+| Layer | What it can do | What it cannot do |
+|---|---|---|
+| Identity source / IdP | Validate an identity and provide group membership | Grant a vSphere operation on an inventory object |
+| vCenter SSO | Establish trust, issue tokens and expose identity sources | Replace object permissions or a product-specific role model |
+| Role | Define a reusable set of vSphere privileges | Select a user, object or inheritance scope |
+| Permission | Bind principal, role and object; optionally propagate | Make an unavailable identity source authenticate or span an unrelated SSO domain |
+| Global permission | Cover inventories and global objects in its SSO domain | Become a fleet-wide VCF role across independent workload-domain SSO domains |
+
 ## How It Works
 
 How vCenter decides whether *user U* may *power on VM V*:
@@ -107,7 +125,7 @@ How vCenter decides whether *user U* may *power on VM V*:
 3. A permission defined **directly on an object overrides** any permission propagated from its parents.
 4. If there is a permission for **U as a user** at the deciding level, it **takes precedence over all group permissions** for U on that object.
 5. If there is no user permission but U belongs to several groups with permissions, U gets the **union** of those groups' privileges.
-6. If the resulting role contains *Power on*, the task runs; otherwise it is denied (and the UI usually hides or greys out the action).
+6. If the resulting role contains *Power on*, the task runs; otherwise it is denied (and the user interface (UI) usually hides or greys out the action).
 
 Rules to memorize (vSphere 9.0 docs):
 
@@ -135,6 +153,12 @@ A global permission is assigned at a root object that spans solutions in the SSO
 
 Use global permissions for content library administrators and tag administrators; use vCenter permissions for everything that should be scoped to a domain, cluster or folder.
 
+### Capabilities and limits
+
+The model can express least privilege through custom roles, group assignments, object scope, propagation and explicit child overrides. It also lets administrators audit where an assignment was defined and reuse the same role at several scopes. It does not automatically discover the minimum privileges an application needs, prevent a badly scoped Administrator assignment, or combine independent product authorization systems. VCF Operations, VCF Automation and NSX retain their own roles and scopes even when the same enterprise identity signs in.
+
+Permission evaluation also follows the vSphere inventory model rather than a simple filesystem tree. A VM participates in both its VM-folder path and its compute/resource path, while datastores and networks have their own inventory paths. Effective access may therefore require privileges on several related objects. Granting VM privileges alone does not imply permission to allocate storage or attach a network.
+
 :::vcf9 Changed in VCF 9
 Because each VCF 9 VI workload domain has its own vCenter **and** SSO domain, a global permission in one workload domain's SSO domain does not reach another workload domain. Cross-domain access is designed through VCF SSO (Identity Broker with your enterprise IdP) plus **group-based permissions in each vCenter**. VCF Operations and VCF Automation have their own role models on top.
 :::
@@ -154,20 +178,23 @@ vSphere 9.0 includes a *Privilege Recorder* that records the privileges a user e
 
 ## Configuration
 
-Assign a permission in the vSphere Client:
+Treat authorization configuration as a set of decisions and evidence rather than a click sequence:
 
-1. Select the object (for example the *App-Prod* VM folder) → **Permissions** tab → **Add**.
-2. Choose the identity source domain and the user or **group**.
-3. Choose the **role**.
-4. Tick **Propagate to children** if child objects should inherit.
-5. Save; verify by logging in as a test member of the group.
+| Decision | Management surface | Evidence to retain |
+|---|---|---|
+| Which job capabilities are required? | vSphere Client role inventory | Role name, purpose and exact privilege list |
+| Who receives access? | Identity source and principal selector | Group name, source domain and owner |
+| Where should access begin? | Target object's **Permissions** view | Object name/type and the locally defined assignment |
+| Should descendants inherit it? | Permission propagation setting | Propagation state and expected child scope |
+| Does it need tags, content libraries or several vCenters in one SSO domain? | **Global Permissions** | Business reason, propagation state and affected inventory |
+| Does effective access match the design? | Target-object permissions, task history and a test identity | Defined-in source, allowed task and deliberately denied task |
 
-Create a custom role: **Administration → Access Control → Roles**, select a sample role, **Clone**, rename, then add/remove privileges.
+The separate practical guide owns exact VCF 9.0.2 navigation, buttons and validation. In theory, remember the required state: a resolvable group principal, a role containing the needed privileges, an assignment at the narrowest useful object and deliberate propagation.
 
-Add a global permission: **Administration → Access Control → Global Permissions → Add**, and remember the propagate checkbox.
+Repeatable administration can use a command-line interface (CLI) or an application programming interface (API), but automation follows the same authorization rules as the vSphere Client.
 
 :::tip
-Before granting anything, add your identity source (AD/LDAP or the VCF Identity Broker) and create groups such as `vcf-wld01-app-operators`. Permissions that point at groups survive staff changes.
+Before granting access, confirm the identity source and create a job-based group such as `vcf-wld01-app-operators`. Group permissions survive staff changes and are easier to audit than user-by-user assignments.
 :::
 
 ## CLI / API
@@ -196,7 +223,7 @@ Check the exact sample-role names in your vCenter with `Get-VIRole` before cloni
 | Global permission added without *Propagate* | User can log in but sees no inventory |
 | Permission on folder without *Propagate* | User sees the folder but not VMs inside |
 | User-level *Read-only* added "for testing" | Overrides every group role for that user on that object |
-| *No access* applied to a group at data center level | Members lose access everywhere below unless explicitly granted lower down |
+| *No access* applied to a group at data center level | Members lose inherited access below that point; verify both inventory paths and any explicit lower assignment |
 | Permissions only in one VCF 9 workload domain vCenter | Team cannot see the other domain — separate SSO domains |
 | Identity source removed or broken | Users cannot authenticate; local `administrator@vsphere.local` still works |
 
@@ -213,12 +240,6 @@ Check the exact sample-role names in your vCenter with `Get-VIRole` before cloni
 ## Real-World Scenario
 
 An application team in workload domain `wld01` must deploy VMs from templates into their folder and resource pool, but not touch hosts or networks. The platform engineer clones *Virtual Machine Power User* into *App-Deployer*, adds the deploy-from-template and datastore allocation privileges it lacks, and grants the AD group `app-deployers` this role on the *App* VM folder, the *App* resource pool and the target datastore, each with propagation. A *Read-only* permission on the distributed port group lets them pick a network. A test user from the group deploys a VM successfully, and *Host → Maintenance mode* is greyed out — least privilege confirmed.
-
-## Lab
-
-::lab[lab-vcenter-cluster-ha-drs]
-
-In the cluster lab, create a folder and a group, clone a role and test inheritance with a second user.
 
 ## Exam Focus
 

@@ -8,7 +8,7 @@ Totals:
 
 | Item | Count |
 |---|---|
-| Lessons | 72 (165,182 words) |
+| Lessons | 72 (165,794 words) |
 | Questions | 683 |
 | Practical guides (internal `lab` schema) | 25 |
 | Incidents | 10 |
@@ -27,7 +27,7 @@ Component catalog migration: **24/24** profiles use the expanded role/capability
 |---|---|---|---|---|---|
 | p00 | Orientation | 4/4 | 9,462 | 34 | 1 |
 | p01 | Virtualization Foundations | 4/4 | 8,349 | 27 | 2 |
-| p02 | vSphere Core | 6/6 | 14,326 | 53 | 2 |
+| p02 | vSphere Core | 6/6 | 14,938 | 53 | 2 |
 | p03 | Storage and vSAN | 6/6 | 14,560 | 53 | 2 |
 | p04 | Networking | 4/4 | 10,077 | 35 | 3 |
 | p05 | NSX | 7/7 | 15,226 | 64 | 3 |
