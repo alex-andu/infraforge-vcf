@@ -6,7 +6,7 @@ module: m04-net-fundamentals
 version: vcf9
 minutes: 50
 difficulty: foundation
-summary: A structured explanation of how names and time become identity and trust dependencies across VCF, how the platform validates them, and how to reason from indirect symptoms back to DNS or NTP.
+summary: How Domain Name System (DNS) identity and Network Time Protocol (NTP) synchronization become trust dependencies across VMware Cloud Foundation (VCF), and how to diagnose their indirect symptoms.
 topics: [dns, ntp, deployment-planning]
 objectives: ["2.4", "4.1"]
 keyTerms: [dns, fqdn, a-record, ptr-record, ntp, time-skew, first-hop-gateway]
@@ -37,13 +37,12 @@ sources:
 
 ## Why This Matters
 
-Ask any VCF engineer what breaks deployments most often and you will hear the same two answers: **DNS** and
-**time**. VCF components identify each other by fully qualified domain name, trust each other through
+Ask any VMware Cloud Foundation (VCF) engineer what breaks deployments most often and you will hear the same two answers: **Domain Name System (DNS)** and **time**. VCF components identify each other by fully qualified domain name (FQDN), trust each other through
 certificates issued to those names, and authenticate with tokens that are only valid within a time window. If a
 name does not resolve both ways, or a clock is minutes off, you get errors that do not mention DNS or NTP at all —
 `NoRouteToHostException`, "certificate not yet valid", "Time validation failed", a login loop.
 
-The useful mental model is that an IP address only tells VCF **where** to send packets. DNS tells it **which named
+The useful mental model is that an Internet Protocol (IP) address only tells VCF **where** to send packets. DNS tells it **which named
 identity** owns that address. Time tells it **whether the proof of that identity is valid now**. VCF orchestration
 depends on all three at once:
 
@@ -62,7 +61,7 @@ source for all management components".
 
 ## Learning Objectives
 
-- Explain what forward (A) and reverse (PTR) DNS records are and why VCF requires both to match.
+- Explain what forward address (A) and reverse pointer (PTR) DNS records are and why VCF requires both to match.
 - Trace a DNS query from a VCF component to the authoritative zone and distinguish client resolver selection from zone data.
 - List the VCF components that need DNS records and NTP configuration before deployment.
 - Describe how DNS and time problems surface during VCF Installer validation, host commissioning and upgrades.
@@ -105,7 +104,7 @@ The [[ntp]] (Network Time Protocol, UDP 123) keeps clocks synchronized to a refe
 
 - **Certificates** carry `notBefore` / `notAfter` times; a host whose clock is behind rejects a freshly issued
   certificate as "not yet valid".
-- **Authentication tokens** (SSO/SAML/OIDC, Kerberos for Active Directory) are valid for a limited window.
+- **Authentication tokens**—Single Sign-On (SSO), Security Assertion Markup Language (SAML), OpenID Connect (OIDC), and Kerberos for Active Directory—are valid for a limited window.
 - **Logs and events** from many components must line up to troubleshoot anything.
 - **Clustered services** (NSX Manager cluster, VCF Operations cluster, vSAN) assume consistent time.
 
@@ -157,6 +156,18 @@ before the management domain is built and must remain available when that domain
 | SDDC Manager | Yes | Yes | Orchestrates commissioning, certificate and password tasks |
 | VCF Operations nodes, cloud proxy, VCF Automation, Identity Broker appliances | Yes | Yes | Load balancer FQDNs also need records where used |
 | DNS servers | — | Yes | Should themselves be time-synced |
+
+### Component responsibilities and limits
+
+**DNS service.** DNS maps stable component names to addresses and reverse zones map addresses back to the intended identity. It supports deployment validation, certificate-name checks and service discovery. It does not prove IP reachability, certificate trust or application health, and one correct resolver cannot compensate for a second resolver serving stale data.
+
+**NTP service.** NTP continuously selects usable time sources and disciplines each local clock. It supports certificate validity, authentication windows and event correlation. Saving a server address is only desired configuration; synchronization requires reachable User Datagram Protocol (UDP) port 123, a selected peer and stable offset.
+
+**Client resolver.** Each appliance or host chooses which resolver receives its query and may cache the answer. This layer explains why a name can work from an administrator workstation but fail from VCF Installer or ESX. It cannot correct missing or inconsistent authoritative zone data.
+
+**Authoritative zone.** Forward and reverse zones own the records that define component identity. Their records can drift independently and caches preserve old answers until their time to live expires. Zone correctness must therefore be tested in both directions against every resolver used by the platform.
+
+**VCF Installer and Software-Defined Data Center (SDDC) Manager.** These orchestrators consume DNS and NTP as external prerequisites and validate identity/time during deployment and day-2 workflows. They do not provide those services and cannot safely bypass an inconsistent FQDN/IP relationship.
 
 :::warning
 Do not use link-local addresses (169.254.x.x) for DNS or NTP servers in a deployment spec; Broadcom documents a
