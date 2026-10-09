@@ -6,7 +6,7 @@ module: m01-virt-basics
 version: general
 minutes: 30
 difficulty: foundation
-summary: Where a VM's disks really live (virtual disks, datastores, VMFS/NFS/vSAN, thin vs thick) and how its traffic leaves the host (virtual NICs, port groups, standard and distributed switches, VMkernel adapters, uplinks, VLANs), as the base for the vSAN, networking and NSX phases.
+summary: Where a virtual machine (VM) stores disks through VMware Virtual Machine File System (VMFS), Network File System (NFS) or VMware vSAN datastores, and how traffic crosses virtual Network Interface Controllers (NICs), switches, uplinks and Virtual Local Area Networks (VLANs), as the base for the vSAN, networking and NSX phases.
 topics: [virtual-hardware, datastores, vds, l2-l3]
 objectives: ["2.2"]
 keyTerms: [vm, vmkernel, vmware-tools, vm-hardware-version, esx]
@@ -33,11 +33,11 @@ sources:
 
 ## Why This Matters
 
-A VM is useless without a disk and a network. In VCF, storage is usually **vSAN** (in the hosts) and networking is **vSphere Distributed Switches plus NSX**. Before those phases you need the basic chain: *VM → virtual device → host object → physical device*. Most beginner troubleshooting ("VM has no network", "datastore full", "host lost storage") is solved by walking that chain.
+A VM is useless without a disk and a network. In VMware Cloud Foundation (VCF), storage is usually **vSAN** (in the hosts) and networking is **vSphere Distributed Switches plus NSX**. Before those phases you need the basic chain: *VM → virtual device → host object → physical device*. Most beginner troubleshooting ("VM has no network", "datastore full", "host lost storage") is solved by walking that chain.
 
 ## Learning Objectives
 
-- Trace a VM's disk I/O from virtual disk to datastore to physical storage.
+- Trace a VM's disk Input/Output (I/O) from virtual disk to datastore to physical storage.
 - Compare datastore types (VMFS, NFS, vSAN) and thin vs thick provisioning.
 - Trace a VM's network traffic from virtual NIC through port group, virtual switch and uplink.
 - Distinguish VM port groups, VMkernel adapters and uplinks (vmnic vs vmk).
@@ -47,14 +47,14 @@ A VM is useless without a disk and a network. In VCF, storage is usually **vSAN*
 
 ### Storage virtualization
 
-The guest sees a **virtual disk** on a **virtual controller** (PVSCSI, LSI Logic SAS, NVMe or SATA). That disk is really a **.vmdk file** on a **datastore**, a storage container formatted and managed by ESX.
+The guest sees a **virtual disk** on a **virtual controller** (Paravirtual Small Computer System Interface (PVSCSI), LSI Logic Serial Attached SCSI (SAS), Non-Volatile Memory Express (NVMe) or Serial ATA (SATA)). That disk is really a **.vmdk file** on a **datastore**, a storage container formatted and managed by ESX.
 
 | Datastore type | Backed by | Typical use |
 |---|---|---|
-| **VMFS** | Block storage: local disk, Fibre Channel, iSCSI, NVMe-oF LUN | Local or SAN storage, shared between hosts in a cluster |
-| **NFS** | File share from a NAS (NFS v3 or 4.1) | Shared storage without block protocols; also possible as VCF principal storage in some models |
+| **VMware Virtual Machine File System (VMFS)** | Block storage: local disk, Fibre Channel, Internet Small Computer Systems Interface (iSCSI), NVMe over Fabrics (NVMe-oF) Logical Unit Number (LUN) | Local or Storage Area Network (SAN) storage, shared between hosts in a cluster |
+| **Network File System (NFS)** | File share from Network-Attached Storage (NAS) (NFS v3 or 4.1) | Shared storage without block protocols; also possible as VCF principal storage in some models |
 | **vSAN** | Local disks of the cluster's ESX hosts, pooled by the VMkernel | Default principal storage for VCF clusters; managed through storage policies |
-| **vVols** | Storage-array objects | **Deprecated starting with VCF/VVF 9.0** |
+| **VMware vSphere Virtual Volumes (vVols)** | Storage-array objects | **Deprecated starting with VCF/VMware vSphere Foundation (VVF) 9.0** |
 
 Provisioning formats:
 
@@ -68,9 +68,9 @@ On vSAN, space is governed by the **storage policy** rather than these formats (
 
 ### Network virtualization
 
-The guest sees a **virtual NIC** (usually **vmxnet3**, which needs VMware Tools drivers; or e1000e for compatibility). The vNIC connects to a **port group**, a set of ports on a **virtual switch** sharing the same VLAN and policies. The switch forwards traffic between VMs on the same host in memory, or out through **uplinks** (physical NICs, named vmnic0, vmnic1…) to the physical switch.
+The guest sees a **virtual Network Interface Controller (vNIC)** (usually **vmxnet3**, which needs VMware Tools drivers; or e1000e for compatibility). The vNIC connects to a **port group**, a set of ports on a **virtual switch** sharing the same Virtual Local Area Network (VLAN) and policies. The switch forwards traffic between VMs on the same host in memory, or out through **uplinks** (physical NICs, named vmnic0, vmnic1…) to the physical switch.
 
-The host itself also needs IP connectivity, for management, vMotion, vSAN, NFS and so on. For that ESX uses **VMkernel adapters** (vmk0, vmk1…), each attached to a port group and enabled for specific services.
+The host itself also needs Internet Protocol (IP) connectivity, for management, vMotion, vSAN, NFS and so on. For that ESX uses **VMkernel adapters** (vmk0, vmk1…), each attached to a port group and enabled for specific services.
 
 | Name | What it is | Example |
 |---|---|---|
@@ -78,6 +78,28 @@ The host itself also needs IP connectivity, for management, vMotion, vSAN, NFS a
 | **Port group** | Named group of switch ports with VLAN/policy | "VM Network", "Management Network" |
 | **vmk** | Host's own IP interface | vmk0 = management |
 | **vmnic** | Physical NIC used as uplink | vmnic0, vmnic1 |
+
+### Core terms and operational boundaries
+
+**Datastore.** A datastore is the logical storage container presented to ESX and vCenter. It provides a common
+namespace for VM files while its backend may be block, file or distributed storage. A datastore can simplify VM
+placement and mobility, but it cannot exceed the availability, capacity or performance of its backend. Administrators
+use Host Client or vCenter for inventory and capacity; vSAN policy belongs at the cluster and VM-object layer.
+
+**VMFS, NFS and vSAN.** VMFS formats block devices, NFS mounts a file export, and vSAN distributes VM objects across
+cluster-host devices according to policy. They expose similar datastore consumption but depend on different networks,
+failure domains and ownership. None is automatically the best answer for every VCF domain. Exam scenarios expect
+you to identify the access model, principal/supplemental role and likely failure boundary before choosing a protocol.
+
+**vNIC, VMkernel adapter and vmnic.** A vNIC belongs to a VM, a VMkernel adapter is an IP endpoint owned by the ESX
+host, and a vmnic represents a physical host adapter. They can share a virtual switch but cannot substitute for one
+another. Administrators connect vNICs and VMkernel adapters to port groups, then map switch uplinks to vmnics. A
+common troubleshooting error is changing the wrong layer because all three appear in one traffic path.
+
+**vSS, VDS and NSX.** A vSphere Standard Switch (vSS) is configured per host; a VDS holds one vCenter-managed
+configuration across hosts; NSX adds overlay transport, distributed security and routing services. A VDS does not
+remove the need for physical VLANs and path MTU, while an NSX overlay still depends on a working IP underlay. VCF
+uses supported workflows to establish these objects; element-level inspection remains in vCenter and NSX Manager.
 
 ## Architecture
 
@@ -97,7 +119,7 @@ The host itself also needs IP connectivity, for management, vMotion, vSAN, NFS a
 
 ### A VM writes a block
 
-1. The guest OS writes to its disk through the virtual controller driver (e.g. PVSCSI from VMware Tools).
+1. The guest Operating System (OS) writes to its disk through the virtual controller driver (e.g. PVSCSI from VMware Tools).
 2. The VMkernel translates the write to an offset in the VM's `.vmdk` file.
 3. The datastore layer writes it: to a VMFS volume on a LUN, to an NFS server, or to vSAN components on several hosts.
 4. The physical device acknowledges; the acknowledgement travels back to the guest.
@@ -106,44 +128,46 @@ The host itself also needs IP connectivity, for management, vMotion, vSAN, NFS a
 
 1. The guest sends through its vNIC (vmxnet3 driver).
 2. The port group applies VLAN tagging and policies (security, teaming).
-3. The virtual switch looks up the destination MAC. Same host and port group → delivered in memory. Otherwise → out an uplink chosen by the teaming policy.
-4. The physical switch receives an 802.1Q-tagged frame on a trunk port and forwards it.
+3. The virtual switch looks up the destination Media Access Control (MAC) address. Same host and port group → delivered in memory. Otherwise → out an uplink chosen by the teaming policy.
+4. The physical switch receives an Institute of Electrical and Electronics Engineers (IEEE) 802.1Q-tagged frame on a trunk port and forwards it.
 
 ## Deep Dive
 
 ### VLAN tagging modes
 
-Most designs use **virtual switch tagging (VST)**: the port group has a VLAN ID, the virtual switch adds/removes the tag, and the physical switch port is a trunk. That is why "VM has no network" is often a missing VLAN on the physical trunk, not a vSphere problem.
+Most designs use **virtual switch tagging (VST)**: the port group has a VLAN Identifier (ID), the virtual switch adds/removes the tag, and the physical switch port is a trunk. That is why "VM has no network" is often a missing VLAN on the physical trunk, not a vSphere problem.
 
-### MTU
+### Maximum Transmission Unit (MTU)
 
 Overlay (NSX Geneve) and storage (vSAN, vMotion) traffic usually need a larger MTU (jumbo frames). The MTU must match end to end: VMkernel adapter, virtual switch, physical switch. Mismatches cause strange partial failures (small packets work, large do not). The Networking phase covers how to test this with `vmkping`.
 
 ### Where NSX fits
 
-A VDS gives you VLAN-backed networks that still depend on the physical network for every new VLAN. **NSX** adds **overlay segments**: Layer 2 networks carried inside Geneve tunnels between hosts' tunnel endpoints, plus distributed routing and firewalling in the ESX kernel. New networks become software objects that need no physical switch change. This is the network half of the SDDC idea.
+A VDS gives you VLAN-backed networks that still depend on the physical network for every new VLAN. **NSX** adds **overlay segments**: Open Systems Interconnection Layer 2 networks carried inside Geneve tunnels between hosts' tunnel endpoints, plus distributed routing and firewalling in the ESX kernel. New networks become software objects that need no physical switch change. This is the network half of the Software-Defined Data Center (SDDC) idea.
 
 ### Virtual hardware choices for a new VM
 
 | Device | Recommended default | Why |
 |---|---|---|
-| Disk controller | PVSCSI or NVMe | Lower CPU per I/O than emulated controllers |
+| Disk controller | PVSCSI or NVMe | Lower Central Processing Unit (CPU) use per I/O than emulated controllers |
 | NIC | vmxnet3 | Paravirtual, best performance |
 | Disk format | Thin (labs), per policy (vSAN) | Saves space |
 | Hardware version | The newest your oldest host supports | Version 22 for ESX 9.0 only clusters |
 
 ## Configuration
 
-In the Host Client on a fresh host:
+Configuration follows the ownership boundary rather than one universal screen:
 
-| Task | Path |
-|---|---|
-| Create a VMFS datastore | Storage → Datastores → New datastore |
-| Upload an ISO | Storage → Datastore browser → Upload |
-| See port groups | Networking → Port groups |
-| See VMkernel adapters | Networking → VMkernel NICs |
-| See physical NICs | Networking → Physical NICs |
-| Add a VLAN port group | Networking → Port groups → Add port group (VLAN ID, vSwitch) |
+| Object | Management surface | Configuration intent |
+|---|---|---|
+| Local VMFS datastore | Host Client or vCenter | Present a supported device, create the datastore and monitor capacity |
+| VM disk and controller | VM settings in Host Client or vCenter | Choose compatibility, controller and policy/provisioning appropriate to the backend |
+| Standard switch and port group | Host Client or per-host vCenter networking | Set local uplinks, VLAN and policies consistently on every relevant host |
+| Distributed switch and port group | vCenter Networking | Apply one switch configuration and distributed policies across member hosts |
+| VMkernel adapter | Host Client or vCenter networking | Bind an IP endpoint to the intended service, VLAN, stack and MTU |
+| NSX segment and transport | NSX Manager and VCF-supported workflows | Build overlay connectivity after proving the physical IP underlay |
+
+The separate ESX practical guide provides the exact User Interface (UI) path for creating the starter datastore and VM network.
 
 ## CLI / API
 
@@ -178,7 +202,7 @@ Walk the chain, inside to outside:
 
 1. **Guest**: IP/gateway correct? VMware Tools (vmxnet3 driver) installed?
 2. **vNIC**: connected? On the right port group?
-3. **Port group**: correct VLAN ID?
+3. **Port group**: correct VLAN Identifier (ID)?
 4. **Virtual switch**: which uplinks are active? (`esxcli network nic list`)
 5. **Physical switch**: VLAN allowed on the trunk? MTU?
 
@@ -186,13 +210,7 @@ For storage: datastore free space and accessibility (`esxcli storage filesystem 
 
 ## Real-World Scenario
 
-After moving a VM to a new port group "App-VLAN30", it cannot reach its gateway, while VMs on VLAN 20 are fine. The port group has VLAN ID 30; both uplinks are up. The physical switch trunk allows VLANs 10 and 20 only. Adding VLAN 30 to the trunk fixes it. Lesson: a port group VLAN ID is only half the configuration.
-
-## Lab
-
-In the ESX lab you create a VMFS datastore, upload an ISO and connect a VM to the "VM Network" port group, then verify with the commands above.
-
-::lab[lab-esx-host-first-vm]
+After moving a VM to a new port group "App-VLAN30", it cannot reach its gateway, while VMs on VLAN 20 are fine. The port group has VLAN Identifier (ID) 30; both uplinks are up. The physical switch trunk allows VLANs 10 and 20 only. Adding VLAN 30 to the trunk fixes it. Lesson: a port group VLAN Identifier (ID) is only half the configuration.
 
 ## Exam Focus
 
@@ -207,7 +225,7 @@ In the ESX lab you create a VMFS datastore, upload an ISO and connect a VM to th
 
 :::trap
 - Confusing **vmk** (VMkernel adapter) with **vmnic** (physical NIC).
-- Assuming a VLAN ID on the port group is enough without the physical trunk.
+- Assuming a VLAN Identifier (ID) on the port group is enough without the physical trunk.
 - Thinking thin provisioning reserves space. It does not; the datastore can run out.
 - Choosing vVols for a new VCF 9 design. It is deprecated.
 :::
