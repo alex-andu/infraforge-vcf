@@ -66,7 +66,7 @@ This section is the source of truth for work ownership and holds. Operating rule
 | THEORY-VDS-STANDARD-23 | Codex | COMPLETE; PUSHED `a027120` | Deepen switch control/data planes, teaming and congestion boundaries; replace click paths with ownership and evidence | Superseded by VCF network design |
 | THEORY-VCF-NETWORK-DESIGN-STANDARD-24 | Codex | COMPLETE; PUSHED `376953e` | Deepen cluster traffic, switch models and validation boundaries; preserve the design record | Superseded by the NSX module migration |
 | THEORY-NSX-MODULE-STANDARD-25 | Codex | COMPLETE; PUSHED `42a90ac` | Migrate all seven NSX lessons to standalone theory and preserve their diagrams and official figures | Superseded by the remaining-module migration |
-| THEORY-REMAINING-MODULES-STANDARD-26 | Codex | COMPLETE LOCALLY; CHECKS PASSED; PUSH PENDING | Complete standalone-theory separation for the final 40 lessons and apply first-use acronym expansions | Publish the cumulative branch and create one PR |
+| THEORY-REMAINING-MODULES-STANDARD-26 | Codex | COMPLETE; PUSHED `ce81092`; PR #15 OPEN | Complete standalone-theory separation for the final 40 lessons and apply first-use acronym expansions | Alex reviews the single cumulative pull request; merge remains an explicit user action |
 | #6–#10 remaining implementation | ChatGPT (Claude optional) | QUEUED | Existing task order retained; shared-file edits serialized and environment-dependent guides remain visibly unvalidated | Select one bounded package at a time |
 | Independent lab execution | Alex | AS NEEDED | Run the canonical guides when useful and adapt known home-lab exceptions | No repository completion dependency |
 
