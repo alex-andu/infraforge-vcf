@@ -6,7 +6,7 @@ module: m02-hosts-vcenter
 version: vcf9
 minutes: 40
 difficulty: foundation
-summary: The vCenter 9 appliance, the services it runs (SSO, VMCA, licensing, lifecycle), how it organizes the inventory (data centers, clusters, folders, resource pools), and how VCF gives every workload domain its own vCenter and SSO domain.
+summary: The vCenter 9 appliance, the services it runs (Single Sign-On (SSO), VMware Certificate Authority (VMCA), licensing, lifecycle), how it organizes the inventory (data centers, clusters, folders, resource pools), and how VMware Cloud Foundation (VCF) gives every workload domain its own vCenter and SSO domain.
 topics: [vcenter, vsphere-cluster, identity-sso]
 objectives: ["2.2"]
 keyTerms: [vsphere-client, sso-domain, enhanced-linked-mode, vami, vcls, resource-pool, vm-folder]
@@ -35,9 +35,9 @@ sources:
 
 ## Why This Matters
 
-vCenter is the management brain of every VCF domain. The management domain's vCenter manages the management cluster; each VI workload domain gets **its own vCenter**, and — per the VCF 9.0 design guide — every one of those vCenter appliances runs inside the **management domain**. DRS, vMotion, cluster configuration, templates, permissions, storage policies and vSphere Lifecycle Manager all live in vCenter. VCF components (SDDC Manager, NSX Manager, VCF Operations, VCF Automation) integrate with vCenter rather than with hosts directly.
+vCenter is the management brain of every VCF domain. The management domain's vCenter manages the management cluster; each Virtual Infrastructure (VI) workload domain gets **its own vCenter**, and — per the VCF 9.0 design guide — every one of those vCenter appliances runs inside the **management domain**. Distributed Resource Scheduler (DRS), vMotion, cluster configuration, templates, permissions, storage policies and vSphere Lifecycle Manager all live in vCenter. VCF components (Software-Defined Data Center (SDDC) Manager, NSX Manager, VCF Operations, VCF Automation) integrate with vCenter rather than with hosts directly.
 
-Objective 2.2 expects you to *deploy and configure vCenter*, *configure a vSphere cluster* and *manage VMs through vCenter*. You need to know what is inside the appliance, how the inventory is built, and what keeps working when vCenter is down.
+Objective 2.2 expects you to *deploy and configure vCenter*, *configure a vSphere cluster* and *manage virtual machines (VMs) through vCenter*. You need to know what is inside the appliance, how the inventory is built, and what keeps working when vCenter is down.
 
 ## Learning Objectives
 
@@ -49,15 +49,37 @@ Objective 2.2 expects you to *deploy and configure vCenter*, *configure a vSpher
 
 ## Concept
 
-vCenter is "a service that acts as a central administrator for ESX hosts connected in a network" and is deployed "as a preconfigured virtual machine optimized for running vCenter and associated services" (vSphere 9.0 docs). In vSphere 9.0 the appliance runs **Photon OS 5.0** with an embedded **PostgreSQL** database. There is no Windows vCenter and no external database option.
+vCenter is "a service that acts as a central administrator for ESX hosts connected in a network" and is deployed "as a preconfigured virtual machine optimized for running vCenter and associated services" (vSphere 9.0 docs). In vSphere 9.0 the appliance runs **VMware Photon Operating System (Photon OS) 5.0** with an embedded **PostgreSQL** database. There is no Windows vCenter and no external database option.
 
 The appliance exposes three interfaces:
 
-| Interface | URL / access | Used for |
+| Interface | Uniform Resource Locator (URL) / access | Used for |
 |---|---|---|
 | [[vsphere-client]] | `https://<vcenter-fqdn>/ui` | Day-to-day management of inventory, clusters, VMs, permissions |
 | vCenter Management Interface ([[vami]]) | `https://<vcenter-fqdn>:5480` | Appliance health, services, backup, networking, time, updates of the appliance |
-| Appliance shell / Bash (SSH, console) | SSH to the appliance | Service control and deep troubleshooting |
+| Appliance shell / Bash (Secure Shell (SSH), console) | SSH to the appliance | Service control and deep troubleshooting |
+
+### Core terms and operational boundaries
+
+**vCenter.** vCenter is the authoritative inventory and control plane for one VCF domain. It configures clusters,
+coordinates placement and mobility, stores permissions and exposes automation Application Programming Interfaces (APIs). It depends on Domain Name System (DNS), time,
+certificates, database health and reachable ESX management networks. It does not execute running VMs or replace
+host HA agents, so a vCenter outage removes orchestration without automatically stopping the workload data plane.
+
+**Single Sign-On domain.** An SSO domain is vCenter's authentication and service-registration boundary. It issues
+tokens and contains local identities, solution users and service endpoints. It is distinct from an Active Directory
+DNS domain and from a VCF workload domain. In a fresh VCF 9 design, each workload-domain vCenter has a dedicated
+SSO domain; fleet-wide access is supplied through VCF identity integration rather than assuming shared inventory.
+
+**Inventory hierarchy.** Data centers contain parallel host/cluster, VM/template, network and datastore hierarchies.
+Folders organize one object type and provide permission boundaries; resource pools allocate CPU and memory policy.
+The hierarchy enables inheritance and delegated administration but does not create physical capacity. Administrators
+must choose the object whose scope matches the intended permission or policy.
+
+**vSphere Cluster Services (vCLS).** vCLS supplies the cluster-services control plane used by DRS. Embedded vCLS is
+managed automatically and must not be treated as an ordinary application VM. It depends on cluster and vCenter
+health, but its purpose is to improve service availability during management transitions. Its vCenter 9 deprecation
+means learners should understand its current role without designing new operational processes around it.
 
 ## Architecture
 
@@ -84,7 +106,7 @@ The vSphere 9.0 docs group the appliance services as follows:
 | VMware Certificate Authority (VMCA) | Authentication | Issues certificates; by default signs every ESX host certificate |
 | vSphere License Service | Authentication | Common license inventory for vCenter systems in the SSO domain |
 | vCenter (vpxd) | vCenter services | The core management service: inventory, tasks, DRS, HA configuration |
-| vSphere Client | vCenter services | The HTML5 UI |
+| vSphere Client | vCenter services | The HTML5 User Interface (UI) |
 | vSphere Auto Deploy, ESX Dump Collector | vCenter services | Network boot provisioning; collects host core dumps |
 | vSphere Lifecycle Manager extension, vCenter Lifecycle Manager | vCenter services | Image-based host lifecycle; vCenter's own lifecycle |
 | PostgreSQL | Database | "Persistent storage for maintaining the status of each virtual machine, host, and user" |
@@ -98,29 +120,33 @@ Services are supervised by a service manager on the appliance and can be listed 
 | Data center | "An aggregation of all the different types of objects" | Contains four hierarchies: VMs and templates, hosts and clusters, networks, datastores |
 | Cluster | "A collection of ESX hosts … intended to work together as a unit" | Where HA, DRS, vSAN and vLCM images are configured |
 | Host | "The physical computer on which ESX is installed" | The only inventory object that **cannot be renamed** |
-| [[resource-pool]] | "Compartmentalize the CPU and memory resources of a host or cluster" | Covered in [DRS](lesson:drs-resource-management) |
+| [[resource-pool]] | "Compartmentalize the Central Processing Unit (CPU) and memory resources of a host or cluster" | Covered in [DRS](lesson:drs-resource-management) |
 | Folder | Groups objects **of the same type** | Main tool for permissions and organization ([[vm-folder]]) |
 | Datastore / datastore cluster | Storage for VM files | Covered in the storage phase |
 | Network | Port groups, distributed switches | Covered in the networking phase |
 | Template, VM, vApp | Workloads | Covered in [VM lifecycle](lesson:vm-lifecycle-templates) |
 
-Object names can be up to 214 bytes (UTF-8).
+Object names can be up to 214 bytes (Unicode Transformation Format 8 (UTF-8)).
 
 ::figure{src="https://techdocs.broadcom.com/content/broadcom/techdocs/us/en/vmware-cis/vsphere/vsphere/9-0/_jcr_content/assetversioncopies/c4cbafbc-40a5-461c-b425-4c63b24a4e29.original.png" caption="vSphere Inventory Hierarchy" source="https://techdocs.broadcom.com/us/en/vmware-cis/vsphere/vsphere/9-0/vsphere-security/vsphere-permissions-and-user-management-tasks/understanding-authorization-in-vsphere/hierarchical-inheritance-of-permissions.html"}
 
 ## How It Works
 
-Building a minimal vSphere inventory in vCenter (what the VCF Installer automates for the management domain, and what you do by hand in this phase's lab):
+vCenter moves through four conceptual states; the separate practical guide contains the exact deployment screens and
+field values.
 
-1. **Deploy the appliance.** The installer's stage 1 deploys the OVA to a target ESX host; stage 2 configures time, SSH and the SSO domain (new or join existing).
-2. **Log in** as `administrator@<sso-domain>` to the vSphere Client.
-3. **Create a data center** — the top-level container for hosts, VMs, networks and datastores.
-4. **Create a cluster** in the data center. Leave HA and DRS off until hosts are in (the vSphere 9.0 HA procedure recommends this order).
-5. **Add hosts** to the cluster by FQDN (vCenter installs vpxa on each).
-6. **Configure the cluster:** networking (VDS), storage, vMotion VMkernel adapters, then turn on DRS and HA.
-7. **Create folders** for VMs and templates, then assign permissions on folders (next lesson).
+1. **Appliance identity.** Deployment creates the appliance, configures network/time and establishes or joins the
+   intended SSO domain. The appliance must have stable name resolution and certificate identity.
+2. **Inventory authority.** A data center establishes the parallel inventory roots, clusters group hosts and folders
+   create object-type and permission boundaries.
+3. **Host and cluster services.** Registered hosts receive vCenter agents; shared networking, storage, HA, DRS and
+   desired-state lifecycle become cluster policy.
+4. **Workload governance.** Permissions, templates, tags, storage policies and automation consume that inventory.
 
-In VCF, steps 1–6 are done by the **VCF Installer** for the management domain and by the **workload domain workflow** for each VI workload domain: it deploys the domain's vCenter on the management cluster, creates the data center and cluster, adds commissioned hosts, builds the VDS and VMkernel adapters, and enables HA and DRS.
+Creating an object proves configuration, not service health. vCenter service state, host connectivity, cluster health,
+DNS/time and downstream component registrations provide the operational evidence.
+
+In VCF, steps 1–6 are done by the **VCF Installer** for the management domain and by the **workload domain workflow** for each Virtual Infrastructure (VI) workload domain: it deploys the domain's vCenter on the management cluster, creates the data center and cluster, adds commissioned hosts, builds the VDS and VMkernel adapters, and enables HA and DRS.
 
 ### What still works when vCenter is down
 
@@ -140,13 +166,13 @@ This is why the management domain protects vCenter with vSphere HA, and why VCF'
 
 ### SSO domains, Enhanced Linked Mode and VCF 9
 
-A **vCenter Single Sign-On domain** ([[sso-domain]]) is the local authentication space a vCenter belongs to; it defaults to `vsphere.local` and you should not reuse a name that is already used by Active Directory or another LDAP directory.
+A **vCenter Single Sign-On domain** ([[sso-domain]]) is the local authentication space a vCenter belongs to; it defaults to `vsphere.local` and you should not reuse a name that is already used by Active Directory or another Lightweight Directory Access Protocol (LDAP) directory.
 
-[[enhanced-linked-mode]] (ELM) joins multiple vCenter systems in one SSO domain so that one login shows all inventories; vSphere 9.0 allows up to **15** vCenter appliances in one ELM group.
+[[enhanced-linked-mode]] (Enhanced Linked Mode (ELM)) joins multiple vCenter systems in one SSO domain so that one login shows all inventories; vSphere 9.0 allows up to **15** vCenter appliances in one ELM group.
 
 :::vcf9 Changed in VCF 9
 - vSphere 9.0 docs state that **ELM is deprecated as of vCenter 9.0** and will be removed in a future release; VCF Operations grouping of vCenter instances is the recommended alternative.
-- VCF 9 gives each VI workload domain a **dedicated vCenter and SSO domain**. Single sign-on across components is provided by **VCF Single Sign-On** through the **VCF Identity Broker**, which can run embedded in vCenter or as a three-node appliance cluster (see [Identity and SSO](lesson:vcf-identity-sso-rbac)).
+- VCF 9 gives each Virtual Infrastructure (VI) workload domain a **dedicated vCenter and SSO domain**. Single sign-on across components is provided by **VCF Single Sign-On** through the **VCF Identity Broker**, which can run embedded in vCenter or as a three-node appliance cluster (see [Identity and SSO](lesson:vcf-identity-sso-rbac)).
 :::
 
 :::legacy VCF 5.x / Legacy Context
@@ -155,7 +181,7 @@ In VCF 4.x/5.x, workload domain vCenters normally joined the management domain's
 
 ### vSphere Cluster Services (vCLS)
 
-[[vcls]] keeps cluster services (DRS depends on it) available independently of vCenter. In vSphere 9.0 it is **Embedded vCLS** (introduced in 8.0 U3), based on vSphere Pod technology, with **up to two** vCLS VMs per cluster instead of the three Photon OS VMs of the older external model. vCenter 9.0 **deprecates vCLS**, and it will be removed in a future release. Do not delete or rename vCLS VMs; use retreat mode if a datastore must be evacuated.
+[[vcls]] keeps cluster services (DRS depends on it) available independently of vCenter. In vSphere 9.0 it is **Embedded vCLS** (introduced in 8.0 Update 3 (U3)), based on vSphere Pod technology, with **up to two** vCLS VMs per cluster instead of the three Photon OS VMs of the older external model. vCenter 9.0 **deprecates vCLS**, and it will be removed in a future release. Do not delete or rename vCLS VMs; use retreat mode if a datastore must be evacuated.
 
 ### Sizing and placement
 
@@ -163,18 +189,19 @@ The installer offers deployment sizes (tiny to x-large) and storage sizes based 
 
 ## Configuration
 
-Common vCenter configuration tasks and where they live:
+Configuration follows the appliance/inventory boundary:
 
-| Task | Where |
-|---|---|
-| Appliance time (NTP), DNS, hostname | Management interface (port 5480) → Time / Networking |
-| File-based backup schedule | Management interface → Backup |
-| Service status, restart | Management interface → Services, or `service-control` |
-| Identity sources, SSO users and groups | vSphere Client → Administration → Single Sign On |
-| Roles, permissions, global permissions | vSphere Client → Administration → Access Control |
-| Licensing | VCF 9 licensing is managed through VCF Operations (see licensing lesson) |
-| Advanced settings | vSphere Client → vCenter → Configure → Advanced Settings |
-| Tags and custom attributes | vSphere Client → Tags & Custom Attributes |
+| Area | Management surface | Evidence that matters |
+|---|---|---|
+| Appliance network, time and backup | vCenter Management Interface | Stable identity, active time sync, healthy services and tested backup status |
+| SSO identities and sources | vSphere Client administration | Correct domain, trusted identity source and successful token-based login |
+| Inventory permissions | vSphere Client access control | Role assigned at the intended object with deliberate propagation |
+| Cluster services and lifecycle | Cluster configuration and VCF workflows | Healthy agents, compatible hosts, desired-image compliance and service readiness |
+| Licensing | VCF Operations in VCF 9 | Correct entitlement associated with the intended fleet resources |
+| Tags and metadata | vSphere Client inventory | Consistent categories and assignments usable by policy and automation |
+
+The separate vCenter guide provides the exact UI-first deployment and cluster-building sequence. VCF-owned FQDN,
+address, SSO, certificate and topology changes remain VCF workflows because other components persist those identities.
 
 In VCF, do **not** change the vCenter FQDN, IP, SSO domain or certificates outside the VCF workflows — SDDC Manager stores and validates them.
 
@@ -200,17 +227,17 @@ Get-Cluster | Select-Object Name, HAEnabled, DrsEnabled, DrsAutomationLevel
 Get-VMHost | Select-Object Name, ConnectionState, PowerState, Version
 ```
 
-Automation via the vSphere Automation REST API and VCF APIs is covered in [APIs and PowerCLI](lesson:vcf-apis-powercli).
+Automation via the vSphere Automation Representational State Transfer Application Programming Interface (REST API) and VCF APIs is covered in [APIs and PowerCLI](lesson:vcf-apis-powercli).
 
 ## Failure Scenarios
 
 | Failure | Symptom | Impact |
 |---|---|---|
-| vCenter VM down | vSphere Client unreachable | No DRS, vMotion, provisioning; HA restarts still happen; VCF workflows for that domain fail |
+| vCenter VM down | vSphere Client unreachable | No Distributed Resource Scheduler (DRS), vMotion, provisioning; HA restarts still happen; VCF workflows for that domain fail |
 | vpxd service crashed | Client loads but inventory errors | Same as above until restarted |
 | Database partition full | Services fail to start | Check `/storage` partitions in the management interface |
-| DNS broken for vCenter FQDN | Logins and host connections fail; VCF validations fail | Fix DNS first |
-| Certificate expired (machine SSL) | Browser and component trust errors | Replace via VCF certificate workflow |
+| DNS broken for vCenter FQDN | Logins and host connections fail; VCF validations fail | Fix Domain Name System (DNS) first |
+| Certificate expired (machine Secure Sockets Layer (SSL)) | Browser and component trust errors | Replace via VCF certificate workflow |
 | vCLS unhealthy | DRS stops functioning in that cluster | Check vCLS status in the cluster |
 
 ## Troubleshooting
@@ -218,19 +245,13 @@ Automation via the vSphere Automation REST API and VCF APIs is covered in [APIs 
 1. **Is it the appliance or the UI?** Try the management interface on 5480. If it loads, the VM is up and the issue is a service.
 2. **Service status:** `service-control --status --all`; look for stopped services that should be running.
 3. **Storage:** check disk usage in the management interface; full log or database partitions stop services.
-4. **DNS and time:** `nslookup` the vCenter FQDN and its IP; check NTP. Both are hard VCF dependencies.
+4. **DNS and time:** `nslookup` the vCenter FQDN and its Internet Protocol (IP) address; check Network Time Protocol (NTP). Both are hard VCF dependencies.
 5. **Hosts:** if only hosts are disconnected, go back to the ESX lesson (vpxa, network).
 6. **VCF view:** check whether SDDC Manager reports the domain's vCenter as healthy and whether a workflow is holding a lock on it.
 
 ## Real-World Scenario
 
 A team running VCF 9 with two VI workload domains finds that logging into `vcenter-wld02` does not show `vcenter-wld01`'s inventory, unlike their old VCF 5 environment. Nothing is broken: VCF 9 workload domains get **dedicated SSO domains**, and ELM is deprecated. Their single login experience comes from VCF Single Sign-On through the Identity Broker, and the unified view comes from VCF Operations. Their runbooks are updated to log in to the domain vCenter that owns the cluster they manage.
-
-## Lab
-
-::lab[lab-vcenter-cluster-ha-drs]
-
-You deploy a vCenter appliance on a nested ESX host, create a data center and a cluster, and add three nested hosts — the same objects VCF builds automatically.
 
 ## Exam Focus
 
@@ -257,10 +278,10 @@ You deploy a vCenter appliance on a nested ESX host, create a data center and a 
 
 ## Summary
 
-- vCenter 9 is a Photon OS 5.0 appliance with embedded PostgreSQL and services for SSO, certificates, licensing, inventory, UI and lifecycle.
+- vCenter 9 is a VMware Photon Operating System (Photon OS) 5.0 appliance with embedded PostgreSQL and services for SSO, certificates, licensing, inventory, UI and lifecycle.
 - Every VCF workload domain has its own vCenter (running in the management domain) and, in VCF 9, its own SSO domain.
 - The inventory is data center → clusters/hosts, VMs/templates, networks, datastores, plus folders and resource pools.
-- vCenter down: VMs run and HA restarts continue; DRS, vMotion, provisioning and VCF workflows stop.
+- vCenter down: VMs run and HA restarts continue; Distributed Resource Scheduler (DRS), vMotion, provisioning and VCF workflows stop.
 - vCLS is embedded (up to two VMs) and deprecated in 9.0; ELM is deprecated in 9.0.
 
 ## Next Topic

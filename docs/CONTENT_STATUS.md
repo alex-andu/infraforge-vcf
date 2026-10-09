@@ -8,7 +8,7 @@ Totals:
 
 | Item | Count |
 |---|---|
-| Lessons | 72 (161,862 words) |
+| Lessons | 72 (166,410 words) |
 | Questions | 683 |
 | Practical guides (internal `lab` schema) | 25 |
 | Incidents | 10 |
@@ -19,13 +19,15 @@ Totals:
 | Architecture components | 24 |
 | Badges | 18 |
 
+Component catalog migration: **24/24** profiles use the expanded role/capability/limitation/management/mistake/exam format; all 24 remain available in Architecture Explorer.
+
 ## Theory modules (VCF curriculum, `content/curriculum.yaml`)
 
 | Phase | Title | Lessons written / planned | Words | Questions | Labs |
 |---|---|---|---|---|---|
-| p00 | Orientation | 4/4 | 8,267 | 34 | 1 |
-| p01 | Virtualization Foundations | 4/4 | 6,876 | 27 | 2 |
-| p02 | vSphere Core | 6/6 | 13,674 | 53 | 2 |
+| p00 | Orientation | 4/4 | 9,462 | 34 | 1 |
+| p01 | Virtualization Foundations | 4/4 | 8,349 | 27 | 2 |
+| p02 | vSphere Core | 6/6 | 15,554 | 53 | 2 |
 | p03 | Storage and vSAN | 6/6 | 14,560 | 53 | 2 |
 | p04 | Networking | 4/4 | 10,077 | 35 | 3 |
 | p05 | NSX | 7/7 | 15,226 | 64 | 3 |
@@ -42,7 +44,7 @@ Totals:
 
 The lab counts are labs linked to that phase's lessons; one lab can be linked to several phases.
 
-- The standalone-theory template requires 17 sections, sources, at least one diagram and an inline quiz. The DNS/NTP pilot, Kubernetes foundations and HCX lessons use it; the other 69 lessons remain valid with their legacy `Lab` sections during incremental migration.
+- The standalone-theory template requires 17 sections, sources, at least one diagram and an inline quiz. The DNS/NTP pilot, Kubernetes foundations, HCX, every lesson in Orientation and Virtualization Foundations, and the first two vSphere Core lessons use it; the other 59 lessons remain valid with their legacy `Lab` sections during incremental migration.
 - **Gaps:**
   - Candidate-profile foundations for Kubernetes, DNS/NTP/certificates and HCX have dedicated theory and separate prepared guides. Validation remains gated on the required real infrastructure and observed evidence.
   - All 59 official items meet the internal five-question target. A question mapping is evidence of coverage, while later topic packages continue to review theory depth and accuracy.

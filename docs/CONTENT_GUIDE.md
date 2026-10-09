@@ -39,7 +39,9 @@ The schema is `src/content/schema.ts` (zod). Read it: it is the source of truth 
    what depends on it, what happens when it fails, how to verify it, how to troubleshoot it*.
 6. Content language is **English**. (The UI is Romanian; content is not.)
 7. Audience: the learner is a VMware **beginner** who wants to pass 2V0-17.25 with a high score and run a real lab.
-   Define a term the first time it appears (or link it with `[[term-id]]`).
+   At the first occurrence in **every lesson**, write each acronym as `Acronym (Full Name)`. After that introductory
+   paragraph, explain the term in plain language: what it is, its role, how it works, dependencies, capabilities,
+   limitations, management surface, common mistakes and exam relevance. Link its glossary entry where available.
 
 ## Lesson file
 
@@ -117,9 +119,10 @@ The site runs privately on the learner's LAN, so official Broadcom/VMware diagra
 (the browser loads them directly from techdocs). Get real image URLs by fetching the TechDocs page with WebFetch
 and asking for the exact `![...](url)` references. Image URLs look like
 `https://techdocs.broadcom.com/content/broadcom/techdocs/us/en/vmware-cis/vcf/vcf-9-0-and-later/9-0/_jcr_content/assetversioncopies/<uuid>.original.png`.
-You cannot see the image, so caption it from the figure title or the heading it sits under on the source page — do
-not guess its content. Always set `source=` to the page URL. Prefer your own `::diagram` for the main teaching
-visual, and add official figures as complementary references.
+Inspect the image before describing it and never guess its content. The learner-facing page does not need a visible
+bibliography or source label for each official image. Keep the source page, product/build and image URL in the package
+asset manifest for maintenance. Prefer existing original `::diagram` visuals for explanation and add genuine official
+product-interface images where screen recognition helps. Preserve the current diagram library.
 
 ## Diagrams (`content/diagrams/<id>.yaml`)
 
@@ -202,15 +205,17 @@ questions:
 
 ## Practical guides (`content/labs/<lab-id>.yaml`)
 
-Lab ids start with `lab-`. Labs run on the learner's real home lab (nested ESX on Proxmox, see homelab.yaml) or are
-explicitly marked conceptual. Steps describe how an engineer approaches the task: each step has `why`,
+Lab ids start with `lab-`. Guides teach the canonical VCF 9.0.2 workflow and do not need to reproduce the learner's
+current home-lab topology exactly. Necessary nested-lab deviations are labelled as adaptations, not product design.
+Steps describe how an engineer approaches the task: each step has `why`,
 `instructions`, optional `hint`, `validate` (how to check) and `expected` (what you should see). See schema `Lab`.
 Topology views reference diagram ids. Include `troubleshooting` (symptom → fix), `challenge`, `cleanup`.
 
 Treat the learner-facing artifact as a **practical guide** even though internal routes, schema and persisted state keep
-the stable `lab` name. Start from the confirmed real environment, map actions to exact official blueprint item text,
-separate read-only verification from remediation, and include an evidence record. If a required component is absent,
-mark the guide pending instead of simulating a successful infrastructure change.
+the stable `lab` name. Map actions to exact official blueprint item text. Use the supplied lab FQDNs when a familiar
+endpoint improves the example, but do not spend content work discovering or reconciling IP addresses. For a component
+that is not deployed, use a clear placeholder such as `<hcx-manager-fqdn>`. Alex executes and validates procedures in
+the lab independently; repository completion does not wait for a recorded lab-validation pass.
 
 Every runnable guide is a complete UI-first runbook. Do not write shortcuts such as "configure NTP in vSphere" or
 "create the network". For every action, state:
@@ -218,14 +223,14 @@ Every runnable guide is a complete UI-first runbook. Do not write shortcuts such
 1. the entry URL/product and required role, without recording credentials;
 2. the exact click path using the English product labels for the verified build (for example **Menu > Hosts and
    Clusters > host > Configure > System > Time Configuration**);
-3. the button or tab to select, every field to populate and the exact lab value or a clearly named discovery variable;
+3. the button or tab to select, every field to populate and an FQDN or clearly named input variable;
 4. the effect of clicking **Save/OK/Finish**, plus a checkpoint immediately before any disruptive action;
 5. how to verify the result in the UI and, when useful, with a verified CLI/API command;
-6. the expected visible result, a screenshot/evidence request, troubleshooting and rollback/cleanup.
+6. the expected visible result, troubleshooting and rollback/cleanup.
 
-Label the path with the product/build it was verified against. If a menu path has not been confirmed for that build,
-mark it `VERIFY ON LAB` instead of guessing. Use genuine Broadcom/VMware figures or redacted lab captures beside the
-relevant step; captions must identify the product/version and any difference from Alex's screen. Configuration,
+Label the path with the product/build documented for it. If a menu path cannot be confirmed, do not guess. Use genuine
+Broadcom/VMware interface figures beside the relevant step and keep their provenance in the internal asset manifest.
+Configuration,
 deployment and remediation guides must include the full commit sequence and rollback. Read-only guides still provide
 the exact navigation path, but explicitly stop at **Cancel** before a dialog could save a change. Present CLI/API as an
 alternative or validation method after the normal UI path unless the official workflow is command-only.

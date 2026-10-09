@@ -6,7 +6,7 @@ module: m02-clusters-vms
 version: vcf9
 minutes: 45
 difficulty: intermediate
-summary: How vSphere HA elects a primary, detects host failure, isolation and partition with network and datastore heartbeats, reserves capacity with admission control, and restarts VMs in priority order — and what changes when the cluster uses vSAN, as VCF clusters usually do.
+summary: How VMware vSphere High Availability (HA) detects failure, isolation and partition, reserves capacity, and restarts virtual machines (VMs), including behavior with VMware vSAN in VMware Cloud Foundation (VCF) clusters.
 topics: [vsphere-ha, vsphere-cluster, design-availability]
 objectives: ["2.2"]
 keyTerms: [fdm, heartbeat-datastore, admission-control, host-isolation, vmcp, vm-restart-priority, proactive-ha]
@@ -45,32 +45,32 @@ sources:
 
 ## Why This Matters
 
-vSphere HA is the reason a dead server in a VCF domain costs minutes of downtime instead of hours. It protects the management domain itself — vCenter appliances, NSX Managers, SDDC Manager and VCF Operations are all VMs that HA restarts if their host dies — and every workload domain cluster. VCF builds its clusters with HA turned on, but *you* answer for the settings: what happens on isolation, how much capacity is reserved, which VMs come back first.
+VMware vSphere High Availability (HA) is the reason a failed server in a VMware Cloud Foundation (VCF) domain can cause minutes of VM downtime instead of a long manual recovery. It protects management-domain components such as VMware vCenter, VMware NSX Managers, Software-Defined Data Center (SDDC) Manager and VCF Operations, as well as workloads in VI Workload Domain clusters. VCF enables HA on its clusters, while the administrator remains responsible for isolation behavior, reserved failover capacity and VM restart order.
 
-Objective 2.2 (*configure a vSphere cluster*) is full of HA scenarios: "a host loses its management network — what happens to the VMs?", "why can't I power on another VM?", "which datastore is used for heartbeating on a vSAN cluster?".
+Objective 2.2 (*configure a vSphere cluster*) includes HA scenarios: what happens when a host loses its management network, why admission control blocks a power-on, and why a vSAN datastore cannot act as an HA heartbeat datastore.
 
 ## Learning Objectives
 
-- Explain the primary/secondary model and the FDM agent.
+- Explain the primary/secondary model and the Fault Domain Manager (FDM) agent.
 - Distinguish **host failure**, **isolation** and **partition**, and how network and datastore heartbeats tell them apart.
-- Configure host failure response, isolation response, VM restart priority and VM Component Protection (PDL/APD).
+- Select host-failure response, isolation response, VM restart priority and VM Component Protection (VMCP) behavior for Permanent Device Loss (PDL) and All Paths Down (APD).
 - Choose and size an **admission control** policy.
 - Describe how HA behaves on a **vSAN** cluster, the default VCF storage model.
 
 ## Concept
 
-vSphere HA "provides high availability for virtual machines by pooling the virtual machines and the hosts they reside on into a cluster". It is a **restart** technology: when a host dies, its VMs crash with it and HA powers them on elsewhere. (Zero-downtime protection is Fault Tolerance, a separate feature.)
+vSphere HA pools hosts and VMs into a failure-recovery boundary. It is a **restart** technology: when a host fails, its running VMs stop and HA powers them on elsewhere. It does not preserve in-memory execution state or provide zero downtime; vSphere Fault Tolerance is a separate feature for that requirement.
 
-HA runs as an agent on every host — the [[fdm]] (Fault Domain Manager) agent — which vCenter installs when you enable HA. vCenter **configures** HA; the agents **execute** it. That is why HA failover works even when vCenter is down (and why vCenter itself can be protected by HA).
+HA runs through the [[fdm]] agent on every cluster host. vCenter installs and configures FDM; the agents elect a primary, exchange heartbeats, track protected VMs and execute failover. This control boundary lets HA restart workloads while vCenter is unavailable and lets HA protect the vCenter appliance itself.
 
 ### Requirements (vSphere 9.0 HA checklist)
 
 - At least **two hosts** in the cluster.
-- Static IP addresses (or persistent DHCP reservations) on hosts.
+- Static Internet Protocol (IP) addresses, or persistent Dynamic Host Configuration Protocol (DHCP) reservations, on hosts.
 - At least one **management network in common**; two management networks recommended.
 - Hosts see the same VM networks and datastores; VMs on **shared storage**.
 - VMware Tools in guests for VM Monitoring.
-- APD Timeout enabled on hosts for VM Component Protection.
+- APD timeout enabled on hosts for VMCP.
 
 ## Architecture
 
@@ -88,6 +88,16 @@ HA runs as an agent on every host — the [[fdm]] (Fault Domain Manager) agent �
 | `.vSphere-HA` folder | Root of each datastore | Heartbeat files and the protected-VM list; do not delete |
 | Isolation addresses | Default: management network gateway; extra via `das.isolationaddressX` | What a host pings to decide it is isolated |
 | vCenter | Management domain | Configures HA, shows status; not required for failover |
+
+### Component responsibilities and limits
+
+**FDM agent.** FDM owns host-level detection and coordinated restart. It depends on working HA networks, consistent cluster configuration and access to VM files. It can elect a new primary and act without vCenter, but it cannot repair failed hardware, recover unsaved guest memory or start a VM whose files and compatible capacity are unavailable.
+
+**Primary host.** The primary maintains the protected-VM list, evaluates missing agents and coordinates placement attempts. It is a cluster role rather than a permanent host designation. Losing it triggers a new election; it is not a single point of failure, although an unstable network can delay reliable decisions.
+
+**Heartbeat channels.** Network heartbeats prove agent reachability, datastore heartbeats provide a second observation channel, and isolation-address checks help a host decide whether it has lost the wider network. These signals reduce false restarts but cannot make a physically partitioned network consistent or turn vSAN into a heartbeat datastore.
+
+**Admission control.** Admission control protects future restart capacity by rejecting operations that would consume the reserve. It depends heavily on host capacity, VM reservations and the chosen policy. It can preserve a capacity margin; it cannot guarantee restart when storage, networking, compatibility rules or multiple failures prevent placement.
 
 ### Election
 
@@ -168,18 +178,17 @@ Admission control can block maintenance mode: with HA admission control on, DRS 
 
 ## Configuration
 
-Procedure from the vSphere 9.0 docs:
+In VCF, cluster workflows establish HA. Administrators then compare the resulting state with the availability design:
 
-1. Create the cluster **without** HA or DRS (data center → **New Cluster**).
-2. Add hosts.
-3. Cluster → **Configure → Services → vSphere Availability → Edit**.
-4. Turn on **vSphere HA**; under *Failures and responses* select **Enable Host Monitoring**; choose VM monitoring level.
-5. **Admission Control** tab: policy and host failures to tolerate.
-6. **Heartbeat Datastores** tab: automatic selection, or prefer specific datastores.
-7. **Advanced Options**: isolation addresses, heartbeat datastore count.
-8. Verify: cluster **Summary** and **Monitor → vSphere HA** show the primary, protected VMs and configuration issues.
+| Design decision | Management surface | Evidence |
+|---|---|---|
+| Which failures should trigger action? | Cluster vSphere Availability failures and responses | Host monitoring, isolation response and VMCP state |
+| How much capacity must survive? | Admission control policy | Policy type, tolerated failures, calculated reserve and blocking events |
+| Which workloads return first? | Cluster default and per-VM overrides | Restart priority and dependency groups |
+| Are detection channels independent? | HA network, datastore-heartbeat and advanced settings | Redundant HA paths, selected datastores and reachable isolation addresses |
+| Is HA healthy? | Cluster summary and HA monitoring views | Elected primary, protected-VM count and zero unresolved configuration issues |
 
-In VCF, the cluster workflows create clusters with HA enabled; review admission control and isolation settings against your design (management domain clusters should tolerate at least one host failure).
+The separate practical guide owns the exact VCF 9.0.2 click path and controlled failure exercise. The theory requirement is to connect each setting to a failure assumption and retain evidence that the cluster can still place its protected VMs.
 
 ## CLI / API
 
@@ -222,12 +231,6 @@ tail -n 50 /var/log/fdm.log
 ## Real-World Scenario
 
 A VCF management domain cluster of four vSAN hosts loses one host to a motherboard fault at 02:00. The FDM primary sees no network heartbeats and no ping; there are no heartbeat datastores (all-vSAN), and the host is unreachable on the vSAN network too, so it is declared failed. HA restarts the NSX Manager node and the workload domain vCenter that were on it, using restart priority *Highest* for vCenter and NSX Managers set by the platform team. Because admission control reserved 25% (one host of four), everything fits. In the morning DRS has rebalanced the cluster and the team opens a hardware ticket.
-
-## Lab
-
-::lab[lab-vcenter-cluster-ha-drs]
-
-In the lab you enable HA on a three-host nested cluster and fail a host by powering off its Proxmox VM.
 
 ## Exam Focus
 

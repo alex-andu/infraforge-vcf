@@ -31,11 +31,11 @@ sources:
 
 ## Why This Matters
 
-Most "the VM is slow" tickets are really CPU or memory contention questions. VCF management domains are packed with large appliances (vCenter, NSX Managers, VCF Operations), so knowing how ESX shares CPU and RAM tells you why sizing matters, why reservations exist, and why your nested lab feels slow when you over-allocate. Resource controls (shares, reservations, limits) also appear in exam scenarios about DRS and resource pools.
+Most "the virtual machine (VM) is slow" tickets are really Central Processing Unit (CPU) or memory contention questions. VMware Cloud Foundation (VCF) management domains are packed with large appliances (vCenter, NSX Managers, VCF Operations), so knowing how ESX shares CPU and Random Access Memory (RAM) tells you why sizing matters, why reservations exist, and why your nested lab feels slow when you over-allocate. Resource controls (shares, reservations, limits) also appear in exam scenarios about Distributed Resource Scheduler (DRS) and resource pools.
 
 ## Learning Objectives
 
-- Explain how ESX runs guest code on the physical CPU and how [[vcpu]]s are scheduled.
+- Explain how ESX runs guest code on the physical CPU and how virtual Central Processing Units ([[vcpu]]s) are scheduled.
 - Explain CPU and memory [[cpu-overcommitment]] and how contention shows up.
 - Describe the memory mapping layers and the four reclamation techniques, including the [[balloon-driver]].
 - Use shares, reservations and limits correctly.
@@ -45,7 +45,7 @@ Most "the VM is slow" tickets are really CPU or memory contention questions. VCF
 
 ### CPU
 
-ESX does **not emulate** a CPU. Guest instructions run **directly on the physical processor** whenever possible; the VMkernel steps in only when needed. With **hardware-assisted virtualization** (Intel VT-x, AMD-V), the CPU has a special *guest mode* so even privileged guest code runs natively until it exits to the hypervisor.
+ESX does **not emulate** a CPU. Guest instructions run **directly on the physical processor** whenever possible; the VMkernel steps in only when needed. With **hardware-assisted virtualization** (Intel Virtualization Technology (VT-x) and AMD Virtualization (AMD-V)), the CPU has a special *guest mode* so even privileged guest code runs natively until it exits to the hypervisor.
 
 A **vCPU** is a schedulable entity. The VMkernel CPU scheduler time-slices vCPUs onto **logical CPUs** (cores, or hyper-threads if hyper-threading is on). By default every vCPU receives **equal shares**.
 
@@ -53,13 +53,35 @@ A **vCPU** is a schedulable entity. The VMkernel CPU scheduler time-slices vCPUs
 
 There are three layers of addresses:
 
-1. **Guest virtual memory** – what applications see, managed by the guest OS.
+1. **Guest virtual memory** – what applications see, managed by the guest Operating System (OS).
 2. **Guest physical memory** – what the guest OS thinks is RAM.
 3. **Machine (host physical) memory** – real RAM in the host.
 
-ESX maps guest physical to machine memory. With hardware-assisted MMU (Intel EPT, AMD RVI), the CPU walks both page-table layers in hardware; ESX backs guest memory with **2 MB large pages** by default to reduce TLB-miss cost.
+ESX maps guest physical to machine memory. With hardware-assisted Memory Management Unit (MMU), using Intel Extended Page Tables (EPT) or AMD Rapid Virtualization Indexing (RVI), the CPU walks both page-table layers in hardware; ESX backs guest memory with **2 megabyte (MB) large pages** by default to reduce Translation Lookaside Buffer (TLB) miss cost.
 
 Each VM consumes its active memory **plus overhead memory** (frame buffer and virtualization data structures).
+
+### Core terms and operational boundaries
+
+**Virtual CPU (vCPU).** A vCPU is work that the VMkernel scheduler maps to a logical processor. It lets a guest run
+without owning a dedicated physical core and supports controlled overcommitment. A vCPU cannot create physical
+capacity, and adding idle vCPUs can increase scheduling delay. Administrators size vCPUs in VM settings and diagnose
+contention with CPU usage and CPU-ready evidence; exam scenarios distinguish high guest utilization from scheduler wait.
+
+**CPU overcommitment.** Overcommitment assigns more virtual processing capacity than the host can execute
+simultaneously, relying on workloads not peaking together. It improves consolidation but depends on workload demand,
+processor topology and scheduler capacity. It cannot guarantee latency during a simultaneous peak. Shares influence
+priority under contention, reservations guarantee a minimum and limits enforce a maximum.
+
+**Guest and machine memory.** The guest manages its virtual and guest-physical address spaces while ESX maps them
+to host machine memory. Hardware page-table assistance makes the translation efficient. The mapping enables safe
+memory overcommitment but does not make active memory demand disappear. vCenter and VCF Operations expose the
+relevant utilization and contention metrics; guest-only free-memory figures are insufficient evidence.
+
+**Memory reclamation.** ESX reclaims memory with page sharing, ballooning, compression and host swapping, ordered
+from lower to higher performance impact. Ballooning depends on VMware Tools and lets the guest choose pages;
+host swapping acts without guest knowledge. Reclamation preserves availability under pressure but is not a substitute
+for capacity. Persistent ballooning, compression or swapping indicates that sizing and limits need investigation.
 
 ## Architecture
 
@@ -76,7 +98,7 @@ The official vSphere figure shows the mapping between guest virtual, guest physi
 | Control | Meaning | CPU unit | Memory unit | Used when |
 |---|---|---|---|---|
 | **Shares** | Relative priority under contention | Shares (Low/Normal/High/Custom) | Shares | Only when resources are contended |
-| **Reservation** | Guaranteed minimum | MHz | MB | Always; VM cannot power on if the reservation cannot be met |
+| **Reservation** | Guaranteed minimum | megahertz (MHz) | MB | Always; VM cannot power on if the reservation cannot be met |
 | **Limit** | Hard maximum | MHz | MB | Always, even if the host is idle |
 
 Memory reservation also changes the **swap file**: the `.vswp` file size is *configured memory minus reservation*. A full reservation means no swap file space is needed.
@@ -85,10 +107,10 @@ Memory reservation also changes the **swap file**: the `.vswp` file size is *con
 
 | Technique | How it works | Requirement / note |
 |---|---|---|
-| **Transparent page sharing (TPS)** | Identical pages stored once | Inter-VM sharing is **disabled by default** for security; sharing is restricted to within a VM |
+| **Transparent Page Sharing (TPS)** | Identical pages stored once | Inter-VM sharing is **disabled by default** for security; sharing is restricted to within a VM |
 | **Ballooning** | The balloon driver (vmmemctl) inside the guest allocates memory, letting the guest choose its least valuable pages to give back | Needs **VMware Tools** |
 | **Memory compression** | Pages are compressed and kept in a cache in RAM | **Enabled by default** |
-| **Host swapping** | ESX swaps VM pages to the VM's `.vswp` file without guest involvement | Last resort, large performance impact; can use host swap cache on SSD |
+| **Host swapping** | ESX swaps VM pages to the VM's `.vswp` file without guest involvement | Last resort, large performance impact; can use host swap cache on a Solid-State Drive (SSD) |
 
 ## How It Works
 
@@ -115,14 +137,14 @@ The vSphere documentation recommends deploying **single-threaded applications on
 
 ### CPU features and vMotion
 
-A VM detects the specific processor model it runs on, so applications may use processor-specific features. That can block [[vmotion]] between hosts with different CPU generations. **EVC (Enhanced vMotion Compatibility)** masks newer features at the cluster level so VMs can move between generations. Details in Phase 2.
+A VM detects the specific processor model it runs on, so applications may use processor-specific features. That can block [[vmotion]] between hosts with different CPU generations. **Enhanced vMotion Compatibility (EVC)** masks newer features at the cluster level so VMs can move between generations. Details in Phase 2.
 
 ### Hyper-threading and NUMA (one paragraph each)
 
-Hyper-threading gives each core two logical CPUs; it adds throughput but two threads share one core's execution resources, so a logical CPU is not a full core. NUMA (non-uniform memory access) means each CPU socket has local memory; ESX tries to keep a VM's vCPUs and memory on the same NUMA node. Very large VMs that span nodes pay a latency cost. Your lab server has two sockets, so it has at least two NUMA nodes.
+Hyper-threading gives each core two logical CPUs; it adds throughput but two threads share one core's execution resources, so a logical CPU is not a full core. Non-Uniform Memory Access (NUMA) means each CPU socket has local memory; ESX tries to keep a VM's vCPUs and memory on the same NUMA node. Very large VMs that span nodes pay a latency cost. Your lab server has two sockets, so it has at least two NUMA nodes.
 
 :::vcf9 Changed in VCF 9
-**Memory Tiering over NVMe** (vCenter and ESX 9.0 or later) lets a host use local NVMe devices as a second, slower memory tier: DRAM is tier 0, NVMe is tier 1, and ESX moves VM memory between them. It is **deactivated by default**, requires the host in maintenance mode to configure, local (not fabric) NVMe, partitions up to 4 TB, and cannot use vSAN disks. It is **not interoperable with nested ESX**, so you cannot use it in your Proxmox lab.
+**Memory Tiering over Non-Volatile Memory Express (NVMe)** (vCenter and ESX 9.0 or later) lets a host use local NVMe devices as a second, slower memory tier: Dynamic Random Access Memory (DRAM) is tier 0, NVMe is tier 1, and ESX moves VM memory between them. It is **deactivated by default**, requires the host in maintenance mode to configure, local (not fabric) NVMe, partitions up to 4 terabytes (TB), and cannot use vSAN disks. It is **not interoperable with nested ESX**, so you cannot use it in your Proxmox lab.
 :::
 
 ## Configuration
@@ -176,14 +198,6 @@ For live contention, `esxtop` (interactive) on the host shows CPU ready (%RDY) a
 ## Real-World Scenario
 
 In a nested lab, a learner gives each of four nested ESX VMs 64 GB RAM on a 256 GB Proxmox server, then deploys appliances inside them. Proxmox itself overcommits, the nested hosts start swapping, and the vCenter appliance becomes unresponsive. Two layers of overcommitment multiply the effect. The fix: total the RAM of all nested hosts, keep it under physical RAM minus Proxmox overhead, and plan appliance sizes before deploying.
-
-## Lab
-
-Use your nested ESX host to observe CPU and memory settings:
-
-::lab[lab-esx-host-first-vm]
-
-In the lab, run `esxcli hardware cpu global get` and `esxcli hardware memory get` and compare them with what you configured for the nested ESX VM in Proxmox.
 
 ## Exam Focus
 

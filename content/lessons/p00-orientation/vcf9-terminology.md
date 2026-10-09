@@ -41,14 +41,14 @@ sources:
 
 ## Why This Matters
 
-VCF 9 changed a lot of names at once. Old blog posts, KB articles, CLI output and colleagues still use the VCF 5.x vocabulary, while the exam and the 9.x documentation use the new one. If you cannot translate instantly, you will misread questions ("Aria Suite Lifecycle" in an old article is "VCF Operations fleet management" on the exam) or pick the wrong scope ("one per instance" versus "one per fleet"). This lesson is the dictionary for the rest of the course.
+VMware Cloud Foundation (VCF) 9 changed a lot of names at once. Old blog posts, Knowledge Base (KB) articles, Command-Line Interface (CLI) output and colleagues still use the VCF 5.x vocabulary, while the exam and the 9.x documentation use the new one. If you cannot translate instantly, you will misread questions ("Aria Suite Lifecycle" in an old article is "VCF Operations fleet management" on the exam) or pick the wrong scope ("one per instance" versus "one per fleet"). This lesson is the dictionary for the rest of the course.
 
 ## Learning Objectives
 
 - Define [[fleet]], [[vcf-instance]], [[vcf-domain]] and [[cluster]] and state what each contains.
 - State the scope (fleet, instance, domain) of each management component.
 - Translate legacy names to VCF 9 names: ESXi → [[esx]], the Aria products, Cloud Builder, Aria Suite Lifecycle.
-- Explain the VCF Installer and how it relates to SDDC Manager.
+- Explain the VCF Installer and how it relates to Software-Defined Data Center (SDDC) Manager.
 - Describe SDDC Manager's changed role in VCF 9.
 
 ## Concept
@@ -60,7 +60,7 @@ VCF 9 changed a lot of names at once. Old blog posts, KB articles, CLI output an
 | **VCF private cloud** | The highest level; can contain one or more VCF fleets | 1..n fleets | – |
 | **VCF fleet** | "An environment that is managed by a single set of fleet-level management components – VCF Operations and VCF Automation" | 1..n VCF instances, optionally standalone vCenter instances | VCF Operations, VCF Automation (plus fleet management) |
 | **VCF instance** | "Compute, storage, networking virtual infrastructure that runs business workloads" | 1 management domain + 0..n workload domains | SDDC Manager, NSX, vCenter, ESX |
-| **VCF domain** | A unit of the instance with its own vCenter | 1 vCenter, 1..n vSphere clusters (HA and DRS enabled), vSphere distributed switches, NSX segments, a dedicated or shared NSX Manager, optional NSX Edge clusters, storage | vCenter (+ NSX) |
+| **VCF domain** | A unit of the instance with its own vCenter | 1 vCenter, 1..n vSphere clusters (High Availability (HA) and Distributed Resource Scheduler (DRS) enabled), vSphere distributed switches, NSX segments, a dedicated or shared NSX Manager, optional NSX Edge clusters, storage | vCenter (+ NSX) |
 | **Management domain** | Created during deployment or convergence | Management components of the instance; in the first instance also VCF Operations and VCF Automation; SDDC Manager and the fleet management appliance | – |
 | **Workload domain** | Created in VCF Operations to run consumer workloads | Dedicated ESX hosts and clusters; its vCenter (and NSX Manager) run in the management domain | – |
 | **vSphere cluster** | Group of ESX hosts in one vCenter with HA and DRS | ESX hosts | vCenter |
@@ -69,6 +69,31 @@ Two facts from the taxonomy that are easy to miss:
 
 - **Fleet-level components live in the first instance's management domain.** There is no separate "fleet cluster".
 - **For the first workload domain, VCF Operations deploys a vCenter and an NSX Manager instance in the management domain.** New workload domains can share an existing NSX Manager cluster or get a new one.
+
+### What each boundary can and cannot do
+
+**Fleet.** A fleet is the shared operations and consumption scope. VCF Operations, fleet management and VCF
+Automation can inventory, lifecycle and expose resources across registered instances. A fleet does not merge the
+instances' SDDC Managers, management domains or workload data planes. It depends on reachable instances, collectors,
+identity and the fleet appliances hosted in the first instance. Administrators use VCF Operations and VCF Automation;
+the common exam mistake is assigning a fleet-level product once per instance.
+
+**VCF instance.** An instance is an independently orchestrated infrastructure boundary with exactly one management
+domain, its own SDDC Manager and optional workload domains. It can commission hosts, create domains and lifecycle
+its core stack without merging inventory with another instance. It cannot exist without the management domain, and
+fleet membership does not make its SDDC Manager global. VCF Operations initiates supported workflows while the
+instance's SDDC Manager executes them.
+
+**VCF domain.** A domain is an application-ready management and lifecycle boundary with one vCenter and one or more
+clusters. The management domain hosts the instance management plane; a workload domain hosts business workload
+capacity while its vCenter and NSX Manager appliances run in the management domain. A domain is not a synonym for
+a cluster, an identity domain or an Automation organization. Administrators use its vCenter and NSX Manager for
+element work and VCF workflows for topology and lifecycle changes.
+
+**vSphere cluster.** A cluster groups ESX hosts under one vCenter and supplies scheduling, availability and shared
+services. It scales compute and can be one of several clusters in a domain. It does not own a separate vCenter or
+become a workload domain merely because it runs a different application. Cluster configuration is managed in
+vCenter, while VCF must remain authoritative for VCF-owned host and lifecycle workflows.
 
 ## Architecture
 
@@ -87,7 +112,7 @@ The Fleet Deployment Models page shows how one VCF Operations and VCF Automation
 | Fleet | VCF Operations (with collectors, optional VCF Operations for logs / for networks) | One per fleet |
 | Fleet | VCF Operations fleet management appliance | One per fleet |
 | Fleet | VCF Automation | One per fleet |
-| Fleet / SSO | VCF Identity Broker (single sign-on to an identity provider) | Depends on the SSO model chosen (Security phase) |
+| Fleet / Single Sign-On (SSO) | VCF Identity Broker (single sign-on to an identity provider) | Depends on the SSO model chosen (Security phase) |
 | Instance | SDDC Manager | One per instance |
 | Domain | vCenter | One per domain |
 | Domain | NSX Manager cluster | Dedicated per domain or shared between workload domains |
@@ -107,23 +132,23 @@ The Fleet Deployment Models page shows how one VCF Operations and VCF Automation
 | VMware Aria Suite Lifecycle | **VCF Operations fleet management** |
 | Aria Operations cloud proxy | **VCF Operations collector** (also known as cloud proxy) |
 | VMware HCX | **VCF Operations HCX** |
-| Cloud Builder (bring-up appliance + Excel workbook) | **VCF Installer** (wizard or JSON) |
+| Cloud Builder (bring-up appliance + Excel workbook) | **VCF Installer** (wizard or JavaScript Object Notation (JSON) specification) |
 | Enhanced Linked Mode for multi-vCenter SSO | **VCF single sign-on with the VCF Identity Broker** |
-| VI workload domain | **workload domain** (both terms appear) |
+| Virtual Infrastructure (VI) workload domain | **workload domain** (both terms appear) |
 | Update / Patch / Express Patch naming | Five-field version numbers, e.g. 9.0.1.0 |
 :::
 
 ### ESX vs ESXi
 
-The hypervisor was called ESX up to version 4.x, ESXi from 5.0 through 8.x, and is called **ESX** again in the 9.x bill of materials and documentation. It is the same product line: a type 1 hypervisor with the VMkernel. Many command names, log names, KB titles and even some UI strings still contain "esxi" (for example the `esxcli` tool and older paths). When you read "ESXi 8.0 U3", think "the version before ESX 9.0".
+The hypervisor was called ESX up to version 4.x, ESXi from 5.0 through 8.x, and is called **ESX** again in the 9.x bill of materials and documentation. It is the same product line: a type 1 hypervisor with the VMkernel. Many command names, log names, KB titles and even some User Interface (UI) strings still contain "esxi" (for example the `esxcli` tool and older paths). When you read "ESXi 8.0 Update 3 (U3)", think "the version before ESX 9.0".
 
 ## How It Works
 
 ### VCF Installer vs Cloud Builder
 
-1. You download one OVA: the **VCF-SDDC-Manager-Appliance-9.x.x.ova**. It contains both the VCF Installer and SDDC Manager.
+1. You download one Open Virtual Appliance (OVA) package: the **VCF-SDDC-Manager-Appliance-9.x.x.ova**. It contains both the VCF Installer and SDDC Manager.
 2. You deploy it **outside** the future management infrastructure (or on a host that is not part of it) and use it in **installer mode**: download binaries, run the deployment wizard or upload a JSON specification.
-3. The installer deploys the platform: for VCF, vCenter, VCF Operations, NSX, VCF Automation and SDDC Manager; for VVF, vCenter and VCF Operations.
+3. The installer deploys the platform: for VCF, vCenter, VCF Operations, NSX, VCF Automation and SDDC Manager; for VMware vSphere Foundation (VVF), vCenter and VCF Operations.
 4. If you deploy the appliance **inside** the management infrastructure (on one of the hosts that will form the management domain), it switches into **SDDC Manager mode** and can no longer be used as an installer.
 5. The VCF Installer can deploy a **new fleet** or **expand an existing fleet** with a new instance, and supports convergence of existing vSphere.
 
@@ -136,9 +161,9 @@ In VCF 5.x, **Cloud Builder** was a separate appliance. You filled in the *Deplo
 | Aspect | VCF 5.x | VCF 9.0 |
 |---|---|---|
 | Scope | One per instance | Still one per instance |
-| Main UI for VCF | Yes, the central VCF console | **SDDC Manager UI is deprecated** (to be removed in a future major release); VCF Operations is the central console |
-| Workload domain creation | SDDC Manager UI/API | Created in **VCF Operations**; SDDC Manager executes the instance workflows |
-| Lifecycle | SDDC Manager LCM | Lifecycle capabilities moved into VCF Operations (fleet lifecycle); release notes list the old SDDC Manager precheck API as removed |
+| Main user interface for VCF | Yes, the central VCF console | **SDDC Manager UI is deprecated** (to be removed in a future major release); VCF Operations is the central console |
+| Workload domain creation | SDDC Manager UI and Application Programming Interface (API) | Created in **VCF Operations**; SDDC Manager executes the instance workflows |
+| Lifecycle | SDDC Manager Lifecycle Management (LCM) | Lifecycle capabilities moved into VCF Operations (fleet lifecycle); release notes list the old SDDC Manager precheck API as removed |
 | Identity configuration | SDDC Manager APIs | Deprecated; replaced by VCF Operations |
 | Deploying Aria / Ops / Automation | SDDC Manager + Aria Suite Lifecycle | VCF Installer and VCF Operations |
 
@@ -162,7 +187,7 @@ VCF 4.x/5.x documentation talked about a **consolidated architecture** (workload
 
 ## Configuration
 
-Terminology does not get configured, but naming does. Agree on a naming convention before you deploy, because names appear in FQDNs, certificates and inventory:
+Terminology does not get configured, but naming does. Agree on a naming convention before you deploy, because names appear in Fully Qualified Domain Names (FQDNs), certificates and inventory:
 
 | Object | Example name |
 |---|---|
@@ -173,7 +198,7 @@ Terminology does not get configured, but naming does. Agree on a naming conventi
 | Clusters | `mgmt-01-cl01`, `wld-01-cl01` |
 | Hosts | `esx-01.lab.local` … |
 
-Use the IP and DNS plan from the Home Lab section for your real names.
+Use the Internet Protocol (IP) and Domain Name System (DNS) plan from the Home Lab section for your real names.
 
 ## CLI / API
 
@@ -209,13 +234,6 @@ When a document, KB or colleague uses a name you do not recognise:
 ## Real-World Scenario
 
 An engineer reads a 2023 runbook: "Use SDDC Manager to deploy Aria Suite Lifecycle, then deploy Aria Operations and Aria Operations for Logs; log in to SDDC Manager to create the VI workload domain." Translated to VCF 9: VCF Operations, VCF Operations fleet management and (optionally) VCF Operations for logs are deployed by the **VCF Installer** or from **VCF Operations**; the workload domain is created in **VCF Operations**, which uses SDDC Manager behind the scenes. Same goals, different tools and order.
-
-## Lab
-
-There is no lab yet where you can see all these components, because they require a deployed VCF fleet. Two things to do now:
-
-- Complete the Phase 1 ESX lab, which shows you the "ESX" naming on a real host.
-- When your VCF deployment is running, the **Explore a VCF fleet** lab has you place every appliance on the fleet → instance → domain map.
 
 ## Exam Focus
 
