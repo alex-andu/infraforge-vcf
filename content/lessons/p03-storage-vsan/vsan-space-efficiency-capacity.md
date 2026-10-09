@@ -6,7 +6,7 @@ module: m03-vsan-ops
 version: vcf9
 minutes: 40
 difficulty: intermediate
-summary: Where vSAN capacity goes and how to get more out of it — erasure coding, ESA compression, OSA deduplication and compression, ESA global deduplication in VCF 9.0 (limited availability), TRIM/UNMAP, thin provisioning, and the operations and host rebuild reserves that keep a cluster able to heal.
+summary: How VMware vSAN converts raw into usable capacity through erasure coding, compression, deduplication, thin provisioning and reserves, including VMware Cloud Foundation (VCF) 9 global-deduplication limits.
 topics: [vsan-capacity, vsan-policies, design-sizing]
 objectives: ["2.3"]
 keyTerms: [erasure-coding, global-deduplication, vsan-compression, operations-reserve, host-rebuild-reserve, object-space-reservation, vsan-esa, vsan-osa, disk-group]
@@ -33,15 +33,15 @@ sources:
 
 ## Why This Matters
 
-The capacity number on a vSAN datastore is **raw** capacity. A VM with a 100 GB disk can consume 100 GB, 125 GB, 200 GB or 400 GB of it depending on its policy — and less if data reduction works well. On top of that vSAN needs free space to resync, rebalance and rebuild. Teams that run vSAN at 95 % full discover during the first host failure that the cluster cannot heal.
+The capacity shown for a VMware vSAN datastore begins with **raw** device capacity. A virtual machine (VM) with a 100-gigabyte (GB) disk can consume 100, 125, 200 or 400 GB depending on its storage policy, and less when data reduction is effective. vSAN also needs free working capacity for resynchronization, rebalancing, policy changes and rebuilds. A cluster filled with workload data can remain online yet lack enough space to restore protection after a failure.
 
 Exam objective 2.3 says "Given a scenario, describe the purpose of vSAN Space Efficiency". Expect questions on which technique applies to ESA vs OSA, what is enabled by default, and what the status of global deduplication is in 9.0.
 
 ## Learning Objectives
 
 - Break down raw vSAN capacity into usable capacity, policy overhead, system usage and reserves.
-- Compare the space-efficiency techniques: erasure coding, compression, deduplication, thin provisioning and TRIM/UNMAP.
-- State how compression and deduplication differ between ESA and OSA, and the 9.0 status of ESA global deduplication.
+- Compare erasure coding, compression, deduplication, thin provisioning and the Trim/Unmap space-reclamation commands.
+- State how compression and deduplication differ between Express Storage Architecture (ESA) and Original Storage Architecture (OSA), and the VCF 9.0 status of ESA global deduplication.
 - Explain the operations reserve and host rebuild reserve, and how capacity health thresholds work.
 - Size a small cluster for a given usable capacity target.
 
@@ -83,6 +83,20 @@ The diagram follows 1 TB of raw capacity down to what a VM can really use, and s
 | Space efficiency policy rule | VM storage policy | No preference / compression only / dedup and compression / none |
 | Capacity reserves | Cluster setting | Operations reserve and host rebuild reserve |
 | Capacity health check | vSAN Skyline Health | Warns/errors based on thresholds and reserves |
+
+### Component responsibilities and limits
+
+**Data-reduction service.** Compression and deduplication reduce stored physical blocks when the data is compressible or repeated. ESA compression works per object on new writes; OSA deduplication and compression operate within a disk group; ESA global deduplication has its own release and eligibility constraints. No reduction ratio is guaranteed, and encrypted or already compressed data may save little.
+
+**Erasure coding.** RAID-5 and RAID-6 reduce protection overhead compared with full mirrors by storing data and parity segments. They depend on enough hosts or fault domains and consume processor, network and transient capacity during writes and repair. Erasure coding cannot protect an object beyond its failures-to-tolerate policy.
+
+**Thin provisioning and Trim/Unmap.** Thin objects consume physical capacity as blocks are written, while guest Trim/Unmap lets vSAN reclaim supported deleted ranges. Thin provisioning delays consumption; it does not impose a hard quota or prevent aggregate demand from exhausting the datastore.
+
+**Operations reserve.** This reserve protects working space for internal movement such as policy changes, resynchronization and rebalancing. It limits what new provisioning may consume, but it does not represent an extra replica of workload data.
+
+**Host rebuild reserve.** This reserve protects enough capacity to rebuild the estimated contribution of one failed host. It helps an N+1 design heal, but only when surviving hosts, fault domains, networking and device capacity can accept the rebuilt components.
+
+**Capacity health.** Skyline Health and VCF Operations expose usage, reserves, thresholds and data-reduction ratios. They provide evidence for action; they cannot reclaim space without workload, policy or hardware changes.
 
 ## How It Works
 
@@ -156,10 +170,18 @@ Same data at 6 hosts: RAID-5 becomes 4+1 (×1.25 = 25 TB) and the host rebuild s
 
 ## Configuration
 
-- **ESA compression off for a workload** (already-compressed data such as media or encrypted backups): create a policy with *Space efficiency = No space efficiency* and apply it to those VMs.
-- **OSA dedup and compression**: cluster → **Configure → vSAN → Services → Space efficiency → Edit** → Deduplication and compression (or Compression only). Expect a rolling disk group reformat.
-- **Reserves**: cluster → **Monitor → vSAN → Capacity** → Reservations and Alerts → enable Operations reserve and Host rebuild reserve.
-- **Global dedup**: only for clusters approved through TQR; follow the instructions provided with that approval.
+| Decision | Management surface | Evidence |
+|---|---|---|
+| Which protection layout meets usable-capacity and failure goals? | VM storage policy and capacity model | FTT/RAID overhead, host count and measured workload demand |
+| Which data-reduction service fits the architecture and data? | vSAN service and policy settings | ESA/OSA eligibility, encryption/topology constraints and measured ratio |
+| Can deleted guest blocks be reclaimed? | Guest operating system, virtual disk and capacity views | Trim/Unmap support and observed physical-capacity reduction |
+| How much capacity must remain unavailable to workloads? | vSAN capacity reservations and alerts | Operations reserve, host rebuild reserve and chosen alert threshold |
+| Can a planned policy change complete safely? | Capacity and resynchronization views | Current free space, transient headroom and resync estimate |
+| Is new hardware required? | VCF Operations trends and vSAN sizing | Growth forecast, failure scenario and procurement threshold |
+
+The separate practical guide owns exact VCF 9.0.2 navigation and comparative policy exercise. Capacity decisions must use measured data and policy overhead; an assumed compression or deduplication ratio is not a safe sizing input.
+
+Automation can use a command-line interface (CLI) or an application programming interface (API), but the reserve and transient-capacity safeguards still apply.
 
 ## CLI / API
 
@@ -209,12 +231,6 @@ A 5-host ESA cluster reports 78 % used and a yellow capacity warning. The team w
 - Turn on TRIM/UNMAP in the guests and clean up 4 TB of old snapshots.
 - Enable host rebuild reserve so new provisioning cannot use the space needed to survive a host failure.
 - Order a sixth host: RAID-5 becomes 4+1 automatically (1.25×) and the rebuild share shrinks.
-
-## Lab
-
-In the policy lab you will compare the consumed capacity of the same VM under RAID-1, RAID-5 and FTT=0.
-
-::lab[lab-vsan-storage-policies]
 
 ## Exam Focus
 
