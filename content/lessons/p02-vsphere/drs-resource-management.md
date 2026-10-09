@@ -6,7 +6,7 @@ module: m02-clusters-vms
 version: vcf9
 minutes: 45
 difficulty: intermediate
-summary: How DRS places and balances VMs (automation levels, migration threshold, DRS score), how shares, reservations and limits divide CPU and memory under contention, how resource pools and affinity rules work, and how vCLS, HA and VCF interact with DRS.
+summary: How VMware vSphere Distributed Resource Scheduler (DRS) places and balances virtual machines (VMs), how processor and memory controls divide capacity, and how VMware Cloud Foundation (VCF) uses DRS during cluster operations.
 topics: [drs, vsphere-cluster, cpu-memory-virt]
 objectives: ["2.2"]
 keyTerms: [shares, reservation, limit, resource-pool, expandable-reservation, vmotion, vcls, affinity-rule, maintenance-mode]
@@ -39,17 +39,17 @@ sources:
 
 ## Why This Matters
 
-A VCF workload domain is sold to its consumers as a pool of capacity. DRS (Distributed Resource Scheduler) is what turns a group of hosts into that pool: it picks a host when a VM powers on, moves VMs with vMotion when hosts get busy, and evacuates hosts for maintenance — which is exactly what vSphere Lifecycle Manager relies on when VCF patches a cluster. Shares, reservations, limits and resource pools decide **who wins when there is not enough**.
+A VMware Cloud Foundation (VCF) workload domain presents a pool of capacity to its consumers. VMware vSphere Distributed Resource Scheduler (DRS) turns a host cluster into that pool: it chooses a host when a virtual machine (VM) powers on, uses VMware vSphere vMotion to move running VMs, and evacuates hosts for maintenance. VMware vSphere Lifecycle Manager (vLCM) depends on this behavior during cluster remediation. Shares, reservations, limits and resource pools decide who receives capacity during contention.
 
-Exam objective 2.2 (*configure a vSphere cluster*, *deploy and configure VMs*) tests these settings constantly: "the CFO's VM is slow under contention", "a VM won't power on because of a reservation", "two domain controllers must never share a host".
+Exam objective 2.2 tests these settings through placement, contention, power-on and affinity scenarios: why a business-critical VM slows under contention, why a reservation blocks power-on, or how two directory-service VMs remain on separate hosts.
 
 ## Learning Objectives
 
 - Configure DRS automation level and migration threshold and interpret the DRS score.
-- Calculate the effect of **shares**, **reservations** and **limits** under contention.
+- Calculate the effect of processor (CPU) and memory **shares**, **reservations** and **limits** under contention.
 - Design a resource pool hierarchy and explain expandable reservations.
 - Choose between VM-VM and VM-Host rules, and between *must* and *should* rules.
-- Explain DRS dependencies: vMotion, shared storage, vCenter, vCLS.
+- Explain DRS dependencies: vMotion, shared storage, vCenter and vSphere Cluster Services (vCLS).
 
 ## Concept
 
@@ -62,9 +62,9 @@ DRS is a **vCenter** service that works on a cluster:
 | Maintenance evacuation | Moves VMs off a host entering maintenance mode |
 | Rules enforcement | Keeps VMs together/apart, on/off host groups |
 | Resource pools | Enforces the cluster-wide resource tree |
-| Power management (DPM, optional) | Puts hosts in standby when capacity is idle |
+| Distributed Power Management (DPM, optional) | Puts hosts in standby when capacity is idle |
 
-Requirements (vSphere 9.0 docs): hosts on a **vMotion network**, and **shared storage** for the VMs DRS should move. DRS needs vCenter to run, and in vSphere 9.0 it also depends on healthy **vCLS** VMs.
+DRS depends on vCenter for decisions, compatible hosts, working vMotion VMkernel networking and access to each VM's storage from source and destination. Shared storage is the normal VCF design, although supported shared-nothing migrations can cover specific cases. In vSphere 9.0, cluster services also depend on healthy vCLS system VMs.
 
 ### Automation levels
 
@@ -94,6 +94,18 @@ The **DRS score** on the cluster Summary is "a weighted average of the VM DRS Sc
 | Child resource pools | Cluster | Divide capacity among teams or tiers |
 | VM/Host groups and rules | Cluster configuration | Placement constraints |
 
+### Component responsibilities and limits
+
+**DRS engine.** The engine evaluates VM demand, host capacity, compatibility and placement rules. It can recommend or initiate vMotion and choose an initial host. It cannot move a VM when networking, storage visibility, device attachment, encryption trust or a required affinity rule makes the destination invalid.
+
+**vMotion.** vMotion carries active execution state between compatible hosts while storage remains accessible. It is the movement mechanism used by DRS, not the decision maker. A healthy vMotion network does not by itself guarantee that CPU compatibility, datastore access or policy constraints are satisfied.
+
+**vCLS.** vCLS supplies cluster-service availability for DRS. Its system VMs are managed by vCenter and should not be treated as application workloads. An unhealthy vCLS state can stop DRS services, while vCLS does not replace vCenter's DRS engine or provide capacity for application VMs.
+
+**Resource controls.** Reservations protect a minimum, limits enforce a maximum and shares divide contested capacity. These controls express entitlement rather than application importance. Poor reservations can prevent admission, unnecessary limits can create artificial bottlenecks, and shares have no performance effect while capacity is unconstrained.
+
+**Resource pools.** A pool delegates part of the cluster resource tree to a workload group. It can provide a reservation boundary and relative shares, but it is not an inventory folder, a security boundary or a fixed set of physical hosts.
+
 ## How It Works
 
 ### Resource controls on a VM or pool
@@ -115,7 +127,7 @@ Share presets (vSphere 9.0 API `SharesLevel`):
 
 ### Worked contention example
 
-Two VMs compete for 6 GHz of CPU on the same host:
+Two VMs, each with virtual CPUs (vCPUs), compete for 6 gigahertz (GHz) of processor capacity on the same host:
 
 | VM | vCPU | Shares level | Shares | Entitlement under contention |
 |---|---|---|---|---|
@@ -131,6 +143,8 @@ A [[resource-pool]] is a node in the cluster's resource tree with its own shares
 - Every host and DRS cluster has an invisible **root resource pool** equal to its total resources.
 - [[expandable-reservation|Expandable reservation]] lets a child pool **borrow unreserved capacity from its ancestors** (recursively) when its own reservation is exhausted. It is the default; *fixed* means admission control only looks at the pool itself.
 - Shares on pools are relative **among siblings**: a pool with *High* shares and 50 VMs can give each VM less than a *Normal* pool with 2 VMs. Size pool shares by workload count, or use scalable shares where available.
+
+The pool's effective capacity depends on its ancestors. A child reservation consumes reservable capacity from its parent, while a parent limit caps everything below it. Expandable reservation changes where admission control may borrow unused reservation; it does not create resources, bypass an ancestor limit or guarantee that any one VM receives the entire borrowed amount.
 
 ### What happens at power-on
 
@@ -174,15 +188,19 @@ vSphere 7.0 U1 to 8.0 U2 used three *external* vCLS agent VMs running Photon OS 
 
 ## Configuration
 
-**Enable DRS:** cluster → **Configure → Services → vSphere DRS → Edit** → turn on, choose automation level and migration threshold. Optional: Predictive DRS, VM automation overrides, DPM (*Power Management*).
+Treat DRS configuration as a set of policy decisions with observable evidence:
 
-**Create a resource pool:** right-click cluster → **New Resource Pool** → set CPU/memory shares, reservation, expandable, limit.
+| Decision | Management surface | Evidence |
+|---|---|---|
+| Who approves migrations? | Cluster DRS automation and VM overrides | Automation level, migration threshold and documented exceptions |
+| Which workloads receive capacity during contention? | VM and resource-pool allocation settings | Reservations, limits, shares and pool ancestry |
+| Which placements are mandatory or preferred? | VM/Host groups and rules | Rule type, enabled state, compliance and business owner |
+| Can every host participate? | Host networking, storage and compatibility views | Successful migration test and common datastore/network reachability |
+| Is DRS improving workload state? | Cluster DRS score, recommendations, faults and history | Score trend, executed recommendations and unresolved faults |
 
-**Edit VM resources:** VM → **Edit Settings** → CPU / Memory → Reservation, Limit, Shares.
+The separate practical guide owns exact VCF 9.0.2 navigation and the maintenance-mode exercise. In theory, a valid design connects each constraint to a business requirement and proves that lifecycle evacuation and VMware vSphere High Availability (HA) failover still have at least one legal destination.
 
-**Rules:** cluster → **Configure → Configuration → VM/Host Groups** (create groups) → **VM/Host Rules** (create rules).
-
-**VM overrides:** cluster → **Configure → Configuration → VM Overrides** — per-VM DRS automation level, HA restart priority, isolation response.
+Repeatable administration can use a command-line interface (CLI) or an application programming interface (API), but those tools submit the same cluster policies evaluated by vCenter.
 
 ## CLI / API
 
@@ -225,12 +243,6 @@ Move-VM -VM (Get-VM "app01") -Destination (Get-VMHost "esx-wld01-02.lab.local")
 ## Real-World Scenario
 
 During a VCF cluster upgrade, vSphere Lifecycle Manager cannot put `esx-wld01-04` in maintenance mode. The DRS faults show a *must run on* rule binding a licensed database VM to hosts 03 and 04, and host 03 is already in maintenance. The admin changes the rule to *should run on* for the duration of the upgrade window (with the application owner's approval), the VM moves, remediation continues, and the rule is restored afterwards.
-
-## Lab
-
-::lab[lab-vcenter-cluster-ha-drs]
-
-You enable DRS, create resource pools and an anti-affinity rule, and watch DRS evacuate a host for maintenance.
 
 ## Exam Focus
 
